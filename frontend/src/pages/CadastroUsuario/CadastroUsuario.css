@@ -1,0 +1,30 @@
+.titulo {
+  font-size: 28px;
+  color: var(--text-title);
+  margin-bottom: 16px;
+}
+
+.erro {
+  color: var(--color-danger);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.role,
+.permissoes {
+  margin-bottom: 16px;
+}
+
+select {
+  border-radius: var(--radius-md);
+  padding: 10px;
+  border: 1px solid var(--color-border);
+}
+
+input[type="checkbox"] {
+  margin-right: 8px;
+}

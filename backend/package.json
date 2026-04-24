@@ -15,10 +15,12 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "axios": "^1.15.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "knex": "^3.2.9",
     "mysql2": "^3.22.2",
     "objection": "^3.1.5"

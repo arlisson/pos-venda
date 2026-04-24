@@ -1,0 +1,23 @@
+.campo-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.campo-texto__input {
+  width: 100%;
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  padding: 0 12px;
+  font-size: 15px;
+  color: var(--text-body);
+  background: #ffffff;
+  outline: none;
+  transition: 0.2s ease;
+}
+
+.campo-texto__input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}

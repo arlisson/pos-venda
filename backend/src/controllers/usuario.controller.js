@@ -1,5 +1,9 @@
 const usuarioService = require('../services/usuario.service');
 
+const knex = require('../database/connection');  // Certifique-se de importar o knex corretamente
+const Usuario = require('../models/Usuario'); // Caso você esteja usando o modelo para usuários
+const bcrypt = require('bcrypt');  // Importa o bcrypt
+
 async function index(req, res) {
   try {
     const usuarios = await usuarioService.listarUsuarios();
@@ -36,15 +40,28 @@ async function show(req, res) {
 
 async function store(req, res) {
   try {
-    const usuario = await usuarioService.criarUsuario(req.body);
+    const { nome, email, senha, role_id, permissoes } = req.body;
 
-    return res.status(201).json(usuario);
+    // Verifica se a role existe
+    const role = await knex('roles').where('id', role_id).first();
+    if (!role) {
+      return res.status(400).json({ message: 'Role não encontrada.' });
+    }
+
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    const usuario = await knex('usuarios').insert({
+      nome,
+      email,
+      senha: senhaHash,
+      role_id,
+      permissoes: JSON.stringify(permissoes)
+    }).returning('*');
+
+    return res.status(201).json(usuario[0]);
   } catch (error) {
     console.error(error);
-
-    return res.status(500).json({
-      message: 'Erro ao criar usuário.'
-    });
+    return res.status(500).json({ message: 'Erro ao criar usuário.' });
   }
 }
 

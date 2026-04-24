@@ -1,0 +1,27 @@
+.navbar {
+  width: 100%;
+  min-height: 64px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-light);
+  padding: 0 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar__logo {
+  font-size: 18px;
+  color: var(--text-title);
+}
+
+.navbar__content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.navbar__user {
+  font-size: 14px;
+  color: var(--text-muted);
+}

@@ -17,6 +17,9 @@ exports.up = function (knex) {
 
     table.boolean('ativo').notNullable().defaultTo(true);
 
+    // Adicionando a coluna 'permissoes' como JSON
+    table.json('permissoes').notNullable().defaultTo('[]');  // Se você preferir TEXT, troque para `table.text('permissoes')`
+
     table.timestamp('created_at').defaultTo(knex.fn.now());
     table.timestamp('updated_at').defaultTo(knex.fn.now());
   });
