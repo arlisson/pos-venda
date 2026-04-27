@@ -1,5 +1,16 @@
 {
   "dependencies": {
     "knex": "^3.2.9"
-  }
+    
+  },
+    
+    "name": "pos-venda",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+      "start": "npm --prefix backend start",
+      "postinstall": "npm --prefix backend install"
+    }
+  
+  
 }
