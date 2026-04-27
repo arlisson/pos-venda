@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './api';
+import { apiGet, apiPost, apiPut } from './api';
 
 export async function login(email, senha) {
   const data = await apiPost('/auth/login', {
@@ -24,6 +24,14 @@ export function getUsuarioLocal() {
   }
 
   return JSON.parse(usuario);
+}
+
+export async function atualizarPerfil(dados) {
+  const usuario = await apiPut('/auth/me', dados);
+
+  localStorage.setItem('usuario', JSON.stringify(usuario));
+
+  return usuario;
 }
 
 export function logout() {

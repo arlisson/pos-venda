@@ -5,6 +5,7 @@ import PerfilPage from '../pages/PerfilPage/PerfilPage';
 import HomePage from '../pages/HomePage/HomePage';
 import CadastroUsuario from '../pages/CadastroUsuario/CadastroUsuario';
 import Usuarios from '../pages/Usuarios/Usuarios';
+import EditarPerfilPage from '../pages/EditarPerfilPage/EditarPerfilPage';
 
 import { getUsuarioLocal } from '../services/auth.service';
 
@@ -63,6 +64,16 @@ function AppRoutes() {
           </PrivateRoute>
         }
       />
+
+      <Route
+        path="/perfil/editar"
+        element={
+          <PrivateRoute>
+            <EditarPerfilPage />
+          </PrivateRoute>
+        }
+      />
+      
     </Routes>
   );
 }

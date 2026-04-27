@@ -35,6 +35,38 @@ async function montarUsuarioComPermissoes(usuario) {
   };
 }
 
+async function atualizarPerfil(usuarioId, dados) {
+  const dadosAtualizacao = {};
+
+  if (dados.nome !== undefined) {
+    dadosAtualizacao.nome = dados.nome;
+  }
+
+  if (dados.email !== undefined) {
+    dadosAtualizacao.email = dados.email;
+  }
+
+  if (dados.senha !== undefined && dados.senha !== '') {
+    dadosAtualizacao.senha = await bcrypt.hash(dados.senha, 10);
+  }
+
+  if (dados.permissoes !== undefined) {
+    const usuarioAtual = await Usuario.query()
+      .findById(usuarioId)
+      .withGraphFetched('role');
+
+    if (usuarioAtual?.role?.nome === 'admin') {
+      dadosAtualizacao.permissoes = JSON.stringify(dados.permissoes || []);
+    }
+  }
+
+  const usuario = await Usuario.query()
+    .patchAndFetchById(usuarioId, dadosAtualizacao)
+    .withGraphFetched('role');
+
+  return montarUsuarioComPermissoes(usuario);
+}
+
 async function login(email, senha) {
   
   const usuario = await Usuario.query()
@@ -94,5 +126,6 @@ async function buscarUsuarioLogado(usuarioId) {
 
 module.exports = {
   login,
-  buscarUsuarioLogado
+  buscarUsuarioLogado,
+  atualizarPerfil
 };

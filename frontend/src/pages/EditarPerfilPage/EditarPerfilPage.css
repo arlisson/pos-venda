@@ -1,0 +1,52 @@
+.editar-perfil__title {
+  margin: 0;
+  font-size: 28px;
+  color: var(--text-title);
+}
+
+.editar-perfil__subtitle {
+  margin-top: 8px;
+  margin-bottom: 24px;
+  color: var(--text-muted);
+}
+
+.editar-perfil__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editar-perfil__error {
+  color: var(--color-danger);
+  margin-bottom: 16px;
+}
+
+.editar-perfil__permissions {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editar-perfil__permissions h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--text-title);
+}
+
+.editar-perfil__permission {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editar-perfil__info {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.editar-perfil__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}

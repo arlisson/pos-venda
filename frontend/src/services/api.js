@@ -40,3 +40,9 @@ export function apiPost(endpoint, body) {
     body: JSON.stringify(body)
   });
 }
+export function apiPut(endpoint, body) {
+  return apiRequest(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(body)
+  });
+}
