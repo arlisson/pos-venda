@@ -46,3 +46,7 @@ export function apiPut(endpoint, body) {
     body: JSON.stringify(body)
   });
 }
+
+export function apiDelete(endpoint) {
+  return apiRequest(endpoint, { method: 'DELETE' });
+}

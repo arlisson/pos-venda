@@ -42,3 +42,4 @@ export const LayoutGrid = mk(<><rect x="3" y="3" width="7" height="7" /><rect x=
 export const LayoutList = mk(<><rect x="3" y="4" width="18" height="4" rx="1" /><rect x="3" y="11" width="18" height="4" rx="1" /><rect x="3" y="18" width="18" height="3" rx="1" /></>);
 export const LayoutHybrid = mk(<><rect x="3" y="3" width="6" height="18" rx="1" /><rect x="11" y="3" width="10" height="18" rx="1" /></>);
 export const SimCard = mk(<><path d="M5 3h10l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><rect x="8" y="11" width="8" height="8" rx="1" /><path d="M8 14h8M11 11v8M14 11v8" /></>);
+export const Shield = mk(<><path d="M12 2 3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7l-9-5z" /></>);

@@ -1,42 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { listarPermissoes, criarUsuario } from '../../services/usuario.service';
+import { criarUsuario } from '../../services/usuario.service';
+import { getUsuarioLocal } from '../../services/auth.service';
 import * as I from '../../components/Icons';
+
+const PERMISSOES = [
+  { chave: 'vendas', nome: 'Vendas', desc: 'Permite acessar a área de vendas.' },
+  { chave: 'crud_usuarios', nome: 'Cadastro de usuários', desc: 'Permite criar, editar, listar e desativar usuários.' },
+  { chave: 'gerenciar_permissoes', nome: 'Gerenciar permissões', desc: 'Permite atribuir e remover permissões dos usuários.' },
+];
 
 function CadastroUsuario() {
   const navigate = useNavigate();
 
+  const usuarioLogado = getUsuarioLocal();
+  const podeGerenciarPermissoes =
+    usuarioLogado?.role?.nome === 'admin' ||
+    usuarioLogado?.permissoes?.gerenciar_permissoes === true;
+
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [roleId, setRoleId] = useState(2);
-  const [permissoes, setPermissoes] = useState([]);
   const [permissoesSelecionadas, setPermissoesSelecionadas] = useState([]);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
 
-  useEffect(() => {
-    async function carregarPermissoes() {
-      try {
-        const usuario = JSON.parse(localStorage.getItem('usuario'));
-        const permissoesData = await listarPermissoes();
-
-        const isAdmin = usuario?.role?.nome === 'admin';
-        const podeGerenciarPermissoes = usuario?.permissoes?.gerenciar_permissoes === true;
-
-        if (isAdmin || podeGerenciarPermissoes) {
-          setPermissoes(permissoesData);
-        } else {
-          setPermissoes([]);
-        }
-      } catch (err) {
-        setErro('Erro ao carregar permissões');
-      }
-    }
-
-    carregarPermissoes();
-  }, []);
+  function togglePermissao(chave) {
+    setPermissoesSelecionadas(prev =>
+      prev.includes(chave) ? prev.filter(c => c !== chave) : [...prev, chave]
+    );
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -44,28 +38,13 @@ function CadastroUsuario() {
     setCarregando(true);
 
     try {
-      await criarUsuario({
-        nome,
-        email,
-        senha,
-        role_id: Number(roleId),
-        permissoes: roleId === 1 ? [] : permissoesSelecionadas,
-      });
+      await criarUsuario({ nome, email, senha, role_id: 2, permissoes: permissoesSelecionadas });
       navigate('/usuarios');
     } catch (error) {
       setErro(error.message || 'Erro ao cadastrar usuário.');
     } finally {
       setCarregando(false);
     }
-  }
-
-  function handlePermissaoChange(permissaoChave) {
-    setPermissoesSelecionadas((permissoesAtuais) => {
-      if (permissoesAtuais.includes(permissaoChave)) {
-        return permissoesAtuais.filter((item) => item !== permissaoChave);
-      }
-      return [...permissoesAtuais, permissaoChave];
-    });
   }
 
   return (
@@ -115,48 +94,36 @@ function CadastroUsuario() {
                 </div>
               </div>
 
-              <div className="form-field">
-                <label>Perfil / Função</label>
-                <select
-                  value={roleId}
-                  onChange={(e) => setRoleId(Number(e.target.value))}
-                  style={{ width: '100%', padding: '8px', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}
-                >
-                  <option value={2}>Vendedor (Usuário Comum)</option>
-                  <option value={1}>Administrador</option>
-                  <option value={3}>Pós-venda</option>
-                </select>
-              </div>
-
-              {roleId !== 1 && permissoes.length > 0 && (
-                <div style={{ marginTop: '20px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-2)', display: 'block', marginBottom: '10px' }}>
-                    Permissões de Acesso
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    {permissoes.map((permissao) => (
-                      <label key={permissao.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+              {podeGerenciarPermissoes && (
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-2)', marginBottom: 8 }}>
+                    Permissões de acesso
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {PERMISSOES.map(p => (
+                      <label
+                        key={p.chave}
+                        style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', userSelect: 'none' }}
+                      >
                         <input
                           type="checkbox"
-                          checked={permissoesSelecionadas.includes(permissao.chave)}
-                          onChange={() => handlePermissaoChange(permissao.chave)}
+                          checked={permissoesSelecionadas.includes(p.chave)}
+                          onChange={() => togglePermissao(p.chave)}
+                          style={{ marginTop: 3, flexShrink: 0 }}
                         />
-                        {permissao.nome}
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{p.nome}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{p.desc}</div>
+                        </div>
                       </label>
                     ))}
                   </div>
                 </div>
               )}
 
-              {roleId === 1 && (
-                <div style={{ marginTop: '16px', padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: '12px', color: 'var(--text-2)' }}>
-                  Administradores possuem todas as permissões automaticamente.
-                </div>
-              )}
-
               {erro && <div style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '16px' }}>{erro}</div>}
 
-              <div style={{ marginTop: '30px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <div style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn" onClick={() => navigate('/usuarios')}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" disabled={carregando}>
                   {carregando ? 'Salvando...' : 'Cadastrar Usuário'}
