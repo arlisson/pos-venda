@@ -5,6 +5,15 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { listarUsuarios, deletarUsuario, atualizarUsuario, buscarUsuarioPorId } from '../../services/usuario.service';
 import { getUsuarioLocal } from '../../services/auth.service';
 
+function parsePermissoes(permissoes) {
+  if (!permissoes) return [];
+  if (Array.isArray(permissoes)) return permissoes;
+  if (typeof permissoes === 'string') {
+    try { return JSON.parse(permissoes); } catch { return []; }
+  }
+  return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
+}
+
 const PERMISSOES = [
   { chave: 'vendas', nome: 'Vendas', desc: 'Permite acessar a área de vendas.' },
   { chave: 'crud_usuarios', nome: 'Cadastro de usuários', desc: 'Permite criar, editar, listar e desativar usuários.' },
@@ -23,12 +32,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
       try {
         const data = await buscarUsuarioPorId(usuarioId);
         setUsuario(data);
-
-        const ativas = Array.isArray(data.permissoes)
-          ? data.permissoes
-          : Object.entries(data.permissoes || {}).filter(([, v]) => v).map(([k]) => k);
-
-        setSelecionadas(ativas);
+        setSelecionadas(parsePermissoes(data.permissoes));
       } catch (error) {
         setErro('Erro ao carregar permissões do usuário.');
       } finally {
