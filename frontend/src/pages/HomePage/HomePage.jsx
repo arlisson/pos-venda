@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
-import { STAGES, OPERATORS } from '../../config/constants';
+import { STAGES, DEFAULT_OPERATORS } from '../../config/constants';
+import { listarOperadoras } from '../../services/config.service';
 
 const formatBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -332,6 +333,20 @@ function HomePage() {
   const [sales, setSales] = useState(INITIAL_SALES);
   const [filter, setFilter] = useState('todas');
   const [selectedSaleId, setSelectedSaleId] = useState(null);
+  const [operadoras, setOperadoras] = useState(DEFAULT_OPERATORS);
+
+  useEffect(() => {
+    async function carregarOperadoras() {
+      try {
+        const dados = await listarOperadoras();
+        setOperadoras(dados.map(operadora => operadora.nome));
+      } catch (error) {
+        setOperadoras(DEFAULT_OPERATORS);
+      }
+    }
+
+    carregarOperadoras();
+  }, []);
 
   function handleUpdateStage(saleId, novaFase, observacao) {
     setSales(prev => prev.map(s => {
@@ -373,7 +388,7 @@ function HomePage() {
       <div className="page">
         <div className="filters">
           <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 4 }}>Operadora:</span>
-          {['todas', ...OPERATORS].map(op => (
+          {['todas', ...operadoras].map(op => (
             <button
               key={op}
               className={`filter-chip ${filter === op ? 'active' : ''}`}

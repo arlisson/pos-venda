@@ -8,6 +8,7 @@ const roleRoutes = require('./routes/role.routes');
 const authRoutes = require('./routes/auth.routes');
 const permissaoRoutes = require('./routes/permissao.routes');
 const auditLogRoutes = require('./routes/audit-log.routes');
+const configRoutes = require('./routes/config.routes');
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api/roles', roleRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/permissoes', permissaoRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/config', configRoutes);
 
 app.get('/api/health', (req, res) => {
   return res.json({
