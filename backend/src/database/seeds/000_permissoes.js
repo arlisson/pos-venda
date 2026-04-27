@@ -13,6 +13,13 @@ exports.seed = async function (knex) {
       chave: 'crud_usuarios',
       nome: 'Cadastro de usuários',
       descricao: 'Permite criar, editar, listar e desativar usuários.'
+    },
+    {
+      id: 3,
+      chave: 'gerenciar_permissoes',
+      nome: 'Gerenciar permissões',
+      descricao: 'Permite atribuir e remover permissões dos usuários.'
     }
+
   ]);
 };

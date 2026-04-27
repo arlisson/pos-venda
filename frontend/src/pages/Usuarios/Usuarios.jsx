@@ -11,6 +11,7 @@ function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function carregarUsuarios() {
@@ -52,7 +53,11 @@ function Usuarios() {
                 <td>{usuario.email}</td>
                 <td>{usuario.ativo ? 'Ativo' : 'Inativo'}</td>
                 <td>
-                  <Botao title="Editar" />
+                  <Botao
+                    title="Editar"
+                    variant="outline"
+                    onClick={() => navigate(`/usuarios/${usuario.id}/editar`)}
+                  />
                   <Botao title="Excluir" variant="danger" />
                 </td>
               </tr>

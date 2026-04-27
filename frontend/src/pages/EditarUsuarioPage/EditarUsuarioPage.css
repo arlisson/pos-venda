@@ -1,0 +1,79 @@
+.editar-usuario__title {
+  margin: 0;
+  font-size: 28px;
+  color: var(--text-title);
+}
+
+.editar-usuario__subtitle {
+  margin-top: 8px;
+  margin-bottom: 24px;
+  color: var(--text-muted);
+}
+
+.editar-usuario__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editar-usuario__error {
+  color: var(--color-danger);
+  margin-bottom: 16px;
+}
+
+.editar-usuario__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editar-usuario__field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-body);
+}
+
+.editar-usuario__field select {
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  padding: 0 12px;
+  font-size: 15px;
+  color: var(--text-body);
+  background: #ffffff;
+}
+
+.editar-usuario__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editar-usuario__permissions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editar-usuario__permissions h2 {
+  margin: 8px 0;
+  font-size: 18px;
+  color: var(--text-title);
+}
+
+.editar-usuario__permission {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editar-usuario__info {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.editar-usuario__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}

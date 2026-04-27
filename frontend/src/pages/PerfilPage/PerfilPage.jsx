@@ -34,27 +34,30 @@ function PerfilPage() {
   async function carregarPerfil() {
     try {
       const data = await buscarPerfil();
+      const todasPermissoes = await listarPermissoes();
 
       setUsuario(data);
       setNome(data.nome || '');
       setEmail(data.email || '');
+      setPermissoes(todasPermissoes);
 
       const permissoesAtivas = Object.entries(data.permissoes || {})
         .filter(([, permitido]) => permitido)
         .map(([chave]) => chave);
 
       setPermissoesSelecionadas(permissoesAtivas);
-
-      if (data.role?.nome === 'admin') {
-        const todasPermissoes = await listarPermissoes();
-        setPermissoes(todasPermissoes);
-      }
     } catch (error) {
       setErro(error.message);
       logout();
     } finally {
       setCarregando(false);
     }
+  }
+
+  function obterNomePermissao(chave) {
+    const permissao = permissoes.find((item) => item.chave === chave);
+
+    return permissao?.nome || chave;
   }
 
   function handlePermissaoChange(chave) {
@@ -175,7 +178,7 @@ function PerfilPage() {
             <div className="perfil-page__permissions">
               {Object.entries(usuario.permissoes || {}).map(([modulo, permitido]) => (
                 <div className="perfil-page__permission" key={modulo}>
-                  <span>{modulo}</span>
+                  <span>{obterNomePermissao(modulo)}</span>
 
                   <strong className={permitido ? 'is-allowed' : 'is-denied'}>
                     {permitido ? 'Permitido' : 'Bloqueado'}

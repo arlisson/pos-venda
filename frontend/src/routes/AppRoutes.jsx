@@ -6,6 +6,7 @@ import HomePage from '../pages/HomePage/HomePage';
 import CadastroUsuario from '../pages/CadastroUsuario/CadastroUsuario';
 import Usuarios from '../pages/Usuarios/Usuarios';
 import EditarPerfilPage from '../pages/EditarPerfilPage/EditarPerfilPage';
+import EditarUsuarioPage from '../pages/EditarUsuarioPage/EditarUsuarioPage';
 
 import { getUsuarioLocal } from '../services/auth.service';
 
@@ -70,6 +71,15 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <EditarPerfilPage />
+          </PrivateRoute>
+        }
+      />
+      
+      <Route
+        path="/usuarios/:id/editar"
+        element={
+          <PrivateRoute permission="crud_usuarios">
+            <EditarUsuarioPage />
           </PrivateRoute>
         }
       />
