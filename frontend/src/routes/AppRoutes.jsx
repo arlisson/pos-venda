@@ -8,6 +8,8 @@ import CadastroUsuario from '../pages/CadastroUsuario/CadastroUsuario';
 import HomePage from '../pages/HomePage/HomePage';
 import EditarPerfilPage from '../pages/EditarPerfilPage/EditarPerfilPage';
 import EditarUsuarioPage from '../pages/EditarUsuarioPage/EditarUsuarioPage';
+import HistoricoPage from '../pages/HistoricoPage/HistoricoPage';
+import '../pages/HistoricoPage/HistoricoPage.css';
 
 import { getUsuarioLocal } from '../services/auth.service';
 
@@ -61,7 +63,7 @@ function AppRoutes() {
 
       <Route path="/retornos" element={<PrivateRoute><HomePage /></PrivateRoute>} />
       <Route path="/dashboard" element={<PrivateRoute><HomePage /></PrivateRoute>} />
-      <Route path="/historico" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+      <Route path="/historico" element={<PrivateRoute><HistoricoPage /></PrivateRoute>} />
       <Route path="/configuracoes" element={<PrivateRoute><HomePage /></PrivateRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
