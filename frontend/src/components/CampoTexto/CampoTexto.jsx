@@ -1,5 +1,4 @@
-import Label from '../Label/Label';
-import './CampoTexto.css';
+import React from 'react';
 
 function CampoTexto({
   label,
@@ -11,11 +10,10 @@ function CampoTexto({
   required = false
 }) {
   return (
-    <div className="campo-texto">
-      {label && <Label>{label}</Label>}
+    <div className="form-field">
+      {label && <label>{label}</label>}
 
       <input
-        className="campo-texto__input"
         type={type}
         name={name}
         value={value}

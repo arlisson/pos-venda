@@ -1,0 +1,23 @@
+.tabela-usuarios {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 24px;
+}
+
+.tabela-usuarios th, .tabela-usuarios td {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid var(--color-border-light);
+}
+
+.tabela-usuarios th {
+  background-color: var(--color-surface);
+}
+
+.tabela-usuarios td {
+  background-color: var(--color-background);
+}
+
+.tabela-usuarios tr:hover {
+  background-color: var(--color-border-light);
+}

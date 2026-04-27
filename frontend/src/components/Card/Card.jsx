@@ -1,9 +1,11 @@
-import './Card.css';
+import React from 'react';
 
 function Card({ children, className = '' }) {
   return (
-    <section className={`card ${className}`}>
-      {children}
+    <section className={`panel ${className}`}>
+      <div className="panel-body">
+        {children}
+      </div>
     </section>
   );
 }

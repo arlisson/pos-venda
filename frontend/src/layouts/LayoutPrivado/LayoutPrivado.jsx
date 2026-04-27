@@ -1,13 +1,12 @@
-import { useNavigate } from 'react-router-dom';
-
-import Navbar from '../../components/Navbar/Navbar';
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import Sidebar from '../../components/Sidebar/Sidebar';
+import Header from '../../components/Header/Header';
 import { getUsuarioLocal, logout } from '../../services/auth.service';
-
-import './LayoutPrivado.css';
 
 function LayoutPrivado({ children }) {
   const navigate = useNavigate();
-
+  const location = useLocation();
   const usuario = getUsuarioLocal();
 
   function handleLogout() {
@@ -15,13 +14,50 @@ function LayoutPrivado({ children }) {
     navigate('/login');
   }
 
-  return (
-    <div className="layout-privado">
-      <Navbar usuario={usuario} onLogout={handleLogout} />
+  const routeConfig = {
+    '/': { title: 'Funil de vendas', sub: 'Acompanhe cada venda do lançamento até a conclusão', id: 'funil' },
+    '/retornos': { title: 'Retornos', sub: 'Chips que retornaram por algum erro', id: 'retornos' },
+    '/dashboard': { title: 'Relatórios', sub: 'Indicadores e produtividade', id: 'dashboard' },
+    '/historico': { title: 'Histórico', sub: 'Todas as movimentações do sistema', id: 'historico' },
+    '/usuarios': { title: 'Usuários', sub: 'Gerencie acessos e permissões', id: 'usuarios' },
+    '/usuarios/novo': { title: 'Novo Usuário', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
+    '/perfil': { title: 'Meu Perfil', sub: 'Gerencie seus dados e permissões', id: 'perfil' },
+    '/configuracoes': { title: 'Configurações', sub: 'Personalize o sistema', id: 'config' },
+  };
 
-      <main className="layout-privado__content">
-        {children}
-      </main>
+  const currentConfig = routeConfig[location.pathname] || { title: 'Sistema', sub: '', id: '' };
+
+  const handleSetPage = (id) => {
+    const routeMap = {
+      'funil': '/',
+      'retornos': '/retornos',
+      'dashboard': '/dashboard',
+      'historico': '/historico',
+      'usuarios': '/usuarios',
+      'config': '/configuracoes',
+    };
+    if (routeMap[id]) navigate(routeMap[id]);
+  };
+
+  return (
+    <div className="app">
+      <Sidebar 
+        page={currentConfig.id} 
+        setPage={handleSetPage} 
+        counts={{ active: 0, returns: 0 }}
+        usuario={usuario}
+        onLogout={handleLogout}
+      />
+      <div className="main">
+        <Header 
+          title={currentConfig.title} 
+          subtitle={currentConfig.sub}
+          onNew={currentConfig.id === 'funil' ? () => navigate('/usuarios/novo') : null}
+        />
+        <div className="content">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,11 @@
+.layout-privado {
+  min-height: 100vh;
+  background: var(--color-background);
+}
+
+.layout-privado__content {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px;
+}

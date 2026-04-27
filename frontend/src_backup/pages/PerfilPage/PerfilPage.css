@@ -1,0 +1,64 @@
+.perfil-page__title {
+  margin: 0;
+  font-size: 28px;
+  color: var(--text-title);
+}
+
+.perfil-page__subtitle {
+  margin-top: 8px;
+  margin-bottom: 24px;
+  color: var(--text-muted);
+}
+
+.perfil-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.perfil-page__info {
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.perfil-page__info span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.perfil-page__section-title {
+  margin-top: 32px;
+  margin-bottom: 16px;
+  font-size: 20px;
+  color: var(--text-title);
+}
+
+.perfil-page__permissions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.perfil-page__permission {
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.is-allowed {
+  color: var(--color-success);
+}
+
+.is-denied {
+  color: var(--color-danger);
+}

@@ -1,4 +1,4 @@
-import './Botao.css';
+import React from 'react';
 
 function Botao({
   title,
@@ -8,10 +8,12 @@ function Botao({
   disabled = false,
   onClick
 }) {
+  const className = variant === 'primary' ? 'btn btn-primary' : 'btn';
+
   return (
     <button
       type={type}
-      className={`botao botao--${variant}`}
+      className={className}
       disabled={disabled || carregando}
       onClick={onClick}
     >

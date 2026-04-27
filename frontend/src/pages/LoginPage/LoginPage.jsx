@@ -1,13 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-import Botao from '../../components/Botao/Botao';
-import CampoTexto from '../../components/CampoTexto/CampoTexto';
-import Card from '../../components/Card/Card';
-
 import { login } from '../../services/auth.service';
-
-import './LoginPage.css';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -19,7 +12,6 @@ function LoginPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     setErro('');
     setCarregando(true);
 
@@ -27,53 +19,69 @@ function LoginPage() {
       await login(email, senha);
       navigate('/');
     } catch (error) {
-      setErro(error.message);
+      setErro(error.message || 'E-mail ou senha inválidos.');
     } finally {
       setCarregando(false);
     }
   }
 
   return (
-    <main className="login-page">
-      <Card className="login-page__card">
-        <h1 className="login-page__title">Pós-venda</h1>
-        <p className="login-page__subtitle">
-          Acesse sua conta para continuar.
-        </p>
-
-        <form className="login-page__form" onSubmit={handleSubmit}>
-          <CampoTexto
-            label="E-mail"
-            type="email"
-            value={email}
-            placeholder="seu@email.com"
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-
-          <CampoTexto
-            label="Senha"
-            type="password"
-            value={senha}
-            placeholder="Digite sua senha"
-            onChange={(event) => setSenha(event.target.value)}
-            required
-          />
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-logo">SISTEMA POS-VENDA</div>
+        <h1>Entrar no sistema</h1>
+        <p className="sub">Acesse com sua conta da empresa</p>
+        
+        <form onSubmit={handleSubmit}>
+          <div className="form-field">
+            <label>E-mail</label>
+            <input 
+              type="email"
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              placeholder="seu@email.com"
+              required
+            />
+          </div>
+          <div className="form-field">
+            <label>Senha</label>
+            <input 
+              type="password" 
+              value={senha} 
+              onChange={e => setSenha(e.target.value)} 
+              placeholder="••••••••"
+              required
+            />
+          </div>
 
           {erro && (
-            <p className="login-page__error">
+            <div style={{ color: 'var(--danger)', fontSize: '12px', marginBottom: '12px' }}>
               {erro}
-            </p>
+            </div>
           )}
 
-          <Botao
-            title="Entrar"
-            type="submit"
-            carregando={carregando}
-          />
+          <div className="row">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-2)' }}>
+              <input type="checkbox" defaultChecked /> Manter conectado
+            </label>
+            <a href="#" style={{ fontSize: '12px', color: 'var(--text-3)', textDecoration: 'none' }}>Esqueci minha senha</a>
+          </div>
+
+          <button 
+            type="submit" 
+            className="btn btn-primary" 
+            style={{ width: '100%', justifyContent: 'center', padding: '10px' }}
+            disabled={carregando}
+          >
+            {carregando ? 'Entrando...' : 'Entrar'}
+          </button>
         </form>
-      </Card>
-    </main>
+
+        <div style={{ marginTop: 18, fontSize: 11.5, color: 'var(--text-3)', textAlign: 'center' }}>
+          v1.0 · Sistema interno · Acesso restrito
+        </div>
+      </div>
+    </div>
   );
 }
 

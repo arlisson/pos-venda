@@ -1,10 +1,11 @@
+import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import LoginPage from '../pages/LoginPage/LoginPage';
 import PerfilPage from '../pages/PerfilPage/PerfilPage';
-import HomePage from '../pages/HomePage/HomePage';
-import CadastroUsuario from '../pages/CadastroUsuario/CadastroUsuario';
 import Usuarios from '../pages/Usuarios/Usuarios';
+import CadastroUsuario from '../pages/CadastroUsuario/CadastroUsuario';
+import HomePage from '../pages/HomePage/HomePage';
 
 import { getUsuarioLocal } from '../services/auth.service';
 
@@ -22,6 +23,14 @@ function PrivateRoute({ children, permission }) {
 
   return children;
 }
+
+// Placeholder para páginas não implementadas ainda
+const Placeholder = ({ title }) => (
+  <div className="empty" style={{ padding: '100px' }}>
+    <h2>{title}</h2>
+    <p className="muted">Esta funcionalidade está em desenvolvimento.</p>
+  </div>
+);
 
 function AppRoutes() {
   return (
@@ -56,13 +65,21 @@ function AppRoutes() {
       />
 
       <Route
-        path="/usuarios/cadastrar"
+        path="/usuarios/novo"
         element={
           <PrivateRoute permission="crud_usuarios">
             <CadastroUsuario />
           </PrivateRoute>
         }
       />
+
+      {/* Outras rotas do novo design envolvidas no Layout para teste */}
+      <Route path="/retornos" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+      <Route path="/dashboard" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+      <Route path="/historico" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+      <Route path="/configuracoes" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
