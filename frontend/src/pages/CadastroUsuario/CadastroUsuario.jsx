@@ -33,10 +33,10 @@ function CadastroUsuario() {
     async function carregarPermissoes() {
       try {
         // Log para verificar se estamos carregando as permissões corretamente
-        console.log('Carregando permissões...');
+        // console.log('Carregando permissões...');
 
         const permissoesData = await listarPermissoes(); // Chama a função para carregar as permissões
-        console.log('Permissões carregadas:', permissoesData);  // Log para ver o que está sendo retornado da API
+        // console.log('Permissões carregadas:', permissoesData);  // Log para ver o que está sendo retornado da API
 
         setTodasPermissoes(permissoesData); // Atualiza o estado com todas as permissões
 
@@ -48,7 +48,7 @@ function CadastroUsuario() {
           setPermissoes(permissoesData);  // Caso seja admin, mantém todas as permissões
         }
       } catch (err) {
-        console.error('Erro ao carregar permissões:', err); // Log para capturar o erro
+        // console.error('Erro ao carregar permissões:', err); // Log para capturar o erro
         setErro('Erro ao carregar permissões'); // Exibe uma mensagem de erro no frontend
       }
     }

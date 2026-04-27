@@ -24,4 +24,9 @@
 .navbar__user {
   font-size: 14px;
   color: var(--text-muted);
+  text-decoration: none;
+}
+
+.navbar__user:hover {
+  color: var(--text-title);
 }

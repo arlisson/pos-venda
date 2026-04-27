@@ -8,14 +8,16 @@ function Navbar({ usuario, onLogout }) {
   return (
     <header className="navbar">
       <div>
-        <strong className="navbar__logo">Pós-venda</strong>
+        <Link to="/" className="navbar__logo">
+          Pós-venda
+        </Link>
       </div>
 
       <nav className="navbar__content">
         {usuario && (
-          <span className="navbar__user">
+          <Link to="/perfil" className="navbar__user">
             {usuario.nome}
-          </span>
+          </Link>
         )}
 
         {temPermissaoCrudUsuarios && (

@@ -1,0 +1,14 @@
+.home-page {
+  min-height: 300px;
+}
+
+.home-page__title {
+  margin: 0;
+  font-size: 28px;
+  color: var(--text-title);
+}
+
+.home-page__subtitle {
+  margin-top: 8px;
+  color: var(--text-muted);
+}
