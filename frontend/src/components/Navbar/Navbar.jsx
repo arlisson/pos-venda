@@ -3,7 +3,7 @@ import Botao from '../Botao/Botao';
 import './Navbar.css';
 
 function Navbar({ usuario, onLogout }) {
-  const temPermissaoCrudUsuarios = usuario?.role?.permissoes?.crud_usuarios;
+  const temPermissaoCrudUsuarios = usuario?.permissoes?.crud_usuarios;
 
   return (
     <header className="navbar">

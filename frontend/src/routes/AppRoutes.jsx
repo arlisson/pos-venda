@@ -16,7 +16,7 @@ function PrivateRoute({ children, permission }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (permission && !usuario?.role?.permissoes?.[permission]) {
+  if (permission && !usuario?.permissoes?.[permission]) {
     return <Navigate to="/" replace />;
   }
 

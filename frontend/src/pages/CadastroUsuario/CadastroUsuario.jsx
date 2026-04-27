@@ -137,8 +137,8 @@ function CadastroUsuario() {
                   type="checkbox"
                   id={permissao.chave}
                   value={permissao.chave}
+                  checked={permissoesSelecionadas.includes(permissao.chave)}
                   onChange={() => handlePermissaoChange(permissao.chave)}
-                  disabled={roleId === '2' && !permissoesSelecionadas.includes(permissao.chave)} // Admin pode editar todas
                 />
                 <label htmlFor={permissao.chave}>{permissao.nome}</label>
               </div>

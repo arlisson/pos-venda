@@ -71,7 +71,7 @@ function PerfilPage() {
         <h2 className="perfil-page__section-title">Permissões</h2>
 
         <div className="perfil-page__permissions">
-          {Object.entries(usuario.role?.permissoes || {}).map(([modulo, permitido]) => (
+          {Object.entries(usuario.permissoes || {}).map(([modulo, permitido]) => (
             <div className="perfil-page__permission" key={modulo}>
               <span>{modulo}</span>
 

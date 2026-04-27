@@ -1,13 +1,48 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
+const Permissao = require('../models/Permissao');
 const Usuario = require('../models/Usuario');
 
+async function montarUsuarioComPermissoes(usuario) {
+  const todasPermissoes = await Permissao.query()
+    .where('ativo', true)
+    .orderBy('nome', 'asc');
+
+  let permissoesFinais = {};
+
+  if (usuario.role?.nome === 'admin') {
+    permissoesFinais = todasPermissoes.reduce((acc, permissao) => {
+      acc[permissao.chave] = true;
+      return acc;
+    }, {});
+  } else {
+    const permissoesUsuario = Array.isArray(usuario.permissoes)
+      ? usuario.permissoes
+      : JSON.parse(usuario.permissoes || '[]');
+
+    permissoesFinais = todasPermissoes.reduce((acc, permissao) => {
+      acc[permissao.chave] = permissoesUsuario.includes(permissao.chave);
+      return acc;
+    }, {});
+  }
+
+  const usuarioJson = usuario.toJSON();
+
+  return {
+    ...usuarioJson,
+    permissoes: permissoesFinais
+  };
+}
+
 async function login(email, senha) {
+  
   const usuario = await Usuario.query()
     .where('email', email)
     .withGraphFetched('role')
     .first();
+
+
 
   if (!usuario) {
     throw new Error('E-mail ou senha inválidos.');
@@ -37,7 +72,7 @@ async function login(email, senha) {
 
   return {
     token,
-    usuario: usuario.toJSON()
+    usuario: await montarUsuarioComPermissoes(usuario)
   };
 }
 
@@ -54,7 +89,7 @@ async function buscarUsuarioLogado(usuarioId) {
     throw new Error('Usuário inativo.');
   }
 
-  return usuario;
+  return await montarUsuarioComPermissoes(usuario);
 }
 
 module.exports = {
