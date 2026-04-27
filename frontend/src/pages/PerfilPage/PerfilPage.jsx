@@ -54,6 +54,11 @@ function PerfilPage() {
     }
   }
 
+  function obterDescricaoPermissao(chave) {
+    const permissao = permissoes.find((item) => item.chave === chave);
+    return permissao?.descricao || chave;
+  }
+
   function obterNomePermissao(chave) {
     const permissao = permissoes.find((item) => item.chave === chave);
 
@@ -178,7 +183,9 @@ function PerfilPage() {
             <div className="perfil-page__permissions">
               {Object.entries(usuario.permissoes || {}).map(([modulo, permitido]) => (
                 <div className="perfil-page__permission" key={modulo}>
-                  <span>{obterNomePermissao(modulo)}</span>
+                  <span title={obterDescricaoPermissao(modulo)}>
+                    {obterNomePermissao(modulo)}
+                  </span>
 
                   <strong className={permitido ? 'is-allowed' : 'is-denied'}>
                     {permitido ? 'Permitido' : 'Bloqueado'}

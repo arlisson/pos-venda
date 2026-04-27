@@ -205,10 +205,12 @@ function EditarUsuarioPage() {
 
               {permissoes.map((permissao) => (
                 <label
+                  title={permissao.descricao || permissao.nome}
                   key={permissao.id}
                   className="editar-usuario__permission"
                 >
                   <input
+                    
                     type="checkbox"
                     checked={permissoesSelecionadas.includes(permissao.chave)}
                     onChange={() => handlePermissaoChange(permissao.chave)}

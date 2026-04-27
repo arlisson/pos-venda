@@ -150,7 +150,7 @@ function CadastroUsuario() {
                     onChange={() => handlePermissaoChange(permissao.chave)}
                   />
 
-                  <label htmlFor={permissao.chave}>
+                  <label htmlFor={permissao.chave}  title={permissao.descricao || permissao.nome}>
                     {permissao.nome}
                   </label>
                 </div>
