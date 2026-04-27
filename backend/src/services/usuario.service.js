@@ -16,17 +16,23 @@ async function buscarUsuarioPorId(id) {
 
 async function criarUsuario(dados) {
   const senhaHash = await bcrypt.hash(dados.senha, 10);
+
   return Usuario.query().insert({
     nome: dados.nome,
     email: dados.email,
     senha: senhaHash,
     role_id: dados.role_id,
+    permissoes: JSON.stringify(dados.permissoes || []),
     ativo: dados.ativo ?? true
   });
 }
 
 async function atualizarUsuario(id, dados) {
   const dadosAtualizacao = {};
+
+  if (dados.permissoes !== undefined) {
+    dadosAtualizacao.permissoes = JSON.stringify(dados.permissoes || []);
+  }
 
   if (dados.nome !== undefined) {
     dadosAtualizacao.nome = dados.nome;

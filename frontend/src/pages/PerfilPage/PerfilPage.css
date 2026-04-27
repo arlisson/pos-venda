@@ -62,3 +62,45 @@
 .is-denied {
   color: var(--color-danger);
 }
+
+.perfil-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.perfil-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.perfil-page__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.perfil-page__error {
+  color: var(--color-danger);
+  margin-bottom: 16px;
+}
+
+.perfil-page__permissions-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.perfil-page__permission-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.perfil-page__info-text {
+  color: var(--text-muted);
+  font-size: 14px;
+}

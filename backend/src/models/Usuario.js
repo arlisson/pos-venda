@@ -20,6 +20,7 @@ class Usuario extends Model {
         email: { type: 'string', minLength: 1, maxLength: 160 },
         senha: { type: 'string', minLength: 1, maxLength: 255 },
         role_id: { type: 'integer' },
+        permissoes: { type: ['array', 'string', 'null'] },
         ativo: { type: ['boolean', 'integer'] },
         created_at: { type: ['string', 'object'] },
         updated_at: { type: ['string', 'object'] }

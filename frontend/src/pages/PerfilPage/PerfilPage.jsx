@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { buscarPerfil, logout } from '../../services/auth.service';
-import * as I from '../../components/Icons';
 
 function PerfilPage() {
   const navigate = useNavigate();
-
   const [usuario, setUsuario] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
 
   useEffect(() => {
     async function carregarPerfil() {
@@ -16,15 +16,14 @@ function PerfilPage() {
         const data = await buscarPerfil();
         setUsuario(data);
       } catch (error) {
+        setErro(error.message);
         logout();
-        navigate('/login');
       } finally {
         setCarregando(false);
       }
     }
-
     carregarPerfil();
-  }, [navigate]);
+  }, []);
 
   const getInitials = (name) => {
     if (!name) return '??';
@@ -57,7 +56,7 @@ function PerfilPage() {
                 </span>
               </div>
             </div>
-            <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => navigate('/usuarios/editar/' + usuario?.id)}>
+            <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => navigate('/perfil/editar')}>
               <I.Edit size={14} /> Editar Perfil
             </button>
           </div>
@@ -88,15 +87,19 @@ function PerfilPage() {
             <div className="panel-header"><h3>Permissões Ativas</h3></div>
             <div className="panel-body">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {usuario?.role?.permissoes ? Object.entries(usuario.role.permissoes).map(([modulo, permitido]) => (
-                  <div key={modulo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--surface-2)', borderRadius: 'var(--radius)' }}>
-                    <span style={{ fontSize: '13px', textTransform: 'capitalize' }}>{modulo}</span>
-                    <span className={`pill ${permitido ? 'success' : 'danger'}`}>
-                      <span className="pill-dot"></span>
-                      {permitido ? 'Permitido' : 'Bloqueado'}
-                    </span>
-                  </div>
-                )) : <div className="muted">Nenhuma permissão específica.</div>}
+                {usuario?.role?.permissoes ? (
+                  Object.entries(usuario.role.permissoes).map(([modulo, permitido]) => (
+                    <div key={modulo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--surface-2)', borderRadius: 'var(--radius)' }}>
+                      <span style={{ fontSize: '13px', textTransform: 'capitalize' }}>{modulo}</span>
+                      <span className={`pill ${permitido ? 'success' : 'danger'}`}>
+                        <span className="pill-dot"></span>
+                        {permitido ? 'Permitido' : 'Bloqueado'}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="muted">Nenhuma permissão específica.</div>
+                )}
               </div>
             </div>
           </div>

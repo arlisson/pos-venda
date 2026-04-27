@@ -6,6 +6,8 @@ import PerfilPage from '../pages/PerfilPage/PerfilPage';
 import Usuarios from '../pages/Usuarios/Usuarios';
 import CadastroUsuario from '../pages/CadastroUsuario/CadastroUsuario';
 import HomePage from '../pages/HomePage/HomePage';
+import EditarPerfilPage from '../pages/EditarPerfilPage/EditarPerfilPage';
+import EditarUsuarioPage from '../pages/EditarUsuarioPage/EditarUsuarioPage';
 
 import { getUsuarioLocal } from '../services/auth.service';
 
@@ -24,7 +26,6 @@ function PrivateRoute({ children, permission }) {
   return children;
 }
 
-// Placeholder para páginas não implementadas ainda
 const Placeholder = ({ title }) => (
   <div className="empty" style={{ padding: '100px' }}>
     <h2>{title}</h2>
@@ -35,45 +36,29 @@ const Placeholder = ({ title }) => (
 function AppRoutes() {
   return (
     <Routes>
-      <Route
-        path="/"
-        element={
-          <PrivateRoute>
-            <HomePage />
-          </PrivateRoute>
-        }
-      />
+      <Route path="/" element={<PrivateRoute><HomePage /></PrivateRoute>} />
 
       <Route path="/login" element={<LoginPage />} />
 
-      <Route
-        path="/perfil"
-        element={
-          <PrivateRoute>
-            <PerfilPage />
-          </PrivateRoute>
-        }
-      />
+      <Route path="/perfil" element={<PrivateRoute><PerfilPage /></PrivateRoute>} />
+
+      <Route path="/perfil/editar" element={<PrivateRoute><EditarPerfilPage /></PrivateRoute>} />
 
       <Route
         path="/usuarios"
-        element={
-          <PrivateRoute permission="crud_usuarios">
-            <Usuarios />
-          </PrivateRoute>
-        }
+        element={<PrivateRoute permission="crud_usuarios"><Usuarios /></PrivateRoute>}
       />
 
       <Route
         path="/usuarios/novo"
-        element={
-          <PrivateRoute permission="crud_usuarios">
-            <CadastroUsuario />
-          </PrivateRoute>
-        }
+        element={<PrivateRoute permission="crud_usuarios"><CadastroUsuario /></PrivateRoute>}
       />
 
-      {/* Outras rotas do novo design envolvidas no Layout para teste */}
+      <Route
+        path="/usuarios/:id/editar"
+        element={<PrivateRoute permission="crud_usuarios"><EditarUsuarioPage /></PrivateRoute>}
+      />
+
       <Route path="/retornos" element={<PrivateRoute><HomePage /></PrivateRoute>} />
       <Route path="/dashboard" element={<PrivateRoute><HomePage /></PrivateRoute>} />
       <Route path="/historico" element={<PrivateRoute><HomePage /></PrivateRoute>} />

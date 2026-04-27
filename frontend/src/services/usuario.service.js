@@ -1,12 +1,15 @@
-import { apiGet, apiPost } from './api';
+import { apiGet, apiPost, apiPut } from './api';
 
 export async function listarUsuarios() {
   return apiGet('/usuarios');
 }
 
-// Alteração aqui para usar apiGet em vez de apiPost
+export async function buscarUsuarioPorId(id) {
+  return apiGet(`/usuarios/${id}`);
+}
+
 export async function listarPermissoes() {
-  return apiGet('/permissoes');  // Alterando de apiPost para apiGet
+  return apiGet('/permissoes');
 }
 
 export async function criarUsuario({ nome, email, senha, role_id, permissoes }) {
@@ -17,4 +20,8 @@ export async function criarUsuario({ nome, email, senha, role_id, permissoes }) 
     role_id,
     permissoes
   });
+}
+
+export async function atualizarUsuario(id, dados) {
+  return apiPut(`/usuarios/${id}`, dados);
 }

@@ -32,7 +32,22 @@ async function me(req, res) {
   }
 }
 
+async function updateMe(req, res) {
+  try {
+    const usuario = await authService.atualizarPerfil(req.usuario.id, req.body);
+
+    return res.json(usuario);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: error.message || 'Erro ao atualizar perfil.'
+    });
+  }
+}
+
 module.exports = {
   login,
-  me
+  me,
+  updateMe
 };
