@@ -11,7 +11,7 @@ import EditarUsuarioPage from '../pages/EditarUsuarioPage/EditarUsuarioPage';
 import HistoricoPage from '../pages/HistoricoPage/HistoricoPage';
 import '../pages/HistoricoPage/HistoricoPage.css';
 
-import { getUsuarioLocal } from '../services/auth.service';
+import { getUsuarioLocal, temPermissao } from '../services/auth.service';
 
 function PrivateRoute({ children, permission }) {
   const token = localStorage.getItem('token');
@@ -21,7 +21,7 @@ function PrivateRoute({ children, permission }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (permission && !usuario?.role?.permissoes?.[permission]) {
+  if (permission && !temPermissao(usuario, permission)) {
     return <Navigate to="/" replace />;
   }
 
@@ -53,6 +53,11 @@ function AppRoutes() {
 
       <Route
         path="/usuarios/novo"
+        element={<PrivateRoute permission="crud_usuarios"><CadastroUsuario /></PrivateRoute>}
+      />
+
+      <Route
+        path="/usuarios/cadastrar"
         element={<PrivateRoute permission="crud_usuarios"><CadastroUsuario /></PrivateRoute>}
       />
 

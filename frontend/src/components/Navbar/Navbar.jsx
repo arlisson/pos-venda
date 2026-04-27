@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import Botao from '../Botao/Botao';
+import { temPermissao } from '../../services/auth.service';
 import './Navbar.css';
 
 function Navbar({ usuario, onLogout }) {
-  const temPermissaoCrudUsuarios = usuario?.permissoes?.crud_usuarios;
+  const temPermissaoCrudUsuarios = temPermissao(usuario, 'crud_usuarios');
 
   return (
     <header className="navbar">

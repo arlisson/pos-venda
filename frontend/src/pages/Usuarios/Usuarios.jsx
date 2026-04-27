@@ -2,8 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { listarUsuarios, deletarUsuario, atualizarUsuario, buscarUsuarioPorId } from '../../services/usuario.service';
-import { getUsuarioLocal } from '../../services/auth.service';
+import {
+  listarUsuarios,
+  deletarUsuario,
+  atualizarUsuario,
+  buscarUsuarioPorId,
+  listarPermissoes
+} from '../../services/usuario.service';
+import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 
 function parsePermissoes(permissoes) {
   if (!permissoes) return [];
@@ -14,14 +20,9 @@ function parsePermissoes(permissoes) {
   return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
 }
 
-const PERMISSOES = [
-  { chave: 'vendas', nome: 'Vendas', desc: 'Permite acessar a área de vendas.' },
-  { chave: 'crud_usuarios', nome: 'Cadastro de usuários', desc: 'Permite criar, editar, listar e desativar usuários.' },
-  { chave: 'gerenciar_permissoes', nome: 'Gerenciar permissões', desc: 'Permite atribuir e remover permissões dos usuários.' },
-];
-
 function ModalPermissoes({ usuarioId, onClose, onSave }) {
   const [usuario, setUsuario] = useState(null);
+  const [permissoes, setPermissoes] = useState([]);
   const [selecionadas, setSelecionadas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -30,15 +31,21 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
   useEffect(() => {
     async function carregar() {
       try {
-        const data = await buscarUsuarioPorId(usuarioId);
-        setUsuario(data);
-        setSelecionadas(parsePermissoes(data.permissoes));
+        const [usuarioData, permissoesData] = await Promise.all([
+          buscarUsuarioPorId(usuarioId),
+          listarPermissoes()
+        ]);
+
+        setUsuario(usuarioData);
+        setPermissoes(permissoesData);
+        setSelecionadas(parsePermissoes(usuarioData.permissoes));
       } catch (error) {
-        setErro('Erro ao carregar permissões do usuário.');
+        setErro('Erro ao carregar permissoes do usuario.');
       } finally {
         setCarregando(false);
       }
     }
+
     carregar();
   }, [usuarioId]);
 
@@ -51,11 +58,12 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
   async function handleSave() {
     setSalvando(true);
     setErro('');
+
     try {
       await onSave(usuarioId, selecionadas);
       onClose();
     } catch (error) {
-      setErro(error.message || 'Erro ao salvar permissões.');
+      setErro(error.message || 'Erro ao salvar permissoes.');
       setSalvando(false);
     }
   }
@@ -70,7 +78,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
       <div className="panel" style={{ width: 440, margin: 0, boxShadow: 'var(--shadow-md)' }}>
         <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h3 style={{ margin: 0 }}>Gerenciar permissões</h3>
+            <h3 style={{ margin: 0 }}>Gerenciar permissoes</h3>
             {usuario && <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{usuario.nome}</div>}
           </div>
           <button className="btn btn-icon btn-ghost" onClick={onClose}>
@@ -87,12 +95,12 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
             <div style={{ color: 'var(--danger)', fontSize: 13 }}>{erro}</div>
           ) : isAdmin ? (
             <div style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-2)' }}>
-              Administradores possuem todas as permissões automaticamente.
+              Administradores possuem todas as permissoes automaticamente.
             </div>
           ) : (
             <>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {PERMISSOES.map(p => (
+                {permissoes.map(p => (
                   <label
                     key={p.chave}
                     style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', userSelect: 'none' }}
@@ -105,7 +113,9 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
                     />
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{p.nome}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{p.desc}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                        {p.descricao || 'Permissao do sistema.'}
+                      </div>
                     </div>
                   </label>
                 ))}
@@ -116,7 +126,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
                 <button className="btn" onClick={onClose}>Cancelar</button>
                 <button className="btn btn-primary" onClick={handleSave} disabled={salvando}>
-                  {salvando ? 'Salvando...' : 'Salvar permissões'}
+                  {salvando ? 'Salvando...' : 'Salvar permissoes'}
                 </button>
               </div>
             </>
@@ -136,9 +146,7 @@ function Usuarios() {
   const navigate = useNavigate();
 
   const usuarioLogado = getUsuarioLocal();
-  const podeGerenciarPermissoes =
-    usuarioLogado?.role?.nome === 'admin' ||
-    usuarioLogado?.permissoes?.gerenciar_permissoes === true;
+  const podeGerenciarPermissoes = temPermissao(usuarioLogado, 'gerenciar_permissoes');
 
   useEffect(() => {
     async function carregarUsuarios() {
@@ -146,11 +154,12 @@ function Usuarios() {
         const dados = await listarUsuarios();
         setUsuarios(dados);
       } catch (error) {
-        setErro('Erro ao carregar usuários.');
+        setErro('Erro ao carregar usuarios.');
       } finally {
         setCarregando(false);
       }
     }
+
     carregarUsuarios();
   }, []);
 
@@ -160,7 +169,7 @@ function Usuarios() {
         await deletarUsuario(u.id);
         setUsuarios(prev => prev.filter(x => x.id !== u.id));
       } catch (error) {
-        setErro(error.message || 'Erro ao excluir usuário.');
+        setErro(error.message || 'Erro ao excluir usuario.');
       } finally {
         setDeletando(null);
       }
@@ -194,10 +203,10 @@ function Usuarios() {
       <div className="users-page">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-            {usuarios.length} usuários · {usuarios.filter(u => u.ativo).length} ativos
+            {usuarios.length} usuarios · {usuarios.filter(u => u.ativo).length} ativos
           </div>
           <button className="btn btn-primary" onClick={() => navigate('/usuarios/novo')}>
-            <I.Plus size={14} /> Adicionar usuário
+            <I.Plus size={14} /> Adicionar usuario
           </button>
         </div>
 
@@ -208,7 +217,7 @@ function Usuarios() {
             <table>
               <thead>
                 <tr>
-                  <th>Usuário</th>
+                  <th>Usuario</th>
                   <th>E-mail</th>
                   <th>Perfil</th>
                   <th>Status</th>
@@ -219,13 +228,13 @@ function Usuarios() {
                 {carregando ? (
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }} className="muted">
-                      Carregando usuários...
+                      Carregando usuarios...
                     </td>
                   </tr>
                 ) : usuarios.length === 0 ? (
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }} className="muted">
-                      Nenhum usuário encontrado.
+                      Nenhum usuario encontrado.
                     </td>
                   </tr>
                 ) : (
@@ -254,7 +263,7 @@ function Usuarios() {
 
                         {podeGerenciarPermissoes && (
                           <button className="btn btn-sm btn-ghost" onClick={() => setGerenciandoId(u.id)}>
-                            Gerenciar permissões
+                            Gerenciar permissoes
                           </button>
                         )}
 

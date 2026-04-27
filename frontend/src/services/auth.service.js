@@ -26,6 +26,44 @@ export function getUsuarioLocal() {
   return JSON.parse(usuario);
 }
 
+function normalizarPermissoes(permissoes) {
+  if (!permissoes) {
+    return {};
+  }
+
+  if (typeof permissoes === 'string') {
+    try {
+      return JSON.parse(permissoes);
+    } catch {
+      return {};
+    }
+  }
+
+  if (Array.isArray(permissoes)) {
+    return permissoes.reduce((acc, permissao) => {
+      acc[permissao] = true;
+      return acc;
+    }, {});
+  }
+
+  return permissoes;
+}
+
+export function temPermissao(usuario, permissao) {
+  if (!permissao) {
+    return true;
+  }
+
+  if (usuario?.role?.nome === 'admin') {
+    return true;
+  }
+
+  const permissoesUsuario = normalizarPermissoes(usuario?.permissoes);
+  const permissoesRole = normalizarPermissoes(usuario?.role?.permissoes);
+
+  return permissoesUsuario?.[permissao] === true || permissoesRole?.[permissao] === true;
+}
+
 export async function atualizarPerfil(dados) {
   const usuario = await apiPut('/auth/me', dados);
 

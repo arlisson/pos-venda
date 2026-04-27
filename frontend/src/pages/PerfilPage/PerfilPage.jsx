@@ -87,8 +87,8 @@ function PerfilPage() {
             <div className="panel-header"><h3>Permissões Ativas</h3></div>
             <div className="panel-body">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {usuario?.role?.permissoes ? (
-                  Object.entries(usuario.role.permissoes).map(([modulo, permitido]) => (
+                {usuario?.permissoes ? (
+                  Object.entries(usuario.permissoes).map(([modulo, permitido]) => (
                     <div key={modulo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--surface-2)', borderRadius: 'var(--radius)' }}>
                       <span style={{ fontSize: '13px', textTransform: 'capitalize' }}>{modulo}</span>
                       <span className={`pill ${permitido ? 'success' : 'danger'}`}>

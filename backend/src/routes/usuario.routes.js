@@ -4,13 +4,19 @@ const router = express.Router();
 const usuarioController = require('../controllers/usuario.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { auditar } = require('../middlewares/audit.middleware');
+const {
+  exigirPermissao,
+  exigirGerenciamentoPermissoesSeNecessario
+} = require('../middlewares/permissao.middleware');
 
 router.use(authMiddleware);
+router.use(exigirPermissao('crud_usuarios'));
 
 router.get('/', usuarioController.index);
 router.get('/:id', usuarioController.show);
 router.post(
   '/',
+  exigirGerenciamentoPermissoesSeNecessario,
   auditar({
     acao: 'usuario.criado',
     entidade: 'usuarios',
@@ -24,6 +30,7 @@ router.post(
 );
 router.put(
   '/:id',
+  exigirGerenciamentoPermissoesSeNecessario,
   auditar({
     acao: 'usuario.atualizado',
     entidade: 'usuarios',

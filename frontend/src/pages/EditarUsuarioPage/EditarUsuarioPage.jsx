@@ -11,8 +11,18 @@ import {
   buscarUsuarioPorId,
   listarPermissoes
 } from '../../services/usuario.service';
+import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 
 import './EditarUsuarioPage.css';
+
+function parsePermissoes(permissoes) {
+  if (!permissoes) return [];
+  if (Array.isArray(permissoes)) return permissoes;
+  if (typeof permissoes === 'string') {
+    try { return JSON.parse(permissoes); } catch { return []; }
+  }
+  return Object.entries(permissoes).filter(([, permitido]) => permitido).map(([chave]) => chave);
+}
 
 function EditarUsuarioPage() {
   const { id } = useParams();
@@ -22,6 +32,7 @@ function EditarUsuarioPage() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [roleId, setRoleId] = useState(2);
+  const [roleIdOriginal, setRoleIdOriginal] = useState(2);
   const [ativo, setAtivo] = useState(true);
 
   const [permissoes, setPermissoes] = useState([]);
@@ -38,38 +49,24 @@ function EditarUsuarioPage() {
   useEffect(() => {
     async function carregarDados() {
       try {
-        const usuarioLogado = JSON.parse(localStorage.getItem('usuario'));
-
-        const isAdminLogado = usuarioLogado?.role?.nome === 'admin';
-        const podeEditarPermissoes =
-          isAdminLogado ||
-          usuarioLogado?.permissoes?.gerenciar_permissoes === true;
+        const usuarioLogado = getUsuarioLocal();
+        const podeEditarPermissoes = temPermissao(usuarioLogado, 'gerenciar_permissoes');
 
         setPodeGerenciarPermissoes(podeEditarPermissoes);
 
-        const [usuarioData, permissoesData] = await Promise.all([
-          buscarUsuarioPorId(id),
-          listarPermissoes()
-        ]);
+        const usuarioPromise = buscarUsuarioPorId(id);
+        const permissoesPromise = podeEditarPermissoes ? listarPermissoes() : Promise.resolve([]);
+        const [usuarioData, permissoesData] = await Promise.all([usuarioPromise, permissoesPromise]);
+
+        const roleAtual = Number(usuarioData.role_id);
 
         setNome(usuarioData.nome || '');
         setEmail(usuarioData.email || '');
-        setRoleId(Number(usuarioData.role_id));
+        setRoleId(roleAtual);
+        setRoleIdOriginal(roleAtual);
         setAtivo(Boolean(usuarioData.ativo));
-
-        if (podeEditarPermissoes) {
-          setPermissoes(permissoesData);
-        } else {
-          setPermissoes([]);
-        }
-
-        const permissoesAtivas = Array.isArray(usuarioData.permissoes)
-          ? usuarioData.permissoes
-          : Object.entries(usuarioData.permissoes || {})
-              .filter(([, permitido]) => permitido)
-              .map(([chave]) => chave);
-
-        setPermissoesSelecionadas(permissoesAtivas);
+        setPermissoes(permissoesData);
+        setPermissoesSelecionadas(parsePermissoes(usuarioData.permissoes));
       } catch (error) {
         setErro(error.message);
       } finally {
@@ -100,7 +97,6 @@ function EditarUsuarioPage() {
       const dados = {
         nome,
         email,
-        role_id: Number(roleId),
         ativo
       };
 
@@ -109,7 +105,10 @@ function EditarUsuarioPage() {
       }
 
       if (podeGerenciarPermissoes) {
+        dados.role_id = Number(roleId);
         dados.permissoes = isAdminEditado ? [] : permissoesSelecionadas;
+      } else {
+        dados.role_id = roleIdOriginal;
       }
 
       await atualizarUsuario(id, dados);
@@ -125,7 +124,7 @@ function EditarUsuarioPage() {
   if (carregando) {
     return (
       <LayoutPrivado>
-        <p>Carregando usuário...</p>
+        <p>Carregando usuario...</p>
       </LayoutPrivado>
     );
   }
@@ -133,9 +132,9 @@ function EditarUsuarioPage() {
   return (
     <LayoutPrivado>
       <Card>
-        <h1 className="editar-usuario__title">Editar usuário</h1>
+        <h1 className="editar-usuario__title">Editar usuario</h1>
         <p className="editar-usuario__subtitle">
-          Atualize os dados de acesso e permissões do usuário.
+          Atualize os dados de acesso do usuario.
         </p>
 
         {erro && <p className="editar-usuario__error">{erro}</p>}
@@ -164,26 +163,32 @@ function EditarUsuarioPage() {
             onChange={(event) => setSenha(event.target.value)}
           />
 
-          <div className="editar-usuario__field">
-            <label htmlFor="role">Função</label>
+          {podeGerenciarPermissoes ? (
+            <div className="editar-usuario__field">
+              <label htmlFor="role">Funcao</label>
 
-            <select
-              id="role"
-              value={roleId}
-              onChange={(event) => {
-                const novaRoleId = Number(event.target.value);
+              <select
+                id="role"
+                value={roleId}
+                onChange={(event) => {
+                  const novaRoleId = Number(event.target.value);
 
-                setRoleId(novaRoleId);
+                  setRoleId(novaRoleId);
 
-                if (novaRoleId === 1) {
-                  setPermissoesSelecionadas([]);
-                }
-              }}
-            >
-              <option value={1}>Administrador</option>
-              <option value={2}>Usuário comum</option>
-            </select>
-          </div>
+                  if (novaRoleId === 1) {
+                    setPermissoesSelecionadas([]);
+                  }
+                }}
+              >
+                <option value={1}>Administrador</option>
+                <option value={2}>Usuario comum</option>
+              </select>
+            </div>
+          ) : (
+            <p className="editar-usuario__info">
+              Voce pode editar os dados do usuario, mas nao pode alterar funcao ou permissoes.
+            </p>
+          )}
 
           <label className="editar-usuario__checkbox">
             <input
@@ -192,43 +197,40 @@ function EditarUsuarioPage() {
               onChange={(event) => setAtivo(event.target.checked)}
             />
 
-            <span>Usuário ativo</span>
+            <span>Usuario ativo</span>
           </label>
 
-          {isAdminEditado ? (
-            <p className="editar-usuario__info">
-              Administradores possuem todas as permissões automaticamente.
-            </p>
-          ) : podeGerenciarPermissoes ? (
-            <div className="editar-usuario__permissions">
-              <h2>Permissões</h2>
+          {podeGerenciarPermissoes && (
+            isAdminEditado ? (
+              <p className="editar-usuario__info">
+                Administradores possuem todas as permissoes automaticamente.
+              </p>
+            ) : (
+              <div className="editar-usuario__permissions">
+                <h2>Permissoes</h2>
 
-              {permissoes.map((permissao) => (
-                <label
-                  title={permissao.descricao || permissao.nome}
-                  key={permissao.id}
-                  className="editar-usuario__permission"
-                >
-                  <input
-                    
-                    type="checkbox"
-                    checked={permissoesSelecionadas.includes(permissao.chave)}
-                    onChange={() => handlePermissaoChange(permissao.chave)}
-                  />
+                {permissoes.map((permissao) => (
+                  <label
+                    title={permissao.descricao || permissao.nome}
+                    key={permissao.id}
+                    className="editar-usuario__permission"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={permissoesSelecionadas.includes(permissao.chave)}
+                      onChange={() => handlePermissaoChange(permissao.chave)}
+                    />
 
-                  <span>{permissao.nome}</span>
-                </label>
-              ))}
-            </div>
-          ) : (
-            <p className="editar-usuario__info">
-              Você pode editar os dados do usuário, mas não pode alterar permissões.
-            </p>
+                    <span>{permissao.nome}</span>
+                  </label>
+                ))}
+              </div>
+            )
           )}
 
           <div className="editar-usuario__actions">
             <Botao
-              title="Salvar alterações"
+              title="Salvar alteracoes"
               type="submit"
               carregando={salvando}
             />
