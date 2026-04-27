@@ -41,12 +41,13 @@ function LayoutPrivado({ children }) {
 
   return (
     <div className="app">
-      <Sidebar 
-        page={currentConfig.id} 
-        setPage={handleSetPage} 
+      <Sidebar
+        page={currentConfig.id}
+        setPage={handleSetPage}
         counts={{ active: 0, returns: 0 }}
         usuario={usuario}
         onLogout={handleLogout}
+        onPerfilClick={() => navigate('/perfil')}
       />
       <div className="main">
         <Header 

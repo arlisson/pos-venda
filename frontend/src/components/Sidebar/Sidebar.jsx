@@ -1,7 +1,7 @@
 import React from 'react';
 import * as I from '../Icons';
 
-function Sidebar({ page, setPage, counts, usuario, onLogout }) {
+function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   const items = [
     { id: 'funil', label: 'Funil de vendas', icon: <I.Funnel />, badge: counts?.active },
     { id: 'retornos', label: 'Retornos', icon: <I.Return />, badge: counts?.returns },
@@ -52,14 +52,21 @@ function Sidebar({ page, setPage, counts, usuario, onLogout }) {
       </div>
       <div className="sidebar-footer">
         <div className="user-card">
-          <div className="avatar">{getInitials(usuario?.nome)}</div>
-          <div className="user-info">
-            <div className="user-name">{usuario?.nome || 'Usuário'}</div>
-            <div className="user-role">{usuario?.role?.nome || 'Perfil'}</div>
-          </div>
-          <button 
-            className="btn-icon btn-ghost" 
-            title="Sair" 
+          <button
+            className="user-card-info"
+            onClick={onPerfilClick}
+            title="Editar perfil"
+            style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', color: 'inherit' }}
+          >
+            <div className="avatar">{getInitials(usuario?.nome)}</div>
+            <div className="user-info">
+              <div className="user-name">{usuario?.nome || 'Usuário'}</div>
+              <div className="user-role">{usuario?.role?.nome || 'Perfil'}</div>
+            </div>
+          </button>
+          <button
+            className="btn-icon btn-ghost"
+            title="Sair"
             onClick={onLogout}
           >
             <I.Logout size={14} />

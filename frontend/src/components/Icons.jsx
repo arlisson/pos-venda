@@ -43,3 +43,5 @@ export const LayoutList = mk(<><rect x="3" y="4" width="18" height="4" rx="1" />
 export const LayoutHybrid = mk(<><rect x="3" y="3" width="6" height="18" rx="1" /><rect x="11" y="3" width="10" height="18" rx="1" /></>);
 export const SimCard = mk(<><path d="M5 3h10l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><rect x="8" y="11" width="8" height="8" rx="1" /><path d="M8 14h8M11 11v8M14 11v8" /></>);
 export const Shield = mk(<><path d="M12 2 3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7l-9-5z" /></>);
+export const Eye = mk(<><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></>);
+export const EyeOff = mk(<><path d="M17.9 17.4A10 10 0 0 1 2 12s1.5-4 5.1-6.2M9.5 4.3A10 10 0 0 1 22 12s-3 7-10 7a9.9 9.9 0 0 1-4.5-1.1" /><path d="M2 2l20 20" /></>);
