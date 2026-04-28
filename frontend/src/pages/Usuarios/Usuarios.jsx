@@ -304,8 +304,16 @@ function Usuarios() {
                     <tr key={u.id}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>
-                            {getInitials(u.nome)}
+                          <span className="avatar" style={{ width: 28, height: 28, fontSize: 11, overflow: 'hidden' }}>
+                            {u.foto_perfil ? (
+                              <img
+                                src={u.foto_perfil}
+                                alt={u.nome || 'Foto de perfil'}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              getInitials(u.nome)
+                            )}
                           </span>
                           <span style={{ fontWeight: 500 }}>{u.nome}</span>
                         </div>

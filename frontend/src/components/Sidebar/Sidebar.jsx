@@ -116,7 +116,17 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
             title="Editar perfil"
             style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', color: 'inherit' }}
           >
-            <div className="avatar">{getInitials(usuario?.nome)}</div>
+            <div className="avatar" style={{ overflow: 'hidden' }}>
+              {usuario?.foto_perfil ? (
+                <img
+                  src={usuario.foto_perfil}
+                  alt={usuario?.nome || 'Foto de perfil'}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                getInitials(usuario?.nome)
+              )}
+            </div>
             <div className="user-info">
               <div className="user-name">{usuario?.nome || 'Usuario'}</div>
               <div className="user-role">{usuario?.role?.nome || 'Perfil'}</div>

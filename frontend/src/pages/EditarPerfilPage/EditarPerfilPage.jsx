@@ -1,22 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { buscarPerfil, atualizarPerfil } from '../../services/auth.service';
+import { atualizarPerfil, buscarPerfil } from '../../services/auth.service';
+import './EditarPerfilPage.css';
 
 const getInitials = (name) => {
   if (!name) return '??';
   return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
 };
 
+function medirSenha(senha) {
+  if (!senha) return { nivel: 0, label: 'Opcional' };
+
+  let pontos = 0;
+  if (senha.length >= 8) pontos += 1;
+  if (/[A-Z]/.test(senha)) pontos += 1;
+  if (/[0-9]/.test(senha)) pontos += 1;
+  if (/[^A-Za-z0-9]/.test(senha)) pontos += 1;
+
+  if (pontos <= 1) return { nivel: 1, label: 'Fraca' };
+  if (pontos <= 3) return { nivel: 2, label: 'Boa' };
+  return { nivel: 3, label: 'Forte' };
+}
+
 function EditarPerfilPage() {
   const navigate = useNavigate();
-
   const [usuario, setUsuario] = useState(null);
   const [nome, setNome] = useState('');
   const [senha, setSenha] = useState('');
+  const [fotoPerfil, setFotoPerfil] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
-
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(true);
@@ -28,32 +42,72 @@ function EditarPerfilPage() {
         const perfil = await buscarPerfil();
         setUsuario(perfil);
         setNome(perfil.nome || '');
+        setFotoPerfil(perfil.foto_perfil || '');
       } catch (error) {
         setErro(error.message);
       } finally {
         setCarregando(false);
       }
     }
+
     carregar();
   }, []);
 
   const isAdmin = usuario?.role?.nome === 'admin';
+  const forcaSenha = useMemo(() => medirSenha(senha), [senha]);
+  const nomeAlterado = nome.trim() !== '' && nome.trim() !== (usuario?.nome || '');
+  const fotoAlterada = fotoPerfil !== (usuario?.foto_perfil || '');
+  const temAlteracoes = (isAdmin && nomeAlterado) || senha.trim() !== '' || fotoAlterada;
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  function handleFotoChange(event) {
+    const arquivo = event.target.files?.[0];
+
+    if (!arquivo) return;
+
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(arquivo.type)) {
+      setErro('Use uma imagem PNG, JPG ou WEBP.');
+      return;
+    }
+
+    if (arquivo.size > 4 * 1024 * 1024) {
+      setErro('A foto deve ter ate 4 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setErro('');
+      setFotoPerfil(String(reader.result || ''));
+    };
+    reader.readAsDataURL(arquivo);
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
     setErro('');
     setSucesso('');
+
+    if (!temAlteracoes) {
+      setErro('Informe uma alteracao antes de salvar.');
+      return;
+    }
+
     setSalvando(true);
+
     try {
       const dados = {};
-      if (isAdmin) dados.nome = nome;
+      if (isAdmin && nomeAlterado) dados.nome = nome.trim();
       if (senha.trim() !== '') dados.senha = senha;
+      if (fotoAlterada) dados.foto_perfil = fotoPerfil || null;
 
-      await atualizarPerfil(dados);
-      setSucesso('Alterações salvas com sucesso.');
+      const perfilAtualizado = await atualizarPerfil(dados);
+      setUsuario(perfilAtualizado);
+      setNome(perfilAtualizado.nome || '');
+      setFotoPerfil(perfilAtualizado.foto_perfil || '');
       setSenha('');
+      setSucesso('Alteracoes salvas com sucesso.');
     } catch (error) {
-      setErro(error.message || 'Erro ao salvar alterações.');
+      setErro(error.message || 'Erro ao salvar alteracoes.');
     } finally {
       setSalvando(false);
     }
@@ -69,139 +123,140 @@ function EditarPerfilPage() {
 
   return (
     <LayoutPrivado>
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-
-        {/* Cabeçalho com avatar */}
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <div className="panel-body" style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '28px 32px' }}>
-            <div className="avatar" style={{ width: 72, height: 72, fontSize: 22, flexShrink: 0 }}>
-              {getInitials(usuario?.nome)}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 18, fontWeight: 600 }}>{usuario?.nome}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>{usuario?.email}</div>
-              <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span className="tag">{usuario?.role?.nome}</span>
-                <span className={`pill ${usuario?.ativo ? 'success' : ''}`}>
-                  <span className="pill-dot"></span>
-                  {usuario?.ativo ? 'Conta ativa' : 'Inativa'}
-                </span>
-              </div>
-            </div>
-            <button className="btn btn-ghost" onClick={() => navigate('/perfil')}>
-              <I.ArrowRight style={{ transform: 'rotate(180deg)' }} size={14} />
-              Voltar
-            </button>
+      <form className="editar-perfil-page" onSubmit={handleSubmit}>
+        <section className="editar-perfil-hero">
+          <div className="avatar editar-perfil-avatar">
+            {fotoPerfil ? (
+              <img src={fotoPerfil} alt={usuario?.nome || 'Foto de perfil'} />
+            ) : (
+              getInitials(usuario?.nome)
+            )}
           </div>
-        </div>
-
-        {/* Formulário */}
-        <div className="dash-grid" style={{ gridTemplateColumns: isAdmin ? '1fr 1fr' : '1fr' }}>
-
-          {isAdmin && (
-            <div className="panel">
-              <div className="panel-header">
-                <h3>Informações pessoais</h3>
-                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Disponível apenas para administradores</div>
-              </div>
-              <div className="panel-body">
-                <form id="form-nome" onSubmit={handleSubmit}>
-                  <div className="form-field">
-                    <label>Nome de exibição</label>
-                    <input
-                      value={nome}
-                      onChange={(e) => setNome(e.target.value)}
-                      placeholder="Seu nome completo"
-                      required
-                    />
-                  </div>
-                  <div className="form-field" style={{ marginTop: 0 }}>
-                    <label>E-mail</label>
-                    <input
-                      value={usuario?.email}
-                      disabled
-                      style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                    />
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>O e-mail não pode ser alterado.</div>
-                  </div>
-                </form>
-              </div>
+          <div className="editar-perfil-hero__main">
+            <h2>{usuario?.nome}</h2>
+            <span>{usuario?.email}</span>
+            <div className="editar-perfil-badges">
+              <span className="tag">{usuario?.role?.nome}</span>
+              <span className={`pill ${usuario?.ativo ? 'success' : ''}`}>
+                <span className="pill-dot"></span>
+                {usuario?.ativo ? 'Conta ativa' : 'Inativa'}
+              </span>
             </div>
-          )}
+          </div>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/perfil')}>
+            <I.ArrowRight style={{ transform: 'rotate(180deg)' }} size={14} />
+            Voltar
+          </button>
+        </section>
 
-          <div className="panel">
+        <div className="editar-perfil-grid">
+          <section className="panel">
             <div className="panel-header">
-              <h3>Segurança</h3>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Altere sua senha de acesso</div>
+              <div>
+                <h3>Dados da conta</h3>
+                <span className="editar-perfil-panel-sub">Identificacao usada no sistema</span>
+              </div>
             </div>
             <div className="panel-body">
-              <form id="form-senha" onSubmit={handleSubmit}>
-                {!isAdmin && (
-                  <div style={{ marginBottom: 16, padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 3 }}>Nome</div>
-                    <div style={{ fontSize: 14, fontWeight: 500 }}>{usuario?.nome}</div>
-                  </div>
-                )}
-
-                <div className="form-field">
-                  <label>Nova senha</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type={mostrarSenha ? 'text' : 'password'}
-                      value={senha}
-                      onChange={(e) => setSenha(e.target.value)}
-                      placeholder="••••••••"
-                      style={{ paddingRight: 42 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setMostrarSenha(prev => !prev)}
-                      style={{
-                        position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: 'var(--text-3)', display: 'flex', alignItems: 'center', padding: 0
-                      }}
-                      tabIndex={-1}
-                      title={mostrarSenha ? 'Ocultar senha' : 'Visualizar senha'}
-                    >
-                      {mostrarSenha ? <I.EyeOff size={15} /> : <I.Eye size={15} />}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                    Deixe em branco para manter a senha atual.
-                  </div>
+              <div className="editar-perfil-foto">
+                <div className="avatar editar-perfil-foto__preview">
+                  {fotoPerfil ? (
+                    <img src={fotoPerfil} alt={usuario?.nome || 'Foto de perfil'} />
+                  ) : (
+                    getInitials(usuario?.nome)
+                  )}
                 </div>
-              </form>
+                <div className="editar-perfil-foto__actions">
+                  <label className="btn btn-sm">
+                    Escolher foto
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleFotoChange}
+                    />
+                  </label>
+                  {fotoPerfil && (
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => setFotoPerfil('')}>
+                      Remover
+                    </button>
+                  )}
+                  <div className="editar-perfil-help">PNG, JPG ou WEBP ate 4 MB.</div>
+                </div>
+              </div>
+
+              <div className="form-field">
+                <label>Nome de exibicao</label>
+                <input
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  disabled={!isAdmin}
+                  required={isAdmin}
+                />
+                {!isAdmin && (
+                  <div className="editar-perfil-help">Somente administradores podem alterar o nome.</div>
+                )}
+              </div>
+
+              <div className="form-field">
+                <label>E-mail de acesso</label>
+                <input value={usuario?.email || ''} disabled />
+                <div className="editar-perfil-help">O e-mail nao pode ser alterado por aqui.</div>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <h3>Seguranca</h3>
+                <span className="editar-perfil-panel-sub">Atualize sua senha de acesso</span>
+              </div>
+            </div>
+            <div className="panel-body">
+              <div className="form-field">
+                <label>Nova senha</label>
+                <div className="editar-perfil-password">
+                  <input
+                    type={mostrarSenha ? 'text' : 'password'}
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                    placeholder="Deixe em branco para manter"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-icon btn-ghost"
+                    onClick={() => setMostrarSenha(prev => !prev)}
+                    title={mostrarSenha ? 'Ocultar senha' : 'Visualizar senha'}
+                  >
+                    {mostrarSenha ? <I.EyeOff size={15} /> : <I.Eye size={15} />}
+                  </button>
+                </div>
+
+                <div className="editar-perfil-password-meter">
+                  <span className={`meter-bar ${forcaSenha.nivel >= 1 ? 'active' : ''}`} />
+                  <span className={`meter-bar ${forcaSenha.nivel >= 2 ? 'active' : ''}`} />
+                  <span className={`meter-bar ${forcaSenha.nivel >= 3 ? 'active' : ''}`} />
+                  <small>{forcaSenha.label}</small>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
 
-        {/* Feedback e ações */}
         {(erro || sucesso) && (
-          <div style={{ marginTop: 16 }}>
+          <div className="editar-perfil-feedback">
             {erro && <div className="alert-error">{erro}</div>}
-            {sucesso && (
-              <div style={{ padding: '10px 14px', background: 'var(--success-bg, #f0fdf4)', border: '1px solid var(--success, #22c55e)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--success, #16a34a)' }}>
-                {sucesso}
-              </div>
-            )}
+            {sucesso && <div className="editar-perfil-success">{sucesso}</div>}
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+        <div className="editar-perfil-actions">
           <button type="button" className="btn" onClick={() => navigate('/perfil')}>Cancelar</button>
-          <button
-            type="submit"
-            form={isAdmin ? 'form-nome' : 'form-senha'}
-            className="btn btn-primary"
-            disabled={salvando}
-            onClick={handleSubmit}
-          >
-            {salvando ? 'Salvando...' : 'Salvar alterações'}
+          <button type="submit" className="btn btn-primary" disabled={salvando || !temAlteracoes}>
+            {salvando ? 'Salvando...' : 'Salvar alteracoes'}
           </button>
         </div>
-
-      </div>
+      </form>
     </LayoutPrivado>
   );
 }

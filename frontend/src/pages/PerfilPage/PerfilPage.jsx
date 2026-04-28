@@ -120,8 +120,12 @@ function PerfilPage() {
 
         <div className="panel" style={{ marginBottom: '20px' }}>
           <div className="panel-body" style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '30px' }}>
-            <div className="avatar" style={{ width: '80px', height: '80px', fontSize: '24px' }}>
-              {getInitials(usuario?.nome)}
+            <div className="avatar perfil-avatar">
+              {usuario?.foto_perfil ? (
+                <img src={usuario.foto_perfil} alt={usuario?.nome || 'Foto de perfil'} />
+              ) : (
+                getInitials(usuario?.nome)
+              )}
             </div>
             <div>
               <h2 style={{ margin: 0, fontSize: '20px' }}>{usuario?.nome}</h2>

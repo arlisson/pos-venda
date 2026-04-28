@@ -4,6 +4,30 @@ const jwt = require('jsonwebtoken');
 const Permissao = require('../models/Permissao');
 const Usuario = require('../models/Usuario');
 
+function validarFotoPerfil(fotoPerfil) {
+  if (fotoPerfil === null || fotoPerfil === '') {
+    return null;
+  }
+
+  if (typeof fotoPerfil !== 'string') {
+    throw new Error('Foto de perfil invalida.');
+  }
+
+  const formatoValido = /^data:image\/(png|jpe?g|webp);base64,/i.test(fotoPerfil);
+
+  if (!formatoValido) {
+    throw new Error('A foto deve ser PNG, JPG ou WEBP.');
+  }
+
+  const tamanhoMaximo = 6 * 1024 * 1024;
+
+  if (Buffer.byteLength(fotoPerfil, 'utf8') > tamanhoMaximo) {
+    throw new Error('A foto deve ter ate 4 MB.');
+  }
+
+  return fotoPerfil;
+}
+
 async function montarUsuarioComPermissoes(usuario) {
   const todasPermissoes = await Permissao.query()
     .where('ativo', true)
@@ -48,6 +72,10 @@ async function atualizarPerfil(usuarioId, dados) {
 
   if (dados.senha !== undefined && dados.senha !== '') {
     dadosAtualizacao.senha = await bcrypt.hash(dados.senha, 10);
+  }
+
+  if (dados.foto_perfil !== undefined) {
+    dadosAtualizacao.foto_perfil = validarFotoPerfil(dados.foto_perfil);
   }
 
   if (dados.permissoes !== undefined) {

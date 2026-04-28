@@ -1,52 +1,198 @@
-.editar-perfil__title {
+.editar-perfil-page {
+  width: min(900px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.editar-perfil-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 28px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.editar-perfil-avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 22px;
+  overflow: hidden;
+}
+
+.editar-perfil-avatar img,
+.editar-perfil-foto__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.editar-perfil-hero__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.editar-perfil-hero__main h2 {
   margin: 0;
-  font-size: 28px;
-  color: var(--text-title);
+  font-size: 20px;
+  line-height: 1.2;
 }
 
-.editar-perfil__subtitle {
-  margin-top: 8px;
-  margin-bottom: 24px;
-  color: var(--text-muted);
+.editar-perfil-hero__main > span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 13px;
 }
 
-.editar-perfil__form {
+.editar-perfil-badges {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
 }
 
-.editar-perfil__error {
-  color: var(--color-danger);
+.editar-perfil-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.editar-perfil-page .panel-header h3 {
+  margin: 0;
+}
+
+.editar-perfil-panel-sub {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.editar-perfil-help {
+  margin-top: 4px;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.editar-perfil-foto {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
   margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
 }
 
-.editar-perfil__permissions {
-  margin-top: 8px;
+.editar-perfil-foto__preview {
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+}
+
+.editar-perfil-foto__actions {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
-.editar-perfil__permissions h2 {
-  margin: 0 0 8px;
-  font-size: 18px;
-  color: var(--text-title);
+.editar-perfil-foto__actions input[type="file"] {
+  display: none;
 }
 
-.editar-perfil__permission {
+.editar-perfil-foto__actions .editar-perfil-help {
+  flex-basis: 100%;
+  margin-top: 0;
+}
+
+.editar-perfil-page input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: var(--surface-2);
+}
+
+.editar-perfil-password {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.editar-perfil__info {
-  color: var(--text-muted);
-  font-size: 14px;
+.editar-perfil-password input {
+  flex: 1;
+  min-width: 0;
 }
 
-.editar-perfil__actions {
-  display: flex;
-  gap: 12px;
+.editar-perfil-password-meter {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) auto;
+  align-items: center;
+  gap: 5px;
   margin-top: 8px;
+}
+
+.meter-bar {
+  height: 4px;
+  border-radius: 99px;
+  background: var(--surface-3);
+}
+
+.meter-bar.active {
+  background: var(--accent);
+}
+
+.editar-perfil-password-meter small {
+  color: var(--text-3);
+  font-size: 11px;
+  min-width: 48px;
+  text-align: right;
+}
+
+.editar-perfil-feedback {
+  margin-top: 14px;
+}
+
+.editar-perfil-success {
+  padding: 10px 14px;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius);
+  background: var(--success-bg);
+  color: var(--success);
+  font-size: 13px;
+}
+
+.editar-perfil-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+@media (max-width: 760px) {
+  .editar-perfil-page {
+    width: calc(100% - 28px);
+  }
+
+  .editar-perfil-hero {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 20px;
+  }
+
+  .editar-perfil-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editar-perfil-actions {
+    flex-direction: column-reverse;
+  }
+
+  .editar-perfil-actions .btn {
+    justify-content: center;
+  }
 }
