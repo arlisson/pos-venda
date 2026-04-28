@@ -19,6 +19,7 @@ class Usuario extends Model {
         nome: { type: 'string', minLength: 1, maxLength: 120 },
         email: { type: 'string', minLength: 1, maxLength: 160 },
         senha: { type: 'string', minLength: 1, maxLength: 255 },
+        foto_perfil: { type: ['string', 'null'] },
         role_id: { type: 'integer' },
         permissoes: { type: ['array', 'string', 'null'] },
         ativo: { type: ['boolean', 'integer'] },

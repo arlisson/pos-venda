@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -10,6 +10,7 @@ import {
   listarPermissoes
 } from '../../services/usuario.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import './Usuarios.css';
 
 function parsePermissoes(permissoes) {
   if (!permissoes) return [];
@@ -18,6 +19,58 @@ function parsePermissoes(permissoes) {
     try { return JSON.parse(permissoes); } catch { return []; }
   }
   return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
+}
+
+const SUBPERMISSOES = {
+  vendas: ['vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir'],
+  crud_usuarios: ['usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir']
+};
+
+function PermissaoGrupo({ permissao, filhas, selecionadas, onToggle }) {
+  const totalFilhas = filhas.length;
+  const filhasSelecionadas = filhas.filter(filha => selecionadas.includes(filha.chave)).length;
+  const moduloSelecionado = selecionadas.includes(permissao.chave);
+
+  return (
+    <section className={`permissions-group ${moduloSelecionado || filhasSelecionadas > 0 ? 'is-active' : ''}`}>
+      <div className="permissions-group__header">
+        <label className="permissions-module">
+          <input
+            type="checkbox"
+            checked={moduloSelecionado}
+            onChange={() => onToggle(permissao.chave)}
+          />
+          <span>
+            <strong>{permissao.nome}</strong>
+            <small>{permissao.descricao || 'Permissao do sistema.'}</small>
+          </span>
+        </label>
+
+        <span className={`pill ${moduloSelecionado || filhasSelecionadas > 0 ? 'success' : 'danger'}`}>
+          <span className="pill-dot"></span>
+          {totalFilhas > 0 ? `${filhasSelecionadas}/${totalFilhas}` : moduloSelecionado ? 'Liberado' : 'Bloqueado'}
+        </span>
+      </div>
+
+      {totalFilhas > 0 && (
+        <div className="permissions-actions">
+          {filhas.map(filha => (
+            <label key={filha.chave} className={`permissions-action ${selecionadas.includes(filha.chave) ? 'is-active' : ''}`}>
+              <input
+                type="checkbox"
+                checked={selecionadas.includes(filha.chave)}
+                onChange={() => onToggle(filha.chave)}
+              />
+              <span>
+                <strong>{filha.nome.replace(`${permissao.nome}:`, '').trim()}</strong>
+                <small>{filha.descricao}</small>
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function ModalPermissoes({ usuarioId, onClose, onSave }) {
@@ -69,24 +122,35 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
   }
 
   const isAdmin = usuario?.role?.nome === 'admin';
+  const permissoesFilhas = new Set(Object.values(SUBPERMISSOES).flat());
+  const permissoesPorChave = permissoes.reduce((acc, permissao) => {
+    acc[permissao.chave] = permissao;
+    return acc;
+  }, {});
+  const permissoesPrincipais = permissoes.filter(p => !permissoesFilhas.has(p.chave));
+  const totalSelecionadas = selecionadas.length;
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+      className="permissions-modal-overlay"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="panel" style={{ width: 440, margin: 0, boxShadow: 'var(--shadow-md)' }}>
-        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="panel permissions-modal">
+        <div className="panel-header permissions-modal__header">
           <div>
             <h3 style={{ margin: 0 }}>Gerenciar permissoes</h3>
-            {usuario && <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{usuario.nome}</div>}
+            {usuario && (
+              <div className="permissions-modal__sub">
+                {usuario.nome} · {totalSelecionadas} permissoes selecionadas
+              </div>
+            )}
           </div>
           <button className="btn btn-icon btn-ghost" onClick={onClose}>
             <I.Close size={14} />
           </button>
         </div>
 
-        <div className="panel-body">
+        <div className="panel-body permissions-modal__body">
           {carregando ? (
             <div className="muted" style={{ textAlign: 'center', padding: '24px 0', fontSize: 13 }}>
               Carregando...
@@ -99,31 +163,23 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {permissoes.map(p => (
-                  <label
+              <div className="permissions-grid">
+                {permissoesPrincipais.map(p => (
+                  <PermissaoGrupo
                     key={p.chave}
-                    style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', userSelect: 'none' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selecionadas.includes(p.chave)}
-                      onChange={() => toggle(p.chave)}
-                      style={{ marginTop: 3, flexShrink: 0 }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{p.nome}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                        {p.descricao || 'Permissao do sistema.'}
-                      </div>
-                    </div>
-                  </label>
+                    permissao={p}
+                    filhas={(SUBPERMISSOES[p.chave] || [])
+                      .map(chaveFilha => permissoesPorChave[chaveFilha])
+                      .filter(Boolean)}
+                    selecionadas={selecionadas}
+                    onToggle={toggle}
+                  />
                 ))}
               </div>
 
               {erro && <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 12 }}>{erro}</div>}
 
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <div className="permissions-modal__footer">
                 <button className="btn" onClick={onClose}>Cancelar</button>
                 <button className="btn btn-primary" onClick={handleSave} disabled={salvando}>
                   {salvando ? 'Salvando...' : 'Salvar permissoes'}
@@ -147,13 +203,17 @@ function Usuarios() {
 
   const usuarioLogado = getUsuarioLocal();
   const podeGerenciarPermissoes = temPermissao(usuarioLogado, 'gerenciar_permissoes');
+  const podeCriarUsuarios = temPermissao(usuarioLogado, 'usuarios_criar');
+  const podeEditarUsuarios = temPermissao(usuarioLogado, 'usuarios_editar');
+  const podeExcluirUsuarios = temPermissao(usuarioLogado, 'usuarios_excluir');
+  const usuarioLogadoEhAdmin = usuarioLogado?.role?.nome === 'admin';
 
   useEffect(() => {
     async function carregarUsuarios() {
       try {
         const dados = await listarUsuarios();
         setUsuarios(dados);
-      } catch (error) {
+      } catch {
         setErro('Erro ao carregar usuarios.');
       } finally {
         setCarregando(false);
@@ -205,9 +265,11 @@ function Usuarios() {
           <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
             {usuarios.length} usuarios · {usuarios.filter(u => u.ativo).length} ativos
           </div>
-          <button className="btn btn-primary" onClick={() => navigate('/usuarios/novo')}>
-            <I.Plus size={14} /> Adicionar usuario
-          </button>
+          {podeCriarUsuarios && (
+            <button className="btn btn-primary" onClick={() => navigate('/usuarios/novo')}>
+              <I.Plus size={14} /> Adicionar usuario
+            </button>
+          )}
         </div>
 
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
@@ -242,8 +304,16 @@ function Usuarios() {
                     <tr key={u.id}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>
-                            {getInitials(u.nome)}
+                          <span className="avatar" style={{ width: 28, height: 28, fontSize: 11, overflow: 'hidden' }}>
+                            {u.foto_perfil ? (
+                              <img
+                                src={u.foto_perfil}
+                                alt={u.nome || 'Foto de perfil'}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              getInitials(u.nome)
+                            )}
                           </span>
                           <span style={{ fontWeight: 500 }}>{u.nome}</span>
                         </div>
@@ -257,9 +327,11 @@ function Usuarios() {
                         </span>
                       </td>
                       <td className="row-actions">
-                        <button className="btn btn-icon btn-ghost" title="Editar" onClick={() => navigate(`/usuarios/${u.id}/editar`)}>
-                          <I.Edit size={13} />
-                        </button>
+                        {podeEditarUsuarios && (
+                          <button className="btn btn-icon btn-ghost" title="Editar" onClick={() => navigate(`/usuarios/${u.id}/editar`)}>
+                            <I.Edit size={13} />
+                          </button>
+                        )}
 
                         {podeGerenciarPermissoes && (
                           <button className="btn btn-sm btn-ghost" onClick={() => setGerenciandoId(u.id)}>
@@ -267,7 +339,7 @@ function Usuarios() {
                           </button>
                         )}
 
-                        {deletando === u.id ? (
+                        {podeExcluirUsuarios && Number(usuarioLogado?.id) !== Number(u.id) && (usuarioLogadoEhAdmin || u.role?.nome !== 'admin') && deletando === u.id ? (
                           <>
                             <button
                               className="btn btn-sm"
@@ -280,11 +352,11 @@ function Usuarios() {
                               Cancelar
                             </button>
                           </>
-                        ) : (
+                        ) : podeExcluirUsuarios && Number(usuarioLogado?.id) !== Number(u.id) && (usuarioLogadoEhAdmin || u.role?.nome !== 'admin') ? (
                           <button className="btn btn-icon btn-ghost" title="Excluir" onClick={() => handleDelete(u)}>
                             <I.Trash size={13} />
                           </button>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   ))

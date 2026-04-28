@@ -4,6 +4,17 @@ const OPERADORAS = [
   { nome: 'Claro', ordem: 3 }
 ];
 
+const TIPOS_VENDA = [
+  { nome: 'Novo', ordem: 1 },
+  { nome: 'Portabilidade', ordem: 2 }
+];
+
+const SERVICOS = [
+  { nome: 'Internet', ordem: 1 },
+  { nome: 'Telefonia fixa', ordem: 2 },
+  { nome: 'Telefonia móvel', ordem: 3 }
+];
+
 const LINKS_EXTERNOS = [
   {
     chave: 'receita-cnpj',
@@ -79,6 +90,14 @@ async function upsertPorCampo(knex, tabela, campo, item) {
 exports.seed = async function (knex) {
   for (const operadora of OPERADORAS) {
     await upsertPorCampo(knex, 'operadoras', 'nome', operadora);
+  }
+
+  for (const tipoVenda of TIPOS_VENDA) {
+    await upsertPorCampo(knex, 'tipos_venda', 'nome', tipoVenda);
+  }
+
+  for (const servico of SERVICOS) {
+    await upsertPorCampo(knex, 'servicos', 'nome', servico);
   }
 
   for (const link of LINKS_EXTERNOS) {

@@ -28,6 +28,40 @@ async function linksExternos(req, res) {
   }
 }
 
+async function tiposProduto(req, res) {
+  try {
+    const dados = await configService.listarTiposProdutoAtivos();
+
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao listar tipos de produto.'
+    });
+  }
+}
+
+async function tiposVenda(req, res) {
+  try {
+    const dados = await configService.listarTiposVendaAtivos();
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar tipos de venda.' });
+  }
+}
+
+async function servicos(req, res) {
+  try {
+    const dados = await configService.listarServicosAtivos();
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar servicos.' });
+  }
+}
+
 async function adminOperadoras(req, res) {
   try {
     const dados = await configService.listarOperadoras();
@@ -35,6 +69,156 @@ async function adminOperadoras(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Erro ao listar operadoras.' });
+  }
+}
+
+async function adminTiposProduto(req, res) {
+  try {
+    const dados = await configService.listarTiposProduto();
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar tipos de produto.' });
+  }
+}
+
+async function criarTipoProduto(req, res) {
+  try {
+    const tipoProduto = await configService.criarTipoProduto(req.body);
+    return res.status(201).json(tipoProduto);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao criar tipo de produto.' });
+  }
+}
+
+async function atualizarTipoProduto(req, res) {
+  try {
+    const tipoProduto = await configService.atualizarTipoProduto(req.params.id, req.body);
+
+    if (!tipoProduto) {
+      return res.status(404).json({ message: 'Tipo de produto nao encontrado.' });
+    }
+
+    return res.json(tipoProduto);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao atualizar tipo de produto.' });
+  }
+}
+
+async function excluirTipoProduto(req, res) {
+  try {
+    const totalExcluido = await configService.excluirTipoProduto(req.params.id);
+
+    if (!totalExcluido) {
+      return res.status(404).json({ message: 'Tipo de produto nao encontrado.' });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao excluir tipo de produto.' });
+  }
+}
+
+async function adminTiposVenda(req, res) {
+  try {
+    const dados = await configService.listarTiposVenda();
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar tipos de venda.' });
+  }
+}
+
+async function criarTipoVenda(req, res) {
+  try {
+    const tipoVenda = await configService.criarTipoVenda(req.body);
+    return res.status(201).json(tipoVenda);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao criar tipo de venda.' });
+  }
+}
+
+async function atualizarTipoVenda(req, res) {
+  try {
+    const tipoVenda = await configService.atualizarTipoVenda(req.params.id, req.body);
+
+    if (!tipoVenda) {
+      return res.status(404).json({ message: 'Tipo de venda nao encontrado.' });
+    }
+
+    return res.json(tipoVenda);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao atualizar tipo de venda.' });
+  }
+}
+
+async function excluirTipoVenda(req, res) {
+  try {
+    const totalExcluido = await configService.excluirTipoVenda(req.params.id);
+
+    if (!totalExcluido) {
+      return res.status(404).json({ message: 'Tipo de venda nao encontrado.' });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao excluir tipo de venda.' });
+  }
+}
+
+async function adminServicos(req, res) {
+  try {
+    const dados = await configService.listarServicos();
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar servicos.' });
+  }
+}
+
+async function criarServico(req, res) {
+  try {
+    const servico = await configService.criarServico(req.body);
+    return res.status(201).json(servico);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao criar servico.' });
+  }
+}
+
+async function atualizarServico(req, res) {
+  try {
+    const servico = await configService.atualizarServico(req.params.id, req.body);
+
+    if (!servico) {
+      return res.status(404).json({ message: 'Servico nao encontrado.' });
+    }
+
+    return res.json(servico);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao atualizar servico.' });
+  }
+}
+
+async function excluirServico(req, res) {
+  try {
+    const totalExcluido = await configService.excluirServico(req.params.id);
+
+    if (!totalExcluido) {
+      return res.status(404).json({ message: 'Servico nao encontrado.' });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao excluir servico.' });
   }
 }
 
@@ -131,10 +315,25 @@ async function excluirLinkExterno(req, res) {
 module.exports = {
   operadoras,
   linksExternos,
+  tiposProduto,
+  tiposVenda,
+  servicos,
   adminOperadoras,
   criarOperadora,
   atualizarOperadora,
   excluirOperadora,
+  adminTiposProduto,
+  criarTipoProduto,
+  atualizarTipoProduto,
+  excluirTipoProduto,
+  adminTiposVenda,
+  criarTipoVenda,
+  atualizarTipoVenda,
+  excluirTipoVenda,
+  adminServicos,
+  criarServico,
+  atualizarServico,
+  excluirServico,
   adminLinksExternos,
   criarLinkExterno,
   atualizarLinkExterno,

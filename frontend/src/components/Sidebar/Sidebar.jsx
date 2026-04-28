@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import * as I from '../Icons';
 import { temPermissao } from '../../services/auth.service';
 import { getMetas } from '../../services/meta.service';
@@ -12,13 +12,15 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
 
   const items = [
     { id: 'dashboard', label: 'Início', icon: <I.Home />, permission: 'vendas' },
+    { id: 'vendas', label: 'Vendas', icon: <I.Chart />, permission: ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir'] },
     { id: 'funil', label: 'Funil de vendas', icon: <I.Funnel />, badge: counts?.active, permission: 'vendas' },
     { id: 'retornos', label: 'Retornos', icon: <I.Return />, badge: counts?.returns, permission: 'vendas' },
     { id: 'historico', label: 'Histórico', icon: <I.History /> },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   const admin = [
-    { id: 'usuarios', label: 'Usuários', icon: <I.Users />, permission: 'crud_usuarios' },
+    { id: 'usuarios', label: 'Usuários', icon: <I.Users />, permission: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes'] },
+    { id: 'config', label: 'Configurações', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos'] },
     { id: 'metas', label: 'Configurar Metas', icon: <I.Settings />, permission: 'crud_usuarios' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
@@ -117,7 +119,17 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
             title="Editar perfil"
             style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', color: 'inherit' }}
           >
-            <div className="avatar">{getInitials(usuario?.nome)}</div>
+            <div className="avatar" style={{ overflow: 'hidden' }}>
+              {usuario?.foto_perfil ? (
+                <img
+                  src={usuario.foto_perfil}
+                  alt={usuario?.nome || 'Foto de perfil'}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                getInitials(usuario?.nome)
+              )}
+            </div>
             <div className="user-info">
               <div className="user-name">{usuario?.nome || 'Usuario'}</div>
               <div className="user-role">{usuario?.role?.nome || 'Perfil'}</div>
