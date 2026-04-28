@@ -1,16 +1,19 @@
 {
   "dependencies": {
     "knex": "^3.2.9"
-    
   },
-    
-    "name": "pos-venda",
-    "version": "1.0.0",
-    "private": true,
-    "scripts": {
-      "start": "npm --prefix backend start",
-      "postinstall": "npm --prefix backend install"
-    }
-  
-  
+  "name": "pos-venda",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix backend start",
+    "postinstall": "npm --prefix backend install"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.2",
+    "vite": "^8.0.10"
+  }
 }

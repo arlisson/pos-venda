@@ -70,7 +70,7 @@ function AppRoutes() {
 
       <Route
         path="/admin/metas"
-        element={<PrivateRoute permission="crud_usuarios"><AdminMetasPage /></PrivateRoute>}
+        element={<PrivateRoute permission="gerenciar_metas"><AdminMetasPage /></PrivateRoute>}
       />
 
       <Route path="/retornos" element={<PrivateRoute><RetornosPage /></PrivateRoute>} />
