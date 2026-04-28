@@ -78,7 +78,7 @@ function ConfiguracoesPage() {
 
       setDados({ operadoras, tiposVenda, servicos, links });
     } catch (error) {
-      setErro(error.message || 'Erro ao carregar configuracoes.');
+      setErro(error.message || 'Erro ao carregar configurações.');
     } finally {
       setCarregando(false);
     }
@@ -311,3 +311,4 @@ function ConfiguracoesPage() {
 }
 
 export default ConfiguracoesPage;
+;

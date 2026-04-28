@@ -92,8 +92,8 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
         setUsuario(usuarioData);
         setPermissoes(permissoesData);
         setSelecionadas(parsePermissoes(usuarioData.permissoes));
-      } catch {
-        setErro('Erro ao carregar permissoes do usuario.');
+      } catch (error) {
+        setErro('Erro ao carregar permissões do usuário.');
       } finally {
         setCarregando(false);
       }
@@ -296,7 +296,7 @@ function Usuarios() {
                 ) : usuarios.length === 0 ? (
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }} className="muted">
-                      Nenhum usuario encontrado.
+                      Nenhum usuário encontrado.
                     </td>
                   </tr>
                 ) : (
@@ -371,3 +371,4 @@ function Usuarios() {
 }
 
 export default Usuarios;
+

@@ -166,7 +166,7 @@ function HistoricoPage() {
 
           <div className="history-panel">
             {carregando ? (
-              <div className="history-empty">Carregando historico...</div>
+              <div className="history-empty">Carregando histórico...</div>
             ) : erro ? (
               <div className="history-empty error">{erro}</div>
             ) : logsFiltrados.length === 0 ? (
@@ -186,3 +186,4 @@ function HistoricoPage() {
 }
 
 export default HistoricoPage;
+
