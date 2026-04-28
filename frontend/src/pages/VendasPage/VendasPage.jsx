@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import {
@@ -392,6 +393,7 @@ function VendaModal({ venda, vendedoras, operadoras, tiposVenda, servicos, onClo
 }
 
 function VendasPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [vendas, setVendas] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
@@ -446,6 +448,24 @@ function VendasPage() {
     setModalVenda(null);
     setModalAberto(true);
   }
+
+  useEffect(() => {
+    function handleNovaVenda() {
+      if (podeCriarVenda) {
+        abrirNovaVenda();
+      }
+    }
+
+    window.addEventListener('pos-venda:nova-venda', handleNovaVenda);
+    return () => window.removeEventListener('pos-venda:nova-venda', handleNovaVenda);
+  }, [podeCriarVenda]);
+
+  useEffect(() => {
+    if (searchParams.get('nova') === '1' && podeCriarVenda) {
+      abrirNovaVenda();
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams, podeCriarVenda]);
 
   function abrirEdicao(venda) {
     setModalVenda(venda);
@@ -512,11 +532,6 @@ function VendasPage() {
             ))}
           </select>
 
-          {podeCriarVenda && (
-            <button className="btn btn-primary" onClick={abrirNovaVenda}>
-              <I.Plus size={14} /> Nova venda
-            </button>
-          )}
         </div>
 
         <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>

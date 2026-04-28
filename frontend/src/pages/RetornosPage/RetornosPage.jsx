@@ -1,0 +1,346 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
+import * as I from '../../components/Icons';
+import { DEFAULT_OPERATORS as OPERATORS, STAGES } from '../../config/constants';
+import { atualizarStatusVenda, listarVendas } from '../../services/venda.service';
+import './RetornosPage.css';
+
+const formatBRL = (value) =>
+  Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const RETURN_REASON_GROUPS = [
+  { id: 'endereco', label: 'Endereço inválido', desc: 'Devolvido pelos Correios', match: (r) => /endere|correios/i.test(r) },
+  { id: 'recusa', label: 'Cliente recusou', desc: 'Cliente não aceitou o recebimento', match: (r) => /recus/i.test(r) },
+  { id: 'danificado', label: 'Chip danificado', desc: 'Avaria no transporte ou produto', match: (r) => /danific|avaria/i.test(r) },
+  { id: 'cpf', label: 'Reprovado na operadora', desc: 'CPF/CNPJ não passou na análise', match: (r) => /cpf|cnpj|reprovad/i.test(r) },
+  { id: 'cancelamento', label: 'Cancelamento do cliente', desc: 'Cliente desistiu da compra', match: (r) => /cancel|desist/i.test(r) },
+  { id: 'outros', label: 'Outros motivos', desc: 'Casos sem categoria definida', match: () => true },
+];
+
+const STAGE_LABELS = Object.fromEntries(STAGES.map(stage => [stage.id, stage.name]));
+
+function classifyReason(reason) {
+  return RETURN_REASON_GROUPS.find(group => group.match(reason || '')) || RETURN_REASON_GROUPS.at(-1);
+}
+
+function relTime(value) {
+  if (!value) return 'recentemente';
+
+  const date = new Date(value);
+  const days = Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+  if (days === 0) return 'hoje';
+  if (days === 1) return 'ontem';
+  return `há ${days} dias`;
+}
+
+function getOperator(venda) {
+  return venda.operadora?.nome || venda.operadora || 'Sem operadora';
+}
+
+function getPlan(venda) {
+  return venda.produto_fechado || venda.servico?.nome || venda.tipoVenda?.nome || 'Plano não informado';
+}
+
+function getSeller(venda) {
+  return venda.vendedora?.nome || venda.nome_fechou_venda || 'Sem vendedor';
+}
+
+function getClient(venda) {
+  return venda.nome || venda.razao_social || `Venda #${venda.id}`;
+}
+
+function getValue(venda) {
+  return Number(venda.valor_total || 0);
+}
+
+function getReturnDate(venda) {
+  return venda.retornou_em || venda.updated_at || venda.ultima_atividade_em;
+}
+
+function getDestination(venda) {
+  return venda.status_anterior_retorno || 'aprovacao';
+}
+
+function ResolveReturnModal({ venda, onClose, onConfirm }) {
+  const [note, setNote] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const destination = getDestination(venda);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!note.trim()) {
+      setError('Informe o que foi corrigido.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      await onConfirm(venda, note.trim());
+    } catch (err) {
+      setError(err.message || 'Erro ao atualizar status.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <form className="modal return-status-modal" onSubmit={handleSubmit}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Atualizar status</div>
+              <div className="modal-sub">{getClient(venda)} · #{venda.id}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="return-status-summary">
+            <div>
+              <span>Motivo do retorno</span>
+              <strong>{venda.motivo_retorno || 'Sem motivo informado'}</strong>
+            </div>
+            <div>
+              <span>Destino após correção</span>
+              <strong>{STAGE_LABELS[destination] || destination}</strong>
+            </div>
+          </div>
+
+          <div className="form-field">
+            <label>O que foi corrigido?</label>
+            <textarea
+              className="obs-textarea"
+              value={note}
+              onChange={event => setNote(event.target.value)}
+              placeholder="Ex: endereço corrigido e confirmado com o cliente."
+              rows={4}
+            />
+          </div>
+
+          {error && <div className="alert-error">{error}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={saving || !note.trim()}>
+            {saving ? 'Atualizando...' : 'Confirmar correção'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function RetornosPage() {
+  const [operatorFilter, setOperatorFilter] = useState('todas');
+  const [reasonFilter, setReasonFilter] = useState('todos');
+  const [allSales, setAllSales] = useState([]);
+  const [allReturns, setAllReturns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedReturn, setSelectedReturn] = useState(null);
+
+  async function carregarRetornos() {
+    setLoading(true);
+    setError('');
+
+    try {
+      const [returnsData, salesData] = await Promise.all([
+        listarVendas({ status_funil: 'retorno' }),
+        listarVendas({})
+      ]);
+
+      setAllReturns(returnsData);
+      setAllSales(salesData);
+    } catch (err) {
+      setError(err.message || 'Erro ao carregar retornos.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    carregarRetornos();
+  }, []);
+
+  const groupCounts = useMemo(() => (
+    RETURN_REASON_GROUPS.map(group => {
+      const items = allReturns.filter(item => classifyReason(item.motivo_retorno).id === group.id);
+      return {
+        ...group,
+        count: items.length,
+        value: items.reduce((sum, item) => sum + getValue(item), 0),
+      };
+    })
+  ), [allReturns]);
+
+  const returns = allReturns.filter(item => {
+    const matchesOperator = operatorFilter === 'todas' || getOperator(item) === operatorFilter;
+    const matchesReason = reasonFilter === 'todos' || classifyReason(item.motivo_retorno).id === reasonFilter;
+    return matchesOperator && matchesReason;
+  });
+
+  const operators = Array.from(new Set([...OPERATORS, ...allReturns.map(getOperator)])).filter(Boolean);
+  const totalPerdaFiltrada = returns.reduce((sum, item) => sum + getValue(item), 0);
+  const totalPerda = allReturns.reduce((sum, item) => sum + getValue(item), 0);
+  const topReason = groupCounts.filter(group => group.count > 0).sort((a, b) => b.count - a.count)[0];
+  const topOperator = operators
+    .map(operator => ({ operator, count: allReturns.filter(item => getOperator(item) === operator).length }))
+    .sort((a, b) => b.count - a.count)[0];
+  const taxaRetorno = ((allReturns.length / Math.max(allSales.length, 1)) * 100).toFixed(1);
+
+  async function handleResolveReturn(venda, note) {
+    const destination = getDestination(venda);
+    await atualizarStatusVenda(venda.id, {
+      status_funil: destination,
+      nota_correcao_retorno: note
+    });
+
+    setAllReturns(prev => prev.filter(item => item.id !== venda.id));
+    setAllSales(prev => prev.map(item => (
+      item.id === venda.id
+        ? { ...item, status_funil: destination, nota_correcao_retorno: note, corrigido_em: new Date().toISOString() }
+        : item
+    )));
+    setSelectedReturn(null);
+  }
+
+  return (
+    <LayoutPrivado>
+      {selectedReturn && (
+        <ResolveReturnModal
+          venda={selectedReturn}
+          onClose={() => setSelectedReturn(null)}
+          onConfirm={handleResolveReturn}
+        />
+      )}
+
+      <div className="returns-page">
+        <div className="returns-kpis">
+          <div className="returns-kpi big-loss">
+            <div className="label">Perda total acumulada</div>
+            <div className="value">{formatBRL(totalPerda)}</div>
+            <div className="sub">{allReturns.length} {allReturns.length === 1 ? 'chip retornado' : 'chips retornados'}</div>
+          </div>
+          <div className="returns-kpi">
+            <div className="label">Maior motivo</div>
+            <div className="value-md">{topReason?.label || '-'}</div>
+            <div className="sub">{topReason?.count || 0} ocorrências</div>
+          </div>
+          <div className="returns-kpi">
+            <div className="label">Taxa de retorno</div>
+            <div className="value-md">{taxaRetorno}%</div>
+            <div className="sub">do total de vendas</div>
+          </div>
+          <div className="returns-kpi">
+            <div className="label">Operadora mais afetada</div>
+            <div className="value-md">{topOperator?.operator || '-'}</div>
+            <div className="sub">com mais devoluções</div>
+          </div>
+        </div>
+
+        {error && <div className="alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+        <div className="returns-grid single">
+          <div className="panel">
+            <div className="returns-panel-header">
+              <div className="returns-title-row">
+                <h3>
+                  Chips retornados
+                  {reasonFilter !== 'todos' && (
+                    <span className="muted"> · {RETURN_REASON_GROUPS.find(g => g.id === reasonFilter)?.label}</span>
+                  )}
+                </h3>
+                <span className="muted">
+                  {returns.length} {returns.length === 1 ? 'item' : 'itens'} ·{' '}
+                  <strong>{formatBRL(totalPerdaFiltrada)}</strong>
+                </span>
+              </div>
+
+              <div className="returns-filter-row">
+                <span>Motivo:</span>
+                <button className={`filter-chip ${reasonFilter === 'todos' ? 'active' : ''}`} onClick={() => setReasonFilter('todos')}>
+                  Todos ({allReturns.length})
+                </button>
+                {groupCounts.filter(group => group.count > 0).map(group => (
+                  <button
+                    key={group.id}
+                    className={`filter-chip ${reasonFilter === group.id ? 'active' : ''}`}
+                    onClick={() => setReasonFilter(group.id)}
+                  >
+                    {group.label} ({group.count})
+                  </button>
+                ))}
+              </div>
+
+              <div className="returns-filter-row">
+                <span>Operadora:</span>
+                {['todas', ...operators].map(operator => (
+                  <button
+                    key={operator}
+                    className={`filter-chip ${operatorFilter === operator ? 'active' : ''}`}
+                    onClick={() => setOperatorFilter(operator)}
+                  >
+                    {operator === 'todas' ? 'Todas' : operator}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="returns-list">
+              {loading ? (
+                <div className="empty">Carregando retornos...</div>
+              ) : returns.length === 0 ? (
+                <div className="empty">Nenhuma devolução com esses filtros.</div>
+              ) : (
+                returns.map(item => {
+                  const reason = classifyReason(item.motivo_retorno);
+                  return (
+                    <div key={item.id} className="return-item">
+                      <div className="return-item-left">
+                        <div className="return-reason-tag">
+                          <I.AlertTriangle size={12} />
+                          {reason.label}
+                        </div>
+                        <div className="return-client">{getClient(item)}</div>
+                        <div className="return-meta">
+                          <span>#{item.id}</span>
+                          <span>·</span>
+                          <span>{getOperator(item)}</span>
+                          <span>·</span>
+                          <span>{getPlan(item)}</span>
+                          <span>·</span>
+                          <span>Vendedor: {getSeller(item)}</span>
+                        </div>
+                        <div className="return-reason-detail">
+                          <span>Descrição</span>
+                          <div>{item.motivo_retorno || 'Sem descrição informada'}</div>
+                        </div>
+                      </div>
+                      <div className="return-item-right">
+                        <div className="return-value">{formatBRL(getValue(item))}</div>
+                        <div className="muted">Retornou {relTime(getReturnDate(item))}</div>
+                        <button className="btn btn-sm" onClick={() => setSelectedReturn(item)}>
+                          Atualizar status <I.ArrowRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </LayoutPrivado>
+  );
+}
+
+export default RetornosPage;

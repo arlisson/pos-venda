@@ -52,6 +52,15 @@ function LayoutPrivado({ children }) {
     if (routeMap[id]) navigate(routeMap[id]);
   };
 
+  function handleNewSale() {
+    if (location.pathname === '/vendas') {
+      window.dispatchEvent(new CustomEvent('pos-venda:nova-venda'));
+      return;
+    }
+
+    navigate('/vendas?nova=1');
+  }
+
   return (
     <div className="app">
       <Sidebar
@@ -66,7 +75,7 @@ function LayoutPrivado({ children }) {
         <Header
           title={currentConfig.title}
           subtitle={currentConfig.sub}
-          onNew={() => navigate('/usuarios/novo')}
+          onNew={handleNewSale}
         />
         <div className="content">
           {children}

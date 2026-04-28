@@ -1,4 +1,6 @@
-npx knex migrate:rollback --all
-npx knex migrate:latest
+cd backend
+
+npm run rollback -- --all
+npm run migrate
 
 npm run seed

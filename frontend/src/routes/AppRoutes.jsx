@@ -11,6 +11,7 @@ import EditarUsuarioPage from '../pages/EditarUsuarioPage/EditarUsuarioPage';
 import HistoricoPage from '../pages/HistoricoPage/HistoricoPage';
 import ConfiguracoesPage from '../pages/ConfiguracoesPage/ConfiguracoesPage';
 import VendasPage from '../pages/VendasPage/VendasPage';
+import RetornosPage from '../pages/RetornosPage/RetornosPage';
 import '../pages/HistoricoPage/HistoricoPage.css';
 
 import { getUsuarioLocal, temPermissao } from '../services/auth.service';
@@ -72,7 +73,7 @@ function AppRoutes() {
         element={<PrivateRoute permission="crud_usuarios"><AdminMetasPage /></PrivateRoute>}
       />
 
-      <Route path="/retornos" element={<PrivateRoute><FunilPage /></PrivateRoute>} />
+      <Route path="/retornos" element={<PrivateRoute><RetornosPage /></PrivateRoute>} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
       <Route path="/historico" element={<PrivateRoute><HistoricoPage /></PrivateRoute>} />
       <Route

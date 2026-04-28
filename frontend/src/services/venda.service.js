@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut } from './api';
+import { apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
 
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -27,6 +27,13 @@ export async function criarVenda(dados) {
 
 export async function atualizarVenda(id, dados) {
   return apiPut(`/vendas/${id}`, dados);
+}
+
+export async function atualizarStatusVenda(id, dados) {
+  return apiRequest(`/vendas/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify(dados)
+  });
 }
 
 export async function deletarVenda(id) {
