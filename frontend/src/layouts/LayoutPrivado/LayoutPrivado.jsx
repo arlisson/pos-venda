@@ -22,8 +22,7 @@ function LayoutPrivado({ children }) {
     '/usuarios': { title: 'Usuários', sub: 'Gerencie acessos e permissões', id: 'usuarios' },
     '/usuarios/novo': { title: 'Novo Usuário', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
     '/perfil': { title: 'Meu Perfil', sub: 'Gerencie seus dados e permissões', id: 'perfil' },
-    '/configuracoes': { title: 'Configurações', sub: 'Personalize o sistema', id: 'config' },
-    '/admin/metas': { title: 'Configurar Metas', sub: 'Gerencie as metas diárias e os presentes', id: 'metas' },
+    '/configuracoes': { title: 'Configuracoes', sub: 'Gerencie operadoras e links externos', id: 'config' },
   };
 
   const currentConfig = routeConfig[location.pathname] || { title: 'Sistema', sub: '', id: '' };

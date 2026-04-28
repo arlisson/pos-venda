@@ -18,9 +18,19 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   const admin = [
+<<<<<<< HEAD
     { id: 'usuarios', label: 'Usuários', icon: <I.Users />, permission: 'crud_usuarios' },
     { id: 'metas', label: 'Configurar Metas', icon: <I.Settings />, permission: 'crud_usuarios' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
+=======
+    { id: 'usuarios', label: 'Usuarios', icon: <I.Users />, permission: 'crud_usuarios' },
+    { id: 'config', label: 'Configuracoes', icon: <I.Settings />, anyPermission: ['crud_operadoras', 'crud_links'] },
+  ].filter(it => {
+    if (it.permission) return temPermissao(usuario, it.permission);
+    if (it.anyPermission) return it.anyPermission.some(permission => temPermissao(usuario, permission));
+    return true;
+  });
+>>>>>>> aaa90b398ece4b5ea734ca6aa740d0fb84c4b06f
 
   const getInitials = (name) => {
     if (!name) return '??';
