@@ -39,6 +39,20 @@ router.put(
   }),
   vendaController.update
 );
+router.patch(
+  '/:id/status',
+  exigirUmaPermissao(['vendas_editar']),
+  auditar({
+    acao: 'venda.status_atualizado',
+    entidade: 'vendas',
+    entidade_id: req => req.params.id,
+    dados: req => ({
+      id: req.params.id,
+      alteracoes: req.body
+    })
+  }),
+  vendaController.updateStatus
+);
 router.delete(
   '/:id',
   exigirUmaPermissao(['vendas_excluir']),

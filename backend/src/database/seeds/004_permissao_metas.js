@@ -1,26 +1,45 @@
-/**
- * @param { import("knex").Knex } knex
- * @returns { Promise<void> }
- */
+function parsePermissoes(permissoes) {
+  if (!permissoes) {
+    return {};
+  }
+
+  if (typeof permissoes === 'string') {
+    try {
+      const parsed = JSON.parse(permissoes);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  return typeof permissoes === 'object' && !Array.isArray(permissoes) ? permissoes : {};
+}
+
 exports.seed = async function(knex) {
-  // 1. Insere a nova permissão para gerenciar metas
-  // Usamos o campo 'chave' como identificador único
   await knex('permissoes').insert({
     chave: 'gerenciar_metas',
     nome: 'Gerenciar Metas',
-    descricao: 'Permite configurar as metas globais e de gamificação',
+    descricao: 'Permite configurar as metas globais e de gamificacao',
     ativo: true
-  }).onConflict('chave').ignore();
+  }).onConflict('chave').merge({
+    nome: 'Gerenciar Metas',
+    descricao: 'Permite configurar as metas globais e de gamificacao',
+    ativo: true
+  });
 
-  // 2. Busca o ID da permissão que acabamos de criar e o ID da role 'admin'
-  const permissao = await knex('permissoes').where('chave', 'gerenciar_metas').first();
   const roleAdmin = await knex('roles').where('nome', 'admin').first();
 
-  // 3. Associa a permissão ao perfil administrador na tabela intermediária
-  if (permissao && roleAdmin) {
-    await knex('roles_permissoes').insert({
-      role_id: roleAdmin.id,
-      permissao_id: permissao.id
-    }).onConflict(['role_id', 'permissao_id']).ignore();
+  if (roleAdmin) {
+    const permissoes = parsePermissoes(roleAdmin.permissoes);
+
+    await knex('roles')
+      .where('id', roleAdmin.id)
+      .update({
+        permissoes: JSON.stringify({
+          ...permissoes,
+          gerenciar_metas: true
+        }),
+        updated_at: knex.fn.now()
+      });
   }
 };

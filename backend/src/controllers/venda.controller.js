@@ -71,6 +71,34 @@ async function update(req, res) {
   }
 }
 
+async function updateStatus(req, res) {
+  try {
+    const resultado = await vendaService.atualizarStatusVenda(req.params.id, req.body, req.usuario.id);
+
+    if (resultado.status === 'not_found') {
+      return res.status(404).json({
+        message: 'Venda nao encontrada.'
+      });
+    }
+
+    if (resultado.status === 'invalid') {
+      return res.status(400).json({
+        message: resultado.message
+      });
+    }
+
+    const vendaCompleta = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
+
+    return res.json(vendaCompleta);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao atualizar status da venda.'
+    });
+  }
+}
+
 async function destroy(req, res) {
   try {
     const totalExcluido = await vendaService.excluirVenda(req.params.id, req.usuario.id);
@@ -110,6 +138,7 @@ module.exports = {
   show,
   store,
   update,
+  updateStatus,
   destroy,
   vendedoras
 };

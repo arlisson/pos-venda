@@ -13,6 +13,7 @@ exports.up = function (knex) {
 
 exports.down = function (knex) {
   return knex.schema.alterTable('vendas', function (table) {
+    table.dropForeign(['operadora_id']);
     table.dropColumn('operadora_id');
   });
 };

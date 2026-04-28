@@ -40,8 +40,16 @@ const CAMPOS = [
   'nome_administrador',
   'cpf_administrador',
   'operadora_id',
-  'vendedora_id'
+  'vendedora_id',
+  'status_funil',
+  'status_anterior_retorno',
+  'motivo_retorno',
+  'nota_correcao_retorno',
+  'retornou_em',
+  'corrigido_em'
 ];
+
+const FUNIL_STATUS = ['aprovacao', 'ativacao', 'envio', 'entrega', 'confirmacao', 'concluido', 'retorno'];
 
 function limparValor(valor) {
   if (valor === undefined) return undefined;
@@ -293,6 +301,10 @@ async function listarVendas(filtros = {}, usuarioId) {
     query.where('vendedora_id', Number(filtros.vendedora_id));
   }
 
+  if (filtros.status_funil) {
+    query.where('status_funil', filtros.status_funil);
+  }
+
   return query;
 }
 
@@ -336,6 +348,84 @@ async function atualizarVenda(id, dados, usuarioId) {
   });
 }
 
+function validarStatusFunil(status) {
+  return FUNIL_STATUS.includes(status);
+}
+
+async function atualizarStatusVenda(id, dados, usuarioId) {
+  const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
+
+  if (!permitido) {
+    return { status: 'not_found' };
+  }
+
+  const venda = await Venda.query().findById(id);
+
+  if (!venda) {
+    return { status: 'not_found' };
+  }
+
+  const agora = new Date();
+  const status = dados.status_funil;
+
+  if (!validarStatusFunil(status)) {
+    return { status: 'invalid', message: 'Status do funil invalido.' };
+  }
+
+  if (status === 'retorno') {
+    const motivo = String(dados.motivo_retorno || '').trim();
+
+    if (!motivo) {
+      return { status: 'invalid', message: 'Informe o motivo do retorno.' };
+    }
+
+    const statusAnterior = venda.status_funil && venda.status_funil !== 'retorno'
+      ? venda.status_funil
+      : (venda.status_anterior_retorno || 'aprovacao');
+
+    const vendaAtualizada = await Venda.query().patchAndFetchById(id, {
+      status_funil: 'retorno',
+      status_anterior_retorno: statusAnterior,
+      motivo_retorno: motivo,
+      nota_correcao_retorno: null,
+      retornou_em: agora,
+      corrigido_em: null,
+      ultima_atividade_em: agora,
+      updated_at: agora
+    });
+
+    return { status: 'ok', venda: vendaAtualizada };
+  }
+
+  if (venda.status_funil === 'retorno') {
+    const nota = String(dados.nota_correcao_retorno || '').trim();
+
+    if (!nota) {
+      return { status: 'invalid', message: 'Informe o que foi corrigido.' };
+    }
+
+    const destino = venda.status_anterior_retorno || 'aprovacao';
+
+    const vendaAtualizada = await Venda.query().patchAndFetchById(id, {
+      status_funil: destino,
+      nota_correcao_retorno: nota,
+      corrigido_em: agora,
+      ultima_atividade_em: agora,
+      updated_at: agora
+    });
+
+    return { status: 'ok', venda: vendaAtualizada };
+  }
+
+  const vendaAtualizada = await Venda.query().patchAndFetchById(id, {
+    status_funil: status,
+    ultima_atividade_em: agora,
+    updated_at: agora
+  });
+
+  return { status: 'ok', venda: vendaAtualizada };
+}
+
 async function excluirVenda(id, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
 
@@ -358,6 +448,7 @@ module.exports = {
   buscarVendaPorId,
   criarVenda,
   atualizarVenda,
+  atualizarStatusVenda,
   excluirVenda,
   listarVendedoras
 };
