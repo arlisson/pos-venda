@@ -1,5 +1,6 @@
 const Venda = require('../models/Venda');
 const Usuario = require('../models/Usuario');
+const clienteService = require('./cliente.service');
 
 const CAMPOS = [
   'nome',
@@ -26,6 +27,7 @@ const CAMPOS = [
   'data_venda',
   'qc_feito_por',
   'observacoes',
+  'cliente_id',
   'dia_vencimento',
   'endereco',
   'numero_endereco',
@@ -158,6 +160,10 @@ function montarPayload(dados) {
     payload.operadora_id = Number(payload.operadora_id);
   }
 
+  if (payload.cliente_id !== undefined && payload.cliente_id !== null) {
+    payload.cliente_id = Number(payload.cliente_id);
+  }
+
   if (payload.tipo_venda_id !== undefined && payload.tipo_venda_id !== null) {
     payload.tipo_venda_id = Number(payload.tipo_venda_id);
   }
@@ -186,6 +192,36 @@ function montarPayload(dados) {
   }
 
   return payload;
+}
+
+function aplicarDadosClienteNaVenda(payload, cliente) {
+  if (!cliente) {
+    return payload;
+  }
+
+  const telefoneWhatsapp = [cliente.whatsapp_ddd, cliente.whatsapp_numero]
+    .filter(Boolean)
+    .join('');
+  const telefoneFixo = [cliente.fixo_ddd, cliente.fixo_numero]
+    .filter(Boolean)
+    .join('');
+
+  return {
+    ...payload,
+    nome: payload.nome || cliente.nome,
+    razao_social: payload.razao_social || cliente.razao_social,
+    cnpj: payload.cnpj || cliente.cnpj,
+    email: payload.email || cliente.email,
+    telefone: payload.telefone || telefoneWhatsapp || null,
+    fixo_ddd: payload.fixo_ddd || telefoneFixo || null,
+    nome_representante_legal: payload.nome_representante_legal || (
+      cliente.responsavel_tipo === 'rl' ? cliente.responsavel_nome : null
+    ),
+    nome_administrador: payload.nome_administrador || (
+      cliente.responsavel_tipo === 'adm' ? cliente.responsavel_nome : null
+    ),
+    quantidade_linhas: payload.quantidade_linhas || cliente.quantidade_chips
+  };
 }
 
 function parsePermissoes(permissoes) {
@@ -276,7 +312,7 @@ async function usuarioPodeAcessarVenda(id, usuarioId) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[vendedora, operadora, tipoVenda, servico, criador]')
+    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador]')
     .orderBy('data_venda', 'desc')
     .orderBy('id', 'desc');
 
@@ -312,7 +348,7 @@ async function buscarVendaPorId(id, usuarioId) {
   const escopo = usuarioId ? await buscarEscopoVendas(usuarioId) : { podeVerTodas: true };
   const query = Venda.query()
     .findById(id)
-    .withGraphFetched('[vendedora, operadora, tipoVenda, servico, criador]');
+    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador]');
 
   if (usuarioId) {
     aplicarEscopoVendas(query, usuarioId, escopo);
@@ -323,9 +359,20 @@ async function buscarVendaPorId(id, usuarioId) {
 
 async function criarVenda(dados, usuarioId) {
   const agora = new Date();
+  let payload = montarPayload(dados);
+
+  if (payload.cliente_id) {
+    const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
+
+    if (!cliente) {
+      throw new Error('Cliente nao encontrado.');
+    }
+
+    payload = aplicarDadosClienteNaVenda(payload, cliente);
+  }
 
   return Venda.query().insertAndFetch({
-    ...montarPayload(dados),
+    ...payload,
     criado_por_id: usuarioId,
     criado_em: agora,
     ultima_atividade_em: agora
@@ -340,9 +387,20 @@ async function atualizarVenda(id, dados, usuarioId) {
   }
 
   const agora = new Date();
+  let payload = montarPayload(dados);
+
+  if (payload.cliente_id) {
+    const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
+
+    if (!cliente) {
+      throw new Error('Cliente nao encontrado.');
+    }
+
+    payload = aplicarDadosClienteNaVenda(payload, cliente);
+  }
 
   return Venda.query().patchAndFetchById(id, {
-    ...montarPayload(dados),
+    ...payload,
     ultima_atividade_em: agora,
     updated_at: agora
   });

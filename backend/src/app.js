@@ -11,6 +11,7 @@ const auditLogRoutes = require('./routes/audit-log.routes');
 const configRoutes = require('./routes/config.routes');
 const metaRoutes = require('./routes/meta.routes');
 const vendaRoutes = require('./routes/venda.routes');
+const clienteRoutes = require('./routes/cliente.routes');
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/metas', metaRoutes);
 app.use('/api/vendas', vendaRoutes);
+app.use('/api/clientes', clienteRoutes);
 
 app.get('/api/health', (req, res) => {
   return res.json({
