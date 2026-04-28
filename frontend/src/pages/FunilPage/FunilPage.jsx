@@ -391,7 +391,7 @@ function SaleCard({ sale, onClick }) {
   );
 }
 
-function HomePage() {
+function FunilPage() {
   const [sales, setSales] = useState(INITIAL_SALES);
   const [filter, setFilter] = useState('todas');
   const [selectedSaleId, setSelectedSaleId] = useState(null);
@@ -534,4 +534,4 @@ function HomePage() {
   );
 }
 
-export default HomePage;
+export default FunilPage;

@@ -15,26 +15,28 @@ function LayoutPrivado({ children }) {
   }
 
   const routeConfig = {
-    '/': { title: 'Funil de vendas', sub: 'Acompanhe cada venda do lançamento até a conclusão', id: 'funil' },
+    '/': { title: 'Dashboard', sub: 'Indicadores, metas e gamificação', id: 'dashboard' },
+    '/funil': { title: 'Funil de vendas', sub: 'Acompanhe cada venda do lançamento até a conclusão', id: 'funil' },
     '/retornos': { title: 'Retornos', sub: 'Chips que retornaram por algum erro', id: 'retornos' },
-    '/dashboard': { title: 'Relatórios', sub: 'Indicadores e produtividade', id: 'dashboard' },
     '/historico': { title: 'Histórico', sub: 'Todas as movimentações do sistema', id: 'historico' },
     '/usuarios': { title: 'Usuários', sub: 'Gerencie acessos e permissões', id: 'usuarios' },
     '/usuarios/novo': { title: 'Novo Usuário', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
     '/perfil': { title: 'Meu Perfil', sub: 'Gerencie seus dados e permissões', id: 'perfil' },
     '/configuracoes': { title: 'Configurações', sub: 'Personalize o sistema', id: 'config' },
+    '/admin/metas': { title: 'Configurar Metas', sub: 'Gerencie as metas diárias e os presentes', id: 'metas' },
   };
 
   const currentConfig = routeConfig[location.pathname] || { title: 'Sistema', sub: '', id: '' };
 
   const handleSetPage = (id) => {
     const routeMap = {
-      'funil': '/',
+      'dashboard': '/',
+      'funil': '/funil',
       'retornos': '/retornos',
-      'dashboard': '/dashboard',
       'historico': '/historico',
       'usuarios': '/usuarios',
       'config': '/configuracoes',
+      'metas': '/admin/metas',
     };
     if (routeMap[id]) navigate(routeMap[id]);
   };
