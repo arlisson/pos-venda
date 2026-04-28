@@ -54,6 +54,9 @@ class Venda extends Model {
         nome_administrador: { type: ['string', 'null'], maxLength: 240 },
         cpf_administrador: { type: ['string', 'null'], maxLength: 40 },
         operadora_id: { type: ['integer', 'null'] },
+        tipo_produto_id: { type: ['integer', 'null'] },
+        tipo_venda_id: { type: ['integer', 'null'] },
+        servico_id: { type: ['integer', 'null'] },
         criado_por_id: { type: ['integer', 'null'] },
         vendedora_id: { type: 'integer' },
         created_at: { type: ['string', 'object'] },
@@ -65,6 +68,9 @@ class Venda extends Model {
   static get relationMappings() {
     const Usuario = require('./Usuario');
     const Operadora = require('./Operadora');
+    const TipoProduto = require('./TipoProduto');
+    const TipoVenda = require('./TipoVenda');
+    const Servico = require('./Servico');
 
     return {
       operadora: {
@@ -73,6 +79,30 @@ class Venda extends Model {
         join: {
           from: 'vendas.operadora_id',
           to: 'operadoras.id'
+        }
+      },
+      tipoProduto: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: TipoProduto,
+        join: {
+          from: 'vendas.tipo_produto_id',
+          to: 'tipos_produto.id'
+        }
+      },
+      tipoVenda: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: TipoVenda,
+        join: {
+          from: 'vendas.tipo_venda_id',
+          to: 'tipos_venda.id'
+        }
+      },
+      servico: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Servico,
+        join: {
+          from: 'vendas.servico_id',
+          to: 'servicos.id'
         }
       },
       criador: {

@@ -75,7 +75,10 @@ function AppRoutes() {
       <Route path="/retornos" element={<PrivateRoute><FunilPage /></PrivateRoute>} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
       <Route path="/historico" element={<PrivateRoute><HistoricoPage /></PrivateRoute>} />
-      <Route path="/configuracoes" element={<PrivateRoute><ConfiguracoesPage /></PrivateRoute>} />
+      <Route
+        path="/configuracoes"
+        element={<PrivateRoute permission={['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos']}><ConfiguracoesPage /></PrivateRoute>}
+      />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

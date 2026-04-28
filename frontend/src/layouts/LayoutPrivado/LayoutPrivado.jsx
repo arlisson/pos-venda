@@ -22,7 +22,7 @@ function LayoutPrivado({ children }) {
     '/usuarios': { title: 'Usuários', sub: 'Gerencie acessos e permissões', id: 'usuarios' },
     '/usuarios/novo': { title: 'Novo Usuário', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
     '/perfil': { title: 'Meu Perfil', sub: 'Gerencie seus dados e permissões', id: 'perfil' },
-    '/configuracoes': { title: 'Configuracoes', sub: 'Gerencie operadoras e links externos', id: 'config' },
+    '/configuracoes': { title: 'Configuracoes', sub: 'Gerencie operadoras, tipos de venda, servicos e links externos', id: 'config' },
   };
 
   const currentConfig = routeConfig[location.pathname] || { title: 'Sistema', sub: '', id: '' };

@@ -8,7 +8,7 @@ import {
   listarVendas,
   listarVendedoras
 } from '../../services/venda.service';
-import { listarOperadoras } from '../../services/config.service';
+import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import './VendasPage.css';
 
@@ -23,6 +23,8 @@ const VENDA_VAZIA = {
   cpf_representante_legal: '',
   setor_funcao: '',
   produto_fechado: '',
+  tipo_venda_id: '',
+  servico_id: '',
   quantidade_linhas: '',
   ddd: '',
   numeros_portados: '',
@@ -53,6 +55,8 @@ const VENDA_VAZIA = {
   vendedora_id: ''
 };
 
+const ITEM_CHIP_VAZIO = { quantidade: '', valor_unitario: '' };
+
 const CAMPOS = [
   { section: 'Cliente' },
   { name: 'nome', label: 'Nome', required: true },
@@ -72,13 +76,13 @@ const CAMPOS = [
 
   { section: 'Produto e valores' },
   { name: 'operadora_id', label: 'Operadora', type: 'operator', required: true },
-  { name: 'produto_fechado', label: 'Qual produto fechou' },
+  { name: 'tipo_venda_id', label: 'Tipo de venda', type: 'saleType', required: true },
+  { name: 'servico_id', label: 'Servico', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'gb', label: 'GB (Gigas)' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
-  { name: 'valor_total', label: 'Valor total fechado', type: 'number', step: '0.01' },
-  { name: 'valores_unitarios_chips', label: 'Valores unitarios de cada chip', type: 'textarea', span: true },
+  { name: 'valores_unitarios_chips', label: 'Valores unitarios de cada chip', type: 'chips', span: true },
   { name: 'numeros_portados', label: 'Numeros a serem portados', type: 'textarea', span: true },
 
   { section: 'Empresa e local' },
@@ -124,20 +128,151 @@ function formatarMoeda(value) {
   });
 }
 
+function parseValorInput(valor) {
+  if (valor === undefined || valor === null || valor === '') return 0;
+  return Number(String(valor).replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function formatarInputMoedaBR(valor) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+
+  if (!digitos) return '';
+
+  const numero = Number(digitos) / 100;
+
+  return numero.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function calcularTotalItensChips(itens = []) {
+  return itens.reduce((acc, item) => (
+    acc + (Number(item.quantidade || 0) * parseValorInput(item.valor_unitario))
+  ), 0);
+}
+
+function parseItensChips(valor) {
+  if (!valor) return [{ ...ITEM_CHIP_VAZIO }];
+
+  if (Array.isArray(valor)) {
+    const itens = valor.map(item => ({
+      quantidade: item.quantidade ? String(item.quantidade) : '',
+      valor_unitario: item.valor_unitario ? String(item.valor_unitario).replace('.', ',') : ''
+    }));
+
+    return itens.length > 0 ? itens : [{ ...ITEM_CHIP_VAZIO }];
+  }
+
+  if (typeof valor === 'string') {
+    try {
+      return parseItensChips(JSON.parse(valor));
+    } catch {
+      const itens = valor
+        .split(/\r?\n/)
+        .map(linha => linha.trim())
+        .filter(Boolean)
+        .map(linha => {
+          const match = linha.match(/^(\d+)\s*x\s*([\d.,]+)$/i);
+
+          if (!match) return null;
+
+          return {
+            quantidade: match[1],
+            valor_unitario: match[2]
+          };
+        })
+        .filter(Boolean);
+
+      return itens.length > 0 ? itens : [{ ...ITEM_CHIP_VAZIO }];
+    }
+  }
+
+  return [{ ...ITEM_CHIP_VAZIO }];
+}
+
 function normalizarVenda(venda) {
   return {
     ...VENDA_VAZIA,
     ...venda,
     data_venda: toInputDate(venda.data_venda),
     valor_total: venda.valor_total ?? '',
+    valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips),
     quantidade_linhas: venda.quantidade_linhas ?? '',
     dia_vencimento: venda.dia_vencimento ?? '',
     operadora_id: venda.operadora_id ? String(venda.operadora_id) : '',
+    tipo_venda_id: venda.tipo_venda_id ? String(venda.tipo_venda_id) : '',
+    servico_id: venda.servico_id ? String(venda.servico_id) : '',
     vendedora_id: venda.vendedora_id ? String(venda.vendedora_id) : ''
   };
 }
 
-function VendaModal({ venda, vendedoras, operadoras, onClose, onSave }) {
+function ItensChipsInput({ value, onChange }) {
+  const itens = Array.isArray(value) && value.length > 0 ? value : [{ ...ITEM_CHIP_VAZIO }];
+  const total = calcularTotalItensChips(itens);
+
+  function atualizarItem(index, campo, novoValor) {
+    onChange(itens.map((item, itemIndex) => (
+      itemIndex === index ? { ...item, [campo]: novoValor } : item
+    )));
+  }
+
+  function adicionarItem() {
+    onChange([...itens, { ...ITEM_CHIP_VAZIO }]);
+  }
+
+  function removerItem(index) {
+    const proximos = itens.filter((_, itemIndex) => itemIndex !== index);
+    onChange(proximos.length > 0 ? proximos : [{ ...ITEM_CHIP_VAZIO }]);
+  }
+
+  return (
+    <div className="chip-items">
+      <div className="chip-items__head">
+        <span>Quantidade</span>
+        <span>Valor unitario</span>
+        <span>Subtotal</span>
+        <span></span>
+      </div>
+
+      {itens.map((item, index) => {
+        const subtotal = Number(item.quantidade || 0) * parseValorInput(item.valor_unitario);
+
+        return (
+          <div key={index} className="chip-item-row">
+            <input
+              type="number"
+              min="1"
+              value={item.quantidade}
+              onChange={e => atualizarItem(index, 'quantidade', e.target.value)}
+              placeholder="3"
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              value={item.valor_unitario}
+              onChange={e => atualizarItem(index, 'valor_unitario', formatarInputMoedaBR(e.target.value))}
+              placeholder="29,99"
+            />
+            <div className="chip-item-subtotal">{formatarMoeda(subtotal)}</div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerItem(index)} title="Remover item">
+              <I.Trash size={13} />
+            </button>
+          </div>
+        );
+      })}
+
+      <div className="chip-items__footer">
+        <button type="button" className="btn btn-sm" onClick={adicionarItem}>
+          <I.Plus size={13} /> Adicionar valor
+        </button>
+        <strong>{formatarMoeda(total)}</strong>
+      </div>
+    </div>
+  );
+}
+
+function VendaModal({ venda, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave }) {
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : VENDA_VAZIA);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -152,7 +287,19 @@ function VendaModal({ venda, vendedoras, operadoras, onClose, onSave }) {
     setSalvando(true);
 
     try {
-      await onSave(form);
+      const payload = {
+        ...form,
+        valores_unitarios_chips: (form.valores_unitarios_chips || [])
+          .map(item => ({
+            quantidade: Number(item.quantidade || 0),
+            valor_unitario: parseValorInput(item.valor_unitario)
+          }))
+          .filter(item => item.quantidade > 0 && item.valor_unitario > 0)
+      };
+
+      payload.valor_total = calcularTotalItensChips(form.valores_unitarios_chips);
+
+      await onSave(payload);
     } catch (error) {
       setErro(error.message || 'Erro ao salvar venda.');
       setSalvando(false);
@@ -184,17 +331,30 @@ function VendaModal({ venda, vendedoras, operadoras, onClose, onSave }) {
               return (
                 <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''}`}>
                   <label>{campo.label}</label>
-                  {campo.type === 'seller' || campo.type === 'operator' ? (
+                  {['seller', 'operator', 'saleType', 'service'].includes(campo.type) ? (
                     <select
                       value={form[campo.name]}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
                       required={campo.required}
                     >
                       <option value="">Selecione</option>
-                      {(campo.type === 'seller' ? vendedoras : operadoras).map(item => (
+                      {(
+                        campo.type === 'seller'
+                          ? vendedoras
+                          : campo.type === 'operator'
+                            ? operadoras
+                            : campo.type === 'saleType'
+                              ? tiposVenda
+                              : servicos
+                      ).map(item => (
                         <option key={item.id} value={item.id}>{item.nome}</option>
                       ))}
                     </select>
+                  ) : campo.type === 'chips' ? (
+                    <ItensChipsInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                    />
                   ) : campo.type === 'textarea' ? (
                     <textarea
                       value={form[campo.name]}
@@ -235,6 +395,8 @@ function VendasPage() {
   const [vendas, setVendas] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
+  const [tiposVenda, setTiposVenda] = useState([]);
+  const [servicos, setServicos] = useState([]);
   const [busca, setBusca] = useState('');
   const [vendedoraId, setVendedoraId] = useState('');
   const [carregando, setCarregando] = useState(true);
@@ -254,15 +416,19 @@ function VendasPage() {
     setCarregando(true);
 
     try {
-      const [vendasData, vendedorasData, operadorasData] = await Promise.all([
+      const [vendasData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
         listarVendas(filtros),
         listarVendedoras(),
-        listarOperadoras()
+        listarOperadoras(),
+        listarTiposVenda(),
+        listarServicos()
       ]);
 
       setVendas(vendasData);
       setVendedoras(vendedorasData);
       setOperadoras(operadorasData);
+      setTiposVenda(tiposVendaData);
+      setServicos(servicosData);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar vendas.');
     } finally {
@@ -321,6 +487,8 @@ function VendasPage() {
           venda={modalVenda}
           vendedoras={vendedoras}
           operadoras={operadoras}
+          tiposVenda={tiposVenda}
+          servicos={servicos}
           onClose={() => setModalAberto(false)}
           onSave={salvarVenda}
         />
@@ -333,7 +501,7 @@ function VendasPage() {
             <input
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar por nome, telefone, produto, CNPJ ou cidade"
+              placeholder="Buscar por nome, telefone, tipo, servico, CNPJ ou cidade"
             />
           </div>
 
@@ -364,7 +532,8 @@ function VendasPage() {
                 <tr>
                   <th>Cliente</th>
                   <th>Operadora</th>
-                  <th>Produto</th>
+                  <th>Tipo</th>
+                  <th>Serviço</th>
                   <th>Linhas</th>
                   <th>GB</th>
                   <th>Valor</th>
@@ -377,13 +546,13 @@ function VendasPage() {
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan="10" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan="11" className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando vendas...
                     </td>
                   </tr>
                 ) : vendas.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan="11" className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhuma venda encontrada.
                     </td>
                   </tr>
@@ -397,7 +566,8 @@ function VendasPage() {
                         </div>
                       </td>
                       <td><span className="tag">{venda.operadora?.nome || '-'}</span></td>
-                      <td>{venda.produto_fechado || '-'}</td>
+                      <td>{venda.tipoVenda?.nome || venda.produto_fechado || '-'}</td>
+                      <td>{venda.servico?.nome || '-'}</td>
                       <td>{venda.quantidade_linhas || '-'}</td>
                       <td>{venda.gb || '-'}</td>
                       <td className="vendas-value">{formatarMoeda(venda.valor_total)}</td>

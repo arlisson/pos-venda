@@ -12,12 +12,13 @@ const CAMPOS = [
   'cpf_representante_legal',
   'setor_funcao',
   'produto_fechado',
+  'tipo_venda_id',
+  'servico_id',
   'quantidade_linhas',
   'ddd',
   'numeros_portados',
   'gb',
   'valores_unitarios_chips',
-  'valor_total',
   'ponto_referencia',
   'tipo_local_cpf',
   'razao_social',
@@ -62,6 +63,70 @@ function normalizarData(valor) {
   return `${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
 }
 
+function parseValorMonetario(valor) {
+  if (valor === undefined || valor === null || valor === '') return 0;
+
+  if (typeof valor === 'number') {
+    return valor;
+  }
+
+  const texto = String(valor)
+    .replace(/\s/g, '')
+    .replace(/^R\$/i, '');
+
+  if (texto.includes(',')) {
+    return Number(texto.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+
+  return Number(texto) || 0;
+}
+
+function normalizarItensChips(valor) {
+  if (!valor) return [];
+
+  if (Array.isArray(valor)) {
+    return valor
+      .map(item => ({
+        quantidade: Number(item.quantidade || 0),
+        valor_unitario: parseValorMonetario(item.valor_unitario)
+      }))
+      .filter(item => item.quantidade > 0 && item.valor_unitario > 0);
+  }
+
+  if (typeof valor === 'string') {
+    try {
+      const parsed = JSON.parse(valor);
+      return normalizarItensChips(parsed);
+    } catch {
+      return valor
+        .split(/\r?\n/)
+        .map(linha => linha.trim())
+        .filter(Boolean)
+        .map(linha => {
+          const match = linha.match(/^(\d+)\s*x\s*([\d.,]+)$/i);
+
+          if (!match) return null;
+
+          return {
+            quantidade: Number(match[1]),
+            valor_unitario: parseValorMonetario(match[2])
+          };
+        })
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+}
+
+function calcularTotalChips(itens) {
+  const total = itens.reduce((acc, item) => {
+    return acc + (Number(item.quantidade || 0) * Number(item.valor_unitario || 0));
+  }, 0);
+
+  return Number(total.toFixed(2));
+}
+
 function montarPayload(dados) {
   const payload = {};
 
@@ -85,6 +150,14 @@ function montarPayload(dados) {
     payload.operadora_id = Number(payload.operadora_id);
   }
 
+  if (payload.tipo_venda_id !== undefined && payload.tipo_venda_id !== null) {
+    payload.tipo_venda_id = Number(payload.tipo_venda_id);
+  }
+
+  if (payload.servico_id !== undefined && payload.servico_id !== null) {
+    payload.servico_id = Number(payload.servico_id);
+  }
+
   if (payload.quantidade_linhas !== undefined && payload.quantidade_linhas !== null) {
     payload.quantidade_linhas = Number(payload.quantidade_linhas);
   }
@@ -93,8 +166,11 @@ function montarPayload(dados) {
     payload.dia_vencimento = Number(payload.dia_vencimento);
   }
 
-  if (payload.valor_total !== undefined && payload.valor_total !== null) {
-    payload.valor_total = Number(String(payload.valor_total).replace(',', '.'));
+  const itensChips = normalizarItensChips(dados.valores_unitarios_chips);
+
+  if (dados.valores_unitarios_chips !== undefined) {
+    payload.valores_unitarios_chips = itensChips.length > 0 ? JSON.stringify(itensChips) : null;
+    payload.valor_total = calcularTotalChips(itensChips);
   }
 
   if (payload.data_venda !== undefined) {
@@ -192,7 +268,7 @@ async function usuarioPodeAcessarVenda(id, usuarioId) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[vendedora, operadora, criador]')
+    .withGraphFetched('[vendedora, operadora, tipoVenda, servico, criador]')
     .orderBy('data_venda', 'desc')
     .orderBy('id', 'desc');
 
@@ -224,7 +300,7 @@ async function buscarVendaPorId(id, usuarioId) {
   const escopo = usuarioId ? await buscarEscopoVendas(usuarioId) : { podeVerTodas: true };
   const query = Venda.query()
     .findById(id)
-    .withGraphFetched('[vendedora, operadora, criador]');
+    .withGraphFetched('[vendedora, operadora, tipoVenda, servico, criador]');
 
   if (usuarioId) {
     aplicarEscopoVendas(query, usuarioId, escopo);

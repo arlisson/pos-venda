@@ -82,6 +82,18 @@ const PERMISSOES = [
     chave: 'crud_links',
     nome: 'Cadastro de links',
     descricao: 'Permite criar, editar, listar e desativar links externos.'
+  },
+  {
+    id: 15,
+    chave: 'crud_tipos_venda',
+    nome: 'Cadastro de tipos de venda',
+    descricao: 'Permite criar, editar, listar e desativar tipos de venda.'
+  },
+  {
+    id: 16,
+    chave: 'crud_servicos',
+    nome: 'Cadastro de servicos',
+    descricao: 'Permite criar, editar, listar e desativar servicos.'
   }
 ];
 

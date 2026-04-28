@@ -1,16 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   atualizarLinkExterno,
   atualizarOperadora,
+  atualizarServico,
+  atualizarTipoVenda,
   criarLinkExterno,
   criarOperadora,
+  criarServico,
+  criarTipoVenda,
   excluirLinkExterno,
   excluirOperadora,
+  excluirServico,
+  excluirTipoVenda,
   listarLinksExternosAdmin,
-  listarOperadorasAdmin
+  listarOperadorasAdmin,
+  listarServicosAdmin,
+  listarTiposVendaAdmin
 } from '../../services/config.service';
+
+const FORM_SIMPLES = {
+  nome: '',
+  ordem: 0,
+  ativo: true
+};
 
 const LINK_VAZIO = {
   chave: '',
@@ -21,23 +35,32 @@ const LINK_VAZIO = {
   ativo: true
 };
 
-const OPERADORA_VAZIA = {
-  nome: '',
-  ordem: 0,
-  ativo: true
-};
-
 function ConfiguracoesPage() {
   const usuario = getUsuarioLocal();
-  const podeOperadoras = temPermissao(usuario, 'crud_operadoras');
-  const podeLinks = temPermissao(usuario, 'crud_links');
-  const [aba, setAba] = useState(podeOperadoras ? 'operadoras' : 'links');
-  const [operadoras, setOperadoras] = useState([]);
-  const [links, setLinks] = useState([]);
-  const [operadoraForm, setOperadoraForm] = useState(OPERADORA_VAZIA);
+  const permissoes = {
+    operadoras: temPermissao(usuario, 'crud_operadoras'),
+    tiposVenda: temPermissao(usuario, 'crud_tipos_venda'),
+    servicos: temPermissao(usuario, 'crud_servicos'),
+    links: temPermissao(usuario, 'crud_links')
+  };
+
+  const abas = useMemo(() => [
+    { id: 'operadoras', label: 'Operadoras', permitido: permissoes.operadoras },
+    { id: 'tiposVenda', label: 'Tipos de venda', permitido: permissoes.tiposVenda },
+    { id: 'servicos', label: 'Serviços', permitido: permissoes.servicos },
+    { id: 'links', label: 'Links externos', permitido: permissoes.links }
+  ].filter(aba => aba.permitido), [permissoes.operadoras, permissoes.tiposVenda, permissoes.servicos, permissoes.links]);
+
+  const [aba, setAba] = useState(abas[0]?.id || '');
+  const [dados, setDados] = useState({
+    operadoras: [],
+    tiposVenda: [],
+    servicos: [],
+    links: []
+  });
+  const [formSimples, setFormSimples] = useState(FORM_SIMPLES);
   const [linkForm, setLinkForm] = useState(LINK_VAZIO);
-  const [editandoOperadoraId, setEditandoOperadoraId] = useState(null);
-  const [editandoLinkId, setEditandoLinkId] = useState(null);
+  const [editandoId, setEditandoId] = useState(null);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(true);
 
@@ -46,13 +69,14 @@ function ConfiguracoesPage() {
     setCarregando(true);
 
     try {
-      const [operadorasData, linksData] = await Promise.all([
-        podeOperadoras ? listarOperadorasAdmin() : Promise.resolve([]),
-        podeLinks ? listarLinksExternosAdmin() : Promise.resolve([])
+      const [operadoras, tiposVenda, servicos, links] = await Promise.all([
+        permissoes.operadoras ? listarOperadorasAdmin() : Promise.resolve([]),
+        permissoes.tiposVenda ? listarTiposVendaAdmin() : Promise.resolve([]),
+        permissoes.servicos ? listarServicosAdmin() : Promise.resolve([]),
+        permissoes.links ? listarLinksExternosAdmin() : Promise.resolve([])
       ]);
 
-      setOperadoras(operadorasData);
-      setLinks(linksData);
+      setDados({ operadoras, tiposVenda, servicos, links });
     } catch (error) {
       setErro(error.message || 'Erro ao carregar configuracoes.');
     } finally {
@@ -60,31 +84,68 @@ function ConfiguracoesPage() {
     }
   }
 
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     carregarDados();
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
-  async function salvarOperadora(event) {
+  function resetarForms() {
+    setFormSimples(FORM_SIMPLES);
+    setLinkForm(LINK_VAZIO);
+    setEditandoId(null);
+  }
+
+  function mudarAba(id) {
+    setAba(id);
+    resetarForms();
+  }
+
+  function editarItem(item) {
+    setEditandoId(item.id);
+
+    if (aba === 'links') {
+      setLinkForm({
+        chave: item.chave || '',
+        nome: item.nome || '',
+        url: item.url || '',
+        dot: item.dot || '',
+        ordem: item.ordem || 0,
+        ativo: Boolean(item.ativo)
+      });
+      return;
+    }
+
+    setFormSimples({
+      nome: item.nome || '',
+      ordem: item.ordem || 0,
+      ativo: Boolean(item.ativo)
+    });
+  }
+
+  async function salvarSimples(event) {
     event.preventDefault();
     setErro('');
 
-    try {
-      const dados = {
-        ...operadoraForm,
-        ordem: Number(operadoraForm.ordem || 0)
-      };
+    const mapa = {
+      operadoras: [criarOperadora, atualizarOperadora],
+      tiposVenda: [criarTipoVenda, atualizarTipoVenda],
+      servicos: [criarServico, atualizarServico]
+    };
+    const [criar, atualizar] = mapa[aba];
+    const payload = { ...formSimples, ordem: Number(formSimples.ordem || 0) };
 
-      if (editandoOperadoraId) {
-        await atualizarOperadora(editandoOperadoraId, dados);
+    try {
+      if (editandoId) {
+        await atualizar(editandoId, payload);
       } else {
-        await criarOperadora(dados);
+        await criar(payload);
       }
 
-      setOperadoraForm(OPERADORA_VAZIA);
-      setEditandoOperadoraId(null);
+      resetarForms();
       await carregarDados();
     } catch (error) {
-      setErro(error.message || 'Erro ao salvar operadora.');
+      setErro(error.message || 'Erro ao salvar configuracao.');
     }
   }
 
@@ -92,123 +153,62 @@ function ConfiguracoesPage() {
     event.preventDefault();
     setErro('');
 
-    try {
-      const dados = {
-        ...linkForm,
-        ordem: Number(linkForm.ordem || 0)
-      };
+    const payload = { ...linkForm, ordem: Number(linkForm.ordem || 0) };
 
-      if (editandoLinkId) {
-        await atualizarLinkExterno(editandoLinkId, dados);
+    try {
+      if (editandoId) {
+        await atualizarLinkExterno(editandoId, payload);
       } else {
-        await criarLinkExterno(dados);
+        await criarLinkExterno(payload);
       }
 
-      setLinkForm(LINK_VAZIO);
-      setEditandoLinkId(null);
+      resetarForms();
       await carregarDados();
     } catch (error) {
       setErro(error.message || 'Erro ao salvar link.');
     }
   }
 
-  async function removerOperadora(id) {
-    await excluirOperadora(id);
+  async function removerItem(id) {
+    const mapa = {
+      operadoras: excluirOperadora,
+      tiposVenda: excluirTipoVenda,
+      servicos: excluirServico,
+      links: excluirLinkExterno
+    };
+
+    await mapa[aba](id);
     await carregarDados();
   }
 
-  async function removerLink(id) {
-    await excluirLinkExterno(id);
-    await carregarDados();
-  }
-
-  function editarOperadora(operadora) {
-    setEditandoOperadoraId(operadora.id);
-    setOperadoraForm({
-      nome: operadora.nome || '',
-      ordem: operadora.ordem || 0,
-      ativo: Boolean(operadora.ativo)
-    });
-  }
-
-  function editarLink(link) {
-    setEditandoLinkId(link.id);
-    setLinkForm({
-      chave: link.chave || '',
-      nome: link.nome || '',
-      url: link.url || '',
-      dot: link.dot || '',
-      ordem: link.ordem || 0,
-      ativo: Boolean(link.ativo)
-    });
-  }
+  const listaAtual = dados[aba] || [];
+  const usandoLinks = aba === 'links';
 
   return (
     <LayoutPrivado>
       <div className="users-page">
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
 
-        {!podeOperadoras && !podeLinks ? (
+        {abas.length === 0 ? (
           <div className="empty">Voce nao tem permissao para gerenciar configuracoes.</div>
         ) : (
           <div className="panel">
             <div className="panel-header" style={{ justifyContent: 'flex-start', gap: 8 }}>
-              {podeOperadoras && (
-                <button className={`filter-chip ${aba === 'operadoras' ? 'active' : ''}`} onClick={() => setAba('operadoras')}>
-                  Operadoras
+              {abas.map(item => (
+                <button
+                  key={item.id}
+                  className={`filter-chip ${aba === item.id ? 'active' : ''}`}
+                  onClick={() => mudarAba(item.id)}
+                >
+                  {item.label}
                 </button>
-              )}
-              {podeLinks && (
-                <button className={`filter-chip ${aba === 'links' ? 'active' : ''}`} onClick={() => setAba('links')}>
-                  Links externos
-                </button>
-              )}
+              ))}
             </div>
 
             <div className="panel-body">
               {carregando ? (
                 <div className="muted">Carregando...</div>
-              ) : aba === 'operadoras' && podeOperadoras ? (
-                <>
-                  <form className="form-grid" onSubmit={salvarOperadora}>
-                    <div className="form-field">
-                      <label>Nome</label>
-                      <input value={operadoraForm.nome} onChange={e => setOperadoraForm({ ...operadoraForm, nome: e.target.value })} required />
-                    </div>
-                    <div className="form-field">
-                      <label>Ordem</label>
-                      <input type="number" value={operadoraForm.ordem} onChange={e => setOperadoraForm({ ...operadoraForm, ordem: e.target.value })} />
-                    </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input type="checkbox" checked={operadoraForm.ativo} onChange={e => setOperadoraForm({ ...operadoraForm, ativo: e.target.checked })} />
-                      Ativa
-                    </label>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button className="btn btn-primary" type="submit">{editandoOperadoraId ? 'Salvar' : 'Adicionar'}</button>
-                      {editandoOperadoraId && <button className="btn" type="button" onClick={() => { setEditandoOperadoraId(null); setOperadoraForm(OPERADORA_VAZIA); }}>Cancelar</button>}
-                    </div>
-                  </form>
-
-                  <div className="list-table">
-                    <table>
-                      <thead><tr><th>Nome</th><th>Ordem</th><th>Status</th><th></th></tr></thead>
-                      <tbody>
-                        {operadoras.map(operadora => (
-                          <tr key={operadora.id}>
-                            <td>{operadora.nome}</td>
-                            <td>{operadora.ordem}</td>
-                            <td>{operadora.ativo ? 'Ativa' : 'Inativa'}</td>
-                            <td className="row-actions">
-                              <button className="btn btn-sm" onClick={() => editarOperadora(operadora)}>Editar</button>
-                              <button className="btn btn-sm btn-ghost" onClick={() => removerOperadora(operadora.id)}>Excluir</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : (
+              ) : usandoLinks ? (
                 <>
                   <form className="form-grid" onSubmit={salvarLink}>
                     <div className="form-field">
@@ -236,8 +236,8 @@ function ConfiguracoesPage() {
                       Ativo
                     </label>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button className="btn btn-primary" type="submit">{editandoLinkId ? 'Salvar' : 'Adicionar'}</button>
-                      {editandoLinkId && <button className="btn" type="button" onClick={() => { setEditandoLinkId(null); setLinkForm(LINK_VAZIO); }}>Cancelar</button>}
+                      <button className="btn btn-primary" type="submit">{editandoId ? 'Salvar' : 'Adicionar'}</button>
+                      {editandoId && <button className="btn" type="button" onClick={resetarForms}>Cancelar</button>}
                     </div>
                   </form>
 
@@ -245,15 +245,55 @@ function ConfiguracoesPage() {
                     <table>
                       <thead><tr><th>Nome</th><th>URL</th><th>Marcador</th><th>Status</th><th></th></tr></thead>
                       <tbody>
-                        {links.map(link => (
-                          <tr key={link.id}>
-                            <td>{link.nome}</td>
-                            <td className="muted">{link.url}</td>
-                            <td>{link.dot}</td>
-                            <td>{link.ativo ? 'Ativo' : 'Inativo'}</td>
+                        {listaAtual.map(item => (
+                          <tr key={item.id}>
+                            <td>{item.nome}</td>
+                            <td className="muted">{item.url}</td>
+                            <td>{item.dot}</td>
+                            <td>{item.ativo ? 'Ativo' : 'Inativo'}</td>
                             <td className="row-actions">
-                              <button className="btn btn-sm" onClick={() => editarLink(link)}>Editar</button>
-                              <button className="btn btn-sm btn-ghost" onClick={() => removerLink(link.id)}>Excluir</button>
+                              <button className="btn btn-sm" onClick={() => editarItem(item)}>Editar</button>
+                              <button className="btn btn-sm btn-ghost" onClick={() => removerItem(item.id)}>Excluir</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <form className="form-grid" onSubmit={salvarSimples}>
+                    <div className="form-field">
+                      <label>Nome</label>
+                      <input value={formSimples.nome} onChange={e => setFormSimples({ ...formSimples, nome: e.target.value })} required />
+                    </div>
+                    <div className="form-field">
+                      <label>Ordem</label>
+                      <input type="number" value={formSimples.ordem} onChange={e => setFormSimples({ ...formSimples, ordem: e.target.value })} />
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input type="checkbox" checked={formSimples.ativo} onChange={e => setFormSimples({ ...formSimples, ativo: e.target.checked })} />
+                      Ativo
+                    </label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button className="btn btn-primary" type="submit">{editandoId ? 'Salvar' : 'Adicionar'}</button>
+                      {editandoId && <button className="btn" type="button" onClick={resetarForms}>Cancelar</button>}
+                    </div>
+                  </form>
+
+                  <div className="list-table">
+                    <table>
+                      <thead><tr><th>Nome</th><th>Ordem</th><th>Status</th><th></th></tr></thead>
+                      <tbody>
+                        {listaAtual.map(item => (
+                          <tr key={item.id}>
+                            <td>{item.nome}</td>
+                            <td>{item.ordem}</td>
+                            <td>{item.ativo ? 'Ativo' : 'Inativo'}</td>
+                            <td className="row-actions">
+                              <button className="btn btn-sm" onClick={() => editarItem(item)}>Editar</button>
+                              <button className="btn btn-sm btn-ghost" onClick={() => removerItem(item.id)}>Excluir</button>
                             </td>
                           </tr>
                         ))}

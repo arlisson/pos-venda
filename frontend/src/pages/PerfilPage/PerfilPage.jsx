@@ -16,7 +16,7 @@ const GRUPOS_PERMISSOES = [
   },
   {
     titulo: 'Configuracoes',
-    chaves: ['crud_operadoras', 'crud_links']
+    chaves: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos']
   }
 ];
 
@@ -34,7 +34,9 @@ const NOMES_PERMISSOES = {
   usuarios_excluir: 'Excluir',
   gerenciar_permissoes: 'Gerenciar permissoes',
   crud_operadoras: 'Operadoras',
-  crud_links: 'Links externos'
+  crud_links: 'Links externos',
+  crud_tipos_venda: 'Tipos de venda',
+  crud_servicos: 'Servicos'
 };
 
 function montarGruposPermissoes(permissoes = {}) {
