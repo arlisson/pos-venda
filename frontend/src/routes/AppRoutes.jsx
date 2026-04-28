@@ -1,4 +1,3 @@
-import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import LoginPage from '../pages/LoginPage/LoginPage';
@@ -11,6 +10,7 @@ import EditarPerfilPage from '../pages/EditarPerfilPage/EditarPerfilPage';
 import EditarUsuarioPage from '../pages/EditarUsuarioPage/EditarUsuarioPage';
 import HistoricoPage from '../pages/HistoricoPage/HistoricoPage';
 import ConfiguracoesPage from '../pages/ConfiguracoesPage/ConfiguracoesPage';
+import VendasPage from '../pages/VendasPage/VendasPage';
 import '../pages/HistoricoPage/HistoricoPage.css';
 
 import { getUsuarioLocal, temPermissao } from '../services/auth.service';
@@ -30,13 +30,6 @@ function PrivateRoute({ children, permission }) {
   return children;
 }
 
-const Placeholder = ({ title }) => (
-  <div className="empty" style={{ padding: '100px' }}>
-    <h2>{title}</h2>
-    <p className="muted">Esta funcionalidade está em desenvolvimento.</p>
-  </div>
-);
-
 import AdminMetasPage from '../pages/AdminMetasPage/AdminMetasPage';
 
 function AppRoutes() {
@@ -46,6 +39,8 @@ function AppRoutes() {
       
       <Route path="/funil" element={<PrivateRoute><FunilPage /></PrivateRoute>} />
 
+      <Route path="/vendas" element={<PrivateRoute permission={['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir']}><VendasPage /></PrivateRoute>} />
+
       <Route path="/login" element={<LoginPage />} />
 
       <Route path="/perfil" element={<PrivateRoute><PerfilPage /></PrivateRoute>} />
@@ -54,22 +49,22 @@ function AppRoutes() {
 
       <Route
         path="/usuarios"
-        element={<PrivateRoute permission="crud_usuarios"><Usuarios /></PrivateRoute>}
+        element={<PrivateRoute permission={['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes']}><Usuarios /></PrivateRoute>}
       />
 
       <Route
         path="/usuarios/novo"
-        element={<PrivateRoute permission="crud_usuarios"><CadastroUsuario /></PrivateRoute>}
+        element={<PrivateRoute permission="usuarios_criar"><CadastroUsuario /></PrivateRoute>}
       />
 
       <Route
         path="/usuarios/cadastrar"
-        element={<PrivateRoute permission="crud_usuarios"><CadastroUsuario /></PrivateRoute>}
+        element={<PrivateRoute permission="usuarios_criar"><CadastroUsuario /></PrivateRoute>}
       />
 
       <Route
         path="/usuarios/:id/editar"
-        element={<PrivateRoute permission="crud_usuarios"><EditarUsuarioPage /></PrivateRoute>}
+        element={<PrivateRoute permission="usuarios_editar"><EditarUsuarioPage /></PrivateRoute>}
       />
 
       <Route

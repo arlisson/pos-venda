@@ -54,6 +54,10 @@ export function temPermissao(usuario, permissao) {
     return true;
   }
 
+  if (Array.isArray(permissao)) {
+    return permissao.some(item => temPermissao(usuario, item));
+  }
+
   if (usuario?.role?.nome === 'admin') {
     return true;
   }

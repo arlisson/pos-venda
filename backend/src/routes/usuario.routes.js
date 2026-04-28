@@ -5,17 +5,28 @@ const usuarioController = require('../controllers/usuario.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { auditar } = require('../middlewares/audit.middleware');
 const {
-  exigirPermissao,
+  exigirUmaPermissao,
+  exigirAdminParaAlterarAdmin,
+  impedirAutoExclusao,
   exigirGerenciamentoPermissoesSeNecessario
 } = require('../middlewares/permissao.middleware');
 
 router.use(authMiddleware);
-router.use(exigirPermissao('crud_usuarios'));
 
-router.get('/', usuarioController.index);
-router.get('/:id', usuarioController.show);
+router.get(
+  '/',
+  exigirUmaPermissao(['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes']),
+  usuarioController.index
+);
+router.get(
+  '/:id',
+  exigirUmaPermissao(['crud_usuarios', 'usuarios_listar', 'usuarios_editar', 'gerenciar_permissoes']),
+  usuarioController.show
+);
 router.post(
   '/',
+  exigirUmaPermissao(['usuarios_criar']),
+  exigirAdminParaAlterarAdmin,
   exigirGerenciamentoPermissoesSeNecessario,
   auditar({
     acao: 'usuario.criado',
@@ -30,6 +41,8 @@ router.post(
 );
 router.put(
   '/:id',
+  exigirUmaPermissao(['usuarios_editar']),
+  exigirAdminParaAlterarAdmin,
   exigirGerenciamentoPermissoesSeNecessario,
   auditar({
     acao: 'usuario.atualizado',
@@ -44,6 +57,9 @@ router.put(
 );
 router.delete(
   '/:id',
+  exigirUmaPermissao(['usuarios_excluir']),
+  impedirAutoExclusao,
+  exigirAdminParaAlterarAdmin,
   auditar({
     acao: 'usuario.excluido',
     entidade: 'usuarios',

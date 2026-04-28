@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import Header from '../../components/Header/Header';
@@ -16,6 +15,7 @@ function LayoutPrivado({ children }) {
 
   const routeConfig = {
     '/': { title: 'Dashboard', sub: 'Indicadores, metas e gamificação', id: 'dashboard' },
+    '/vendas': { title: 'Vendas', sub: 'Cadastro manual das vendas fechadas', id: 'vendas' },
     '/funil': { title: 'Funil de vendas', sub: 'Acompanhe cada venda do lançamento até a conclusão', id: 'funil' },
     '/retornos': { title: 'Retornos', sub: 'Chips que retornaram por algum erro', id: 'retornos' },
     '/historico': { title: 'Histórico', sub: 'Todas as movimentações do sistema', id: 'historico' },
@@ -30,6 +30,7 @@ function LayoutPrivado({ children }) {
   const handleSetPage = (id) => {
     const routeMap = {
       'dashboard': '/',
+      'vendas': '/vendas',
       'funil': '/funil',
       'retornos': '/retornos',
       'historico': '/historico',

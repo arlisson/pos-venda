@@ -104,3 +104,44 @@
   color: var(--text-muted);
   font-size: 14px;
 }
+
+.perfil-permissoes-resumo {
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.perfil-permissoes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.perfil-permissao-grupo {
+  padding: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.perfil-permissao-grupo__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.perfil-permissao-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.perfil-permissao-vazio {
+  margin-top: 7px;
+  color: var(--text-3);
+  font-size: 12px;
+}
