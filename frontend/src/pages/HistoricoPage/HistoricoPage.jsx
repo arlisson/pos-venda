@@ -64,12 +64,16 @@ function getTipo(log) {
   return 'success';
 }
 
-function HistoricoItem({ log }) {
+function HistoricoItem({ log, selecionado, onClick }) {
   const tipo = getTipo(log);
   const usuario = log.usuario?.nome || (log.usuario_id ? `Usuario #${log.usuario_id}` : 'Sistema');
 
   return (
-    <div className={`history-item ${tipo}`}>
+    <div 
+      className={`history-item ${tipo} ${selecionado ? 'selected' : ''}`}
+      onClick={() => onClick(log)}
+      style={{ cursor: 'pointer' }}
+    >
       <div className="history-marker">
         {tipo === 'danger' ? <I.AlertTriangle size={12} /> : <I.Check size={12} />}
       </div>
@@ -90,12 +94,81 @@ function HistoricoItem({ log }) {
   );
 }
 
+function DetalheCard({ log, onClose }) {
+  const dados = parseDados(log.dados);
+  const tipo = getTipo(log);
+
+  return (
+    <div className="history-detail-card">
+      <div className="history-detail-header">
+        <h3>Detalhes do Registro</h3>
+        <button className="history-detail-close" onClick={onClose} aria-label="Fechar">
+          ×
+        </button>
+      </div>
+      
+      <div className="history-detail-body">
+        <div className="history-detail-row">
+          <span className="history-detail-label">Ação:</span>
+          <span className="history-detail-value">{formatarAcao(log.acao)}</span>
+        </div>
+        
+        <div className="history-detail-row">
+          <span className="history-detail-label">Usuário:</span>
+          <span className="history-detail-value">
+            {log.usuario?.nome || (log.usuario_id ? `Usuario #${log.usuario_id}` : 'Sistema')}
+          </span>
+        </div>
+        
+        <div className="history-detail-row">
+          <span className="history-detail-label">Data/Hora:</span>
+          <span className="history-detail-value">{formatarData(log.created_at)}</span>
+        </div>
+        
+        <div className="history-detail-row">
+          <span className="history-detail-label">Método:</span>
+          <span className="history-detail-value">{log.metodo || 'API'}</span>
+        </div>
+        
+        <div className="history-detail-row">
+          <span className="history-detail-label">Rota:</span>
+          <span className="history-detail-value">{log.rota || 'N/A'}</span>
+        </div>
+        
+        {log.entidade && (
+          <div className="history-detail-row">
+            <span className="history-detail-label">Entidade:</span>
+            <span className="history-detail-value">{log.entidade}</span>
+          </div>
+        )}
+        
+        {log.entidade_id && (
+          <div className="history-detail-row">
+            <span className="history-detail-label">ID da Entidade:</span>
+            <span className="history-detail-value">#{log.entidade_id}</span>
+          </div>
+        )}
+        
+        {dados && Object.keys(dados).length > 0 && (
+          <div className="history-detail-section">
+            <h4>Dados da Operação</h4>
+            <pre className="history-detail-data">
+              {JSON.stringify(dados, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function HistoricoPage() {
   const [logs, setLogs] = useState([]);
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState('todos');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [logSelecionado, setLogSelecionado] = useState(null);
 
   useEffect(() => {
     async function carregar() {
@@ -174,9 +247,21 @@ function HistoricoPage() {
             ) : (
               <div className="history-list">
                 {logsFiltrados.map(log => (
-                  <HistoricoItem key={log.id} log={log} />
+                  <HistoricoItem 
+                    key={log.id} 
+                    log={log} 
+                    selecionado={logSelecionado?.id === log.id}
+                    onClick={setLogSelecionado}
+                  />
                 ))}
               </div>
+            )}
+            
+            {logSelecionado && (
+              <DetalheCard 
+                log={logSelecionado} 
+                onClose={() => setLogSelecionado(null)} 
+              />
             )}
           </div>
         </div>
