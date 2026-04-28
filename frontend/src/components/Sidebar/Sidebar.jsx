@@ -21,7 +21,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   const admin = [
     { id: 'usuarios', label: 'Usuários', icon: <I.Users />, permission: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes'] },
     { id: 'config', label: 'Configurações', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos'] },
-    { id: 'metas', label: 'Configurar Metas', icon: <I.Settings />, permission: 'crud_usuarios' },
+    { id: 'metas', label: 'Configurar Metas', icon: <I.Settings />, permission: 'gerenciar_metas' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   const getInitials = (name) => {
