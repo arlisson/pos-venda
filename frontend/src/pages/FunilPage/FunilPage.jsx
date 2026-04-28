@@ -1,16 +1,43 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { STAGES, DEFAULT_OPERATORS as OPERATORS } from '../../config/constants';
+import { atualizarStatusVenda, listarVendas } from '../../services/venda.service';
 
-const formatBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const formatBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const formatDate = (d) =>
-  d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+const STAGE_LABELS = {
+  ...Object.fromEntries(STAGES.map(stage => [stage.id, stage.name])),
+  retorno: 'Retorno',
+};
 
-const formatDateTime = (d) =>
-  d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' +
-  d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const PRIORITIES = {
+  alta: { label: 'Prioridade Alta', color: '#ef4444' },
+  media: { label: 'Prioridade Media', color: '#3b82f6' },
+  baixa: { label: 'Prioridade Baixa', color: '#eab308' },
+};
+
+const RETURN_REASONS = [
+  'Endereco invalido',
+  'Cliente recusou',
+  'Chip danificado',
+  'Reprovado na operadora',
+  'Cancelamento do cliente',
+  'Outro motivo',
+];
+
+function parseDate(value) {
+  const date = value ? new Date(value) : new Date();
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function formatDate(d) {
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function formatDateTime(d) {
+  return `${formatDate(d)} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+}
 
 function timeAgo(d) {
   const diff = Date.now() - d.getTime();
@@ -18,141 +45,115 @@ function timeAgo(d) {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
   if (mins < 1) return 'agora';
-  if (mins < 60) return `${mins}min atrás`;
-  if (hours < 24) return `${hours}h atrás`;
-  return `${days}d atrás`;
+  if (mins < 60) return `${mins}min atras`;
+  if (hours < 24) return `${hours}h atras`;
+  return `${days}d atras`;
 }
 
-const STAGE_LABELS = {
-  aprovacao: 'Aprovação',
-  ativacao: 'Ativação',
-  envio: 'Envio / Logística',
-  entrega: 'Entrega',
-  confirmacao: 'Confirmação do cliente',
-  concluido: 'Concluído',
-  retorno: 'Retorno',
-};
+function initials(name) {
+  return String(name || 'SV')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('')
+    .toUpperCase() || 'SV';
+}
 
-const PRIORITIES = {
-  alta: { label: 'Prioridade Alta', color: '#ef4444' },
-  media: { label: 'Prioridade Média', color: '#3b82f6' },
-  baixa: { label: 'Prioridade Baixa', color: '#eab308' },
-};
+function getClient(venda) {
+  return venda.nome || venda.razao_social || `Venda #${venda.id}`;
+}
 
-const INITIAL_SALES = [
-  {
-    id: 'VND-1001',
-    client: 'Auto Peças Andrade',
-    value: 150.00,
-    operator: 'Vivo',
-    plan: 'Controle 20GB',
-    cpfCnpj: '12.345.678/0001-90',
-    seller: { name: 'Camila Souza', initials: 'CS' },
-    linha: '(11) 912345678',
-    iccid: '89550102082068484460',
-    endereco: 'Rua das Flores, 100 - São Paulo/SP',
-    stage: 'aprovacao',
-    priority: 'alta',
-    lancadaEm: new Date('2026-04-10T09:00:00'),
-    updated: new Date('2026-04-22T14:30:00'),
-    historico: [
-      { acao: 'Movido para Aprovação', autor: 'Camila Souza', data: new Date('2026-04-22T14:30:00'), tipo: 'move' },
-      { acao: 'Venda lançada no sistema', autor: 'Camila Souza', data: new Date('2026-04-10T09:00:00'), tipo: 'create' },
-    ],
-  },
-  {
-    id: 'VND-1002',
-    client: 'Maria Fernanda Costa',
-    value: 311.86,
-    operator: 'TIM',
-    plan: 'Pós Empresarial 100GB',
-    cpfCnpj: '128.554.881-22',
-    seller: { name: 'Camila Souza', initials: 'CS' },
-    linha: '(11) 983375752',
-    iccid: '89550102082068484460',
-    endereco: 'Av. Brasil, 4500 - Rio de Janeiro/RJ',
-    stage: 'aprovacao',
+function getOperator(venda) {
+  return venda.operadora?.nome || venda.operadora || 'Sem operadora';
+}
+
+function getPlan(venda) {
+  return venda.produto_fechado || venda.servico?.nome || venda.tipoVenda?.nome || 'Plano nao informado';
+}
+
+function mapVendaToSale(venda) {
+  const sellerName = venda.vendedora?.nome || venda.nome_fechou_venda || 'Sem vendedor';
+  const updated = parseDate(venda.ultima_atividade_em || venda.updated_at || venda.created_at);
+  const created = parseDate(venda.criado_em || venda.created_at || venda.data_venda);
+  const stage = venda.status_funil || 'aprovacao';
+
+  return {
+    raw: venda,
+    id: venda.id,
+    client: getClient(venda),
+    value: Number(venda.valor_total || 0),
+    operator: getOperator(venda),
+    plan: getPlan(venda),
+    cpfCnpj: venda.cnpj || venda.cpf || '-',
+    seller: { name: sellerName, initials: initials(sellerName) },
+    linha: venda.telefone || venda.quantidade_linhas || '-',
+    iccid: venda.iccid || '-',
+    endereco: [
+      venda.endereco,
+      venda.numero_endereco,
+      venda.bairro,
+      venda.municipio,
+      venda.uf
+    ].filter(Boolean).join(', ') || 'Endereco nao informado',
+    stage,
     priority: 'media',
-    lancadaEm: new Date('2026-04-04T11:10:00'),
-    updated: new Date('2026-04-05T11:10:00'),
+    lancadaEm: created,
+    updated,
     historico: [
-      { acao: 'Movido para Aprovação', autor: 'Camila Souza', data: new Date('2026-04-05T11:10:00'), tipo: 'move' },
-      { acao: 'Venda lançada no sistema', autor: 'Camila Souza', data: new Date('2026-04-04T11:10:00'), tipo: 'create' },
+      { acao: `Status atual: ${STAGE_LABELS[stage] || stage}`, autor: 'Sistema', data: updated, tipo: 'move' },
+      { acao: 'Venda cadastrada', autor: sellerName, data: created, tipo: 'create' },
     ],
-  },
-  {
-    id: 'VND-1003',
-    client: 'Construtora Lince',
-    value: 450.00,
-    operator: 'Claro',
-    plan: 'Empresarial 50GB',
-    cpfCnpj: '98.765.432/0001-55',
-    seller: { name: 'João Pedro', initials: 'JP' },
-    linha: '(21) 998765432',
-    iccid: '89550102082068484461',
-    endereco: 'Av. Paulista, 1000 - São Paulo/SP',
-    stage: 'envio',
-    priority: 'baixa',
-    lancadaEm: new Date('2026-04-08T10:00:00'),
-    updated: new Date('2026-04-20T16:00:00'),
-    historico: [
-      { acao: 'Movido para Envio / Logística', autor: 'João Pedro', data: new Date('2026-04-20T16:00:00'), tipo: 'move' },
-      { acao: 'Movido para Ativação', autor: 'João Pedro', data: new Date('2026-04-15T10:00:00'), tipo: 'move' },
-      { acao: 'Venda lançada no sistema', autor: 'João Pedro', data: new Date('2026-04-08T10:00:00'), tipo: 'create' },
-    ],
-  },
-  {
-    id: 'VND-1004',
-    client: 'Mercado Boa Compra',
-    value: 120.00,
-    operator: 'Vivo',
-    plan: 'Controle 20GB',
-    cpfCnpj: '11.222.333/0001-44',
-    seller: { name: 'Camila Souza', initials: 'CS' },
-    linha: '(11) 912341234',
-    iccid: '89550102082068484462',
-    endereco: 'Rua do Comércio, 50 - Campinas/SP',
-    stage: 'concluido',
-    priority: 'media',
-    lancadaEm: new Date('2026-04-01T08:00:00'),
-    updated: new Date('2026-04-15T12:00:00'),
-    historico: [
-      { acao: 'Movido para Concluído', autor: 'Camila Souza', data: new Date('2026-04-15T12:00:00'), tipo: 'move' },
-      { acao: 'Movido para Confirmação do cliente', autor: 'Sistema (Automático)', data: new Date('2026-04-14T10:00:00'), tipo: 'move' },
-      { acao: 'Movido para Entrega', autor: 'Sistema (Automático)', data: new Date('2026-04-12T14:00:00'), tipo: 'move' },
-      { acao: 'Movido para Envio / Logística', autor: 'Sistema (Automático)', data: new Date('2026-04-10T09:00:00'), tipo: 'move' },
-      { acao: 'Movido para Ativação', autor: 'Sistema (Automático)', data: new Date('2026-04-05T16:00:00'), tipo: 'move' },
-      { acao: 'Venda lançada no sistema', autor: 'Camila Souza', data: new Date('2026-04-01T08:00:00'), tipo: 'create' },
-    ],
-  },
-];
+  };
+}
 
 function SaleModal({ sale, onClose, onUpdateSale }) {
   const [tab, setTab] = useState('info');
   const [novaFase, setNovaFase] = useState(sale.stage);
   const [novaPrioridade, setNovaPrioridade] = useState(sale.priority || 'media');
   const [observacao, setObservacao] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
 
-  const alterou = novaFase !== sale.stage || novaPrioridade !== (sale.priority || 'media') || observacao.trim() !== '';
+  const alterou = novaFase !== sale.stage || observacao.trim() !== '';
 
-  function handleAtualizar() {
-    onUpdateSale(sale.id, novaFase, novaPrioridade, observacao.trim());
-    onClose();
+  async function submitStatus(status, statusObservacao = observacao.trim(), motivoRetorno = '') {
+    setSaving(true);
+    setError('');
+
+    try {
+      await onUpdateSale(sale.id, status, novaPrioridade, statusObservacao, motivoRetorno);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Erro ao atualizar status.');
+      setSaving(false);
+    }
   }
 
-  function handleRetorno() {
-    onUpdateSale(sale.id, 'retorno', novaPrioridade, observacao.trim() || 'Marcado como retorno.');
-    onClose();
+  function handleAtualizar() {
+    submitStatus(novaFase);
+  }
+
+  function handleConfirmRetorno({ motivo, observacao: observacaoRetorno }) {
+    return submitStatus('retorno', observacaoRetorno, motivo);
   }
 
   return (
     <div
       className="modal-overlay"
-      onClick={e => e.target === e.currentTarget && onClose()}
+      onClick={e => !saving && e.target === e.currentTarget && onClose()}
     >
-      <div className="modal">
+      {returnModalOpen && (
+        <ReturnReasonModal
+          sale={sale}
+          saving={saving}
+          onClose={() => setReturnModalOpen(false)}
+          onConfirm={handleConfirmRetorno}
+        />
+      )}
 
-        {/* Header */}
+      <div className="modal">
         <div className="modal-header">
           <div className="modal-header-row">
             <div style={{ minWidth: 0 }}>
@@ -164,21 +165,21 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
                 <span className="pill-dot"></span>
                 {STAGE_LABELS[sale.stage]}
               </span>
-              <button className="btn btn-icon btn-ghost" onClick={onClose}>
+              <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={saving}>
                 <I.Close size={14} />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="modal-tabs">
           {[
-            { id: 'info', label: 'Informações' },
-            { id: 'historico', label: 'Histórico' },
+            { id: 'info', label: 'Informacoes' },
+            { id: 'historico', label: 'Historico' },
             { id: 'status', label: 'Atualizar status' },
           ].map(t => (
             <button
+              type="button"
               key={t.id}
               className={`modal-tab ${tab === t.id ? 'active' : ''}`}
               onClick={() => setTab(t.id)}
@@ -188,10 +189,7 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
           ))}
         </div>
 
-        {/* Body */}
         <div className="modal-body">
-
-          {/* Informações */}
           {tab === 'info' && (
             <div className="detail-grid">
               <div className="detail-item">
@@ -228,11 +226,11 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
                 <div className="value mono">{sale.iccid}</div>
               </div>
               <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
-                <div className="label">ENDEREÇO DE ENTREGA</div>
+                <div className="label">ENDERECO DE ENTREGA</div>
                 <div className="value">{sale.endereco}</div>
               </div>
               <div className="detail-item">
-                <div className="label">LANÇADA EM</div>
+                <div className="label">LANCADA EM</div>
                 <div className="value">{formatDate(sale.lancadaEm)}</div>
               </div>
               <div className="detail-item">
@@ -242,37 +240,26 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
             </div>
           )}
 
-          {/* Histórico */}
           {tab === 'historico' && (
             <div className="sale-timeline">
-              {(() => {
-                const latestMilestoneIndex = sale.historico.findIndex(h => h.tipo === 'create' || h.tipo === 'move');
-                return sale.historico.map((item, i) => {
-                  const isMilestone = item.tipo === 'create' || item.tipo === 'move';
-                  const isLatest = i === latestMilestoneIndex;
-
-                  return (
-                    <div key={i} className="sale-tl-item">
-                      <div className={`sale-tl-dot ${item.tipo} ${isLatest ? 'current' : ''}`}>
-                        {isMilestone && !isLatest && (
-                          <I.Check size={11} style={{ color: '#fff', strokeWidth: 2.5 }} />
-                        )}
-                        {isMilestone && isLatest && (
-                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
-                        )}
-                      </div>
-                      <div className="sale-tl-content">
-                        <div className="sale-tl-title">{item.acao}</div>
-                        <div className="sale-tl-meta">{item.autor} · {formatDateTime(item.data)}</div>
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
+              {sale.historico.map((item, i) => (
+                <div key={i} className="sale-tl-item">
+                  <div className={`sale-tl-dot ${item.tipo} ${i === 0 ? 'current' : ''}`}>
+                    {i === 0 ? (
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
+                    ) : (
+                      <I.Check size={11} style={{ color: '#fff', strokeWidth: 2.5 }} />
+                    )}
+                  </div>
+                  <div className="sale-tl-content">
+                    <div className="sale-tl-title">{item.acao}</div>
+                    <div className="sale-tl-meta">{item.autor} · {formatDateTime(item.data)}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Atualizar status */}
           {tab === 'status' && (
             <div>
               <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 4 }}>
@@ -281,9 +268,11 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
               <div className="stage-selector">
                 {STAGES.map(st => (
                   <button
+                    type="button"
                     key={st.id}
                     className={`stage-chip ${novaFase === st.id ? 'active' : ''}`}
                     onClick={() => setNovaFase(st.id)}
+                    disabled={saving}
                   >
                     {st.name}
                   </button>
@@ -297,18 +286,13 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
                 <div className="stage-selector">
                   {Object.entries(PRIORITIES).map(([key, p]) => (
                     <button
+                      type="button"
                       key={key}
                       className={`stage-chip ${novaPrioridade === key ? 'active' : ''}`}
                       onClick={() => setNovaPrioridade(key)}
+                      disabled={saving}
                     >
-                      <span style={{ 
-                        display: 'inline-block', 
-                        width: 8, 
-                        height: 8, 
-                        borderRadius: '50%', 
-                        backgroundColor: p.color, 
-                        marginRight: 8 
-                      }}></span>
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: p.color, marginRight: 8 }}></span>
                       {p.label}
                     </button>
                   ))}
@@ -317,41 +301,123 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
 
               <div style={{ marginTop: 20 }}>
                 <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 8 }}>
-                  Observação (opcional)
+                  Observacao (opcional)
                 </div>
                 <textarea
                   className="obs-textarea"
-                  placeholder="Adicione um detalhe sobre essa atualização..."
+                  placeholder="Adicione um detalhe sobre essa atualizacao..."
                   value={observacao}
                   onChange={e => setObservacao(e.target.value)}
+                  disabled={saving}
                 />
               </div>
 
+              {error && <div className="alert-error" style={{ marginTop: 12 }}>{error}</div>}
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
                 <button
+                  type="button"
                   className="btn btn-sm"
                   style={{ color: 'var(--danger)', borderColor: '#fecaca' }}
-                  onClick={handleRetorno}
+                  onClick={() => setReturnModalOpen(true)}
+                  disabled={saving}
                 >
                   <I.AlertTriangle size={13} /> Marcar como retorno
                 </button>
                 {alterou && (
-                  <button className="btn btn-primary btn-sm" onClick={handleAtualizar}>
-                    Confirmar mudança
+                  <button type="button" className="btn btn-primary btn-sm" onClick={handleAtualizar} disabled={saving}>
+                    {saving ? 'Salvando...' : 'Confirmar mudanca'}
                   </button>
                 )}
               </div>
             </div>
           )}
-
         </div>
 
-        {/* Footer */}
         <div className="modal-footer">
-          <button className="btn" onClick={onClose}>Fechar</button>
+          <button type="button" className="btn" onClick={onClose} disabled={saving}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
+  const [motivo, setMotivo] = useState('');
+  const [observacao, setObservacao] = useState('');
+  const [error, setError] = useState('');
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!motivo) {
+      setError('Selecione o motivo do retorno.');
+      return;
+    }
+
+    setError('');
+    await onConfirm({ motivo, observacao: observacao.trim() });
+  }
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={event => !saving && event.target === event.currentTarget && onClose()}
+      style={{ zIndex: 60 }}
+    >
+      <form className="modal return-status-modal" onSubmit={handleSubmit}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Motivo do retorno</div>
+              <div className="modal-sub">{sale.client} · #{sale.id}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={saving}>
+              <I.Close size={14} />
+            </button>
+          </div>
         </div>
 
-      </div>
+        <div className="modal-body">
+          <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 8 }}>
+            Por que esse chip retornou?
+          </div>
+          <div className="stage-selector">
+            {RETURN_REASONS.map(reason => (
+              <button
+                type="button"
+                key={reason}
+                className={`stage-chip ${motivo === reason ? 'active' : ''}`}
+                onClick={() => setMotivo(reason)}
+                disabled={saving}
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+
+          <div className="form-field" style={{ marginTop: 20 }}>
+            <label>Observacao</label>
+            <textarea
+              className="obs-textarea"
+              placeholder="Ex: cliente recusou por endereco divergente, confirmar novo envio."
+              value={observacao}
+              onChange={event => setObservacao(event.target.value)}
+              disabled={saving}
+              rows={4}
+            />
+          </div>
+
+          {error && <div className="alert-error">{error}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={saving}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={saving || !motivo}>
+            {saving ? 'Salvando...' : 'Confirmar retorno'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -362,13 +428,7 @@ function SaleCard({ sale, onClick }) {
     <div className="sale-card" onClick={onClick}>
       <div className="sale-card-top">
         <div className="client" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ 
-            width: 8, 
-            height: 8, 
-            borderRadius: '50%', 
-            backgroundColor: priorityColor, 
-            flexShrink: 0 
-          }}></span>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: priorityColor, flexShrink: 0 }}></span>
           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {sale.client}
           </span>
@@ -383,7 +443,7 @@ function SaleCard({ sale, onClick }) {
       <div className="sale-card-bottom">
         <span className="seller">
           <span className="mini-avatar">{sale.seller.initials}</span>
-          <span>{sale.id}</span>
+          <span>#{sale.id}</span>
         </span>
         <span style={{ fontSize: '10px' }}>{timeAgo(sale.updated)}</span>
       </div>
@@ -392,61 +452,58 @@ function SaleCard({ sale, onClick }) {
 }
 
 function FunilPage() {
-  const [sales, setSales] = useState(INITIAL_SALES);
+  const [sales, setSales] = useState([]);
   const [filter, setFilter] = useState('todas');
   const [selectedSaleId, setSelectedSaleId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  function handleUpdateSale(saleId, novaFase, novaPrioridade, observacao) {
-    setSales(prev => prev.map(s => {
-      if (s.id !== saleId) return s;
+  async function carregarVendas() {
+    setLoading(true);
+    setError('');
 
-      const entries = [];
+    try {
+      const vendas = await listarVendas();
+      setSales(Array.isArray(vendas) ? vendas.map(mapVendaToSale) : []);
+    } catch (err) {
+      setError(err.message || 'Erro ao carregar funil.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      // Registro de mudança de prioridade no histórico
-      if (novaPrioridade !== (s.priority || 'media')) {
-        entries.push({
-          acao: `Prioridade alterada para ${PRIORITIES[novaPrioridade].label}`,
-          autor: 'Você',
-          data: new Date(),
-          tipo: 'obs',
-        });
-      }
+  useEffect(() => {
+    carregarVendas();
+  }, []);
 
-      if (novaFase !== s.stage) {
-        const oldIdx = STAGES.findIndex(st => st.id === s.stage);
-        const newIdx = STAGES.findIndex(st => st.id === novaFase);
+  async function handleUpdateSale(saleId, novaFase, novaPrioridade, observacao, motivoRetorno) {
+    if (novaFase === 'retorno') {
+      const motivo = [motivoRetorno, observacao].filter(Boolean).join(' - ');
 
-        if (oldIdx !== -1 && newIdx > oldIdx) {
-          // Preencher automaticamente as fases intermediárias puladas
-          for (let i = newIdx; i > oldIdx; i--) {
-            entries.push({
-              acao: `Movido para ${STAGES[i].name}`,
-              autor: i === newIdx ? 'Você' : 'Sistema (Preenchimento automático)',
-              data: new Date(),
-              tipo: 'move',
-            });
-          }
-        } else {
-          // Movimentação comum (retrocesso ou fases especiais como retorno)
-          entries.push({
-            acao: `Movido para ${STAGE_LABELS[novaFase] || novaFase}`,
-            autor: 'Você',
-            data: new Date(),
-            tipo: 'move',
-          });
-        }
-      }
+      await atualizarStatusVenda(saleId, {
+        status_funil: 'retorno',
+        motivo_retorno: motivo
+      });
 
-      if (observacao) {
-        entries.push({ acao: observacao, autor: 'Você', data: new Date(), tipo: 'obs' });
-      }
+      setSales(prev => prev.filter(sale => sale.id !== saleId));
+      return;
+    }
 
-      return { 
-        ...s, 
-        stage: novaFase, 
-        priority: novaPrioridade, 
-        updated: new Date(), 
-        historico: [...entries, ...s.historico] 
+    const vendaAtualizada = await atualizarStatusVenda(saleId, {
+      status_funil: novaFase
+    });
+
+    setSales(prev => prev.map(sale => {
+      if (sale.id !== saleId) return sale;
+      return {
+        ...sale,
+        ...mapVendaToSale(vendaAtualizada),
+        priority: novaPrioridade,
+        historico: [
+          ...(novaFase !== sale.stage ? [{ acao: `Movido para ${STAGE_LABELS[novaFase] || novaFase}`, autor: 'Voce', data: new Date(), tipo: 'move' }] : []),
+          ...(observacao ? [{ acao: observacao, autor: 'Voce', data: new Date(), tipo: 'obs' }] : []),
+          ...sale.historico
+        ]
       };
     }));
   }
@@ -456,6 +513,10 @@ function FunilPage() {
   );
   const total = filtradas.reduce((sum, s) => sum + s.value, 0);
   const selectedSale = selectedSaleId ? sales.find(s => s.id === selectedSaleId) : null;
+  const operators = useMemo(
+    () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),
+    [sales]
+  );
 
   return (
     <LayoutPrivado>
@@ -470,8 +531,9 @@ function FunilPage() {
       <div className="page">
         <div className="filters">
           <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 4 }}>Operadora:</span>
-          {['todas', ...OPERATORS].map(op => (
+          {['todas', ...operators].map(op => (
             <button
+              type="button"
               key={op}
               className={`filter-chip ${filter === op ? 'active' : ''}`}
               onClick={() => setFilter(op)}
@@ -488,6 +550,8 @@ function FunilPage() {
             </span>
           </div>
         </div>
+
+        {error && <div className="alert-error" style={{ margin: 16 }}>{error}</div>}
 
         <div className="kanban">
           {STAGES.map(st => {
@@ -515,7 +579,11 @@ function FunilPage() {
                   </div>
                 </div>
                 <div className="column-body">
-                  {items.length === 0 ? (
+                  {loading ? (
+                    <div style={{ padding: 16, fontSize: 12, color: 'var(--text-3)', textAlign: 'center' }}>
+                      Carregando...
+                    </div>
+                  ) : items.length === 0 ? (
                     <div style={{ padding: 16, fontSize: 12, color: 'var(--text-3)', textAlign: 'center' }}>
                       Vazio
                     </div>

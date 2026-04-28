@@ -29,7 +29,20 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
   };
 
-  const USER_PROGRESS = { clientes: 0, chips: 4, port_vivo: 0, port_claro: 2, negociacoes: 5, diaria: 8 };
+  const USER_PROGRESS = {
+    diaria_registro_cliente: 0,
+    diaria_chip_novo: 4,
+    diaria_portabilidade: 2,
+    diaria_internet: 1,
+    semanal_registro_cliente: 3,
+    semanal_chip_novo: 8,
+    semanal_portabilidade: 2,
+    semanal_internet: 3,
+  };
+
+  const getMetaKey = (meta) => (
+    meta.tipo || `${meta.periodo || 'diaria'}_${meta.categoria || 'registro_cliente'}`
+  );
 
   const giftMetas = metas.filter(m => m.is_gift);
 
@@ -85,14 +98,14 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
       {giftMetas.length > 0 && (
         <div className="sidebar-goals">
           <div className="header-row">
-            <span className="title">Metas de hoje</span>
+            <span className="title">Metas</span>
             <span className="count">{giftMetas.filter(m => {
-              const current = USER_PROGRESS[m.tipo] || 0;
+              const current = USER_PROGRESS[getMetaKey(m)] || 0;
               return current >= m.target;
             }).length}/{giftMetas.length}</span>
           </div>
           {giftMetas.map(meta => {
-            const current = USER_PROGRESS[meta.tipo] || 0;
+            const current = USER_PROGRESS[getMetaKey(meta)] || 0;
             const pct = Math.min(100, Math.round((current / meta.target) * 100));
             const achieved = pct >= 100;
             return (

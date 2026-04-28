@@ -18,13 +18,37 @@ const formatGoalValue = (meta, value) => (
 );
 
 // Mock de progresso do usuário por tipo de meta
+const PERIOD_LABELS = {
+  diaria: 'Diaria',
+  semanal: 'Semanal',
+};
+
+const CATEGORY_LABELS = {
+  registro_cliente: 'Registro de cliente',
+  chip_novo: 'Chip novo',
+  portabilidade: 'Portabilidade',
+  internet: 'Internet',
+};
+
+function getMetaKey(meta) {
+  return meta.tipo || `${meta.periodo || 'diaria'}_${meta.categoria || 'registro_cliente'}`;
+}
+
+function getMetaScope(meta) {
+  const periodo = PERIOD_LABELS[meta.periodo] || 'Diaria';
+  const categoria = CATEGORY_LABELS[meta.categoria] || meta.categoria || 'Meta';
+  return `${periodo} - ${categoria}`;
+}
+
 const USER_PROGRESS = {
-  clientes: 0,
-  chips: 4,
-  port_vivo: 0,
-  port_claro: 2,
-  negociacoes: 5,
-  diaria: 8,
+  diaria_registro_cliente: 0,
+  diaria_chip_novo: 4,
+  diaria_portabilidade: 2,
+  diaria_internet: 1,
+  semanal_registro_cliente: 3,
+  semanal_chip_novo: 8,
+  semanal_portabilidade: 2,
+  semanal_internet: 3,
 };
 
 const STATS = {
@@ -88,7 +112,7 @@ function DashboardPage() {
   
   // Calcular metas atingidas
   const metasComProgresso = giftMetas.map(meta => {
-    const current = USER_PROGRESS[meta.tipo] || 0;
+    const current = USER_PROGRESS[getMetaKey(meta)] || 0;
     const pct = Math.min(100, Math.round((current / meta.target) * 100));
     return { ...meta, current, pct, achieved: pct >= 100 };
   });
@@ -171,14 +195,14 @@ function DashboardPage() {
           <>
             <div className="rewards-header">
               <div>
-                <h2>Metas de hoje</h2>
+                <h2>Metas</h2>
                 <p>
-                  Bata cada meta para liberar uma recompensa surpresa. As metas reiniciam todo dia.
+                  Bata cada meta para liberar uma recompensa surpresa.
                 </p>
               </div>
 
               <div className="rewards-progress-summary">
-                <span>Progresso do dia</span>
+                <span>Progresso</span>
                 <div className="progress-track">
                   <div className="progress-fill" style={{ width: `${overallPct}%` }} />
                 </div>
@@ -195,6 +219,9 @@ function DashboardPage() {
                     <div className="reward-top">
                       <div className="reward-icon">{isClaimed ? '✅' : meta.achieved ? '🎉' : '🎁'}</div>
                       <div className="reward-step">Meta {i + 1}</div>
+                      <span className="pill" style={{ marginLeft: 6, fontSize: 10 }}>
+                        {getMetaScope(meta)}
+                      </span>
                       {meta.achieved && !isClaimed && (
                         <span style={{ 
                           marginLeft: 'auto', 

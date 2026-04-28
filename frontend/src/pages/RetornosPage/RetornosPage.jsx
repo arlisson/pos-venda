@@ -120,7 +120,7 @@ function ResolveReturnModal({ venda, onClose, onConfirm }) {
               value={note}
               onChange={event => setNote(event.target.value)}
               placeholder="Ex: endereço corrigido e confirmado com o cliente."
-              rows={4}
+              rows={7}
             />
           </div>
 
@@ -303,7 +303,19 @@ function RetornosPage() {
                 returns.map(item => {
                   const reason = classifyReason(item.motivo_retorno);
                   return (
-                    <div key={item.id} className="return-item">
+                    <div
+                      key={item.id}
+                      className="return-item"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedReturn(item)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setSelectedReturn(item);
+                        }
+                      }}
+                    >
                       <div className="return-item-left">
                         <div className="return-reason-tag">
                           <I.AlertTriangle size={12} />
@@ -327,9 +339,7 @@ function RetornosPage() {
                       <div className="return-item-right">
                         <div className="return-value">{formatBRL(getValue(item))}</div>
                         <div className="muted">Retornou {relTime(getReturnDate(item))}</div>
-                        <button className="btn btn-sm" onClick={() => setSelectedReturn(item)}>
-                          Atualizar status <I.ArrowRight size={12} />
-                        </button>
+                        <div className="return-open-hint">Abrir correção <I.ArrowRight size={12} /></div>
                       </div>
                     </div>
                   );
