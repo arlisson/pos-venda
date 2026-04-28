@@ -78,6 +78,36 @@ const PERMISSOES = [
     chave: 'crud_servicos',
     nome: 'Cadastro de servicos',
     descricao: 'Permite criar, editar, listar e desativar servicos.'
+  },
+  {
+    chave: 'historico_visualizar',
+    nome: 'Historico: visualizar',
+    descricao: 'Permite visualizar a pagina de historico do sistema.'
+  },
+  {
+    chave: 'clientes_ver_proprios',
+    nome: 'Clientes: ver proprios',
+    descricao: 'Permite visualizar clientes cadastrados pelo proprio usuario.'
+  },
+  {
+    chave: 'clientes_ver_todos',
+    nome: 'Clientes: ver todos',
+    descricao: 'Permite visualizar todos os clientes cadastrados.'
+  },
+  {
+    chave: 'clientes_criar',
+    nome: 'Clientes: criar',
+    descricao: 'Permite cadastrar novos clientes.'
+  },
+  {
+    chave: 'clientes_editar',
+    nome: 'Clientes: editar',
+    descricao: 'Permite editar clientes acessiveis pelo usuario.'
+  },
+  {
+    chave: 'clientes_excluir',
+    nome: 'Clientes: excluir',
+    descricao: 'Permite excluir clientes acessiveis pelo usuario.'
   }
 ];
 

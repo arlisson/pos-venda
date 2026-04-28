@@ -43,8 +43,8 @@ async function store(req, res) {
   } catch (error) {
     console.error(error);
 
-    return res.status(500).json({
-      message: 'Erro ao criar venda.'
+    return res.status(400).json({
+      message: error.message || 'Erro ao criar venda.'
     });
   }
 }
@@ -65,8 +65,8 @@ async function update(req, res) {
   } catch (error) {
     console.error(error);
 
-    return res.status(500).json({
-      message: 'Erro ao atualizar venda.'
+    return res.status(400).json({
+      message: error.message || 'Erro ao atualizar venda.'
     });
   }
 }

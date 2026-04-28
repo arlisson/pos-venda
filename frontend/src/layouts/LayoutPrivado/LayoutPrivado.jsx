@@ -4,18 +4,21 @@ import Header from '../../components/Header/Header';
 import { getUsuarioLocal, logout } from '../../services/auth.service';
 
 const routeConfigs = [
-  { path: '/', title: 'Dashboard', sub: 'Indicadores, metas e gamificação', id: 'dashboard', end: true },
+  { path: '/', title: 'Dashboard', sub: 'Indicadores, metas e gamificacao', id: 'dashboard', end: true },
   { path: '/vendas', title: 'Vendas', sub: 'Cadastro manual das vendas fechadas', id: 'vendas' },
-  { path: '/funil', title: 'Funil de vendas', sub: 'Acompanhe cada venda do lançamento até a conclusão', id: 'funil' },
+  { path: '/clientes', title: 'Clientes', sub: 'Representantes e empresas vinculados as vendas', id: 'clientes', end: true },
+  { path: '/clientes/novo', title: 'Novo cliente', sub: 'Cadastrar representante de empresa', id: 'clientes' },
+  { path: '/clientes/:id/editar', title: 'Editar cliente', sub: 'Atualize dados do representante e fidelidade', id: 'clientes' },
+  { path: '/funil', title: 'Funil de vendas', sub: 'Acompanhe cada venda do lancamento ate a conclusao', id: 'funil' },
   { path: '/retornos', title: 'Retornos', sub: 'Chips que retornaram por algum erro', id: 'retornos' },
-  { path: '/historico', title: 'Histórico', sub: 'Todas as movimentações do sistema', id: 'historico' },
-  { path: '/usuarios', title: 'Usuários', sub: 'Gerencie acessos e permissões', id: 'usuarios', end: true },
-  { path: '/usuarios/novo', title: 'Novo Usuário', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
-  { path: '/usuarios/cadastrar', title: 'Novo Usuário', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
-  { path: '/usuarios/:id/editar', title: 'Editar Usuário', sub: 'Atualize dados, status e permissões', id: 'usuarios' },
-  { path: '/perfil', title: 'Perfil', sub: 'Suas informações de conta e acesso', id: 'perfil', end: true },
+  { path: '/historico', title: 'Historico', sub: 'Todas as movimentacoes do sistema', id: 'historico' },
+  { path: '/usuarios', title: 'Usuarios', sub: 'Gerencie acessos e permissoes', id: 'usuarios', end: true },
+  { path: '/usuarios/novo', title: 'Novo Usuario', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
+  { path: '/usuarios/cadastrar', title: 'Novo Usuario', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
+  { path: '/usuarios/:id/editar', title: 'Editar Usuario', sub: 'Atualize dados, status e permissoes', id: 'usuarios' },
+  { path: '/perfil', title: 'Perfil', sub: 'Suas informacoes de conta e acesso', id: 'perfil', end: true },
   { path: '/perfil/editar', title: 'Editar perfil', sub: 'Atualize seus dados de acesso', id: 'perfil' },
-  { path: '/configuracoes', title: 'Configurações', sub: 'Gerencie operadoras, tipos de venda, serviços e links externos', id: 'config' },
+  { path: '/configuracoes', title: 'Configuracoes', sub: 'Gerencie operadoras, tipos de venda, servicos e links externos', id: 'config' },
   { path: '/admin/metas', title: 'Metas', sub: 'Configure desafios e recompensas do time', id: 'metas' },
 ];
 
@@ -42,6 +45,7 @@ function LayoutPrivado({ children }) {
     const routeMap = {
       dashboard: '/',
       vendas: '/vendas',
+      clientes: '/clientes',
       funil: '/funil',
       retornos: '/retornos',
       historico: '/historico',
@@ -49,6 +53,7 @@ function LayoutPrivado({ children }) {
       config: '/configuracoes',
       metas: '/admin/metas',
     };
+
     if (routeMap[id]) navigate(routeMap[id]);
   };
 

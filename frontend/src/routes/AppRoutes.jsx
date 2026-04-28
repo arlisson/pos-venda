@@ -12,6 +12,8 @@ import HistoricoPage from '../pages/HistoricoPage/HistoricoPage';
 import ConfiguracoesPage from '../pages/ConfiguracoesPage/ConfiguracoesPage';
 import VendasPage from '../pages/VendasPage/VendasPage';
 import RetornosPage from '../pages/RetornosPage/RetornosPage';
+import Clientes from '../pages/Clientes/Clientes';
+import ClienteFormPage from '../pages/Clientes/ClienteFormPage';
 import '../pages/HistoricoPage/HistoricoPage.css';
 
 import { getUsuarioLocal, temPermissao } from '../services/auth.service';
@@ -75,7 +77,19 @@ function AppRoutes() {
 
       <Route path="/retornos" element={<PrivateRoute><RetornosPage /></PrivateRoute>} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
-      <Route path="/historico" element={<PrivateRoute><HistoricoPage /></PrivateRoute>} />
+      <Route path="/historico" element={<PrivateRoute permission="historico_visualizar"><HistoricoPage /></PrivateRoute>} />
+      <Route
+        path="/clientes"
+        element={<PrivateRoute permission={['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_editar', 'clientes_excluir']}><Clientes /></PrivateRoute>}
+      />
+      <Route
+        path="/clientes/novo"
+        element={<PrivateRoute permission="clientes_criar"><ClienteFormPage /></PrivateRoute>}
+      />
+      <Route
+        path="/clientes/:id/editar"
+        element={<PrivateRoute permission="clientes_editar"><ClienteFormPage /></PrivateRoute>}
+      />
       <Route
         path="/configuracoes"
         element={<PrivateRoute permission={['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos']}><ConfiguracoesPage /></PrivateRoute>}

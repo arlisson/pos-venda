@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import * as I from '../Icons';
 import { temPermissao } from '../../services/auth.service';
 import { getMetas } from '../../services/meta.service';
@@ -11,16 +11,17 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   }, []);
 
   const items = [
-    { id: 'dashboard', label: 'Início', icon: <I.Home />, permission: 'vendas' },
+    { id: 'dashboard', label: 'Inicio', icon: <I.Home />, permission: 'vendas' },
     { id: 'vendas', label: 'Vendas', icon: <I.Chart />, permission: ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir'] },
+    { id: 'clientes', label: 'Clientes', icon: <I.Users />, permission: ['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_editar', 'clientes_excluir'] },
     { id: 'funil', label: 'Funil de vendas', icon: <I.Funnel />, badge: counts?.active, permission: 'vendas' },
     { id: 'retornos', label: 'Retornos', icon: <I.Return />, badge: counts?.returns, permission: 'vendas' },
-    { id: 'historico', label: 'Histórico', icon: <I.History /> },
+    { id: 'historico', label: 'Historico', icon: <I.History />, permission: 'historico_visualizar' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   const admin = [
-    { id: 'usuarios', label: 'Usuários', icon: <I.Users />, permission: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes'] },
-    { id: 'config', label: 'Configurações', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos'] },
+    { id: 'usuarios', label: 'Usuarios', icon: <I.Users />, permission: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes'] },
+    { id: 'config', label: 'Configuracoes', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos'] },
     { id: 'metas', label: 'Configurar Metas', icon: <I.Settings />, permission: ['gerenciar_metas'] },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
@@ -33,13 +34,6 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
 
   const giftMetas = metas.filter(m => m.is_gift);
 
-  function medal(pct) {
-    if (pct >= 100) return '🥇';
-    if (pct >= 50)  return '🥈';
-    if (pct >= 10)  return '🥉';
-    return '⭐';
-  }
-
   return (
     <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <div className="sidebar-logo">
@@ -49,7 +43,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {items.length > 0 && (
           <div className="sidebar-section">
-            <div className="sidebar-section-title">Operação</div>
+            <div className="sidebar-section-title">Operacao</div>
             {items.map(it => (
               <button
                 key={it.id}
@@ -66,7 +60,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
 
         {admin.length > 0 && (
           <div className="sidebar-section">
-            <div className="sidebar-section-title">Administração</div>
+            <div className="sidebar-section-title">Administracao</div>
             {admin.map(it => (
               <button
                 key={it.id}
@@ -81,7 +75,6 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
         )}
       </div>
 
-      {/* Metas de hoje na Sidebar */}
       {giftMetas.length > 0 && (
         <div className="sidebar-goals">
           <div className="header-row">
@@ -96,9 +89,9 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
             const pct = Math.min(100, Math.round((current / meta.target) * 100));
             const achieved = pct >= 100;
             return (
-              <div key={meta.id} className={`sidebar-goal ${achieved ? 'achieved' : ''}`} title={`Meta diária — recompensa surpresa`}>
+              <div key={meta.id} className={`sidebar-goal ${achieved ? 'achieved' : ''}`} title="Meta diaria - recompensa surpresa">
                 <div className="top">
-                  <span className="g-icon">{achieved ? '🎉' : '🎁'}</span>
+                  <span className="g-icon">{achieved ? '*' : '+'}</span>
                   <span className="g-name">{meta.desc}</span>
                   <span className="g-pct">{pct}%</span>
                 </div>

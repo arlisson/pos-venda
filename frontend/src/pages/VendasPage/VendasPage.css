@@ -70,6 +70,69 @@
   outline: none;
 }
 
+.venda-cliente-select {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.venda-cliente-select__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.venda-cliente-select__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.venda-cliente-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.venda-cliente-empty {
+  padding: 9px 10px;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.venda-cliente-card div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.venda-cliente-card strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.venda-cliente-card span {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
 .vendas-table-name {
   display: flex;
   flex-direction: column;
@@ -180,5 +243,9 @@
 
   .chip-item-subtotal {
     grid-column: 1 / -1;
+  }
+
+  .venda-cliente-card {
+    grid-template-columns: 1fr;
   }
 }

@@ -10,10 +10,12 @@ import {
   listarVendedoras
 } from '../../services/venda.service';
 import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
+import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import './VendasPage.css';
 
 const VENDA_VAZIA = {
+  cliente_id: '',
   nome: '',
   telefone: '',
   email: '',
@@ -58,25 +60,33 @@ const VENDA_VAZIA = {
 
 const ITEM_CHIP_VAZIO = { quantidade: '', valor_unitario: '' };
 
+const CAMPOS_CLIENTE_DERIVADOS = [
+  'nome',
+  'telefone',
+  'email',
+  'email_2',
+  'nome_representante_legal',
+  'fixo_ddd',
+  'cpf_representante_legal',
+  'razao_social',
+  'cnpj',
+  'nome_administrador',
+  'cpf_administrador'
+];
+
 const CAMPOS = [
   { section: 'Cliente' },
-  { name: 'nome', label: 'Nome', required: true },
+  { name: 'cliente_id', label: 'Cliente', type: 'client', required: true, span: true },
   { name: 'vendedora_id', label: 'Vendedora', type: 'seller', required: true },
-  { name: 'telefone', label: 'Telefone' },
-  { name: 'fixo_ddd', label: 'Fixo com DDD' },
-  { name: 'email', label: 'E-mail', type: 'email' },
-  { name: 'email_2', label: 'E-mail 2', type: 'email' },
 
-  { section: 'Responsaveis e venda' },
+  { section: 'Dados da venda' },
   { name: 'data_venda', label: 'Data da venda', type: 'date' },
-  { name: 'nome_representante_legal', label: 'Nome do representante legal' },
   { name: 'nome_fechou_venda', label: 'Nome com quem fechou a venda' },
-  { name: 'cpf_representante_legal', label: 'CPF do representante legal' },
   { name: 'setor_funcao', label: 'Setor/Funcao' },
   { name: 'qc_feito_por', label: 'QC feito por' },
 
   { section: 'Produto e valores' },
-  { name: 'operadora_id', label: 'Operadora', type: 'operator', required: true },
+  { name: 'operadora_id', label: 'Operadora adquirida', type: 'operator', required: true },
   { name: 'tipo_venda_id', label: 'Tipo de venda', type: 'saleType', required: true },
   { name: 'servico_id', label: 'Servico', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
@@ -86,9 +96,7 @@ const CAMPOS = [
   { name: 'valores_unitarios_chips', label: 'Valores unitarios de cada chip', type: 'chips', span: true },
   { name: 'numeros_portados', label: 'Numeros a serem portados', type: 'textarea', span: true },
 
-  { section: 'Empresa e local' },
-  { name: 'razao_social', label: 'Razao social' },
-  { name: 'cnpj', label: 'CNPJ' },
+  { section: 'Local de instalacao/entrega' },
   { name: 'endereco', label: 'Endereco' },
   { name: 'numero_endereco', label: 'Numero de endereco' },
   { name: 'complemento', label: 'Complemento' },
@@ -99,12 +107,10 @@ const CAMPOS = [
   { name: 'ponto_referencia', label: 'Ponto de referencia', span: true },
   { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condominio, shopping...', span: true },
 
-  { section: 'Aceite, recebimento e administrador' },
+  { section: 'Aceite e recebimento' },
   { name: 'horario_aceite_voz', label: 'Horario para aceite de voz' },
   { name: 'responsavel_recebimento', label: 'Responsavel pelo recebimento' },
   { name: 'rg_responsavel_recebimento', label: 'RG do responsavel pelo recebimento' },
-  { name: 'nome_administrador', label: 'Nome Administrador' },
-  { name: 'cpf_administrador', label: 'CPF Administrador' },
   { name: 'observacoes', label: 'Observacoes', type: 'textarea', span: true },
 ];
 
@@ -204,7 +210,8 @@ function normalizarVenda(venda) {
     operadora_id: venda.operadora_id ? String(venda.operadora_id) : '',
     tipo_venda_id: venda.tipo_venda_id ? String(venda.tipo_venda_id) : '',
     servico_id: venda.servico_id ? String(venda.servico_id) : '',
-    vendedora_id: venda.vendedora_id ? String(venda.vendedora_id) : ''
+    vendedora_id: venda.vendedora_id ? String(venda.vendedora_id) : '',
+    cliente_id: venda.cliente_id ? String(venda.cliente_id) : ''
   };
 }
 
@@ -273,7 +280,65 @@ function ItensChipsInput({ value, onChange }) {
   );
 }
 
-function VendaModal({ venda, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave }) {
+function ClienteVendaSelect({ value, clientes, onChange }) {
+  const [busca, setBusca] = useState('');
+  const clienteSelecionado = clientes.find(cliente => String(cliente.id) === String(value));
+  const buscaNormalizada = busca.trim().toLowerCase();
+  const clientesFiltrados = clientes.filter(cliente => {
+    if (!buscaNormalizada) return true;
+
+    return [
+      cliente.nome,
+      cliente.razao_social,
+      cliente.cnpj,
+      cliente.email,
+      cliente.responsavel_nome
+    ].filter(Boolean).some(valor => String(valor).toLowerCase().includes(buscaNormalizada));
+  });
+
+  return (
+    <div className="venda-cliente-select">
+      <div className="venda-cliente-select__search">
+        <I.Search size={14} />
+        <input
+          value={busca}
+          onChange={event => setBusca(event.target.value)}
+          placeholder="Buscar cliente por nome, razao social, CNPJ ou e-mail"
+        />
+      </div>
+
+      <select value={value} onChange={event => onChange(event.target.value)} required>
+        <option value="">Selecione um cliente</option>
+        {clientesFiltrados.map(cliente => (
+          <option key={cliente.id} value={cliente.id}>
+            {cliente.nome} {cliente.razao_social ? `- ${cliente.razao_social}` : ''} {cliente.cnpj ? `- ${cliente.cnpj}` : ''}
+          </option>
+        ))}
+      </select>
+
+      {clientes.length === 0 && (
+        <div className="venda-cliente-empty">
+          Nenhum cliente disponivel. Cadastre um cliente ou solicite permissao para visualizar clientes.
+        </div>
+      )}
+
+      {clienteSelecionado && (
+        <div className="venda-cliente-card">
+          <div>
+            <strong>{clienteSelecionado.nome}</strong>
+            <span>{clienteSelecionado.razao_social || 'Sem razao social'} - {clienteSelecionado.cnpj || 'Sem CNPJ'}</span>
+          </div>
+          <div>
+            <span>{clienteSelecionado.email || 'Sem e-mail'}</span>
+            <span>{clienteSelecionado.operadoraAtual?.nome || 'Sem operadora'} - {clienteSelecionado.quantidade_chips ?? 0} chips</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave }) {
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : VENDA_VAZIA);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -298,6 +363,12 @@ function VendaModal({ venda, vendedoras, operadoras, tiposVenda, servicos, onClo
           .filter(item => item.quantidade > 0 && item.valor_unitario > 0)
       };
 
+      if (payload.cliente_id) {
+        CAMPOS_CLIENTE_DERIVADOS.forEach((campo) => {
+          payload[campo] = null;
+        });
+      }
+
       payload.valor_total = calcularTotalItensChips(form.valores_unitarios_chips);
 
       await onSave(payload);
@@ -314,7 +385,7 @@ function VendaModal({ venda, vendedoras, operadoras, tiposVenda, servicos, onClo
           <div className="modal-header-row">
             <div>
               <div className="modal-client">{venda ? 'Editar venda' : 'Nova venda'}</div>
-              <div className="modal-sub">Preenchimento manual com os campos da planilha.</div>
+              <div className="modal-sub">Selecione o cliente e preencha apenas os dados especificos da venda.</div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
               <I.Close size={14} />
@@ -332,7 +403,13 @@ function VendaModal({ venda, vendedoras, operadoras, tiposVenda, servicos, onClo
               return (
                 <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''}`}>
                   <label>{campo.label}</label>
-                  {['seller', 'operator', 'saleType', 'service'].includes(campo.type) ? (
+                  {campo.type === 'client' ? (
+                    <ClienteVendaSelect
+                      value={form[campo.name]}
+                      clientes={clientes}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                    />
+                  ) : ['seller', 'operator', 'saleType', 'service'].includes(campo.type) ? (
                     <select
                       value={form[campo.name]}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
@@ -395,6 +472,7 @@ function VendaModal({ venda, vendedoras, operadoras, tiposVenda, servicos, onClo
 function VendasPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [vendas, setVendas] = useState([]);
+  const [clientes, setClientes] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
   const [tiposVenda, setTiposVenda] = useState([]);
@@ -410,6 +488,7 @@ function VendasPage() {
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, 'vendas_editar');
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
+  const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
 
   const filtros = useMemo(() => ({ busca, vendedora_id: vendedoraId }), [busca, vendedoraId]);
 
@@ -418,8 +497,9 @@ function VendasPage() {
     setCarregando(true);
 
     try {
-      const [vendasData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
+      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
         listarVendas(filtros),
+        podeListarClientes ? listarClientes() : Promise.resolve([]),
         listarVendedoras(),
         listarOperadoras(),
         listarTiposVenda(),
@@ -427,6 +507,7 @@ function VendasPage() {
       ]);
 
       setVendas(vendasData);
+      setClientes(clientesData);
       setVendedoras(vendedorasData);
       setOperadoras(operadorasData);
       setTiposVenda(tiposVendaData);
@@ -460,12 +541,14 @@ function VendasPage() {
     return () => window.removeEventListener('pos-venda:nova-venda', handleNovaVenda);
   }, [podeCriarVenda]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (searchParams.get('nova') === '1' && podeCriarVenda) {
       abrirNovaVenda();
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams, podeCriarVenda]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function abrirEdicao(venda) {
     setModalVenda(venda);
@@ -505,6 +588,7 @@ function VendasPage() {
       {modalAberto && (
         <VendaModal
           venda={modalVenda}
+          clientes={clientes}
           vendedoras={vendedoras}
           operadoras={operadoras}
           tiposVenda={tiposVenda}
@@ -548,7 +632,7 @@ function VendasPage() {
                   <th>Cliente</th>
                   <th>Operadora</th>
                   <th>Tipo</th>
-                  <th>Serviço</th>
+                  <th>Servico</th>
                   <th>Linhas</th>
                   <th>GB</th>
                   <th>Valor</th>
@@ -576,8 +660,8 @@ function VendasPage() {
                     <tr key={venda.id}>
                       <td>
                         <div className="vendas-table-name">
-                          <strong>{venda.nome}</strong>
-                          <span>{venda.telefone || venda.email || venda.razao_social || '-'}</span>
+                          <strong>{venda.cliente?.nome || venda.nome}</strong>
+                          <span>{venda.cliente?.razao_social || venda.razao_social || venda.telefone || venda.email || '-'}</span>
                         </div>
                       </td>
                       <td><span className="tag">{venda.operadora?.nome || '-'}</span></td>
