@@ -30,11 +30,7 @@ app.use('/api/roles', roleRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/permissoes', permissaoRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
-<<<<<<< HEAD
-app.use('/api/metas', metaRoutes);
-=======
 app.use('/api/config', configRoutes);
->>>>>>> aaa90b398ece4b5ea734ca6aa740d0fb84c4b06f
 
 app.get('/api/health', (req, res) => {
   return res.json({
