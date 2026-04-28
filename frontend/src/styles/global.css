@@ -108,33 +108,56 @@ input, select, textarea { font-family: inherit; }
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  padding: 0 24px;
-  gap: 16px;
-  height: 56px;
+  padding: 0 28px;
+  gap: 24px;
+  height: 64px;
   flex-shrink: 0;
   z-index: 10;
 }
-.header-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.header-info { display: flex; flex-direction: column; gap: 2px; }
+.header-title { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+.header-subtitle { font-size: 12px; color: var(--text-3); }
+
+.header-center { flex: 1; display: flex; justify-content: center; padding: 0 16px; }
 
 .external-links {
   display: flex; align-items: center; gap: 4px; padding: 4px;
-  background: var(--surface-2); border-radius: var(--radius); border: 1px solid var(--border);
-  margin-left: auto; max-width: min(680px, 52vw); overflow-x: auto;
+  background: var(--surface-2); border-radius: var(--radius-lg); border: 1px solid var(--border);
+  max-width: 100%;
 }
 .external-link {
-  display: flex; align-items: center; gap: 6px; padding: 5px 10px;
-  border-radius: 4px; font-size: 12.5px; color: var(--text-2); text-decoration: none;
-  white-space: nowrap; flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px; padding: 6px 14px;
+  border-radius: 6px; font-size: 13px; color: var(--text-2); text-decoration: none;
+  white-space: nowrap; flex-shrink: 0; font-weight: 500;
+  transition: all 150ms;
 }
+.external-link:hover { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 .dot.vivo { background: #5e0a8a; } .dot.tim { background: #003a8c; } .dot.claro { background: #c8102e; } .dot.gov { background: #1f7a1f; } .dot.abr { background: #0f766e; }
 .dot { width: 6px; height: 6px; border-radius: 50%; }
 
-.header-actions { display: flex; gap: 8px; align-items: center; }
+.header-actions { display: flex; gap: 12px; align-items: center; }
 .search-box {
-  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); width: 220px;
+  display: flex; align-items: center; gap: 10px; padding: 0 14px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 280px;
+  height: 38px;
 }
-.search-box input { border: none; background: transparent; outline: none; flex: 1; font-size: 13px; }
+.search-box input { border: none; background: transparent; outline: none; flex: 1; font-size: 13.5px; color: var(--text); }
+.search-box input::placeholder { color: var(--text-3); }
+
+.btn-notification { display: flex; align-items: center; gap: 4px; padding: 0 8px !important; width: auto !important; height: 38px !important; }
+.btn-notification .chevron { opacity: 0.5; margin-top: 1px; }
+
+.btn-new-sale {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 /* === Scrollable Content === */
 .content {
@@ -427,64 +450,79 @@ input, select, textarea { font-family: inherit; }
   border-radius: var(--radius); color: var(--danger); font-size: 13px;
 }
 
-/* === Sidebar Metas do Mês === */
-.sidebar-metas {
-  padding: 14px 12px;
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.sidebar-metas-title {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-3);
-  padding: 0 8px 10px;
-}
-.sidebar-meta-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 5px 8px;
-  border-radius: var(--radius);
-}
-.sidebar-meta-item:hover { background: var(--surface-2); }
-.sidebar-meta-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-.sidebar-meta-name {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-2);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.sidebar-meta-pct {
-  font-size: 11.5px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--text);
-  flex-shrink: 0;
-}
-.sidebar-meta-bar-bg {
-  height: 3px;
+/* === Progress Track (global) === */
+.progress-track {
+  height: 4px;
   background: var(--surface-3);
   border-radius: 99px;
   overflow: hidden;
+  width: 100%;
 }
-.sidebar-meta-bar-fill {
+.progress-fill {
   height: 100%;
   background: var(--accent);
   border-radius: 99px;
-  transition: width 0.4s ease;
+  transition: width 300ms ease;
 }
-.sidebar-meta-bar-fill.full { background: var(--success); }
+
+/* === Sidebar Goals (Metas de hoje) === */
+.sidebar-goals {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  max-height: 260px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.sidebar-goals .header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 8px;
+}
+.sidebar-goals .title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.sidebar-goals .count {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+}
+.sidebar-goal {
+  padding: 7px 8px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 120ms;
+}
+.sidebar-goal:hover { background: var(--surface-2); }
+.sidebar-goal .top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.sidebar-goal .g-icon {
+  width: 18px; height: 18px;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sidebar-goal .g-name {
+  font-size: 11.5px;
+  color: var(--text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.sidebar-goal .g-pct {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+.sidebar-goal.achieved .g-pct { color: var(--success); font-weight: 600; }

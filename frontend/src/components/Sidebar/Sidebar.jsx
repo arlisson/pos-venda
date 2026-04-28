@@ -79,27 +79,29 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
         )}
       </div>
 
-      {/* Metas do Mês na Sidebar */}
+      {/* Metas de hoje na Sidebar */}
       {giftMetas.length > 0 && (
-        <div className="sidebar-metas">
-          <div className="sidebar-metas-title">Metas do Mês</div>
+        <div className="sidebar-goals">
+          <div className="header-row">
+            <span className="title">Metas de hoje</span>
+            <span className="count">{giftMetas.filter(m => {
+              const current = USER_PROGRESS[m.tipo] || 0;
+              return current >= m.target;
+            }).length}/{giftMetas.length}</span>
+          </div>
           {giftMetas.map(meta => {
             const current = USER_PROGRESS[meta.tipo] || 0;
             const pct = Math.min(100, Math.round((current / meta.target) * 100));
+            const achieved = pct >= 100;
             return (
-              <div key={meta.id} className="sidebar-meta-item">
-                <div className="sidebar-meta-top">
-                  <span className="sidebar-meta-name">
-                    <span>{medal(pct)}</span>
-                    {meta.desc}
-                  </span>
-                  <span className="sidebar-meta-pct">{pct}%</span>
+              <div key={meta.id} className={`sidebar-goal ${achieved ? 'achieved' : ''}`} title={`Meta diária — recompensa surpresa`}>
+                <div className="top">
+                  <span className="g-icon">{achieved ? '🎉' : '🎁'}</span>
+                  <span className="g-name">{meta.desc}</span>
+                  <span className="g-pct">{pct}%</span>
                 </div>
-                <div className="sidebar-meta-bar-bg">
-                  <div
-                    className={`sidebar-meta-bar-fill${pct >= 100 ? ' full' : ''}`}
-                    style={{ width: `${pct}%` }}
-                  />
+                <div className="progress-track">
+                  <div className="progress-fill" style={{ width: `${pct}%`, background: achieved ? 'var(--success)' : 'var(--text)' }}></div>
                 </div>
               </div>
             );
