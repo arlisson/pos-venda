@@ -8,6 +8,15 @@ import './DashboardPage.css';
 
 const formatBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const isMoneyGoal = (meta) => (
+  /R\$/i.test(meta.desc || '') ||
+  ['valor', 'receita', 'faturamento'].some(key => String(meta.tipo || '').toLowerCase().includes(key))
+);
+
+const formatGoalValue = (meta, value) => (
+  isMoneyGoal(meta) ? formatBRL(value) : value
+);
+
 // Mock de progresso do usuário por tipo de meta
 const USER_PROGRESS = {
   clientes: 0,
@@ -162,17 +171,25 @@ function DashboardPage() {
           <>
             <div className="rewards-header">
               <div>
-                <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Metas de hoje</h2>
-                <p style={{ fontSize: 12.5, color: 'var(--text-2)', margin: '2px 0 0' }}>
+                <h2>Metas de hoje</h2>
+                <p>
                   Bata cada meta para liberar uma recompensa surpresa. As metas reiniciam todo dia.
                 </p>
               </div>
 
+              <div className="rewards-progress-summary">
+                <span>Progresso do dia</span>
+                <div className="progress-track">
+                  <div className="progress-fill" style={{ width: `${overallPct}%` }} />
+                </div>
+                <strong>{doneCount}/{totalCount}</strong>
+              </div>
             </div>
 
             <div className="rewards-grid">
               {metasComProgresso.map((meta, i) => {
                 const isClaimed = openedGifts.has(meta.id);
+                const remaining = Math.max(0, meta.target - meta.current);
                 return (
                   <div key={meta.id} className={`reward-card ${meta.achieved ? 'achieved' : ''} ${isClaimed ? 'claimed' : ''}`}>
                     <div className="reward-top">
@@ -230,8 +247,8 @@ function DashboardPage() {
                       </div>
                       <div className="reward-numbers">
                         <span>
-                          {meta.current}
-                          <span style={{ color: 'var(--text-3)' }}> / {meta.target}</span>
+                          {formatGoalValue(meta, meta.current)}
+                          <span> / {formatGoalValue(meta, meta.target)}</span>
                         </span>
                         <span>{meta.pct}%</span>
                       </div>
@@ -247,7 +264,7 @@ function DashboardPage() {
                         ? <><I.Check size={13} /> Resgatada</> 
                         : meta.achieved 
                           ? 'Resgatar surpresa 🎁' 
-                          : `Faltam ${Math.max(0, meta.target - meta.current)}`}
+                          : `Faltam ${formatGoalValue(meta, remaining)}`}
                     </button>
                   </div>
                 );
