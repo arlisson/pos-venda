@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
-import { STAGES, OPERATORS } from '../../config/constants';
+import { STAGES, DEFAULT_OPERATORS as OPERATORS } from '../../config/constants';
 
 const formatBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
