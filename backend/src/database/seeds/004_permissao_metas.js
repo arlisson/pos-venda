@@ -1,26 +1,55 @@
-/**
- * @param { import("knex").Knex } knex
- * @returns { Promise<void> }
- */
-exports.seed = async function(knex) {
-  // 1. Insere a nova permissão para gerenciar metas
-  // Usamos o campo 'chave' como identificador único
-  await knex('permissoes').insert({
-    chave: 'gerenciar_metas',
-    nome: 'Gerenciar Metas',
-    descricao: 'Permite configurar as metas globais e de gamificação',
-    ativo: true
-  }).onConflict('chave').ignore();
+const PERMISSAO = {
+  chave: 'gerenciar_metas',
+  nome: 'Gerenciar Metas',
+  descricao: 'Permite configurar as metas globais e de gamificacao',
+  ativo: true
+};
 
-  // 2. Busca o ID da permissão que acabamos de criar e o ID da role 'admin'
-  const permissao = await knex('permissoes').where('chave', 'gerenciar_metas').first();
-  const roleAdmin = await knex('roles').where('nome', 'admin').first();
-
-  // 3. Associa a permissão ao perfil administrador na tabela intermediária
-  if (permissao && roleAdmin) {
-    await knex('roles_permissoes').insert({
-      role_id: roleAdmin.id,
-      permissao_id: permissao.id
-    }).onConflict(['role_id', 'permissao_id']).ignore();
+function parsePermissoes(permissoes) {
+  if (!permissoes) return {};
+  if (typeof permissoes === 'string') {
+    try {
+      return JSON.parse(permissoes);
+    } catch {
+      return {};
+    }
   }
+  return permissoes;
+}
+
+exports.seed = async function (knex) {
+  const existente = await knex('permissoes')
+    .where('chave', PERMISSAO.chave)
+    .first();
+
+  if (existente) {
+    await knex('permissoes')
+      .where('id', existente.id)
+      .update({
+        nome: PERMISSAO.nome,
+        descricao: PERMISSAO.descricao,
+        ativo: true,
+        updated_at: knex.fn.now()
+      });
+  } else {
+    await knex('permissoes').insert(PERMISSAO);
+  }
+
+  const roleAdmin = await knex('roles')
+    .where('nome', 'admin')
+    .first();
+
+  if (!roleAdmin) {
+    return;
+  }
+
+  await knex('roles')
+    .where('id', roleAdmin.id)
+    .update({
+      permissoes: JSON.stringify({
+        ...parsePermissoes(roleAdmin.permissoes),
+        [PERMISSAO.chave]: true
+      }),
+      updated_at: knex.fn.now()
+    });
 };

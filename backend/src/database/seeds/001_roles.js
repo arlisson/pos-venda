@@ -5,10 +5,25 @@ function montarPermissoes(permissoes, permissoesLiberadas = []) {
   }, {});
 }
 
-exports.seed = async function (knex) {
-  await knex('usuarios').del();
-  await knex('roles').del();
+async function upsertRole(knex, role) {
+  const existente = await knex('roles')
+    .where('nome', role.nome)
+    .first();
 
+  if (existente) {
+    return knex('roles')
+      .where('id', existente.id)
+      .update({
+        descricao: role.descricao,
+        permissoes: role.permissoes,
+        updated_at: knex.fn.now()
+      });
+  }
+
+  return knex('roles').insert(role);
+}
+
+exports.seed = async function (knex) {
   const permissoes = await knex('permissoes')
     .select('chave')
     .where('ativo', true)
@@ -16,9 +31,8 @@ exports.seed = async function (knex) {
 
   const todasPermissoes = permissoes.map((permissao) => permissao.chave);
 
-  await knex('roles').insert([
+  const roles = [
     {
-      id: 1,
       nome: 'admin',
       descricao: 'Administrador do sistema com acesso total.',
       permissoes: JSON.stringify(
@@ -26,12 +40,15 @@ exports.seed = async function (knex) {
       )
     },
     {
-      id: 2,
       nome: 'usuario',
-      descricao: 'Usuário comum com acesso limitado ao sistema.',
+      descricao: 'Usuario comum com acesso limitado ao sistema.',
       permissoes: JSON.stringify(
         montarPermissoes(permissoes, [])
       )
     }
-  ]);
+  ];
+
+  for (const role of roles) {
+    await upsertRole(knex, role);
+  }
 };
