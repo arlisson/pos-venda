@@ -113,7 +113,7 @@ function DashboardPage() {
   
   // Calcular metas atingidas
   const metasComProgresso = giftMetas.map(meta => {
-    const current = progresso[getMetaKey(meta)] ?? 0;
+    const current = progresso.metas?.[meta.id] ?? progresso[getMetaKey(meta)] ?? 0;
     const target = Number(meta.target) || 0;
     const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
     return { ...meta, current, pct, achieved: pct >= 100 };
