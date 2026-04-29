@@ -60,15 +60,41 @@ function limparValor(valor) {
 }
 
 function normalizarData(valor) {
-  if (!valor) return valor;
+  if (!valor) return null;
 
-  const texto = String(valor).trim();
+  const texto = valor instanceof Date
+    ? [
+        valor.getFullYear(),
+        String(valor.getMonth() + 1).padStart(2, '0'),
+        String(valor.getDate()).padStart(2, '0')
+      ].join('-')
+    : String(valor).trim();
+  const textoISO = texto.slice(0, 10);
+  const dataISO = textoISO.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const match = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
 
-  if (!match) return texto;
+  if (dataISO) {
+    const [, ano, mes, dia] = dataISO;
+    const data = new Date(`${ano}-${mes}-${dia}T00:00:00`);
+    const dataValida = data.getFullYear() === Number(ano)
+      && data.getMonth() + 1 === Number(mes)
+      && data.getDate() === Number(dia);
+
+    return dataValida && Number(ano) >= 1900 ? textoISO : null;
+  }
+
+  if (!match) return null;
 
   const [, dia, mes, ano] = match;
   const anoCompleto = ano.length === 2 ? `20${ano}` : ano;
+  const data = new Date(`${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}T00:00:00`);
+  const dataValida = data.getFullYear() === Number(anoCompleto)
+    && data.getMonth() + 1 === Number(mes)
+    && data.getDate() === Number(dia);
+
+  if (!dataValida || Number(anoCompleto) < 1900) {
+    return null;
+  }
 
   return `${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
 }
@@ -305,7 +331,7 @@ function aplicarEscopoVendas(query, usuarioId, escopo) {
 }
 
 function dataReferenciaVendaSQL(alias = 'v') {
-  return `COALESCE(NULLIF(${alias}.data_venda, '0000-00-00'), NULLIF(DATE(${alias}.criado_em), '0000-00-00'), DATE(${alias}.created_at))`;
+  return `COALESCE(NULLIF(NULLIF(${alias}.data_venda, '0000-00-00'), '1899-11-30'), NULLIF(DATE(${alias}.criado_em), '0000-00-00'), DATE(${alias}.created_at))`;
 }
 
 async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {

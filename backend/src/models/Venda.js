@@ -19,8 +19,8 @@ class Venda extends Model {
         telefone: { type: ['string', 'null'], maxLength: 40 },
         email: { type: ['string', 'null'], maxLength: 160 },
         email_2: { type: ['string', 'null'], maxLength: 160 },
-        criado_em: { type: ['string', 'object', 'null'] },
-        ultima_atividade_em: { type: ['string', 'object', 'null'] },
+        criado_em: { type: ['string', 'null'] },
+        ultima_atividade_em: { type: ['string', 'null'] },
         nome_representante_legal: { type: ['string', 'null'], maxLength: 240 },
         fixo_ddd: { type: ['string', 'null'], maxLength: 40 },
         nome_fechou_venda: { type: ['string', 'null'], maxLength: 240 },
@@ -37,7 +37,7 @@ class Venda extends Model {
         tipo_local_cpf: { type: ['string', 'null'], maxLength: 160 },
         razao_social: { type: ['string', 'null'], maxLength: 240 },
         cnpj: { type: ['string', 'null'], maxLength: 20 },
-        data_venda: { type: ['string', 'object', 'null'] },
+        data_venda: { type: ['string', 'null'] },
         qc_feito_por: { type: ['string', 'null'], maxLength: 120 },
         observacoes: { type: ['string', 'null'] },
         dia_vencimento: { type: ['integer', 'null'] },
@@ -62,15 +62,15 @@ class Venda extends Model {
         status_anterior_retorno: { type: ['string', 'null'], maxLength: 40 },
         motivo_retorno: { type: ['string', 'null'], maxLength: 255 },
         nota_correcao_retorno: { type: ['string', 'null'] },
-        retornou_em: { type: ['string', 'object', 'null'] },
-        corrigido_em: { type: ['string', 'object', 'null'] },
+        retornou_em: { type: ['string', 'null'] },
+        corrigido_em: { type: ['string', 'null'] },
         criado_por_id: { type: ['integer', 'null'] },
         vendedora_id: { type: 'integer' },
-        excluido_em: { type: ['string', 'object', 'null'] },
-        excluir_definitivo_em: { type: ['string', 'object', 'null'] },
+        excluido_em: { type: ['string', 'null'] },
+        excluir_definitivo_em: { type: ['string', 'null'] },
         excluido_por_id: { type: ['integer', 'null'] },
-        created_at: { type: ['string', 'object'] },
-        updated_at: { type: ['string', 'object'] }
+        created_at: { type: 'string' },
+        updated_at: { type: 'string' }
       }
     };
   }
