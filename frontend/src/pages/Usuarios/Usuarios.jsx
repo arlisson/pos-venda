@@ -21,54 +21,181 @@ function parsePermissoes(permissoes) {
   return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
 }
 
-const SUBPERMISSOES = {
-  vendas: ['vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir'],
-  crud_usuarios: ['usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir']
-};
+const GRUPOS_PERMISSOES = [
+  {
+    id: 'vendas',
+    titulo: 'Vendas',
+    descricao: 'Controle as telas, a visualizacao e as acoes permitidas no modulo de vendas.',
+    secoes: [
+      {
+        titulo: 'Acesso ao modulo',
+        itens: [
+          {
+            chave: 'vendas',
+            nome: 'Cadastro de vendas',
+            descricao: 'Permite acessar a tela de cadastro e listagem de vendas.'
+          }
+        ]
+      },
+      {
+        titulo: 'Telas liberadas',
+        itens: [
+          {
+            chave: 'funil_vendas',
+            nome: 'Funil de vendas',
+            descricao: 'Permite acessar a pagina do funil de vendas.'
+          }
+        ]
+      },
+      {
+        titulo: 'Visualizacao',
+        exclusivo: true,
+        itens: [
+          {
+            chave: 'vendas_ver_proprias',
+            nome: 'Ver proprias',
+            descricao: 'Mostra vendas criadas pelo usuario ou vinculadas a ele.'
+          },
+          {
+            chave: 'vendas_ver_todas',
+            nome: 'Ver todas',
+            descricao: 'Mostra todas as vendas cadastradas.'
+          }
+        ]
+      },
+      {
+        titulo: 'Acoes',
+        itens: [
+          {
+            chave: 'vendas_criar',
+            nome: 'Criar',
+            descricao: 'Permite registrar novas vendas.'
+          },
+          {
+            chave: 'vendas_editar',
+            nome: 'Editar',
+            descricao: 'Permite editar vendas acessiveis.'
+          },
+          {
+            chave: 'vendas_excluir',
+            nome: 'Excluir',
+            descricao: 'Permite excluir vendas acessiveis.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'usuarios',
+    titulo: 'Usuarios',
+    descricao: 'Controle o acesso ao cadastro de usuarios e a administracao de permissoes.',
+    secoes: [
+      {
+        titulo: 'Acesso ao modulo',
+        itens: [
+          {
+            chave: 'crud_usuarios',
+            nome: 'Acesso ao modulo',
+            descricao: 'Permite acessar a area de cadastro de usuarios.'
+          }
+        ]
+      },
+      {
+        titulo: 'Acoes',
+        itens: [
+          {
+            chave: 'usuarios_listar',
+            nome: 'Listar',
+            descricao: 'Permite visualizar usuarios cadastrados.'
+          },
+          {
+            chave: 'usuarios_criar',
+            nome: 'Criar',
+            descricao: 'Permite criar novos usuarios.'
+          },
+          {
+            chave: 'usuarios_editar',
+            nome: 'Editar',
+            descricao: 'Permite editar dados de usuarios.'
+          },
+          {
+            chave: 'usuarios_excluir',
+            nome: 'Excluir',
+            descricao: 'Permite excluir usuarios comuns.'
+          },
+          {
+            chave: 'gerenciar_permissoes',
+            nome: 'Gerenciar permissoes',
+            descricao: 'Permite atribuir ou remover permissoes.'
+          }
+        ]
+      }
+    ]
+  }
+];
 
-function PermissaoGrupo({ permissao, filhas, selecionadas, onToggle }) {
-  const totalFilhas = filhas.length;
-  const filhasSelecionadas = filhas.filter(filha => selecionadas.includes(filha.chave)).length;
-  const moduloSelecionado = selecionadas.includes(permissao.chave);
+function getChavesGrupo(grupo) {
+  return Array.from(new Set(grupo.secoes.flatMap(secao => secao.itens.map(item => item.chave))));
+}
+
+function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle }) {
+  return (
+    <label className={`permissions-option ${selecionado ? 'is-active' : ''} ${exclusivo ? 'permissions-option--exclusive' : ''}`}>
+      <input
+        type="checkbox"
+        checked={selecionado}
+        onChange={() => onToggle(item.chave, exclusivo ? { grupoExclusivo } : undefined)}
+      />
+      <span>
+        <strong>{item.nome}</strong>
+        <small>{item.descricao || 'Permissao do sistema.'}</small>
+      </span>
+    </label>
+  );
+}
+
+function PermissaoGrupoSemantico({ grupo, selecionadas, onToggle }) {
+  const chaves = getChavesGrupo(grupo);
+  const selecionadasNoGrupo = chaves.filter(chave => selecionadas.includes(chave)).length;
+  const ativo = selecionadasNoGrupo > 0;
 
   return (
-    <section className={`permissions-group ${moduloSelecionado || filhasSelecionadas > 0 ? 'is-active' : ''}`}>
+    <section className={`permissions-group permissions-group--semantic ${ativo ? 'is-active' : ''}`}>
       <div className="permissions-group__header">
-        <label className="permissions-module">
-          <input
-            type="checkbox"
-            checked={moduloSelecionado}
-            onChange={() => onToggle(permissao.chave)}
-          />
-          <span>
-            <strong>{permissao.nome}</strong>
-            <small>{permissao.descricao || 'Permissao do sistema.'}</small>
-          </span>
-        </label>
+        <div>
+          <h4>{grupo.titulo}</h4>
+          <p>{grupo.descricao}</p>
+        </div>
 
-        <span className={`pill ${moduloSelecionado || filhasSelecionadas > 0 ? 'success' : 'danger'}`}>
+        <span className={`pill ${ativo ? 'success' : 'danger'}`}>
           <span className="pill-dot"></span>
-          {totalFilhas > 0 ? `${filhasSelecionadas}/${totalFilhas}` : moduloSelecionado ? 'Liberado' : 'Bloqueado'}
+          {selecionadasNoGrupo}/{chaves.length}
         </span>
       </div>
 
-      {totalFilhas > 0 && (
-        <div className="permissions-actions">
-          {filhas.map(filha => (
-            <label key={filha.chave} className={`permissions-action ${selecionadas.includes(filha.chave) ? 'is-active' : ''}`}>
-              <input
-                type="checkbox"
-                checked={selecionadas.includes(filha.chave)}
-                onChange={() => onToggle(filha.chave)}
-              />
-              <span>
-                <strong>{filha.nome.replace(`${permissao.nome}:`, '').trim()}</strong>
-                <small>{filha.descricao}</small>
-              </span>
-            </label>
-          ))}
-        </div>
-      )}
+      <div className="permissions-sections">
+        {grupo.secoes.map(secao => {
+          const grupoExclusivo = secao.itens.map(item => item.chave);
+
+          return (
+            <div key={secao.titulo} className="permissions-section">
+              <div className="permissions-section__title">{secao.titulo}</div>
+              <div className={`permissions-options ${secao.exclusivo ? 'permissions-options--exclusive' : ''}`}>
+                {secao.itens.map(item => (
+                  <PermissaoCard
+                    key={item.chave}
+                    item={item}
+                    selecionado={selecionadas.includes(item.chave)}
+                    exclusivo={secao.exclusivo}
+                    grupoExclusivo={grupoExclusivo}
+                    onToggle={onToggle}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -102,10 +229,17 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
     carregar();
   }, [usuarioId]);
 
-  function toggle(chave) {
-    setSelecionadas(prev =>
-      prev.includes(chave) ? prev.filter(c => c !== chave) : [...prev, chave]
-    );
+  function toggle(chave, opcoes = {}) {
+    setSelecionadas(prev => {
+      const selecionada = prev.includes(chave);
+
+      if (opcoes.grupoExclusivo) {
+        const semGrupo = prev.filter(item => !opcoes.grupoExclusivo.includes(item));
+        return selecionada ? semGrupo : [...semGrupo, chave];
+      }
+
+      return selecionada ? prev.filter(c => c !== chave) : [...prev, chave];
+    });
   }
 
   async function handleSave() {
@@ -122,12 +256,45 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
   }
 
   const isAdmin = usuario?.role?.nome === 'admin';
-  const permissoesFilhas = new Set(Object.values(SUBPERMISSOES).flat());
   const permissoesPorChave = permissoes.reduce((acc, permissao) => {
     acc[permissao.chave] = permissao;
     return acc;
   }, {});
-  const permissoesPrincipais = permissoes.filter(p => !permissoesFilhas.has(p.chave));
+  const gruposSemanticos = GRUPOS_PERMISSOES.map(grupo => ({
+    ...grupo,
+    secoes: grupo.secoes
+      .map(secao => ({
+        ...secao,
+        itens: secao.itens
+          .filter(item => permissoesPorChave[item.chave])
+          .map(item => ({
+            ...item,
+            descricao: item.descricao || permissoesPorChave[item.chave]?.descricao
+          }))
+      }))
+      .filter(secao => secao.itens.length > 0)
+  })).filter(grupo => grupo.secoes.length > 0);
+  const permissoesAgrupadas = new Set(gruposSemanticos.flatMap(getChavesGrupo));
+  const permissoesRestantes = permissoes
+    .filter(permissao => !permissoesAgrupadas.has(permissao.chave))
+    .map(permissao => ({
+      chave: permissao.chave,
+      nome: permissao.nome,
+      descricao: permissao.descricao
+    }));
+  const grupoOutrasPermissoes = permissoesRestantes.length > 0
+    ? {
+        id: 'outras',
+        titulo: 'Outras permissoes',
+        descricao: 'Permissoes adicionais do sistema que nao fazem parte dos grupos principais.',
+        secoes: [
+          {
+            titulo: 'Permissoes',
+            itens: permissoesRestantes
+          }
+        ]
+      }
+    : null;
   const totalSelecionadas = selecionadas.length;
 
   return (
@@ -164,17 +331,22 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
           ) : (
             <>
               <div className="permissions-grid">
-                {permissoesPrincipais.map(p => (
-                  <PermissaoGrupo
-                    key={p.chave}
-                    permissao={p}
-                    filhas={(SUBPERMISSOES[p.chave] || [])
-                      .map(chaveFilha => permissoesPorChave[chaveFilha])
-                      .filter(Boolean)}
+                {gruposSemanticos.map(grupo => (
+                  <PermissaoGrupoSemantico
+                    key={grupo.id}
+                    grupo={grupo}
                     selecionadas={selecionadas}
                     onToggle={toggle}
                   />
                 ))}
+
+                {grupoOutrasPermissoes && (
+                  <PermissaoGrupoSemantico
+                    grupo={grupoOutrasPermissoes}
+                    selecionadas={selecionadas}
+                    onToggle={toggle}
+                  />
+                )}
               </div>
 
               {erro && <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 12 }}>{erro}</div>}

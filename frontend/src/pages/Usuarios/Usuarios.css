@@ -61,7 +61,7 @@
 
 .permissions-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
@@ -85,61 +85,99 @@
   padding: 12px;
 }
 
-.permissions-module,
-.permissions-action {
+.permissions-group__header h4 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.permissions-group__header p {
+  max-width: 560px;
+  margin: 3px 0 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.permissions-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+.permissions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.permissions-section__title {
+  color: var(--text-2);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.permissions-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.permissions-option {
   display: flex;
   align-items: flex-start;
   gap: 9px;
+  min-width: 0;
+  min-height: 72px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
   cursor: pointer;
   user-select: none;
-  min-width: 0;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
 }
 
-.permissions-module input,
-.permissions-action input {
+.permissions-option:hover {
+  border-color: var(--border-strong);
+}
+
+.permissions-option.is-active {
+  border-color: #86efac;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #bbf7d0;
+}
+
+.permissions-option--exclusive input {
+  border-radius: 50%;
+}
+
+.permissions-option input {
   margin-top: 3px;
   flex-shrink: 0;
 }
 
-.permissions-module span,
-.permissions-action span {
+.permissions-option span {
   min-width: 0;
 }
 
-.permissions-module strong,
-.permissions-action strong {
+.permissions-option strong {
   display: block;
   color: var(--text);
   font-size: 13px;
   font-weight: 600;
 }
 
-.permissions-module small,
-.permissions-action small {
+.permissions-option small {
   display: block;
   margin-top: 2px;
   color: var(--text-3);
   font-size: 11.5px;
   line-height: 1.35;
-}
-
-.permissions-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  padding: 0 10px 10px;
-}
-
-.permissions-action {
-  padding: 8px 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-
-.permissions-action.is-active {
-  border-color: #bbf7d0;
-  background: #ffffff;
 }
 
 .permissions-modal__footer {
@@ -156,7 +194,11 @@
 
 @media (max-width: 760px) {
   .permissions-grid,
-  .permissions-actions {
+  .permissions-options {
     grid-template-columns: 1fr;
+  }
+
+  .permissions-group__header {
+    flex-direction: column;
   }
 }
