@@ -517,6 +517,37 @@ input, select, textarea { font-family: inherit; }
   border-radius: var(--radius); color: var(--danger); font-size: 13px;
 }
 
+.alert-timed {
+  position: relative;
+  overflow: hidden;
+}
+
+.alert-timed::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: currentColor;
+  opacity: 0.45;
+  transform-origin: left center;
+  animation: alert-timer var(--alert-duration, 4s) linear forwards;
+}
+
+.alert-timed--success {
+  --alert-duration: 4s;
+}
+
+.alert-timed--error {
+  --alert-duration: 6s;
+}
+
+@keyframes alert-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
 /* === Filtros Popup === */
 .filtros-popup-overlay {
   position: fixed;

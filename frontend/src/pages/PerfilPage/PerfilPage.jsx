@@ -89,6 +89,12 @@ function PerfilPage() {
   const [erro, setErro] = useState('');
 
   useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
+  useEffect(() => {
     async function carregarPerfil() {
       try {
         const data = await buscarPerfil();
@@ -124,7 +130,7 @@ function PerfilPage() {
   return (
     <LayoutPrivado>
       <div className="users-page" style={{ maxWidth: '800px', margin: '0 auto' }}>
-        {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
+        {erro && <div className="alert-error alert-timed alert-timed--error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         <div className="panel" style={{ marginBottom: '20px' }}>
           <div className="panel-body" style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '30px' }}>

@@ -97,6 +97,12 @@ function ClienteFormPage() {
   const [erro, setErro] = useState('');
 
   useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
+  useEffect(() => {
     async function carregar() {
       setErro('');
       setCarregando(true);
@@ -187,7 +193,7 @@ function ClienteFormPage() {
           </div>
 
           <div className="panel-body">
-            {erro && <div className="alert-error" style={{ margin: 18, marginBottom: 0 }}>{erro}</div>}
+            {erro && <div className="alert-error alert-timed alert-timed--error" style={{ margin: 18, marginBottom: 0 }}>{erro}</div>}
 
             {carregando ? (
               <div className="muted" style={{ padding: 24 }}>

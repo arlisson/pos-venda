@@ -25,6 +25,12 @@ function VendasLixeiraPage() {
 
   const filtros = useMemo(() => ({ busca }), [busca]);
 
+  useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
   async function carregarDados(proximosFiltros = filtros) {
     setErro('');
     setCarregando(true);
@@ -103,7 +109,7 @@ function VendasLixeiraPage() {
           {vendas.length} vendas na lixeira
         </div>
 
-        {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
+        {erro && <div className="alert-error alert-timed alert-timed--error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>
           <div className="scroll">
@@ -117,7 +123,7 @@ function VendasLixeiraPage() {
                   <th>Enviada em</th>
                   <th>Exclusao definitiva</th>
                   <th>Enviada por</th>
-                  <th></th>
+                  <th className="vendas-trash-actions-col">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -148,18 +154,19 @@ function VendasLixeiraPage() {
                       <td>{formatarData(venda.excluido_em)}</td>
                       <td>{formatarData(venda.excluir_definitivo_em)}</td>
                       <td><span className="tag">{venda.excluidoPor?.nome || '-'}</span></td>
-                      <td className="row-actions">
-                        <button className="btn btn-sm" disabled={processandoId === venda.id} onClick={() => handleRestaurar(venda)}>
-                          <I.Return size={13} /> Restaurar
-                        </button>
-                        <button
-                          className="btn btn-sm btn-ghost"
-                          style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                          disabled={processandoId === venda.id}
-                          onClick={() => handleExcluirDefinitivo(venda)}
-                        >
-                          <I.Trash size={13} /> Excluir
-                        </button>
+                      <td className="vendas-trash-actions-col">
+                        <div className="vendas-trash-actions">
+                          <button className="btn btn-sm" disabled={processandoId === venda.id} onClick={() => handleRestaurar(venda)}>
+                            <I.Return size={13} /> Restaurar
+                          </button>
+                          <button
+                            className="btn btn-sm btn-ghost vendas-trash-delete"
+                            disabled={processandoId === venda.id}
+                            onClick={() => handleExcluirDefinitivo(venda)}
+                          >
+                            <I.Trash size={13} /> Excluir
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

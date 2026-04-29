@@ -20,6 +20,12 @@ function ClientesLixeiraPage() {
 
   const filtros = useMemo(() => ({ busca }), [busca]);
 
+  useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
   async function carregarClientes(proximosFiltros = filtros) {
     setErro('');
     setCarregando(true);
@@ -98,7 +104,7 @@ function ClientesLixeiraPage() {
           </div>
         </div>
 
-        {erro && <div className="alert-error">{erro}</div>}
+        {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>
           <div className="scroll">

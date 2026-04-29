@@ -886,6 +886,18 @@ function VendasPage() {
     return valores.filter(v => v !== '').length;
   }, [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, dataInicio, dataFim, valorMin, valorMax, podeVerTodasVendas, podeFunil]);
 
+  useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
+
+  useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
   async function carregarDados() {
     setErro('');
     setCarregando(true);
@@ -1028,7 +1040,7 @@ function VendasPage() {
             <div className="filtros-popup__body">
               {podeVerTodasVendas && (
                 <div className="filter-field">
-                  <label>Vendedora</label>
+                  <label>Vendedor(a)</label>
                   <select value={vendedoraId} onChange={e => setVendedoraId(e.target.value)}>
                     <option value="">Todas</option>
                     {vendedoras.map(vendedora => (
@@ -1132,8 +1144,8 @@ function VendasPage() {
           {filtrosAtivos > 0 ? ` - ${filtrosAtivos} filtro(s) ativo(s)` : ''}
         </div>
 
-        {sucesso && <div className="alert-success" style={{ marginBottom: 16 }}>{sucesso}</div>}
-        {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
+        {sucesso && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucesso}</div>}
+        {erro && <div className="alert-error alert-timed alert-timed--error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>
           <div className="scroll">
@@ -1149,8 +1161,8 @@ function VendasPage() {
                   <th>Valor</th>
                   <th>Venc.</th>
                   <th>Data</th>
-                  <th>Vendedora</th>
-                  <th className="vendas-actions-col"></th>
+                  <th>Vendedor(a)</th>
+                  <th className="vendas-actions-col">Excluir</th>
                 </tr>
               </thead>
               <tbody>

@@ -337,6 +337,18 @@ function Clientes() {
       .filter(v => v !== '').length
   ), [operadoraId, responsavelTipo, fidelidade, chipsMin, chipsMax]);
 
+  useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
+
+  useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
   async function carregarClientes(proximosFiltros = filtros) {
     setErro('');
     setCarregando(true);
@@ -535,8 +547,8 @@ function Clientes() {
           </div>
         </div>
 
-        {sucesso && <div className="alert-success" style={{ marginBottom: 16 }}>{sucesso}</div>}
-        {erro && <div className="alert-error">{erro}</div>}
+        {sucesso && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucesso}</div>}
+        {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>
           <div className="scroll">
@@ -550,7 +562,7 @@ function Clientes() {
                   <th>Registrado por</th>
                   <th>Chips</th>
                   <th>Fidelidade</th>
-                  <th></th>
+                  <th>Excluir</th>
                 </tr>
               </thead>
               <tbody>

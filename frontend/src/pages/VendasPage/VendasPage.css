@@ -77,6 +77,43 @@
   background: var(--surface-2);
 }
 
+.vendas-page .list-table .vendas-trash-actions-col {
+  position: sticky;
+  right: 0;
+  min-width: 230px;
+  width: 230px;
+  z-index: 2;
+  border-left: 1px solid var(--border);
+}
+
+.vendas-page .list-table th.vendas-trash-actions-col {
+  background: var(--surface-2);
+}
+
+.vendas-page .list-table td.vendas-trash-actions-col {
+  background: var(--surface);
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.vendas-trash-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.vendas-trash-delete {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.vendas-trash-delete:hover {
+  color: #dc2626;
+  border-color: #dc2626;
+  background: #fee2e2;
+}
+
 .filter-field {
   display: flex;
   flex-direction: column;

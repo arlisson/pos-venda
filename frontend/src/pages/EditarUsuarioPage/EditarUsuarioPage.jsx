@@ -143,6 +143,18 @@ function EditarUsuarioPage() {
     ? permissoes.length
     : permissoesSelecionadas.length;
 
+  useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
+
+  useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -185,7 +197,6 @@ function EditarUsuarioPage() {
         permissoes: isAdminEditado ? [] : [...permissoesSelecionadas]
       });
 
-      setTimeout(() => setSucesso(''), 5000);
     } catch (error) {
       setErro(error.message);
     } finally {
@@ -249,10 +260,10 @@ function EditarUsuarioPage() {
           </div>
         </div>
 
-        {erro && <div className="editar-usuario__message editar-usuario__message--error">{erro}</div>}
+        {erro && <div className="editar-usuario__message editar-usuario__message--error alert-timed alert-timed--error">{erro}</div>}
 
         {sucesso && (
-          <div className="editar-usuario__message editar-usuario__message--success">
+          <div className="editar-usuario__message editar-usuario__message--success alert-timed alert-timed--success">
             <I.Check className="editar-usuario__message-icon" size={15} />
             {sucesso}
           </div>

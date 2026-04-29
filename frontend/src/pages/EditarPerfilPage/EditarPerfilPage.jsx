@@ -37,6 +37,18 @@ function EditarPerfilPage() {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
+
+  useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
+  useEffect(() => {
     async function carregar() {
       try {
         const perfil = await buscarPerfil();
@@ -245,8 +257,8 @@ function EditarPerfilPage() {
 
         {(erro || sucesso) && (
           <div className="editar-perfil-feedback">
-            {erro && <div className="alert-error">{erro}</div>}
-            {sucesso && <div className="editar-perfil-success">{sucesso}</div>}
+            {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
+            {sucesso && <div className="editar-perfil-success alert-timed alert-timed--success">{sucesso}</div>}
           </div>
         )}
 

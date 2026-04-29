@@ -34,6 +34,12 @@ function AdminMetasPage() {
     loadMetas();
   }, []);
 
+  useEffect(() => {
+    if (!message) return undefined;
+    const timer = setTimeout(() => setMessage(null), message.type === 'success' ? 4000 : 6000);
+    return () => clearTimeout(timer);
+  }, [message]);
+
   async function loadMetas() {
     try {
       const [data, operadorasData] = await Promise.all([
@@ -140,7 +146,7 @@ function AdminMetasPage() {
       <div className="page" style={{ padding: 24, overflowY: 'auto' }}>
         {message && (
           <div
-            className={`alert-${message.type === 'success' ? 'success' : 'error'}`}
+            className={`alert-${message.type === 'success' ? 'success' : 'error'} alert-timed alert-timed--${message.type === 'success' ? 'success' : 'error'}`}
             style={{
               marginBottom: 16,
               padding: 12,

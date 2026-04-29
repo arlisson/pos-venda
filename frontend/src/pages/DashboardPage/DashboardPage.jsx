@@ -96,6 +96,12 @@ function DashboardPage() {
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
 
   useEffect(() => {
+    if (!feedback) return undefined;
+    const timer = setTimeout(() => setFeedback(null), feedback.type === 'success' ? 4000 : 6000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+
+  useEffect(() => {
     getMetas().then(setMetas).catch(console.error);
 
     if (podeVerResumoVendas) {
@@ -153,7 +159,7 @@ function DashboardPage() {
       <div className="dashboard-container">
         <RewardModal gift={selectedReward} onClose={() => setSelectedReward(null)} />
         {feedback && (
-          <div className={`alert-${feedback.type === 'success' ? 'success' : 'error'}`} style={{ marginBottom: 16 }}>
+          <div className={`alert-${feedback.type === 'success' ? 'success' : 'error'} alert-timed alert-timed--${feedback.type === 'success' ? 'success' : 'error'}`} style={{ marginBottom: 16 }}>
             {feedback.text}
           </div>
         )}

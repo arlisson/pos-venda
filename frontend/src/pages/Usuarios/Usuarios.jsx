@@ -399,6 +399,18 @@ function Usuarios() {
   const usuarioLogadoEhAdmin = usuarioLogado?.role?.nome === 'admin';
 
   useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
+
+  useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
+  useEffect(() => {
     async function carregarUsuarios() {
       try {
         const dados = await listarUsuarios();
@@ -464,8 +476,8 @@ function Usuarios() {
           )}
         </div>
 
-        {sucesso && <div className="alert-success" style={{ marginBottom: 16 }}>{sucesso}</div>}
-        {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
+        {sucesso && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucesso}</div>}
+        {erro && <div className="alert-error alert-timed alert-timed--error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>
           <div className="scroll">

@@ -22,6 +22,18 @@ function CadastroUsuario() {
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
+
+  useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
+  useEffect(() => {
     async function carregarPermissoes() {
       if (!podeGerenciarPermissoes) {
         setPermissoes([]);
@@ -186,8 +198,8 @@ function CadastroUsuario() {
                 </div>
               )}
 
-              {sucesso && <div className="alert-success" style={{ marginTop: 16 }}>{sucesso}</div>}
-              {erro && <div style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '16px' }}>{erro}</div>}
+              {sucesso && <div className="alert-success alert-timed alert-timed--success" style={{ marginTop: 16 }}>{sucesso}</div>}
+              {erro && <div className="alert-error alert-timed alert-timed--error" style={{ marginTop: 16 }}>{erro}</div>}
 
               <div style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn" onClick={() => navigate('/usuarios')}>Cancelar</button>
