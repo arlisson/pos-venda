@@ -7,6 +7,10 @@ import './PerfilPage.css';
 
 const GRUPOS_PERMISSOES = [
   {
+    titulo: 'Pagina inicial',
+    chaves: ['dashboard_resumo_vendas']
+  },
+  {
     titulo: 'Vendas',
     chaves: ['vendas', 'funil_vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir']
   },
@@ -21,6 +25,7 @@ const GRUPOS_PERMISSOES = [
 ];
 
 const NOMES_PERMISSOES = {
+  dashboard_resumo_vendas: 'Resumo de vendas',
   vendas: 'Acesso ao modulo',
   funil_vendas: 'Funil de vendas',
   vendas_ver_proprias: 'Ver proprias',

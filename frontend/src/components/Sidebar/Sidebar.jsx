@@ -13,7 +13,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   }, []);
 
   const items = [
-    { id: 'dashboard', label: 'Inicio', icon: <I.Home />, permission: 'vendas' },
+    { id: 'dashboard', label: 'Inicio', icon: <I.Home /> },
     { id: 'vendas', label: 'Vendas', icon: <I.Chart />, permission: ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir'] },
     { id: 'clientes', label: 'Clientes', icon: <I.Users />, permission: ['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_editar', 'clientes_excluir'] },
     { id: 'funil', label: 'Funil de vendas', icon: <I.Funnel />, badge: counts?.active, permission: 'funil_vendas' },

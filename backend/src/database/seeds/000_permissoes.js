@@ -35,6 +35,11 @@ const PERMISSOES = [
     descricao: 'Permite acessar a pagina do funil de vendas.'
   },
   {
+    chave: 'dashboard_resumo_vendas',
+    nome: 'Inicio: resumo de vendas',
+    descricao: 'Permite visualizar os cards de resumo de vendas na pagina inicial.'
+  },
+  {
     chave: 'crud_usuarios',
     nome: 'Cadastro de usuarios',
     descricao: 'Permite acessar o modulo de usuarios. As acoes dependem das subpermissoes.'
