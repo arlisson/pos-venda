@@ -193,6 +193,13 @@ input, select, textarea { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 8px;
+  background: #22c55e !important;
+  color: white !important;
+  transition: all 0.2s ease;
+}
+
+.btn-new-sale:hover {
+  background: #16a34a !important;
 }
 
 @media (max-width: 1180px) {
@@ -306,6 +313,9 @@ input, select, textarea { font-family: inherit; }
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); font-size: 13px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: 120ms; }
 .btn-primary { background: var(--accent); color: var(--accent-fg); border: none; }
 .btn-primary:hover { background: #000; }
+.btn-danger { background: #ef4444 !important; color: white !important; border: none !important; transition: all 0.2s ease; }
+.btn-danger:hover { background: #dc2626 !important; }
+.btn-danger-icon:hover { color: #dc2626 !important; background: #fee2e2 !important; }
 .btn-ghost { background: transparent; border-color: transparent; color: var(--text-2); }
 .btn-ghost:hover { background: var(--surface-2); color: var(--text); }
 .btn-sm { padding: 4px 10px; font-size: 12px; }

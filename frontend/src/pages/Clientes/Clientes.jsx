@@ -285,7 +285,7 @@ function ConfirmarLixeiraModal({ cliente, excluindo, onClose, onConfirm }) {
 
         <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose} disabled={excluindo}>Cancelar</button>
-          <button type="button" className="btn btn-primary" onClick={onConfirm} disabled={excluindo}>
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={excluindo}>
             {excluindo ? 'Enviando...' : 'Enviar para lixeira'}
           </button>
         </div>
@@ -522,7 +522,7 @@ function Clientes() {
             )}
 
             {podeExcluir && (
-              <button className="btn" onClick={() => navigate('/clientes/lixeira')}>
+              <button className="btn btn-danger" onClick={() => navigate('/clientes/lixeira')}>
                 <I.Trash size={14} /> Lixeira
               </button>
             )}
@@ -610,7 +610,7 @@ function Clientes() {
                           <div className="clientes-actions">
                             {podeExcluir ? (
                               <button
-                                className="btn btn-icon btn-ghost"
+                                className="btn btn-icon btn-ghost btn-danger-icon"
                                 title="Excluir"
                                 onClick={(event) => {
                                   event.stopPropagation();

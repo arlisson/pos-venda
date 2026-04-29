@@ -38,6 +38,7 @@
 .clientes-toolbar__actions .btn {
   min-width: 132px;
   white-space: nowrap;
+  justify-content: center;
 }
 
 .clientes-search {
