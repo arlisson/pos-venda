@@ -116,14 +116,62 @@ const CAMPOS = [
 
 function toInputDate(value) {
   if (!value) return '';
-  return String(value).slice(0, 10);
+
+  const texto = value instanceof Date
+    ? [
+        value.getFullYear(),
+        String(value.getMonth() + 1).padStart(2, '0'),
+        String(value.getDate()).padStart(2, '0')
+      ].join('-')
+    : String(value).slice(0, 10);
+
+  return isDataVendaValida(texto) ? texto : '';
+}
+
+function normalizarDataVendaInput(value) {
+  if (!value) return '';
+
+  const texto = String(value).trim();
+  const iso = toInputDate(texto);
+
+  if (iso) return iso;
+
+  const match = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+
+  if (!match) return '';
+
+  const [, dia, mes, ano] = match;
+  const anoCompleto = ano.length === 2 ? `20${ano}` : ano;
+  const data = `${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+
+  return isDataVendaValida(data) ? data : '';
 }
 
 function formatarData(value) {
   if (!value) return '-';
-  const [date] = String(value).split('T');
+
+  const date = toInputDate(value);
+  if (!date) return '-';
+
   const [ano, mes, dia] = date.split('-');
   return dia && mes && ano ? `${dia}/${mes}/${ano}` : value;
+}
+
+function isDataVendaValida(value) {
+  if (!value) return false;
+
+  const texto = String(value).slice(0, 10);
+  const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) return false;
+
+  const [, ano, mes, dia] = match;
+  const data = new Date(`${ano}-${mes}-${dia}T00:00:00`);
+
+  return Number(ano) >= 1900
+    && data.getFullYear() === Number(ano)
+    && data.getMonth() + 1 === Number(mes)
+    && data.getDate() === Number(dia);
 }
 
 function formatarMoeda(value) {
@@ -355,6 +403,7 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
     try {
       const payload = {
         ...form,
+        data_venda: normalizarDataVendaInput(form.data_venda) || null,
         valores_unitarios_chips: (form.valores_unitarios_chips || [])
           .map(item => ({
             quantidade: Number(item.quantidade || 0),
@@ -405,13 +454,13 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
                   <label>{campo.label}</label>
                   {campo.type === 'client' ? (
                     <ClienteVendaSelect
-                      value={form[campo.name]}
+                      value={form[campo.name] ?? ''}
                       clientes={clientes}
                       onChange={valor => atualizarCampo(campo.name, valor)}
                     />
                   ) : ['seller', 'operator', 'saleType', 'service'].includes(campo.type) ? (
                     <select
-                      value={form[campo.name]}
+                      value={form[campo.name] ?? ''}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
                       required={campo.required}
                     >
@@ -435,7 +484,7 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
                     />
                   ) : campo.type === 'textarea' ? (
                     <textarea
-                      value={form[campo.name]}
+                      value={form[campo.name] ?? ''}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
                     />
                   ) : (
@@ -445,7 +494,7 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
                       min={campo.min}
                       max={campo.max}
                       maxLength={campo.maxLength}
-                      value={form[campo.name]}
+                      value={form[campo.name] ?? ''}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
                       required={campo.required}
                     />
