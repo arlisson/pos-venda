@@ -194,8 +194,8 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
 
         <div className="modal-tabs">
           {[
-            { id: 'info', label: 'Informacoes' },
-            { id: 'historico', label: 'Historico' },
+            { id: 'info', label: 'Informações' },
+            { id: 'historico', label: 'Histórico' },
             { id: 'status', label: 'Atualizar status' },
           ].map(t => (
             <button

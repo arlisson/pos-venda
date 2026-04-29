@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
+import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { excluirClienteDefinitivo, listarClientesLixeira, restaurarCliente } from '../../services/cliente.service';
 import './Clientes.css';
 
@@ -12,6 +13,8 @@ function formatarData(value) {
 
 function ClientesLixeiraPage() {
   const navigate = useNavigate();
+  const usuario = getUsuarioLocal();
+  const podeExcluir = temPermissao(usuario, 'clientes_excluir');
   const [clientes, setClientes] = useState([]);
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
@@ -117,19 +120,19 @@ function ClientesLixeiraPage() {
                   <th>Enviado em</th>
                   <th>Exclusao definitiva</th>
                   <th>Enviado por</th>
-                  <th></th>
+                  {podeExcluir && <th>Acoes</th>}
                 </tr>
               </thead>
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan="7" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 7 : 6} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando lixeira...
                     </td>
                   </tr>
                 ) : clientes.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 7 : 6} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhum cliente na lixeira.
                     </td>
                   </tr>
@@ -155,21 +158,23 @@ function ClientesLixeiraPage() {
                       <td>{formatarData(cliente.excluido_em)}</td>
                       <td>{formatarData(cliente.excluir_definitivo_em)}</td>
                       <td><span className="tag">{cliente.excluidoPor?.nome || '-'}</span></td>
-                      <td>
-                        <div className="clientes-actions">
-                          <button className="btn btn-sm" disabled={processandoId === cliente.id} onClick={() => handleRestaurar(cliente)}>
-                            <I.Return size={13} /> Restaurar
-                          </button>
-                          <button
-                            className="btn btn-sm btn-ghost"
-                            style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                            disabled={processandoId === cliente.id}
-                            onClick={() => handleExcluirDefinitivo(cliente)}
-                          >
-                            <I.Trash size={13} /> Excluir
-                          </button>
-                        </div>
-                      </td>
+                      {podeExcluir && (
+                        <td>
+                          <div className="clientes-actions">
+                            <button className="btn btn-sm" disabled={processandoId === cliente.id} onClick={() => handleRestaurar(cliente)}>
+                              <I.Return size={13} /> Restaurar
+                            </button>
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                              disabled={processandoId === cliente.id}
+                              onClick={() => handleExcluirDefinitivo(cliente)}
+                            >
+                              <I.Trash size={13} /> Excluir
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

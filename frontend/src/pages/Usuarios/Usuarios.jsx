@@ -397,6 +397,7 @@ function Usuarios() {
   const podeEditarUsuarios = temPermissao(usuarioLogado, 'usuarios_editar');
   const podeExcluirUsuarios = temPermissao(usuarioLogado, 'usuarios_excluir');
   const usuarioLogadoEhAdmin = usuarioLogado?.role?.nome === 'admin';
+  const podeMostrarAcoesUsuarios = podeEditarUsuarios || podeGerenciarPermissoes || podeExcluirUsuarios;
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -488,19 +489,19 @@ function Usuarios() {
                   <th>E-mail</th>
                   <th>Perfil</th>
                   <th>Status</th>
-                  <th></th>
+                  {podeMostrarAcoesUsuarios && <th></th>}
                 </tr>
               </thead>
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }} className="muted">
+                    <td colSpan={podeMostrarAcoesUsuarios ? 5 : 4} style={{ textAlign: 'center', padding: '40px' }} className="muted">
                       Carregando usuarios...
                     </td>
                   </tr>
                 ) : usuarios.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }} className="muted">
+                    <td colSpan={podeMostrarAcoesUsuarios ? 5 : 4} style={{ textAlign: 'center', padding: '40px' }} className="muted">
                       Nenhum usuário encontrado.
                     </td>
                   </tr>
@@ -531,38 +532,40 @@ function Usuarios() {
                           {u.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
-                      <td className="row-actions">
-                        {podeEditarUsuarios && (
-                          <button className="btn btn-icon btn-ghost" title="Editar" onClick={() => navigate(`/usuarios/${u.id}/editar`)}>
-                            <I.Edit size={13} />
-                          </button>
-                        )}
-
-                        {podeGerenciarPermissoes && (
-                          <button className="btn btn-sm btn-ghost" onClick={() => setGerenciandoId(u.id)}>
-                            Gerenciar permissoes
-                          </button>
-                        )}
-
-                        {podeExcluirUsuarios && Number(usuarioLogado?.id) !== Number(u.id) && (usuarioLogadoEhAdmin || u.role?.nome !== 'admin') && deletando === u.id ? (
-                          <>
-                            <button
-                              className="btn btn-sm"
-                              style={{ color: 'var(--danger)', borderColor: 'var(--danger)', fontSize: 11 }}
-                              onClick={() => handleDelete(u)}
-                            >
-                              Confirmar
+                      {podeMostrarAcoesUsuarios && (
+                        <td className="row-actions">
+                          {podeEditarUsuarios && (
+                            <button className="btn btn-icon btn-ghost" title="Editar" onClick={() => navigate(`/usuarios/${u.id}/editar`)}>
+                              <I.Edit size={13} />
                             </button>
-                            <button className="btn btn-sm btn-ghost" onClick={() => setDeletando(null)}>
-                              Cancelar
+                          )}
+
+                          {podeGerenciarPermissoes && (
+                            <button className="btn btn-sm btn-ghost" onClick={() => setGerenciandoId(u.id)}>
+                              Gerenciar permissoes
                             </button>
-                          </>
-                        ) : podeExcluirUsuarios && Number(usuarioLogado?.id) !== Number(u.id) && (usuarioLogadoEhAdmin || u.role?.nome !== 'admin') ? (
-                          <button className="btn btn-icon btn-ghost" title="Excluir" onClick={() => handleDelete(u)}>
-                            <I.Trash size={13} />
-                          </button>
-                        ) : null}
-                      </td>
+                          )}
+
+                          {podeExcluirUsuarios && Number(usuarioLogado?.id) !== Number(u.id) && (usuarioLogadoEhAdmin || u.role?.nome !== 'admin') && deletando === u.id ? (
+                            <>
+                              <button
+                                className="btn btn-sm"
+                                style={{ color: 'var(--danger)', borderColor: 'var(--danger)', fontSize: 11 }}
+                                onClick={() => handleDelete(u)}
+                              >
+                                Confirmar
+                              </button>
+                              <button className="btn btn-sm btn-ghost" onClick={() => setDeletando(null)}>
+                                Cancelar
+                              </button>
+                            </>
+                          ) : podeExcluirUsuarios && Number(usuarioLogado?.id) !== Number(u.id) && (usuarioLogadoEhAdmin || u.role?.nome !== 'admin') ? (
+                            <button className="btn btn-icon btn-ghost" title="Excluir" onClick={() => handleDelete(u)}>
+                              <I.Trash size={13} />
+                            </button>
+                          ) : null}
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

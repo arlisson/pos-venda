@@ -562,19 +562,19 @@ function Clientes() {
                   <th>Registrado por</th>
                   <th>Chips</th>
                   <th>Fidelidade</th>
-                  <th>Excluir</th>
+                  {podeExcluir && <th>Excluir</th>}
                 </tr>
               </thead>
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan="8" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 8 : 7} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando clientes...
                     </td>
                   </tr>
                 ) : clientes.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 8 : 7} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhum cliente encontrado.
                     </td>
                   </tr>
@@ -625,9 +625,9 @@ function Clientes() {
                             {fidelidade.label}
                           </span>
                         </td>
-                        <td>
-                          <div className="clientes-actions">
-                            {podeExcluir ? (
+                        {podeExcluir && (
+                          <td>
+                            <div className="clientes-actions">
                               <button
                                 className="btn btn-icon btn-ghost btn-danger-icon"
                                 title="Excluir"
@@ -638,9 +638,9 @@ function Clientes() {
                               >
                                 <I.Trash size={13} />
                               </button>
-                            ) : null}
-                          </div>
-                        </td>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })

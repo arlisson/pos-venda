@@ -1162,19 +1162,21 @@ function VendasPage() {
                   <th>Venc.</th>
                   <th>Data</th>
                   <th>Vendedor(a)</th>
-                  <th className="vendas-actions-col">Excluir</th>
+                  {podeExcluirVenda && (
+                    <th className="vendas-actions-col">Excluir</th>
+                  )}  
                 </tr>
               </thead>
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan="11" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluirVenda ? 11 : 10} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando vendas...
                     </td>
                   </tr>
                 ) : vendas.length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluirVenda ? 11 : 10} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhuma venda encontrada.
                     </td>
                   </tr>
@@ -1209,8 +1211,8 @@ function VendasPage() {
                       <td>{venda.dia_vencimento || '-'}</td>
                       <td>{formatarData(venda.data_venda)}</td>
                       <td><span className="tag">{venda.vendedora?.nome || '-'}</span></td>
-                      <td className="vendas-actions-col">
-                        {podeExcluirVenda && (
+                      {podeExcluirVenda && (
+                        <td className="vendas-actions-col">
                           <button
                             className="btn btn-icon btn-ghost btn-danger-icon"
                             title="Excluir"
@@ -1221,8 +1223,8 @@ function VendasPage() {
                           >
                             <I.Trash size={13} />
                           </button>
-                        )}
-                      </td>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

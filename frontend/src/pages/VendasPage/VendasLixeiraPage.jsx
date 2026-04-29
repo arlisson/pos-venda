@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
+import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { deletarVendaDefinitivo, listarVendasLixeira, restaurarVenda } from '../../services/venda.service';
 import './VendasPage.css';
 
@@ -17,6 +18,8 @@ function formatarMoeda(value) {
 
 function VendasLixeiraPage() {
   const navigate = useNavigate();
+  const usuario = getUsuarioLocal();
+  const podeExcluirVenda = temPermissao(usuario, 'vendas_excluir');
   const [vendas, setVendas] = useState([]);
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
@@ -123,19 +126,21 @@ function VendasLixeiraPage() {
                   <th>Enviada em</th>
                   <th>Exclusao definitiva</th>
                   <th>Enviada por</th>
-                  <th className="vendas-trash-actions-col">Ações</th>
+                  {podeExcluirVenda && (
+                    <th className="vendas-trash-actions-col">Acoes</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan="8" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluirVenda ? 8 : 7} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando lixeira...
                     </td>
                   </tr>
                 ) : vendas.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluirVenda ? 8 : 7} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhuma venda na lixeira.
                     </td>
                   </tr>
@@ -154,20 +159,22 @@ function VendasLixeiraPage() {
                       <td>{formatarData(venda.excluido_em)}</td>
                       <td>{formatarData(venda.excluir_definitivo_em)}</td>
                       <td><span className="tag">{venda.excluidoPor?.nome || '-'}</span></td>
-                      <td className="vendas-trash-actions-col">
-                        <div className="vendas-trash-actions">
-                          <button className="btn btn-sm" disabled={processandoId === venda.id} onClick={() => handleRestaurar(venda)}>
-                            <I.Return size={13} /> Restaurar
-                          </button>
-                          <button
-                            className="btn btn-sm btn-ghost vendas-trash-delete"
-                            disabled={processandoId === venda.id}
-                            onClick={() => handleExcluirDefinitivo(venda)}
-                          >
-                            <I.Trash size={13} /> Excluir
-                          </button>
-                        </div>
-                      </td>
+                      {podeExcluirVenda && (
+                        <td className="vendas-trash-actions-col">
+                          <div className="vendas-trash-actions">
+                            <button className="btn btn-sm" disabled={processandoId === venda.id} onClick={() => handleRestaurar(venda)}>
+                              <I.Return size={13} /> Restaurar
+                            </button>
+                            <button
+                              className="btn btn-sm btn-ghost vendas-trash-delete"
+                              disabled={processandoId === venda.id}
+                              onClick={() => handleExcluirDefinitivo(venda)}
+                            >
+                              <I.Trash size={13} /> Excluir
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
