@@ -60,6 +60,18 @@ function initials(name) {
     .toUpperCase() || 'SV';
 }
 
+function SellerAvatar({ seller, className = 'mini-avatar' }) {
+  return (
+    <span className={className}>
+      {seller?.photo ? (
+        <img src={seller.photo} alt={seller.name || 'Foto do vendedor'} />
+      ) : (
+        seller?.initials || initials(seller?.name)
+      )}
+    </span>
+  );
+}
+
 function getClient(venda) {
   return venda.nome || venda.razao_social || `Venda #${venda.id}`;
 }
@@ -70,6 +82,14 @@ function getOperator(venda) {
 
 function getPlan(venda) {
   return venda.produto_fechado || venda.servico?.nome || venda.tipoVenda?.nome || 'Plano nao informado';
+}
+
+function getSellerPhoto(venda) {
+  return venda.vendedora?.foto_perfil
+    || venda.vendedora?.fotoPerfil
+    || venda.vendedora_foto_perfil
+    || venda.foto_perfil_vendedora
+    || '';
 }
 
 function mapVendaToSale(venda) {
@@ -86,7 +106,7 @@ function mapVendaToSale(venda) {
     operator: getOperator(venda),
     plan: getPlan(venda),
     cpfCnpj: venda.cnpj || venda.cpf || '-',
-    seller: { name: sellerName, initials: initials(sellerName) },
+    seller: { name: sellerName, initials: initials(sellerName), photo: getSellerPhoto(venda) },
     linha: venda.telefone || venda.quantidade_linhas || '-',
     iccid: venda.iccid || '-',
     endereco: [
@@ -199,9 +219,7 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
               <div className="detail-item">
                 <div className="label">VENDEDOR</div>
                 <div className="value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--surface-3)', fontSize: 9, fontWeight: 700, color: 'var(--text-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {sale.seller.initials}
-                  </span>
+                  <SellerAvatar seller={sale.seller} className="seller-detail-avatar" />
                   {sale.seller.name}
                 </div>
               </div>
@@ -442,7 +460,8 @@ function SaleCard({ sale, onClick }) {
       </div>
       <div className="sale-card-bottom">
         <span className="seller">
-          <span className="mini-avatar">{sale.seller.initials}</span>
+          <SellerAvatar seller={sale.seller} />
+          <span className="seller-name">{sale.seller.name}</span>
           <span>#{sale.id}</span>
         </span>
         <span style={{ fontSize: '10px' }}>{timeAgo(sale.updated)}</span>

@@ -363,6 +363,7 @@ async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
     .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador]')
+    .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .whereNull('excluido_em')
     .orderBy('data_venda', 'desc')
     .orderBy('id', 'desc');
@@ -487,7 +488,8 @@ async function buscarVendaPorId(id, usuarioId) {
   const query = Venda.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador]');
+    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador]')
+    .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'));
 
   if (usuarioId) {
     aplicarEscopoVendas(query, usuarioId, escopo);
@@ -662,6 +664,7 @@ async function listarVendasLixeira(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
     .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador, excluidoPor]')
+    .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .whereNotNull('excluido_em')
     .orderBy('excluido_em', 'desc')
     .orderBy('id', 'desc');
