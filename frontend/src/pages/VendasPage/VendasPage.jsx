@@ -598,6 +598,8 @@ function VendasPage() {
   const podeEditarVenda = temPermissao(usuarioLogado, 'vendas_editar');
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
   const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
+  const podeVerTodasVendas = temPermissao(usuarioLogado, 'vendas_ver_todas');
+  const podeFunil = temPermissao(usuarioLogado, 'vendas');
 
   const filtros = useMemo(() => ({
     busca,
@@ -616,10 +618,12 @@ function VendasPage() {
     Object.entries(filtros).filter(([, valor]) => valor !== '').length
   ), [filtros]);
 
-  const filtrosPopupAtivos = useMemo(() => (
-    [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, dataInicio, dataFim, valorMin, valorMax]
-      .filter(v => v !== '').length
-  ), [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, dataInicio, dataFim, valorMin, valorMax]);
+  const filtrosPopupAtivos = useMemo(() => {
+    const valores = [operadoraId, tipoVendaId, servicoId, dataInicio, dataFim, valorMin, valorMax];
+    if (podeVerTodasVendas) valores.push(vendedoraId);
+    if (podeFunil) valores.push(statusFunil);
+    return valores.filter(v => v !== '').length;
+  }, [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, dataInicio, dataFim, valorMin, valorMax, podeVerTodasVendas, podeFunil]);
 
   async function carregarDados() {
     setErro('');
@@ -756,15 +760,17 @@ function VendasPage() {
               </button>
             </div>
             <div className="filtros-popup__body">
-              <div className="filter-field">
-                <label>Vendedora</label>
-                <select value={vendedoraId} onChange={e => setVendedoraId(e.target.value)}>
-                  <option value="">Todas</option>
-                  {vendedoras.map(vendedora => (
-                    <option key={vendedora.id} value={vendedora.id}>{vendedora.nome}</option>
-                  ))}
-                </select>
-              </div>
+              {podeVerTodasVendas && (
+                <div className="filter-field">
+                  <label>Vendedora</label>
+                  <select value={vendedoraId} onChange={e => setVendedoraId(e.target.value)}>
+                    <option value="">Todas</option>
+                    {vendedoras.map(vendedora => (
+                      <option key={vendedora.id} value={vendedora.id}>{vendedora.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="filter-field">
                 <label>Operadora</label>
                 <select value={operadoraId} onChange={e => setOperadoraId(e.target.value)}>
@@ -792,15 +798,17 @@ function VendasPage() {
                   ))}
                 </select>
               </div>
-              <div className="filter-field">
-                <label>Status</label>
-                <select value={statusFunil} onChange={e => setStatusFunil(e.target.value)}>
-                  <option value="">Todos</option>
-                  {STATUS_FUNIL_FILTROS.map(status => (
-                    <option key={status.id} value={status.id}>{status.label}</option>
-                  ))}
-                </select>
-              </div>
+              {podeFunil && (
+                <div className="filter-field">
+                  <label>Status</label>
+                  <select value={statusFunil} onChange={e => setStatusFunil(e.target.value)}>
+                    <option value="">Todos</option>
+                    {STATUS_FUNIL_FILTROS.map(status => (
+                      <option key={status.id} value={status.id}>{status.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="filter-field">
                 <label>Data inicial</label>
                 <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
