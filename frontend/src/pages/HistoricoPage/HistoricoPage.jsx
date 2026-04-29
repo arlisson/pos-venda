@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { listarAuditLogs } from '../../services/audit-log.service';
@@ -9,7 +9,13 @@ const ACAO_LABELS = {
   'auth.perfil_atualizado': 'Perfil atualizado',
   'usuario.criado': 'Usuario criado',
   'usuario.atualizado': 'Usuario atualizado',
-  'usuario.excluido': 'Usuario excluido'
+  'usuario.excluido': 'Usuario excluido',
+  'venda.criada': 'Venda criada',
+  'venda.atualizada': 'Venda atualizada',
+  'venda.status_atualizado': 'Status da venda atualizado',
+  'venda.enviada_lixeira': 'Venda enviada para lixeira',
+  'venda.restaurada': 'Venda restaurada',
+  'venda.excluida_definitivamente': 'Venda excluida definitivamente'
 };
 
 function parseDados(dados) {
@@ -96,7 +102,6 @@ function HistoricoItem({ log, selecionado, onClick }) {
 
 function DetalheCard({ log, onClose }) {
   const dados = parseDados(log.dados);
-  const tipo = getTipo(log);
 
   return (
     <div className="history-detail-card">
@@ -195,6 +200,7 @@ function HistoricoPage() {
 
     return logs.filter(log => {
       if (filtro === 'usuarios') return log.entidade === 'usuarios';
+      if (filtro === 'vendas') return log.entidade === 'vendas';
       if (filtro === 'auth') return log.acao?.startsWith('auth.');
       if (filtro === 'falhas') return log.acao?.includes('falha');
       return true;
@@ -217,6 +223,7 @@ function HistoricoPage() {
           <div className="history-filters" aria-label="Filtros do historico">
             {[
               ['todos', 'Todos'],
+              ['vendas', 'Vendas'],
               ['usuarios', 'Usuarios'],
               ['auth', 'Acessos'],
               ['falhas', 'Falhas']

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { STAGES, DEFAULT_OPERATORS as OPERATORS } from '../../config/constants';
@@ -92,8 +92,60 @@ function getSellerPhoto(venda) {
     || '';
 }
 
+function getHistoryAuthor(item) {
+  return item.usuario?.nome || (item.usuario_id ? `Usuario #${item.usuario_id}` : 'Sistema');
+}
+
+function getHistoryLabel(item) {
+  if (item.acao === 'venda.criada') return 'Venda cadastrada';
+  if (item.acao === 'venda.retorno_registrado') {
+    return ['Marcada como retorno', item.observacao].filter(Boolean).join(' - ');
+  }
+  if (item.acao === 'venda.retorno_corrigido') {
+    return ['Retorno corrigido', item.observacao].filter(Boolean).join(' - ');
+  }
+  if (item.acao === 'venda.observacao_adicionada') {
+    return ['Observacao adicionada', item.observacao].filter(Boolean).join(' - ');
+  }
+
+  if (item.acao === 'venda.status_atualizado') {
+    return [
+      `Movido para ${STAGE_LABELS[item.status_novo] || item.status_novo}`,
+      item.observacao
+    ].filter(Boolean).join(' - ');
+  }
+
+  if (item.observacao) return item.observacao;
+
+  return item.acao || 'Atualizacao registrada';
+}
+
+function getHistoryType(item) {
+  if (item.acao === 'venda.criada') return 'create';
+  if (item.acao === 'venda.observacao_adicionada') return 'obs';
+  return 'move';
+}
+
+function mapHistoricoVenda(venda, stage, updated, created, sellerName) {
+  const historico = Array.isArray(venda.historico) ? venda.historico : [];
+
+  if (historico.length === 0) {
+    return [
+      { acao: `Status atual: ${STAGE_LABELS[stage] || stage}`, autor: 'Sistema', data: updated, tipo: 'move' },
+      { acao: 'Venda cadastrada', autor: sellerName, data: created, tipo: 'create' },
+    ];
+  }
+
+  return historico.map(item => ({
+    acao: getHistoryLabel(item),
+    autor: getHistoryAuthor(item),
+    data: parseDate(item.created_at),
+    tipo: getHistoryType(item)
+  }));
+}
+
 function mapVendaToSale(venda) {
-  const sellerName = venda.vendedora?.nome || venda.nome_fechou_venda || 'Sem vendedor';
+  const sellerName = venda.vendedora?.nome || 'Sem vendedor';
   const updated = parseDate(venda.ultima_atividade_em || venda.updated_at || venda.created_at);
   const created = parseDate(venda.criado_em || venda.created_at || venda.data_venda);
   const stage = venda.status_funil || 'aprovacao';
@@ -120,10 +172,7 @@ function mapVendaToSale(venda) {
     priority: 'media',
     lancadaEm: created,
     updated,
-    historico: [
-      { acao: `Status atual: ${STAGE_LABELS[stage] || stage}`, autor: 'Sistema', data: updated, tipo: 'move' },
-      { acao: 'Venda cadastrada', autor: sellerName, data: created, tipo: 'create' },
-    ],
+    historico: mapHistoricoVenda(venda, stage, updated, created, sellerName),
   };
 }
 
@@ -491,17 +540,18 @@ function FunilPage() {
     }
   }
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     carregarVendas();
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleUpdateSale(saleId, novaFase, novaPrioridade, observacao, motivoRetorno) {
     if (novaFase === 'retorno') {
-      const motivo = [motivoRetorno, observacao].filter(Boolean).join(' - ');
-
       await atualizarStatusVenda(saleId, {
         status_funil: 'retorno',
-        motivo_retorno: motivo
+        motivo_retorno: motivoRetorno,
+        observacao
       });
 
       setSales(prev => prev.filter(sale => sale.id !== saleId));
@@ -509,7 +559,8 @@ function FunilPage() {
     }
 
     const vendaAtualizada = await atualizarStatusVenda(saleId, {
-      status_funil: novaFase
+      status_funil: novaFase,
+      observacao
     });
 
     setSales(prev => prev.map(sale => {
@@ -517,12 +568,7 @@ function FunilPage() {
       return {
         ...sale,
         ...mapVendaToSale(vendaAtualizada),
-        priority: novaPrioridade,
-        historico: [
-          ...(novaFase !== sale.stage ? [{ acao: `Movido para ${STAGE_LABELS[novaFase] || novaFase}`, autor: 'Voce', data: new Date(), tipo: 'move' }] : []),
-          ...(observacao ? [{ acao: observacao, autor: 'Voce', data: new Date(), tipo: 'obs' }] : []),
-          ...sale.historico
-        ]
+        priority: novaPrioridade
       };
     }));
   }

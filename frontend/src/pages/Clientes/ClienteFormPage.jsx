@@ -32,9 +32,23 @@ function normalizarDataInput(valor) {
   return texto;
 }
 
+function apenasDigitos(valor, limite) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  return limite ? digitos.slice(0, limite) : digitos;
+}
+
+function formatarCnpj(valor) {
+  const digitos = apenasDigitos(valor, 14);
+
+  if (digitos.length <= 2) return digitos;
+  if (digitos.length <= 5) return `${digitos.slice(0, 2)}.${digitos.slice(2)}`;
+  if (digitos.length <= 8) return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5)}`;
+  if (digitos.length <= 12) return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8)}`;
+  return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
+}
+
 function formatarTelefoneComDdd(valor, celular = false) {
-  const limite = celular ? 11 : 10;
-  const digitos = String(valor || '').replace(/\D/g, '').slice(0, limite);
+  const digitos = apenasDigitos(valor, celular ? 11 : 10);
 
   if (digitos.length <= 2) {
     return digitos ? `(${digitos}` : '';
@@ -75,6 +89,7 @@ function montarPayload(form) {
 
   return {
     ...form,
+    cnpj: formatarCnpj(form.cnpj),
     whatsapp_ddd: whatsapp.ddd,
     whatsapp_numero: whatsapp.numero,
     fixo_ddd: fixo.ddd,
@@ -119,7 +134,7 @@ function ClienteFormPage() {
           setForm({
             nome: clienteData.nome || '',
             razao_social: clienteData.razao_social || '',
-            cnpj: clienteData.cnpj || '',
+            cnpj: formatarCnpj(clienteData.cnpj),
             responsavel_tipo: clienteData.responsavel_tipo || 'rl',
             responsavel_nome: clienteData.responsavel_nome || '',
             email: clienteData.email || '',
@@ -219,7 +234,13 @@ function ClienteFormPage() {
 
                     <div className="form-field">
                       <label>CNPJ</label>
-                      <input value={form.cnpj} onChange={event => atualizarCampo('cnpj', event.target.value)} />
+                      <input
+                        value={form.cnpj}
+                        onChange={event => atualizarCampo('cnpj', formatarCnpj(event.target.value))}
+                        placeholder="00.000.000/0000-00"
+                        inputMode="numeric"
+                        maxLength={18}
+                      />
                     </div>
 
                     <div className="form-field">

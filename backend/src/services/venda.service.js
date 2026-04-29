@@ -1,4 +1,5 @@
 const Venda = require('../models/Venda');
+const VendaHistorico = require('../models/VendaHistorico');
 const Usuario = require('../models/Usuario');
 const clienteService = require('./cliente.service');
 
@@ -111,6 +112,33 @@ function formatarDateTimeSQL(data = new Date()) {
     pad(data.getMinutes()),
     pad(data.getSeconds())
   ].join(':');
+}
+
+function montarDadosHistorico(dados = {}) {
+  return JSON.stringify(dados);
+}
+
+async function registrarHistoricoVenda({
+  vendaId,
+  usuarioId,
+  acao,
+  statusAnterior = null,
+  statusNovo = null,
+  observacao = null,
+  dados = {},
+  createdAt = formatarDateTimeSQL(),
+  trx
+}) {
+  return VendaHistorico.query(trx).insert({
+    venda_id: Number(vendaId),
+    usuario_id: usuarioId ? Number(usuarioId) : null,
+    acao,
+    status_anterior: statusAnterior,
+    status_novo: statusNovo,
+    observacao,
+    dados: montarDadosHistorico(dados),
+    created_at: createdAt
+  });
 }
 
 function parseValorMonetario(valor) {
@@ -362,8 +390,10 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador]')
+    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador, historico.usuario]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
+    .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
+    .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .whereNull('excluido_em')
     .orderBy('data_venda', 'desc')
     .orderBy('id', 'desc');
@@ -488,8 +518,10 @@ async function buscarVendaPorId(id, usuarioId) {
   const query = Venda.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador]')
-    .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'));
+    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador, historico.usuario]')
+    .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
+    .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
+    .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'));
 
   if (usuarioId) {
     aplicarEscopoVendas(query, usuarioId, escopo);
@@ -512,11 +544,29 @@ async function criarVenda(dados, usuarioId) {
     payload = aplicarDadosClienteNaVenda(payload, cliente);
   }
 
-  return Venda.query().insertAndFetch({
-    ...payload,
-    criado_por_id: usuarioId,
-    criado_em: agora,
-    ultima_atividade_em: agora
+  return Venda.transaction(async trx => {
+    const venda = await Venda.query(trx).insertAndFetch({
+      ...payload,
+      criado_por_id: usuarioId,
+      criado_em: agora,
+      ultima_atividade_em: agora
+    });
+
+    await registrarHistoricoVenda({
+      vendaId: venda.id,
+      usuarioId,
+      acao: 'venda.criada',
+      statusNovo: venda.status_funil || 'aprovacao',
+      observacao: 'Venda cadastrada',
+      dados: {
+        venda_id: venda.id,
+        status_funil: venda.status_funil || 'aprovacao'
+      },
+      createdAt: agora,
+      trx
+    });
+
+    return venda;
   });
 }
 
@@ -566,6 +616,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 
   const agora = formatarDateTimeSQL();
   const status = dados.status_funil;
+  const observacao = String(dados.observacao || '').trim();
 
   if (!validarStatusFunil(status)) {
     return { status: 'invalid', message: 'Status do funil invalido.' };
@@ -582,15 +633,34 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
       ? venda.status_funil
       : (venda.status_anterior_retorno || 'aprovacao');
 
-    const vendaAtualizada = await Venda.query().patchAndFetchById(id, {
-      status_funil: 'retorno',
-      status_anterior_retorno: statusAnterior,
-      motivo_retorno: motivo,
-      nota_correcao_retorno: null,
-      retornou_em: agora,
-      corrigido_em: null,
-      ultima_atividade_em: agora,
-      updated_at: agora
+    const vendaAtualizada = await Venda.transaction(async trx => {
+      const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+        status_funil: 'retorno',
+        status_anterior_retorno: statusAnterior,
+        motivo_retorno: motivo,
+        nota_correcao_retorno: null,
+        retornou_em: agora,
+        corrigido_em: null,
+        ultima_atividade_em: agora,
+        updated_at: agora
+      });
+
+      await registrarHistoricoVenda({
+        vendaId: id,
+        usuarioId,
+        acao: 'venda.retorno_registrado',
+        statusAnterior,
+        statusNovo: 'retorno',
+        observacao: observacao || motivo,
+        dados: {
+          motivo_retorno: motivo,
+          observacao
+        },
+        createdAt: agora,
+        trx
+      });
+
+      return atualizada;
     });
 
     return { status: 'ok', venda: vendaAtualizada };
@@ -605,21 +675,59 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 
     const destino = venda.status_anterior_retorno || 'aprovacao';
 
-    const vendaAtualizada = await Venda.query().patchAndFetchById(id, {
-      status_funil: destino,
-      nota_correcao_retorno: nota,
-      corrigido_em: agora,
-      ultima_atividade_em: agora,
-      updated_at: agora
+    const vendaAtualizada = await Venda.transaction(async trx => {
+      const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+        status_funil: destino,
+        nota_correcao_retorno: nota,
+        corrigido_em: agora,
+        ultima_atividade_em: agora,
+        updated_at: agora
+      });
+
+      await registrarHistoricoVenda({
+        vendaId: id,
+        usuarioId,
+        acao: 'venda.retorno_corrigido',
+        statusAnterior: 'retorno',
+        statusNovo: destino,
+        observacao: nota,
+        dados: {
+          nota_correcao_retorno: nota
+        },
+        createdAt: agora,
+        trx
+      });
+
+      return atualizada;
     });
 
     return { status: 'ok', venda: vendaAtualizada };
   }
 
-  const vendaAtualizada = await Venda.query().patchAndFetchById(id, {
-    status_funil: status,
-    ultima_atividade_em: agora,
-    updated_at: agora
+  const vendaAtualizada = await Venda.transaction(async trx => {
+    const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+      status_funil: status,
+      ultima_atividade_em: agora,
+      updated_at: agora
+    });
+
+    await registrarHistoricoVenda({
+      vendaId: id,
+      usuarioId,
+      acao: status !== venda.status_funil ? 'venda.status_atualizado' : 'venda.observacao_adicionada',
+      statusAnterior: venda.status_funil || null,
+      statusNovo: status,
+      observacao: observacao || null,
+      dados: {
+        status_funil: status,
+        status_anterior: venda.status_funil || null,
+        observacao
+      },
+      createdAt: agora,
+      trx
+    });
+
+    return atualizada;
   });
 
   return { status: 'ok', venda: vendaAtualizada };
