@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import {
@@ -469,7 +469,47 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
   );
 }
 
+function ConfirmarLixeiraModal({ venda, deletando, onClose, onConfirm }) {
+  if (!venda) return null;
+
+  return (
+    <div className="modal-overlay" onClick={event => !deletando && event.target === event.currentTarget && onClose()}>
+      <div className="modal trash-confirm-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Enviar venda para a lixeira?</div>
+              <div className="modal-sub">{venda.cliente?.nome || venda.nome} - #{venda.id}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={deletando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="trash-warning">
+            <I.AlertTriangle size={20} />
+            <div>
+              <strong>Esta venda sera enviada para a lixeira.</strong>
+              <span>Ela ficara disponivel para restauracao e sera permanentemente deletada daqui a 1 mes.</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={deletando}>Cancelar</button>
+          <button type="button" className="btn btn-primary" onClick={onConfirm} disabled={deletando}>
+            {deletando ? 'Enviando...' : 'Enviar para lixeira'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function VendasPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [vendas, setVendas] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -483,7 +523,8 @@ function VendasPage() {
   const [erro, setErro] = useState('');
   const [modalVenda, setModalVenda] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
-  const [deletando, setDeletando] = useState(null);
+  const [vendaParaLixeira, setVendaParaLixeira] = useState(null);
+  const [deletando, setDeletando] = useState(false);
   const usuarioLogado = getUsuarioLocal();
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, 'vendas_editar');
@@ -567,19 +608,18 @@ function VendasPage() {
     await carregarDados();
   }
 
-  async function removerVenda(venda) {
-    if (deletando !== venda.id) {
-      setDeletando(venda.id);
-      return;
-    }
+  async function confirmarRemocaoVenda() {
+    if (!vendaParaLixeira) return;
 
+    setDeletando(true);
     try {
-      await deletarVenda(venda.id);
-      setVendas(prev => prev.filter(item => item.id !== venda.id));
+      await deletarVenda(vendaParaLixeira.id);
+      setVendas(prev => prev.filter(item => item.id !== vendaParaLixeira.id));
+      setVendaParaLixeira(null);
     } catch (error) {
       setErro(error.message || 'Erro ao excluir venda.');
     } finally {
-      setDeletando(null);
+      setDeletando(false);
     }
   }
 
@@ -597,6 +637,13 @@ function VendasPage() {
           onSave={salvarVenda}
         />
       )}
+
+      <ConfirmarLixeiraModal
+        venda={vendaParaLixeira}
+        deletando={deletando}
+        onClose={() => setVendaParaLixeira(null)}
+        onConfirm={confirmarRemocaoVenda}
+      />
 
       <div className="vendas-page">
         <div className="vendas-toolbar">
@@ -616,6 +663,11 @@ function VendasPage() {
             ))}
           </select>
 
+          {podeExcluirVenda && (
+            <button className="btn" type="button" onClick={() => navigate('/vendas/lixeira')}>
+              <I.Trash size={14} /> Lixeira
+            </button>
+          )}
         </div>
 
         <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>
@@ -657,7 +709,20 @@ function VendasPage() {
                   </tr>
                 ) : (
                   vendas.map(venda => (
-                    <tr key={venda.id}>
+                    <tr
+                      key={venda.id}
+                      className={podeEditarVenda ? 'clickable-row' : ''}
+                      role={podeEditarVenda ? 'button' : undefined}
+                      tabIndex={podeEditarVenda ? 0 : undefined}
+                      onClick={() => podeEditarVenda && abrirEdicao(venda)}
+                      onKeyDown={(event) => {
+                        if (!podeEditarVenda) return;
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          abrirEdicao(venda);
+                        }
+                      }}
+                    >
                       <td>
                         <div className="vendas-table-name">
                           <strong>{venda.cliente?.nome || venda.nome}</strong>
@@ -674,33 +739,17 @@ function VendasPage() {
                       <td>{formatarData(venda.data_venda)}</td>
                       <td><span className="tag">{venda.vendedora?.nome || '-'}</span></td>
                       <td className="row-actions">
-                        {(podeEditarVenda || podeExcluirVenda) && (
-                          <>
-                            {podeEditarVenda && (
-                              <button className="btn btn-icon btn-ghost" title="Editar" onClick={() => abrirEdicao(venda)}>
-                                <I.Edit size={13} />
-                              </button>
-                            )}
-
-                            {podeExcluirVenda && deletando === venda.id ? (
-                              <>
-                                <button
-                                  className="btn btn-sm"
-                                  style={{ color: 'var(--danger)', borderColor: 'var(--danger)', fontSize: 11 }}
-                                  onClick={() => removerVenda(venda)}
-                                >
-                                  Confirmar
-                                </button>
-                                <button className="btn btn-sm btn-ghost" onClick={() => setDeletando(null)}>
-                                  Cancelar
-                                </button>
-                              </>
-                            ) : podeExcluirVenda ? (
-                              <button className="btn btn-icon btn-ghost" title="Excluir" onClick={() => removerVenda(venda)}>
-                                <I.Trash size={13} />
-                              </button>
-                            ) : null}
-                          </>
+                        {podeExcluirVenda && (
+                          <button
+                            className="btn btn-icon btn-ghost"
+                            title="Excluir"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setVendaParaLixeira(venda);
+                            }}
+                          >
+                            <I.Trash size={13} />
+                          </button>
                         )}
                       </td>
                     </tr>

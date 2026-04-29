@@ -11,9 +11,11 @@ import EditarUsuarioPage from '../pages/EditarUsuarioPage/EditarUsuarioPage';
 import HistoricoPage from '../pages/HistoricoPage/HistoricoPage';
 import ConfiguracoesPage from '../pages/ConfiguracoesPage/ConfiguracoesPage';
 import VendasPage from '../pages/VendasPage/VendasPage';
+import VendasLixeiraPage from '../pages/VendasPage/VendasLixeiraPage';
 import RetornosPage from '../pages/RetornosPage/RetornosPage';
 import Clientes from '../pages/Clientes/Clientes';
 import ClienteFormPage from '../pages/Clientes/ClienteFormPage';
+import ClientesLixeiraPage from '../pages/Clientes/ClientesLixeiraPage';
 import '../pages/HistoricoPage/HistoricoPage.css';
 
 import { getUsuarioLocal, temPermissao } from '../services/auth.service';
@@ -43,6 +45,7 @@ function AppRoutes() {
       <Route path="/funil" element={<PrivateRoute><FunilPage /></PrivateRoute>} />
 
       <Route path="/vendas" element={<PrivateRoute permission={['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir']}><VendasPage /></PrivateRoute>} />
+      <Route path="/vendas/lixeira" element={<PrivateRoute permission={['vendas_ver_proprias', 'vendas_ver_todas']}><VendasLixeiraPage /></PrivateRoute>} />
 
       <Route path="/login" element={<LoginPage />} />
 
@@ -81,6 +84,10 @@ function AppRoutes() {
       <Route
         path="/clientes"
         element={<PrivateRoute permission={['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_editar', 'clientes_excluir']}><Clientes /></PrivateRoute>}
+      />
+      <Route
+        path="/clientes/lixeira"
+        element={<PrivateRoute permission={['clientes_ver_proprios', 'clientes_ver_todos']}><ClientesLixeiraPage /></PrivateRoute>}
       />
       <Route
         path="/clientes/novo"

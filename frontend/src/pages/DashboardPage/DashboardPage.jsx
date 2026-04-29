@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { getMetas } from '../../services/meta.service';
+import { getMetas, getProgresso, resgatarMeta } from '../../services/meta.service';
+import { obterResumoVendas } from '../../services/venda.service';
 import { getUsuarioLocal } from '../../services/auth.service';
 import * as I from '../../components/Icons';
 import './DashboardPage.css';
@@ -17,7 +18,6 @@ const formatGoalValue = (meta, value) => (
   isMoneyGoal(meta) ? formatBRL(value) : value
 );
 
-// Mock de progresso do usuário por tipo de meta
 const PERIOD_LABELS = {
   diaria: 'Diaria',
   semanal: 'Semanal',
@@ -40,29 +40,15 @@ function getMetaScope(meta) {
   return `${periodo} - ${categoria}`;
 }
 
-const USER_PROGRESS = {
-  diaria_registro_cliente: 0,
-  diaria_chip_novo: 4,
-  diaria_portabilidade: 2,
-  diaria_internet: 1,
-  semanal_registro_cliente: 3,
-  semanal_chip_novo: 8,
-  semanal_portabilidade: 2,
-  semanal_internet: 3,
+const EMPTY_STATS = {
+  vendasDia: 0,
+  valorDia: 0,
+  concluidasDia: 0,
+  pipeline: 0,
+  pipelineCount: 0,
+  retornos: 0,
+  perda: 0
 };
-
-const STATS = {
-  vendasMes: 34,
-  vendasDia: 3,
-  valorDia: 1250.00,
-  concluidasDia: 1,
-  pipeline: 5429.01,
-  pipelineCount: 23,
-  retornos: 4,
-  perda: 1008.74,
-};
-
-const RETORNOS_PENDING = 4;
 
 function RewardModal({ gift, onClose }) {
   if (!gift) return null;
@@ -101,19 +87,30 @@ function DashboardPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
   const [metas, setMetas] = useState([]);
+  const [progresso, setProgresso] = useState({});
+  const [stats, setStats] = useState(EMPTY_STATS);
   const [openedGifts, setOpenedGifts] = useState(new Set());
+  const [claimingId, setClaimingId] = useState(null);
   const [selectedReward, setSelectedReward] = useState(null);
 
   useEffect(() => {
     getMetas().then(setMetas).catch(console.error);
+    obterResumoVendas().then(setStats).catch(console.error);
+    getProgresso()
+      .then(data => {
+        setProgresso(data);
+        setOpenedGifts(new Set((data.resgatadas || []).map(Number)));
+      })
+      .catch(console.error);
   }, []);
 
   const giftMetas = metas.filter(m => m.is_gift);
   
   // Calcular metas atingidas
   const metasComProgresso = giftMetas.map(meta => {
-    const current = USER_PROGRESS[getMetaKey(meta)] || 0;
-    const pct = Math.min(100, Math.round((current / meta.target) * 100));
+    const current = progresso[getMetaKey(meta)] ?? 0;
+    const target = Number(meta.target) || 0;
+    const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
     return { ...meta, current, pct, achieved: pct >= 100 };
   });
 
@@ -123,9 +120,22 @@ function DashboardPage() {
 
   const firstName = usuario?.nome?.split(' ')[0] || 'você';
 
-  const handleOpenGift = (meta) => {
-    setSelectedReward(meta);
-    setOpenedGifts(prev => new Set([...prev, meta.id]));
+  const handleOpenGift = async (meta) => {
+    setClaimingId(meta.id);
+
+    try {
+      const result = await resgatarMeta(meta.id);
+      setOpenedGifts(prev => new Set([...prev, Number(meta.id)]));
+      setSelectedReward({
+        ...meta,
+        reward: result.reward || meta.reward
+      });
+    } catch (error) {
+      console.error(error);
+      window.alert(error.message || 'Erro ao resgatar meta.');
+    } finally {
+      setClaimingId(null);
+    }
   };
 
   const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
@@ -146,17 +156,17 @@ function DashboardPage() {
         </div>
 
         {/* Alerta de Retornos */}
-        {RETORNOS_PENDING > 0 && (
+        {stats.retornos > 0 && (
           <div className="alert-banner">
             <div className="alert-icon">
               <I.AlertTriangle size={22} />
             </div>
             <div className="alert-body">
               <div className="alert-title">
-                {RETORNOS_PENDING} {RETORNOS_PENDING === 1 ? 'chip retornou' : 'chips retornaram'} e precisa{RETORNOS_PENDING === 1 ? '' : 'm'} da sua atenção
+                {stats.retornos} {stats.retornos === 1 ? 'chip retornou' : 'chips retornaram'} e precisa{stats.retornos === 1 ? '' : 'm'} da sua atenção
               </div>
               <div className="alert-sub">
-                Total de <strong>{formatBRL(STATS.perda)}</strong> em perda registrada. Verifique os motivos e tome a ação necessária.
+                Total de <strong>{formatBRL(stats.perda)}</strong> em perda registrada. Verifique os motivos e tome a ação necessária.
               </div>
             </div>
             <button className="btn btn-danger" onClick={() => navigate('/retornos')}>
@@ -170,23 +180,23 @@ function DashboardPage() {
         <div className="stats-row">
           <div className="stat-card">
             <div className="label">Vendas no dia</div>
-            <div className="value">{STATS.vendasDia}</div>
+            <div className="value">{stats.vendasDia}</div>
             <div className="delta">Lançadas hoje</div>
           </div>
           <div className="stat-card">
             <div className="label">Valor vendido hoje</div>
-            <div className="value">{formatBRL(STATS.valorDia)}</div>
+            <div className="value">{formatBRL(stats.valorDia)}</div>
             <div className="delta">Soma das vendas do dia</div>
           </div>
           <div className="stat-card">
             <div className="label">Concluídas hoje</div>
-            <div className="value">{STATS.concluidasDia}</div>
+            <div className="value">{stats.concluidasDia}</div>
             <div className="delta">Fechadas no dia</div>
           </div>
           <div className="stat-card">
             <div className="label">Em pipeline</div>
-            <div className="value">{formatBRL(STATS.pipeline)}</div>
-            <div className="delta">Em andamento</div>
+            <div className="value">{formatBRL(stats.pipeline)}</div>
+            <div className="delta">{stats.pipelineCount} em andamento</div>
           </div>
         </div>
 
@@ -213,6 +223,7 @@ function DashboardPage() {
             <div className="rewards-grid">
               {metasComProgresso.map((meta, i) => {
                 const isClaimed = openedGifts.has(meta.id);
+                const isClaiming = claimingId === meta.id;
                 const remaining = Math.max(0, meta.target - meta.current);
                 return (
                   <div key={meta.id} className={`reward-card ${meta.achieved ? 'achieved' : ''} ${isClaimed ? 'claimed' : ''}`}>
@@ -284,10 +295,12 @@ function DashboardPage() {
                     <button
                       className={`btn ${meta.achieved && !isClaimed ? 'btn-primary' : ''}`}
                       style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
-                      disabled={!meta.achieved || isClaimed}
+                      disabled={!meta.achieved || isClaimed || isClaiming}
                       onClick={() => handleOpenGift(meta)}
                     >
-                      {isClaimed 
+                      {isClaiming
+                        ? 'Resgatando...'
+                        : isClaimed 
                         ? <><I.Check size={13} /> Resgatada</> 
                         : meta.achieved 
                           ? 'Resgatar surpresa 🎁' 

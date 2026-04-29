@@ -6,7 +6,9 @@ import { getUsuarioLocal, logout } from '../../services/auth.service';
 const routeConfigs = [
   { path: '/', title: 'Dashboard', sub: 'Indicadores, metas e gamificacao', id: 'dashboard', end: true },
   { path: '/vendas', title: 'Vendas', sub: 'Cadastro manual das vendas fechadas', id: 'vendas' },
+  { path: '/vendas/lixeira', title: 'Lixeira de vendas', sub: 'Vendas removidas e prazo de exclusao definitiva', id: 'vendas' },
   { path: '/clientes', title: 'Clientes', sub: 'Representantes e empresas vinculados as vendas', id: 'clientes', end: true },
+  { path: '/clientes/lixeira', title: 'Lixeira de clientes', sub: 'Clientes removidos e prazo de exclusao definitiva', id: 'clientes' },
   { path: '/clientes/novo', title: 'Novo cliente', sub: 'Cadastrar representante de empresa', id: 'clientes' },
   { path: '/clientes/:id/editar', title: 'Editar cliente', sub: 'Atualize dados do representante e fidelidade', id: 'clientes' },
   { path: '/funil', title: 'Funil de vendas', sub: 'Acompanhe cada venda do lancamento ate a conclusao', id: 'funil' },

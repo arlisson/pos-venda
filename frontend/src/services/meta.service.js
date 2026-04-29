@@ -18,3 +18,13 @@ export const createMeta = async (meta) => {
 export const deleteMeta = async (id) => {
   await apiDelete(`/metas/${id}`);
 };
+
+export const getProgresso = async () => {
+  const data = await apiGet('/metas/progresso');
+  return data;
+};
+
+export const resgatarMeta = async (id) => {
+  const data = await apiPost(`/metas/${id}/resgatar`, {});
+  return data;
+};

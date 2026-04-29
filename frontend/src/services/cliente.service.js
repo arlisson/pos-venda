@@ -17,6 +17,10 @@ export async function listarClientes(filtros = {}) {
   return apiGet(`/clientes${montarQuery(filtros)}`);
 }
 
+export async function listarClientesLixeira(filtros = {}) {
+  return apiGet(`/clientes/lixeira${montarQuery(filtros)}`);
+}
+
 export async function buscarClientePorId(id) {
   return apiGet(`/clientes/${id}`);
 }
@@ -31,4 +35,12 @@ export async function atualizarCliente(id, dados) {
 
 export async function excluirCliente(id) {
   return apiDelete(`/clientes/${id}`);
+}
+
+export async function restaurarCliente(id) {
+  return apiPost(`/clientes/${id}/restaurar`, {});
+}
+
+export async function excluirClienteDefinitivo(id) {
+  return apiDelete(`/clientes/${id}/definitivo`);
 }

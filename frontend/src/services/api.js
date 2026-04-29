@@ -24,7 +24,7 @@ export async function apiRequest(endpoint, options = {}) {
     : null;
 
   if (!response.ok) {
-    throw new Error(data?.message || 'Erro na requisição.');
+    throw new Error(data?.message || data?.error || 'Erro na requisição.');
   }
 
   return data;

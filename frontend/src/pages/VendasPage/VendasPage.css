@@ -11,6 +11,28 @@
   margin-bottom: 14px;
 }
 
+.vendas-toolbar--trash {
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
+.vendas-page tbody tr.clickable-row {
+  cursor: pointer;
+}
+
+.vendas-page tbody tr.clickable-row td {
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.vendas-page tbody tr.clickable-row:hover td {
+  background: var(--surface-2);
+}
+
+.vendas-page tbody tr.clickable-row:focus-visible td {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  outline: none;
+}
+
 .vendas-toolbar .search-box {
   width: 100%;
 }
@@ -218,6 +240,36 @@
 .chip-items__footer strong {
   font-family: var(--font-mono);
   font-size: 14px;
+}
+
+.trash-confirm-modal {
+  max-width: 460px;
+}
+
+.trash-warning {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-lg);
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.trash-warning div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trash-warning strong {
+  color: var(--text);
+}
+
+.trash-warning span {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 @media (max-width: 900px) {

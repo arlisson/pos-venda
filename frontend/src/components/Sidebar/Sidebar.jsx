@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import * as I from '../Icons';
 import { temPermissao } from '../../services/auth.service';
-import { getMetas } from '../../services/meta.service';
+import { getMetas, getProgresso } from '../../services/meta.service';
 
 function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   const [metas, setMetas] = useState([]);
+  const [progresso, setProgresso] = useState({});
 
   useEffect(() => {
     getMetas().then(setMetas).catch(console.error);
+    getProgresso().then(setProgresso).catch(console.error);
   }, []);
 
   const items = [
@@ -30,22 +32,12 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
   };
 
-  const USER_PROGRESS = {
-    diaria_registro_cliente: 0,
-    diaria_chip_novo: 4,
-    diaria_portabilidade: 2,
-    diaria_internet: 1,
-    semanal_registro_cliente: 3,
-    semanal_chip_novo: 8,
-    semanal_portabilidade: 2,
-    semanal_internet: 3,
-  };
-
   const getMetaKey = (meta) => (
     meta.tipo || `${meta.periodo || 'diaria'}_${meta.categoria || 'registro_cliente'}`
   );
 
   const giftMetas = metas.filter(m => m.is_gift);
+  const resgatadas = new Set((progresso.resgatadas || []).map(Number));
 
   return (
     <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -93,18 +85,19 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
           <div className="header-row">
             <span className="title">Metas</span>
             <span className="count">{giftMetas.filter(m => {
-              const current = USER_PROGRESS[getMetaKey(m)] || 0;
-              return current >= m.target;
+              return resgatadas.has(Number(m.id));
             }).length}/{giftMetas.length}</span>
           </div>
           {giftMetas.map(meta => {
-            const current = USER_PROGRESS[getMetaKey(meta)] || 0;
-            const pct = Math.min(100, Math.round((current / meta.target) * 100));
+            const current = progresso[getMetaKey(meta)] ?? 0;
+            const target = Number(meta.target) || 0;
+            const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
             const achieved = pct >= 100;
+            const claimed = resgatadas.has(Number(meta.id));
             return (
-              <div key={meta.id} className={`sidebar-goal ${achieved ? 'achieved' : ''}`} title="Meta diaria - recompensa surpresa">
+              <div key={meta.id} className={`sidebar-goal ${achieved ? 'achieved' : ''} ${claimed ? 'claimed' : ''}`} title={claimed ? 'Recompensa resgatada' : 'Recompensa ainda nao resgatada'}>
                 <div className="top">
-                  <span className="g-icon">{achieved ? '*' : '+'}</span>
+                  <span className="g-icon">{claimed ? '✅' : '🎁'}</span>
                   <span className="g-name">{meta.desc}</span>
                   <span className="g-pct">{pct}%</span>
                 </div>
