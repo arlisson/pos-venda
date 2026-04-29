@@ -388,8 +388,36 @@ async function listarVendas(filtros = {}, usuarioId) {
     query.where('vendedora_id', Number(filtros.vendedora_id));
   }
 
+  if (filtros.operadora_id) {
+    query.where('operadora_id', Number(filtros.operadora_id));
+  }
+
+  if (filtros.tipo_venda_id) {
+    query.where('tipo_venda_id', Number(filtros.tipo_venda_id));
+  }
+
+  if (filtros.servico_id) {
+    query.where('servico_id', Number(filtros.servico_id));
+  }
+
   if (filtros.status_funil) {
     query.where('status_funil', filtros.status_funil);
+  }
+
+  if (filtros.data_inicio) {
+    query.where('data_venda', '>=', normalizarData(filtros.data_inicio));
+  }
+
+  if (filtros.data_fim) {
+    query.where('data_venda', '<=', normalizarData(filtros.data_fim));
+  }
+
+  if (filtros.valor_min) {
+    query.where('valor_total', '>=', parseValorMonetario(filtros.valor_min));
+  }
+
+  if (filtros.valor_max) {
+    query.where('valor_total', '<=', parseValorMonetario(filtros.valor_max));
   }
 
   return query;

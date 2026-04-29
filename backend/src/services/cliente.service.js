@@ -252,9 +252,41 @@ async function listarClientes(filtros = {}, usuarioId) {
     });
   }
 
+  if (filtros.operadora_atual_id) {
+    query.where('operadora_atual_id', Number(filtros.operadora_atual_id));
+  }
+
+  if (['adm', 'rl'].includes(filtros.responsavel_tipo)) {
+    query.where('responsavel_tipo', filtros.responsavel_tipo);
+  }
+
+  if (filtros.chips_min) {
+    query.where('quantidade_chips', '>=', Number(filtros.chips_min));
+  }
+
+  if (filtros.chips_max) {
+    query.where('quantidade_chips', '<=', Number(filtros.chips_max));
+  }
+
   const clientes = (await query).map(formatarCliente);
 
   if (filtros.avisos_fidelidade) {
+    return clientes.filter(cliente => cliente.aviso_fidelidade?.deve_avisar);
+  }
+
+  if (filtros.fidelidade === 'sem') {
+    return clientes.filter(cliente => !cliente.fidelidade_fim);
+  }
+
+  if (filtros.fidelidade === 'vencida') {
+    return clientes.filter(cliente => cliente.aviso_fidelidade?.dias_restantes < 0);
+  }
+
+  if (filtros.fidelidade === 'ativa') {
+    return clientes.filter(cliente => cliente.aviso_fidelidade?.dias_restantes >= 0);
+  }
+
+  if (filtros.fidelidade === 'alerta') {
     return clientes.filter(cliente => cliente.aviso_fidelidade?.deve_avisar);
   }
 

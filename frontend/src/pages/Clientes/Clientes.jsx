@@ -305,20 +305,44 @@ function Clientes() {
   const [clientes, setClientes] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
   const [busca, setBusca] = useState('');
+  const [operadoraId, setOperadoraId] = useState('');
+  const [responsavelTipo, setResponsavelTipo] = useState('');
+  const [fidelidade, setFidelidade] = useState('');
+  const [chipsMin, setChipsMin] = useState('');
+  const [chipsMax, setChipsMax] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [clienteModal, setClienteModal] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [clienteParaLixeira, setClienteParaLixeira] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
-  async function carregarClientes(filtros = {}) {
+  const filtros = useMemo(() => ({
+    busca,
+    operadora_atual_id: operadoraId,
+    responsavel_tipo: responsavelTipo,
+    fidelidade,
+    chips_min: chipsMin,
+    chips_max: chipsMax
+  }), [busca, operadoraId, responsavelTipo, fidelidade, chipsMin, chipsMax]);
+
+  const filtrosAtivos = useMemo(() => (
+    Object.entries(filtros).filter(([, valor]) => valor !== '').length
+  ), [filtros]);
+
+  const filtrosPopupAtivos = useMemo(() => (
+    [operadoraId, responsavelTipo, fidelidade, chipsMin, chipsMax]
+      .filter(v => v !== '').length
+  ), [operadoraId, responsavelTipo, fidelidade, chipsMin, chipsMax]);
+
+  async function carregarClientes(proximosFiltros = filtros) {
     setErro('');
     setCarregando(true);
 
     try {
       const [dados, operadorasData] = await Promise.all([
-        listarClientes(filtros),
+        listarClientes(proximosFiltros),
         listarOperadoras()
       ]);
       setClientes(dados);
@@ -330,11 +354,11 @@ function Clientes() {
     }
   }
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     carregarClientes();
-  }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  }, [filtros]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   const clientesComAviso = useMemo(() => (
     clientes.filter(cliente => cliente.aviso_fidelidade?.deve_avisar).length
@@ -342,7 +366,16 @@ function Clientes() {
 
   async function handleBuscar(event) {
     event.preventDefault();
-    await carregarClientes({ busca });
+    await carregarClientes(filtros);
+  }
+
+  function limparFiltros() {
+    setBusca('');
+    setOperadoraId('');
+    setResponsavelTipo('');
+    setFidelidade('');
+    setChipsMin('');
+    setChipsMax('');
   }
 
   function abrirNovoCliente() {
@@ -365,7 +398,7 @@ function Clientes() {
 
     setModalAberto(false);
     setClienteModal(null);
-    await carregarClientes({ busca });
+    await carregarClientes(filtros);
   }
 
   async function confirmarExclusaoCliente() {
@@ -401,11 +434,70 @@ function Clientes() {
         onConfirm={confirmarExclusaoCliente}
       />
 
+      {filtrosAbertos && (
+        <div className="filtros-popup-overlay" onClick={() => setFiltrosAbertos(false)}>
+          <div className="filtros-popup" onClick={e => e.stopPropagation()}>
+            <div className="filtros-popup__header">
+              <span>Filtros</span>
+              <button type="button" className="btn btn-icon btn-ghost" onClick={() => setFiltrosAbertos(false)}>
+                <I.Close size={14} />
+              </button>
+            </div>
+            <div className="filtros-popup__body">
+              <div className="filter-field">
+                <label>Operadora</label>
+                <select value={operadoraId} onChange={e => setOperadoraId(e.target.value)}>
+                  <option value="">Todas</option>
+                  {operadoras.map(operadora => (
+                    <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Responsavel</label>
+                <select value={responsavelTipo} onChange={e => setResponsavelTipo(e.target.value)}>
+                  <option value="">Todos</option>
+                  <option value="rl">RL</option>
+                  <option value="adm">ADM</option>
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Fidelidade</label>
+                <select value={fidelidade} onChange={e => setFidelidade(e.target.value)}>
+                  <option value="">Todas</option>
+                  <option value="ativa">Ativa</option>
+                  <option value="alerta">Com alerta</option>
+                  <option value="vencida">Vencida</option>
+                  <option value="sem">Sem fidelidade</option>
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Chips min.</label>
+                <input type="number" min="0" value={chipsMin} onChange={e => setChipsMin(e.target.value)} />
+              </div>
+              <div className="filter-field">
+                <label>Chips max.</label>
+                <input type="number" min="0" value={chipsMax} onChange={e => setChipsMax(e.target.value)} />
+              </div>
+            </div>
+            <div className="filtros-popup__footer">
+              <button type="button" className="btn btn-ghost" onClick={limparFiltros} disabled={filtrosPopupAtivos === 0}>
+                <I.Close size={13} /> Limpar filtros
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => setFiltrosAbertos(false)}>
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="clientes-page">
         <div className="clientes-toolbar">
           <div className="clientes-toolbar__meta">
             {clientes.length} clientes cadastrados
             {clientesComAviso > 0 ? ` - ${clientesComAviso} aviso(s) de fidelidade` : ''}
+            {filtrosAtivos > 0 ? ` - ${filtrosAtivos} filtro(s) ativo(s)` : ''}
           </div>
 
           <div className="clientes-toolbar__actions">
@@ -417,6 +509,11 @@ function Clientes() {
                 placeholder="Buscar por nome, CNPJ, e-mail..."
               />
             </form>
+
+            <button className="btn" type="button" onClick={() => setFiltrosAbertos(true)}>
+              <I.Filter size={14} /> Filtros
+              {filtrosPopupAtivos > 0 && <span className="filtros-count">{filtrosPopupAtivos}</span>}
+            </button>
 
             {podeCriar && (
               <button className="btn btn-primary" onClick={abrirNovoCliente}>
