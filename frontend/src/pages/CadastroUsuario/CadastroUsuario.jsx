@@ -18,6 +18,7 @@ function CadastroUsuario() {
   const [permissoes, setPermissoes] = useState([]);
   const [permissoesSelecionadas, setPermissoesSelecionadas] = useState([]);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
@@ -49,6 +50,7 @@ function CadastroUsuario() {
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');
+    setSucesso('');
     setCarregando(true);
 
     try {
@@ -64,7 +66,8 @@ function CadastroUsuario() {
       }
 
       await criarUsuario(dados);
-      navigate('/usuarios');
+      setSucesso('Usuario cadastrado com sucesso. Redirecionando...');
+      setTimeout(() => navigate('/usuarios'), 800);
     } catch (error) {
       setErro(error.message || 'Erro ao cadastrar usuario.');
     } finally {
@@ -183,6 +186,7 @@ function CadastroUsuario() {
                 </div>
               )}
 
+              {sucesso && <div className="alert-success" style={{ marginTop: 16 }}>{sucesso}</div>}
               {erro && <div style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '16px' }}>{erro}</div>}
 
               <div style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>

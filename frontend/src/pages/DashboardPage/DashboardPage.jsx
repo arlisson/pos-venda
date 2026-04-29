@@ -92,6 +92,7 @@ function DashboardPage() {
   const [openedGifts, setOpenedGifts] = useState(new Set());
   const [claimingId, setClaimingId] = useState(null);
   const [selectedReward, setSelectedReward] = useState(null);
+  const [feedback, setFeedback] = useState(null);
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
 
   useEffect(() => {
@@ -127,6 +128,7 @@ function DashboardPage() {
 
   const handleOpenGift = async (meta) => {
     setClaimingId(meta.id);
+    setFeedback(null);
 
     try {
       const result = await resgatarMeta(meta.id);
@@ -135,9 +137,10 @@ function DashboardPage() {
         ...meta,
         reward: result.reward || meta.reward
       });
+      setFeedback({ type: 'success', text: 'Meta resgatada com sucesso.' });
     } catch (error) {
       console.error(error);
-      window.alert(error.message || 'Erro ao resgatar meta.');
+      setFeedback({ type: 'error', text: error.message || 'Erro ao resgatar meta.' });
     } finally {
       setClaimingId(null);
     }
@@ -149,6 +152,11 @@ function DashboardPage() {
     <LayoutPrivado>
       <div className="dashboard-container">
         <RewardModal gift={selectedReward} onClose={() => setSelectedReward(null)} />
+        {feedback && (
+          <div className={`alert-${feedback.type === 'success' ? 'success' : 'error'}`} style={{ marginBottom: 16 }}>
+            {feedback.text}
+          </div>
+        )}
 
         {/* Saudação */}
         <div className="home-greeting">
@@ -221,7 +229,7 @@ function DashboardPage() {
               </div>
 
               <div className="rewards-progress-summary">
-                <span>Progresso</span>
+                <span>Progresso de metas</span>
                 <div className="progress-track">
                   <div className="progress-fill" style={{ width: `${overallPct}%` }} />
                 </div>

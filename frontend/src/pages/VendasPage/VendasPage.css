@@ -11,10 +11,6 @@
   margin-bottom: 14px;
 }
 
-.vendas-toolbar--trash {
-  grid-template-columns: minmax(220px, 1fr) auto;
-}
-
 .vendas-page tbody tr.clickable-row {
   cursor: pointer;
 }
@@ -35,6 +31,50 @@
 
 .vendas-toolbar .search-box {
   width: 100%;
+}
+
+.vendas-page .list-table .scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.vendas-page .list-table table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.vendas-page .list-table th,
+.vendas-page .list-table td {
+  white-space: nowrap;
+}
+
+.vendas-page .list-table .vendas-table-name {
+  min-width: 320px;
+}
+
+.vendas-page .list-table .vendas-actions-col {
+  position: sticky;
+  right: 0;
+  min-width: 60px;
+  width: 60px;
+  z-index: 2;
+  border-left: 1px solid var(--border);
+  box-shadow: none;
+  text-align: center;
+}
+
+.vendas-page .list-table th.vendas-actions-col {
+  background: var(--surface-2);
+}
+
+.vendas-page .list-table td.vendas-actions-col {
+  background: var(--surface);
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.vendas-page tbody tr.clickable-row:hover td.vendas-actions-col {
+  background: var(--surface-2);
 }
 
 .filter-field {

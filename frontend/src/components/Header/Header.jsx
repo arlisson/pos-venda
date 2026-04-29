@@ -53,10 +53,7 @@ function Header({ title, subtitle, onNew }) {
       </div>
 
       <div className="header-actions">
-        <div className="search-box">
-          <I.Search size={14} style={{ color: 'var(--text-3)' }} />
-          <input placeholder="Buscar venda, cliente, ICCID..." />
-        </div>
+        
 
         {linksExternos.length > 0 && (
           <div className="external-links-menu" ref={linksMenuRef}>

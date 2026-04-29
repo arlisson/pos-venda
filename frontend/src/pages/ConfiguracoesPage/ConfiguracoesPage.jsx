@@ -62,6 +62,7 @@ function ConfiguracoesPage() {
   const [linkForm, setLinkForm] = useState(LINK_VAZIO);
   const [editandoId, setEditandoId] = useState(null);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(true);
 
   async function carregarDados() {
@@ -126,6 +127,7 @@ function ConfiguracoesPage() {
   async function salvarSimples(event) {
     event.preventDefault();
     setErro('');
+    const editando = Boolean(editandoId);
 
     const mapa = {
       operadoras: [criarOperadora, atualizarOperadora],
@@ -144,6 +146,7 @@ function ConfiguracoesPage() {
 
       resetarForms();
       await carregarDados();
+      setSucesso(editando ? 'Configuracao atualizada com sucesso.' : 'Configuracao adicionada com sucesso.');
     } catch (error) {
       setErro(error.message || 'Erro ao salvar configuracao.');
     }
@@ -152,6 +155,7 @@ function ConfiguracoesPage() {
   async function salvarLink(event) {
     event.preventDefault();
     setErro('');
+    const editando = Boolean(editandoId);
 
     const payload = { ...linkForm, ordem: Number(linkForm.ordem || 0) };
 
@@ -164,6 +168,7 @@ function ConfiguracoesPage() {
 
       resetarForms();
       await carregarDados();
+      setSucesso(editando ? 'Link atualizado com sucesso.' : 'Link adicionado com sucesso.');
     } catch (error) {
       setErro(error.message || 'Erro ao salvar link.');
     }
@@ -177,8 +182,13 @@ function ConfiguracoesPage() {
       links: excluirLinkExterno
     };
 
-    await mapa[aba](id);
-    await carregarDados();
+    try {
+      await mapa[aba](id);
+      await carregarDados();
+      setSucesso('Item excluido com sucesso.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao excluir item.');
+    }
   }
 
   const listaAtual = dados[aba] || [];
@@ -187,6 +197,7 @@ function ConfiguracoesPage() {
   return (
     <LayoutPrivado>
       <div className="users-page">
+        {sucesso && <div className="alert-success" style={{ marginBottom: 16 }}>{sucesso}</div>}
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         {abas.length === 0 ? (

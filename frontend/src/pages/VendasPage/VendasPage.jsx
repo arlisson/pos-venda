@@ -848,6 +848,7 @@ function VendasPage() {
   const [valorMax, setValorMax] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [modalVenda, setModalVenda] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [vendaParaLixeira, setVendaParaLixeira] = useState(null);
@@ -949,6 +950,9 @@ function VendasPage() {
   }
 
   async function salvarVenda(dados) {
+    setErro('');
+    const editando = Boolean(modalVenda);
+
     if (modalVenda) {
       await atualizarVenda(modalVenda.id, dados);
     } else {
@@ -958,6 +962,7 @@ function VendasPage() {
     setModalAberto(false);
     setModalVenda(null);
     await carregarDados();
+    setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
   }
 
   async function confirmarRemocaoVenda() {
@@ -968,6 +973,7 @@ function VendasPage() {
       await deletarVenda(vendaParaLixeira.id);
       setVendas(prev => prev.filter(item => item.id !== vendaParaLixeira.id));
       setVendaParaLixeira(null);
+      setSucesso('Venda enviada para a lixeira.');
     } catch (error) {
       setErro(error.message || 'Erro ao excluir venda.');
     } finally {
@@ -1126,6 +1132,7 @@ function VendasPage() {
           {filtrosAtivos > 0 ? ` - ${filtrosAtivos} filtro(s) ativo(s)` : ''}
         </div>
 
+        {sucesso && <div className="alert-success" style={{ marginBottom: 16 }}>{sucesso}</div>}
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>
@@ -1143,7 +1150,7 @@ function VendasPage() {
                   <th>Venc.</th>
                   <th>Data</th>
                   <th>Vendedora</th>
-                  <th></th>
+                  <th className="vendas-actions-col"></th>
                 </tr>
               </thead>
               <tbody>
@@ -1190,7 +1197,7 @@ function VendasPage() {
                       <td>{venda.dia_vencimento || '-'}</td>
                       <td>{formatarData(venda.data_venda)}</td>
                       <td><span className="tag">{venda.vendedora?.nome || '-'}</span></td>
-                      <td className="row-actions">
+                      <td className="vendas-actions-col">
                         {podeExcluirVenda && (
                           <button
                             className="btn btn-icon btn-ghost"

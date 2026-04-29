@@ -386,6 +386,7 @@ function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [deletando, setDeletando] = useState(null);
   const [gerenciandoId, setGerenciandoId] = useState(null);
   const navigate = useNavigate();
@@ -417,6 +418,7 @@ function Usuarios() {
       try {
         await deletarUsuario(u.id);
         setUsuarios(prev => prev.filter(x => x.id !== u.id));
+        setSucesso('Usuario excluido com sucesso.');
       } catch (error) {
         setErro(error.message || 'Erro ao excluir usuario.');
       } finally {
@@ -432,6 +434,7 @@ function Usuarios() {
     setUsuarios(prev =>
       prev.map(u => u.id === id ? { ...u, permissoes: permissoesSelecionadas } : u)
     );
+    setSucesso('Permissoes atualizadas com sucesso.');
   }
 
   const getInitials = (name) => {
@@ -461,6 +464,7 @@ function Usuarios() {
           )}
         </div>
 
+        {sucesso && <div className="alert-success" style={{ marginBottom: 16 }}>{sucesso}</div>}
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>

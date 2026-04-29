@@ -497,6 +497,11 @@ input, select, textarea { font-family: inherit; }
 .obs-textarea:focus { border-color: var(--border-strong); }
 
 /* === Alerts === */
+.alert-success {
+  padding: 10px 14px; background: var(--success-bg); border: 1px solid #bbf7d0;
+  border-radius: var(--radius); color: var(--success); font-size: 13px;
+}
+
 .alert-error {
   padding: 10px 14px; background: var(--danger-bg); border: 1px solid #fecaca;
   border-radius: var(--radius); color: var(--danger); font-size: 13px;

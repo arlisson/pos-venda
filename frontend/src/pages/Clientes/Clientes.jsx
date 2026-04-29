@@ -312,6 +312,7 @@ function Clientes() {
   const [chipsMax, setChipsMax] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [clienteModal, setClienteModal] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [clienteParaLixeira, setClienteParaLixeira] = useState(null);
@@ -390,6 +391,9 @@ function Clientes() {
   }
 
   async function salvarCliente(dados) {
+    setErro('');
+    const editando = Boolean(clienteModal);
+
     if (clienteModal) {
       await atualizarCliente(clienteModal.id, dados);
     } else {
@@ -399,6 +403,7 @@ function Clientes() {
     setModalAberto(false);
     setClienteModal(null);
     await carregarClientes(filtros);
+    setSucesso(editando ? 'Cliente atualizado com sucesso.' : 'Cliente cadastrado com sucesso.');
   }
 
   async function confirmarExclusaoCliente() {
@@ -409,6 +414,7 @@ function Clientes() {
       await excluirCliente(clienteParaLixeira.id);
       setClientes(prev => prev.filter(item => item.id !== clienteParaLixeira.id));
       setClienteParaLixeira(null);
+      setSucesso('Cliente enviado para a lixeira.');
     } catch (error) {
       setErro(error.message || 'Erro ao excluir cliente.');
     } finally {
@@ -529,6 +535,7 @@ function Clientes() {
           </div>
         </div>
 
+        {sucesso && <div className="alert-success" style={{ marginBottom: 16 }}>{sucesso}</div>}
         {erro && <div className="alert-error">{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>
