@@ -11,15 +11,43 @@ function resolveCategoria(tipo) {
   return LEGACY_CATEGORIAS[tipo] || 'registro_cliente';
 }
 
-exports.up = async function(knex) {
-  await knex.schema.alterTable('metas', table => {
-    table.dropUnique(['tipo']);
-  });
+async function indexExists(knex, tableName, indexName) {
+  const [rows] = await knex.raw(
+    `
+      SELECT INDEX_NAME
+      FROM information_schema.statistics
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?
+        AND INDEX_NAME = ?
+      LIMIT 1
+    `,
+    [tableName, indexName]
+  );
 
-  await knex.schema.alterTable('metas', table => {
-    table.string('periodo', 20).notNullable().defaultTo('diaria');
-    table.string('categoria', 40).notNullable().defaultTo('registro_cliente');
-  });
+  return rows.length > 0;
+}
+
+exports.up = async function(knex) {
+  if (await indexExists(knex, 'metas', 'metas_tipo_unique')) {
+    await knex.schema.alterTable('metas', table => {
+      table.dropUnique(['tipo']);
+    });
+  }
+
+  const hasPeriodo = await knex.schema.hasColumn('metas', 'periodo');
+  const hasCategoria = await knex.schema.hasColumn('metas', 'categoria');
+
+  if (!hasPeriodo || !hasCategoria) {
+    await knex.schema.alterTable('metas', table => {
+      if (!hasPeriodo) {
+        table.string('periodo', 20).notNullable().defaultTo('diaria');
+      }
+
+      if (!hasCategoria) {
+        table.string('categoria', 40).notNullable().defaultTo('registro_cliente');
+      }
+    });
+  }
 
   const metas = await knex('metas').select('id', 'tipo', 'is_gift');
 
@@ -34,9 +62,21 @@ exports.up = async function(knex) {
   }
 };
 
-exports.down = function(knex) {
+exports.down = async function(knex) {
+  const hasPeriodo = await knex.schema.hasColumn('metas', 'periodo');
+  const hasCategoria = await knex.schema.hasColumn('metas', 'categoria');
+
+  if (!hasPeriodo && !hasCategoria) {
+    return;
+  }
+
   return knex.schema.alterTable('metas', table => {
-    table.dropColumn('periodo');
-    table.dropColumn('categoria');
+    if (hasPeriodo) {
+      table.dropColumn('periodo');
+    }
+
+    if (hasCategoria) {
+      table.dropColumn('categoria');
+    }
   });
 };

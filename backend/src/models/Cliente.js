@@ -29,6 +29,9 @@ class Cliente extends Model {
         operadora_atual_id: { type: ['integer', 'null'] },
         quantidade_chips: { type: ['integer', 'null'] },
         criado_por_id: { type: ['integer', 'null'] },
+        excluido_em: { type: ['string', 'object', 'null'] },
+        excluir_definitivo_em: { type: ['string', 'object', 'null'] },
+        excluido_por_id: { type: ['integer', 'null'] },
         created_at: { type: ['string', 'object'] },
         updated_at: { type: ['string', 'object'] }
       }
@@ -54,6 +57,14 @@ class Cliente extends Model {
         modelClass: Usuario,
         join: {
           from: 'clientes.criado_por_id',
+          to: 'usuarios.id'
+        }
+      },
+      excluidoPor: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Usuario,
+        join: {
+          from: 'clientes.excluido_por_id',
           to: 'usuarios.id'
         }
       },

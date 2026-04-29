@@ -1,6 +1,5 @@
 exports.seed = async function(knex) {
-  await knex('metas').del();
-  await knex('metas').insert([
+  const metas = [
     {
       tipo: 'diaria',
       periodo: 'diaria',
@@ -46,5 +45,33 @@ exports.seed = async function(knex) {
       reward: 'Vale Uber R$ 30',
       is_gift: true
     }
-  ]);
+  ];
+
+  for (const meta of metas) {
+    const existente = await knex('metas')
+      .where('tipo', meta.tipo)
+      .first();
+
+    if (existente) {
+      await knex('metas')
+        .where('id', existente.id)
+        .update({
+          periodo: meta.periodo,
+          categoria: meta.categoria,
+          target: meta.target,
+          desc: meta.desc,
+          reward: meta.reward,
+          is_gift: meta.is_gift,
+          updated_at: knex.fn.now()
+        });
+
+      continue;
+    }
+
+    await knex('metas').insert({
+      ...meta,
+      created_at: knex.fn.now(),
+      updated_at: knex.fn.now()
+    });
+  }
 };

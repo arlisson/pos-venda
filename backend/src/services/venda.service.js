@@ -73,6 +73,20 @@ function normalizarData(valor) {
   return `${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
 }
 
+function formatarDateTimeSQL(data = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0');
+
+  return [
+    data.getFullYear(),
+    pad(data.getMonth() + 1),
+    pad(data.getDate())
+  ].join('-') + ' ' + [
+    pad(data.getHours()),
+    pad(data.getMinutes()),
+    pad(data.getSeconds())
+  ].join(':');
+}
+
 function parseValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
 
@@ -290,7 +304,11 @@ function aplicarEscopoVendas(query, usuarioId, escopo) {
   return query;
 }
 
-async function usuarioPodeAcessarVenda(id, usuarioId) {
+function dataReferenciaVendaSQL(alias = 'v') {
+  return `COALESCE(NULLIF(${alias}.data_venda, '0000-00-00'), NULLIF(DATE(${alias}.criado_em), '0000-00-00'), DATE(${alias}.created_at))`;
+}
+
+async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
   const escopo = await buscarEscopoVendas(usuarioId);
 
   if (escopo.podeVerTodas) {
@@ -301,9 +319,15 @@ async function usuarioPodeAcessarVenda(id, usuarioId) {
     return false;
   }
 
-  const venda = await Venda.query()
+  const query = Venda.query()
     .findById(id)
     .select('id', 'criado_por_id', 'vendedora_id');
+
+  if (!opcoes.incluirLixeira) {
+    query.whereNull('excluido_em');
+  }
+
+  const venda = await query;
 
   return Number(venda?.criado_por_id) === Number(usuarioId)
     || Number(venda?.vendedora_id) === Number(usuarioId);
@@ -313,6 +337,7 @@ async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
     .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador]')
+    .whereNull('excluido_em')
     .orderBy('data_venda', 'desc')
     .orderBy('id', 'desc');
 
@@ -344,10 +369,70 @@ async function listarVendas(filtros = {}, usuarioId) {
   return query;
 }
 
+async function obterResumoDashboard(usuarioId) {
+  const escopo = await buscarEscopoVendas(usuarioId);
+  const dataReferencia = dataReferenciaVendaSQL('v');
+  const hoje = new Date();
+  const inicioHoje = [
+    hoje.getFullYear(),
+    String(hoje.getMonth() + 1).padStart(2, '0'),
+    String(hoje.getDate()).padStart(2, '0')
+  ].join('-');
+
+  const queryHoje = Venda.query().alias('v');
+  aplicarEscopoVendas(queryHoje, usuarioId, escopo);
+
+  const vendasHoje = await queryHoje
+    .whereNull('v.excluido_em')
+    .whereNot('v.status_funil', 'retorno')
+    .whereRaw(`${dataReferencia} = ?`, [inicioHoje])
+    .select(
+      Venda.raw('COUNT(*) as vendas_dia'),
+      Venda.raw('COALESCE(SUM(COALESCE(v.valor_total, 0)), 0) as valor_dia'),
+      Venda.raw("SUM(CASE WHEN v.status_funil = 'concluido' THEN 1 ELSE 0 END) as concluidas_dia")
+    )
+    .first();
+
+  const queryPipeline = Venda.query().alias('v');
+  aplicarEscopoVendas(queryPipeline, usuarioId, escopo);
+
+  const pipeline = await queryPipeline
+    .whereNull('v.excluido_em')
+    .whereNotIn('v.status_funil', ['concluido', 'retorno'])
+    .select(
+      Venda.raw('COUNT(*) as pipeline_count'),
+      Venda.raw('COALESCE(SUM(COALESCE(v.valor_total, 0)), 0) as pipeline')
+    )
+    .first();
+
+  const queryRetornos = Venda.query().alias('v');
+  aplicarEscopoVendas(queryRetornos, usuarioId, escopo);
+
+  const retornos = await queryRetornos
+    .whereNull('v.excluido_em')
+    .where('v.status_funil', 'retorno')
+    .select(
+      Venda.raw('COUNT(*) as retornos'),
+      Venda.raw('COALESCE(SUM(COALESCE(v.valor_total, 0)), 0) as perda')
+    )
+    .first();
+
+  return {
+    vendasDia: Number(vendasHoje?.vendas_dia || 0),
+    valorDia: Number(vendasHoje?.valor_dia || 0),
+    concluidasDia: Number(vendasHoje?.concluidas_dia || 0),
+    pipeline: Number(pipeline?.pipeline || 0),
+    pipelineCount: Number(pipeline?.pipeline_count || 0),
+    retornos: Number(retornos?.retornos || 0),
+    perda: Number(retornos?.perda || 0)
+  };
+}
+
 async function buscarVendaPorId(id, usuarioId) {
   const escopo = usuarioId ? await buscarEscopoVendas(usuarioId) : { podeVerTodas: true };
   const query = Venda.query()
     .findById(id)
+    .whereNull('excluido_em')
     .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador]');
 
   if (usuarioId) {
@@ -358,7 +443,7 @@ async function buscarVendaPorId(id, usuarioId) {
 }
 
 async function criarVenda(dados, usuarioId) {
-  const agora = new Date();
+  const agora = formatarDateTimeSQL();
   let payload = montarPayload(dados);
 
   if (payload.cliente_id) {
@@ -386,7 +471,7 @@ async function atualizarVenda(id, dados, usuarioId) {
     return null;
   }
 
-  const agora = new Date();
+  const agora = formatarDateTimeSQL();
   let payload = montarPayload(dados);
 
   if (payload.cliente_id) {
@@ -419,11 +504,11 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 
   const venda = await Venda.query().findById(id);
 
-  if (!venda) {
+  if (!venda || venda.excluido_em) {
     return { status: 'not_found' };
   }
 
-  const agora = new Date();
+  const agora = formatarDateTimeSQL();
   const status = dados.status_funil;
 
   if (!validarStatusFunil(status)) {
@@ -491,7 +576,101 @@ async function excluirVenda(id, usuarioId) {
     return 0;
   }
 
-  return Venda.query().deleteById(id);
+  const agora = new Date();
+
+  return Venda.knex()('vendas')
+    .where('id', id)
+    .whereNull('excluido_em')
+    .update({
+      excluido_em: formatarDateTimeSQL(agora),
+      excluir_definitivo_em: formatarDateTimeSQL(adicionarUmMes(agora)),
+      excluido_por_id: usuarioId,
+      updated_at: formatarDateTimeSQL(agora)
+    });
+}
+
+function adicionarUmMes(data = new Date()) {
+  const proxima = new Date(data);
+  proxima.setMonth(proxima.getMonth() + 1);
+  return proxima;
+}
+
+async function limparVendasVencidasDaLixeira() {
+  return Venda.knex()('vendas')
+    .whereNotNull('excluido_em')
+    .where('excluir_definitivo_em', '<=', formatarDateTimeSQL())
+    .delete();
+}
+
+async function listarVendasLixeira(filtros = {}, usuarioId) {
+  await limparVendasVencidasDaLixeira();
+
+  const escopo = await buscarEscopoVendas(usuarioId);
+  const query = Venda.query()
+    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador, excluidoPor]')
+    .whereNotNull('excluido_em')
+    .orderBy('excluido_em', 'desc')
+    .orderBy('id', 'desc');
+
+  aplicarEscopoVendas(query, usuarioId, escopo);
+
+  if (filtros.busca) {
+    const busca = `%${filtros.busca}%`;
+
+    query.where((builder) => {
+      builder
+        .where('nome', 'like', busca)
+        .orWhere('telefone', 'like', busca)
+        .orWhere('email', 'like', busca)
+        .orWhere('produto_fechado', 'like', busca)
+        .orWhere('razao_social', 'like', busca)
+        .orWhere('cnpj', 'like', busca)
+        .orWhere('municipio', 'like', busca);
+    });
+  }
+
+  if (filtros.vendedora_id) {
+    query.where('vendedora_id', Number(filtros.vendedora_id));
+  }
+
+  return query;
+}
+
+async function restaurarVenda(id, usuarioId) {
+  const permitido = await usuarioPodeAcessarVenda(id, usuarioId, { incluirLixeira: true });
+
+  if (!permitido) {
+    return null;
+  }
+
+  const atualizados = await Venda.knex()('vendas')
+    .where('id', id)
+    .whereNotNull('excluido_em')
+    .update({
+      excluido_em: null,
+      excluir_definitivo_em: null,
+      excluido_por_id: null,
+      updated_at: formatarDateTimeSQL()
+    });
+
+  if (!atualizados) {
+    return null;
+  }
+
+  return buscarVendaPorId(id, usuarioId);
+}
+
+async function excluirVendaDefinitivo(id, usuarioId) {
+  const permitido = await usuarioPodeAcessarVenda(id, usuarioId, { incluirLixeira: true });
+
+  if (!permitido) {
+    return 0;
+  }
+
+  return Venda.knex()('vendas')
+    .where('id', id)
+    .whereNotNull('excluido_em')
+    .delete();
 }
 
 async function listarVendedoras() {
@@ -503,10 +682,14 @@ async function listarVendedoras() {
 
 module.exports = {
   listarVendas,
+  listarVendasLixeira,
+  obterResumoDashboard,
   buscarVendaPorId,
   criarVenda,
   atualizarVenda,
   atualizarStatusVenda,
   excluirVenda,
+  restaurarVenda,
+  excluirVendaDefinitivo,
   listarVendedoras
 };

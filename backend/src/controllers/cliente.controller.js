@@ -91,10 +91,67 @@ async function destroy(req, res) {
   }
 }
 
+async function lixeira(req, res) {
+  try {
+    const clientes = await clienteService.listarClientesLixeira(req.query, req.usuario.id);
+
+    return res.json(clientes);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao listar lixeira de clientes.'
+    });
+  }
+}
+
+async function restore(req, res) {
+  try {
+    const cliente = await clienteService.restaurarCliente(req.params.id, req.usuario.id);
+
+    if (!cliente) {
+      return res.status(404).json({
+        message: 'Cliente nao encontrado na lixeira.'
+      });
+    }
+
+    return res.json(cliente);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao restaurar cliente.'
+    });
+  }
+}
+
+async function destroyDefinitivo(req, res) {
+  try {
+    const totalExcluido = await clienteService.excluirClienteDefinitivo(req.params.id, req.usuario.id);
+
+    if (!totalExcluido) {
+      return res.status(404).json({
+        message: 'Cliente nao encontrado na lixeira.'
+      });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao excluir cliente definitivamente.'
+    });
+  }
+}
+
 module.exports = {
   index,
   show,
   store,
   update,
-  destroy
+  destroy,
+  lixeira,
+  restore,
+  destroyDefinitivo
 };

@@ -66,6 +66,9 @@ class Venda extends Model {
         corrigido_em: { type: ['string', 'object', 'null'] },
         criado_por_id: { type: ['integer', 'null'] },
         vendedora_id: { type: 'integer' },
+        excluido_em: { type: ['string', 'object', 'null'] },
+        excluir_definitivo_em: { type: ['string', 'object', 'null'] },
+        excluido_por_id: { type: ['integer', 'null'] },
         created_at: { type: ['string', 'object'] },
         updated_at: { type: ['string', 'object'] }
       }
@@ -134,6 +137,14 @@ class Venda extends Model {
         modelClass: Usuario,
         join: {
           from: 'vendas.vendedora_id',
+          to: 'usuarios.id'
+        }
+      },
+      excluidoPor: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Usuario,
+        join: {
+          from: 'vendas.excluido_por_id',
           to: 'usuarios.id'
         }
       }

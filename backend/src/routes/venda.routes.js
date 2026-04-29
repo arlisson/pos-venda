@@ -9,6 +9,8 @@ const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 router.use(authMiddleware);
 
 router.get('/vendedoras', exigirUmaPermissao(['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']), vendaController.vendedoras);
+router.get('/resumo', exigirUmaPermissao(['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar']), vendaController.resumo);
+router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.lixeira);
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.index);
 router.get('/:id', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.show);
 router.post(
@@ -54,10 +56,36 @@ router.patch(
   vendaController.updateStatus
 );
 router.delete(
+  '/:id/definitivo',
+  exigirUmaPermissao(['vendas_excluir']),
+  auditar({
+    acao: 'venda.excluida_definitivamente',
+    entidade: 'vendas',
+    entidade_id: req => req.params.id,
+    dados: req => ({
+      id: req.params.id
+    })
+  }),
+  vendaController.destroyDefinitivo
+);
+router.post(
+  '/:id/restaurar',
+  exigirUmaPermissao(['vendas_excluir']),
+  auditar({
+    acao: 'venda.restaurada',
+    entidade: 'vendas',
+    entidade_id: req => req.params.id,
+    dados: req => ({
+      id: req.params.id
+    })
+  }),
+  vendaController.restore
+);
+router.delete(
   '/:id',
   exigirUmaPermissao(['vendas_excluir']),
   auditar({
-    acao: 'venda.excluida',
+    acao: 'venda.enviada_lixeira',
     entidade: 'vendas',
     entidade_id: req => req.params.id,
     dados: req => ({

@@ -14,6 +14,20 @@ async function index(req, res) {
   }
 }
 
+async function resumo(req, res) {
+  try {
+    const resumoDashboard = await vendaService.obterResumoDashboard(req.usuario.id);
+
+    return res.json(resumoDashboard);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao carregar resumo de vendas.'
+    });
+  }
+}
+
 async function show(req, res) {
   try {
     const venda = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
@@ -119,6 +133,60 @@ async function destroy(req, res) {
   }
 }
 
+async function lixeira(req, res) {
+  try {
+    const vendas = await vendaService.listarVendasLixeira(req.query, req.usuario.id);
+
+    return res.json(vendas);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao listar lixeira de vendas.'
+    });
+  }
+}
+
+async function restore(req, res) {
+  try {
+    const venda = await vendaService.restaurarVenda(req.params.id, req.usuario.id);
+
+    if (!venda) {
+      return res.status(404).json({
+        message: 'Venda nao encontrada na lixeira.'
+      });
+    }
+
+    return res.json(venda);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao restaurar venda.'
+    });
+  }
+}
+
+async function destroyDefinitivo(req, res) {
+  try {
+    const totalExcluido = await vendaService.excluirVendaDefinitivo(req.params.id, req.usuario.id);
+
+    if (!totalExcluido) {
+      return res.status(404).json({
+        message: 'Venda nao encontrada na lixeira.'
+      });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao excluir venda definitivamente.'
+    });
+  }
+}
+
 async function vendedoras(req, res) {
   try {
     const usuarios = await vendaService.listarVendedoras();
@@ -135,10 +203,14 @@ async function vendedoras(req, res) {
 
 module.exports = {
   index,
+  resumo,
   show,
   store,
   update,
   updateStatus,
   destroy,
+  lixeira,
+  restore,
+  destroyDefinitivo,
   vendedoras
 };

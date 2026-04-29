@@ -46,6 +46,26 @@ function normalizarData(valor) {
   return `${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
 }
 
+function formatarDateTimeSQL(data = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0');
+
+  return [
+    data.getFullYear(),
+    pad(data.getMonth() + 1),
+    pad(data.getDate())
+  ].join('-') + ' ' + [
+    pad(data.getHours()),
+    pad(data.getMinutes()),
+    pad(data.getSeconds())
+  ].join(':');
+}
+
+function adicionarUmMes(data = new Date()) {
+  const proxima = new Date(data);
+  proxima.setMonth(proxima.getMonth() + 1);
+  return proxima;
+}
+
 function separarTelefone(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
 
@@ -214,6 +234,7 @@ async function listarClientes(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoClientes(usuarioId);
   const query = Cliente.query()
     .withGraphFetched('[operadoraAtual, criador]')
+    .whereNull('excluido_em')
     .orderBy('nome', 'asc');
 
   aplicarEscopoClientes(query, usuarioId, escopo);
@@ -244,6 +265,7 @@ async function buscarClientePorId(id, usuarioId) {
   const escopo = usuarioId ? await buscarEscopoClientes(usuarioId) : { podeVerTodos: true };
   const query = Cliente.query()
     .findById(id)
+    .whereNull('excluido_em')
     .withGraphFetched('[operadoraAtual, criador]');
 
   if (usuarioId) {
@@ -253,7 +275,7 @@ async function buscarClientePorId(id, usuarioId) {
   return formatarCliente(await query);
 }
 
-async function usuarioPodeAcessarCliente(id, usuarioId) {
+async function usuarioPodeAcessarCliente(id, usuarioId, opcoes = {}) {
   const escopo = await buscarEscopoClientes(usuarioId);
 
   if (escopo.podeVerTodos) {
@@ -264,9 +286,15 @@ async function usuarioPodeAcessarCliente(id, usuarioId) {
     return false;
   }
 
-  const cliente = await Cliente.query()
+  const query = Cliente.query()
     .findById(id)
     .select('id', 'criado_por_id');
+
+  if (!opcoes.incluirLixeira) {
+    query.whereNull('excluido_em');
+  }
+
+  const cliente = await query;
 
   return Number(cliente?.criado_por_id) === Number(usuarioId);
 }
@@ -298,14 +326,99 @@ async function excluirCliente(id, usuarioId) {
     return 0;
   }
 
-  return Cliente.query().deleteById(id);
+  const agora = new Date();
+
+  return Cliente.knex()('clientes')
+    .where('id', id)
+    .whereNull('excluido_em')
+    .update({
+      excluido_em: formatarDateTimeSQL(agora),
+      excluir_definitivo_em: formatarDateTimeSQL(adicionarUmMes(agora)),
+      excluido_por_id: usuarioId,
+      updated_at: formatarDateTimeSQL(agora)
+    });
+}
+
+async function limparClientesVencidosDaLixeira() {
+  return Cliente.knex()('clientes')
+    .whereNotNull('excluido_em')
+    .where('excluir_definitivo_em', '<=', formatarDateTimeSQL())
+    .delete();
+}
+
+async function listarClientesLixeira(filtros = {}, usuarioId) {
+  await limparClientesVencidosDaLixeira();
+
+  const escopo = await buscarEscopoClientes(usuarioId);
+  const query = Cliente.query()
+    .withGraphFetched('[operadoraAtual, criador, excluidoPor]')
+    .whereNotNull('excluido_em')
+    .orderBy('excluido_em', 'desc')
+    .orderBy('id', 'desc');
+
+  aplicarEscopoClientes(query, usuarioId, escopo);
+
+  if (filtros.busca) {
+    const busca = `%${filtros.busca}%`;
+
+    query.where((builder) => {
+      builder
+        .where('nome', 'like', busca)
+        .orWhere('razao_social', 'like', busca)
+        .orWhere('cnpj', 'like', busca)
+        .orWhere('email', 'like', busca)
+        .orWhere('responsavel_nome', 'like', busca);
+    });
+  }
+
+  return (await query).map(formatarCliente);
+}
+
+async function restaurarCliente(id, usuarioId) {
+  const permitido = await usuarioPodeAcessarCliente(id, usuarioId, { incluirLixeira: true });
+
+  if (!permitido) {
+    return null;
+  }
+
+  const atualizados = await Cliente.knex()('clientes')
+    .where('id', id)
+    .whereNotNull('excluido_em')
+    .update({
+      excluido_em: null,
+      excluir_definitivo_em: null,
+      excluido_por_id: null,
+      updated_at: formatarDateTimeSQL()
+    });
+
+  if (!atualizados) {
+    return null;
+  }
+
+  return buscarClientePorId(id, usuarioId);
+}
+
+async function excluirClienteDefinitivo(id, usuarioId) {
+  const permitido = await usuarioPodeAcessarCliente(id, usuarioId, { incluirLixeira: true });
+
+  if (!permitido) {
+    return 0;
+  }
+
+  return Cliente.knex()('clientes')
+    .where('id', id)
+    .whereNotNull('excluido_em')
+    .delete();
 }
 
 module.exports = {
   listarClientes,
+  listarClientesLixeira,
   buscarClientePorId,
   criarCliente,
   atualizarCliente,
   excluirCliente,
+  restaurarCliente,
+  excluirClienteDefinitivo,
   usuarioPodeAcessarCliente
 };

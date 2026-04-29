@@ -11,9 +11,23 @@ exports.seed = async function (knex) {
     throw new Error('Role admin não encontrada. Execute primeiro a seed 001_roles.');
   }
 
-  await knex('usuarios')
+  const adminExistente = await knex('usuarios')
     .where('email', 'admin@empresa.com')
-    .del();
+    .first();
+
+  if (adminExistente) {
+    await knex('usuarios')
+      .where('id', adminExistente.id)
+      .update({
+        nome: 'Administrador',
+        senha: senhaHash,
+        role_id: adminRole.id,
+        ativo: true,
+        updated_at: knex.fn.now()
+      });
+
+    return;
+  }
 
   await knex('usuarios').insert({
     nome: 'Administrador',
