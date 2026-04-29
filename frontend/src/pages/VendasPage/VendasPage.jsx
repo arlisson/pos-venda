@@ -114,6 +114,16 @@ const CAMPOS = [
   { name: 'observacoes', label: 'Observacoes', type: 'textarea', span: true },
 ];
 
+const STATUS_FUNIL_FILTROS = [
+  { id: 'aprovacao', label: 'Aprovacao' },
+  { id: 'ativacao', label: 'Ativacao' },
+  { id: 'envio', label: 'Envio' },
+  { id: 'entrega', label: 'Entrega' },
+  { id: 'confirmacao', label: 'Confirmacao' },
+  { id: 'concluido', label: 'Concluido' },
+  { id: 'retorno', label: 'Retorno' }
+];
+
 function toInputDate(value) {
   if (!value) return '';
   return String(value).slice(0, 10);
@@ -519,19 +529,48 @@ function VendasPage() {
   const [servicos, setServicos] = useState([]);
   const [busca, setBusca] = useState('');
   const [vendedoraId, setVendedoraId] = useState('');
+  const [operadoraId, setOperadoraId] = useState('');
+  const [tipoVendaId, setTipoVendaId] = useState('');
+  const [servicoId, setServicoId] = useState('');
+  const [statusFunil, setStatusFunil] = useState('');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
+  const [valorMin, setValorMin] = useState('');
+  const [valorMax, setValorMax] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [modalVenda, setModalVenda] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [vendaParaLixeira, setVendaParaLixeira] = useState(null);
   const [deletando, setDeletando] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const usuarioLogado = getUsuarioLocal();
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, 'vendas_editar');
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
   const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
 
-  const filtros = useMemo(() => ({ busca, vendedora_id: vendedoraId }), [busca, vendedoraId]);
+  const filtros = useMemo(() => ({
+    busca,
+    vendedora_id: vendedoraId,
+    operadora_id: operadoraId,
+    tipo_venda_id: tipoVendaId,
+    servico_id: servicoId,
+    status_funil: statusFunil,
+    data_inicio: dataInicio,
+    data_fim: dataFim,
+    valor_min: valorMin,
+    valor_max: valorMax
+  }), [busca, vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, dataInicio, dataFim, valorMin, valorMax]);
+
+  const filtrosAtivos = useMemo(() => (
+    Object.entries(filtros).filter(([, valor]) => valor !== '').length
+  ), [filtros]);
+
+  const filtrosPopupAtivos = useMemo(() => (
+    [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, dataInicio, dataFim, valorMin, valorMax]
+      .filter(v => v !== '').length
+  ), [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, dataInicio, dataFim, valorMin, valorMax]);
 
   async function carregarDados() {
     setErro('');
@@ -623,6 +662,19 @@ function VendasPage() {
     }
   }
 
+  function limparFiltros() {
+    setBusca('');
+    setVendedoraId('');
+    setOperadoraId('');
+    setTipoVendaId('');
+    setServicoId('');
+    setStatusFunil('');
+    setDataInicio('');
+    setDataFim('');
+    setValorMin('');
+    setValorMax('');
+  }
+
   return (
     <LayoutPrivado>
       {modalAberto && (
@@ -645,6 +697,90 @@ function VendasPage() {
         onConfirm={confirmarRemocaoVenda}
       />
 
+      {filtrosAbertos && (
+        <div className="filtros-popup-overlay" onClick={() => setFiltrosAbertos(false)}>
+          <div className="filtros-popup" onClick={e => e.stopPropagation()}>
+            <div className="filtros-popup__header">
+              <span>Filtros</span>
+              <button type="button" className="btn btn-icon btn-ghost" onClick={() => setFiltrosAbertos(false)}>
+                <I.Close size={14} />
+              </button>
+            </div>
+            <div className="filtros-popup__body">
+              <div className="filter-field">
+                <label>Vendedora</label>
+                <select value={vendedoraId} onChange={e => setVendedoraId(e.target.value)}>
+                  <option value="">Todas</option>
+                  {vendedoras.map(vendedora => (
+                    <option key={vendedora.id} value={vendedora.id}>{vendedora.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Operadora</label>
+                <select value={operadoraId} onChange={e => setOperadoraId(e.target.value)}>
+                  <option value="">Todas</option>
+                  {operadoras.map(operadora => (
+                    <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Tipo de venda</label>
+                <select value={tipoVendaId} onChange={e => setTipoVendaId(e.target.value)}>
+                  <option value="">Todos</option>
+                  {tiposVenda.map(tipo => (
+                    <option key={tipo.id} value={tipo.id}>{tipo.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Servico</label>
+                <select value={servicoId} onChange={e => setServicoId(e.target.value)}>
+                  <option value="">Todos</option>
+                  {servicos.map(servico => (
+                    <option key={servico.id} value={servico.id}>{servico.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Status</label>
+                <select value={statusFunil} onChange={e => setStatusFunil(e.target.value)}>
+                  <option value="">Todos</option>
+                  {STATUS_FUNIL_FILTROS.map(status => (
+                    <option key={status.id} value={status.id}>{status.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Data inicial</label>
+                <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
+              </div>
+              <div className="filter-field">
+                <label>Data final</label>
+                <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
+              </div>
+              <div className="filter-field">
+                <label>Valor min.</label>
+                <input value={valorMin} onChange={e => setValorMin(e.target.value)} placeholder="0,00" inputMode="decimal" />
+              </div>
+              <div className="filter-field">
+                <label>Valor max.</label>
+                <input value={valorMax} onChange={e => setValorMax(e.target.value)} placeholder="999,99" inputMode="decimal" />
+              </div>
+            </div>
+            <div className="filtros-popup__footer">
+              <button type="button" className="btn btn-ghost" onClick={limparFiltros} disabled={filtrosPopupAtivos === 0}>
+                <I.Close size={13} /> Limpar filtros
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => setFiltrosAbertos(false)}>
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="vendas-page">
         <div className="vendas-toolbar">
           <div className="search-box">
@@ -656,12 +792,10 @@ function VendasPage() {
             />
           </div>
 
-          <select value={vendedoraId} onChange={e => setVendedoraId(e.target.value)}>
-            <option value="">Todas as vendedoras</option>
-            {vendedoras.map(vendedora => (
-              <option key={vendedora.id} value={vendedora.id}>{vendedora.nome}</option>
-            ))}
-          </select>
+          <button className="btn" type="button" onClick={() => setFiltrosAbertos(true)}>
+            <I.Filter size={14} /> Filtros
+            {filtrosPopupAtivos > 0 && <span className="filtros-count">{filtrosPopupAtivos}</span>}
+          </button>
 
           {podeExcluirVenda && (
             <button className="btn" type="button" onClick={() => navigate('/vendas/lixeira')}>
@@ -672,6 +806,7 @@ function VendasPage() {
 
         <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>
           {vendas.length} vendas cadastradas
+          {filtrosAtivos > 0 ? ` - ${filtrosAtivos} filtro(s) ativo(s)` : ''}
         </div>
 
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}

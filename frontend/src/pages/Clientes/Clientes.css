@@ -69,6 +69,41 @@
   font-size: 13.5px;
 }
 
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.filter-field label {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.filter-field input,
+.filter-field select {
+  width: 100%;
+  height: 34px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+
+.filter-field input:focus,
+.filter-field select:focus {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
 .clientes-page .list-table {
   flex: 1;
   min-height: 0;
@@ -295,6 +330,10 @@
 
   .clientes-search {
     width: 100%;
+  }
+
+  .filters-panel {
+    grid-template-columns: 1fr;
   }
 
   .cliente-form-grid,
