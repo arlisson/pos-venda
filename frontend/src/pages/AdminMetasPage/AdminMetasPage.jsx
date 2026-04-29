@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { createMeta, deleteMeta, getMetas, updateMetas } from '../../services/meta.service';
+import { listarOperadoras } from '../../services/config.service';
 import * as I from '../../components/Icons';
 
 const PERIODOS = [
@@ -27,6 +28,7 @@ function AdminMetasPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [operadoras, setOperadoras] = useState([]);
 
   useEffect(() => {
     loadMetas();
@@ -34,8 +36,12 @@ function AdminMetasPage() {
 
   async function loadMetas() {
     try {
-      const data = await getMetas();
+      const [data, operadorasData] = await Promise.all([
+        getMetas(),
+        listarOperadoras()
+      ]);
       setMetas(data);
+      setOperadoras(operadorasData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,6 +58,10 @@ function AdminMetasPage() {
         updated.tipo = `${updated.periodo || 'diaria'}_${updated.categoria || 'registro_cliente'}`;
       }
 
+      if (field === 'categoria' && value !== 'portabilidade') {
+        updated.operadora_id = null;
+      }
+
       return updated;
     }));
   }
@@ -66,7 +76,8 @@ function AdminMetasPage() {
         categoria: 'registro_cliente',
         target: 1,
         desc: 'Registrar 1 cliente',
-        reward: ''
+        reward: '',
+        operadora_id: null
       });
 
       setMetas(prev => [...prev, meta]);
@@ -182,9 +193,10 @@ function AdminMetasPage() {
                   <tr>
                     <th style={{ width: '14%' }}>Periodo</th>
                     <th style={{ width: '20%' }}>Categoria</th>
+                    <th style={{ width: '10%' }}>Operadora</th>
                     <th style={{ width: '10%' }}>Alvo</th>
-                    <th style={{ width: '28%' }}>Descricao Exibida</th>
-                    <th style={{ width: '22%' }}>Recompensa</th>
+                    <th style={{ width: '24%' }}>Descricao Exibida</th>
+                    <th style={{ width: '18%' }}>Recompensa</th>
                     <th style={{ width: 80 }}></th>
                   </tr>
                 </thead>
@@ -212,6 +224,22 @@ function AdminMetasPage() {
                             <option key={categoria.value} value={categoria.value}>{categoria.label}</option>
                           ))}
                         </select>
+                      </td>
+                      <td>
+                        {gift.categoria === 'portabilidade' ? (
+                          <select
+                            style={inputStyle}
+                            value={gift.operadora_id || ''}
+                            onChange={event => handleMetasChange(gift.id, 'operadora_id', event.target.value || null)}
+                          >
+                            <option value="">Todas</option>
+                            {operadoras.map(operadora => (
+                              <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 12 }}>-</span>
+                        )}
                       </td>
                       <td>
                         <input
@@ -253,7 +281,7 @@ function AdminMetasPage() {
 
                   {gifts.length === 0 && (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-3)', padding: 24 }}>
+                      <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-3)', padding: 24 }}>
                         Nenhuma meta de recompensa cadastrada.
                       </td>
                     </tr>

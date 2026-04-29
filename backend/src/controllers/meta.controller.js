@@ -65,31 +65,143 @@ function getCiclo(periodo, baseDate = new Date()) {
   };
 }
 
-async function contarVendas(vendedoraId, ciclo) {
-  const dataReferencia = "COALESCE(NULLIF(v.data_venda, '0000-00-00'), NULLIF(DATE(v.criado_em), '0000-00-00'), DATE(v.created_at))";
+function normalizarTexto(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas) {
+  if (valoresUnitariosChips) {
+    try {
+      const itens = typeof valoresUnitariosChips === 'string'
+        ? JSON.parse(valoresUnitariosChips)
+        : valoresUnitariosChips;
+
+      if (Array.isArray(itens)) {
+        const total = itens.reduce((acc, item) => acc + Number(item?.quantidade || 0), 0);
+
+        if (total > 0) {
+          return total;
+        }
+      }
+    } catch {
+      // Usa fallback abaixo quando o JSON antigo estiver invalido.
+    }
+  }
+
+  return Number(quantidadeLinhas || 0) || 0;
+}
+
+async function contarClientes(usuarioId, ciclo) {
+  const resultado = await knex('clientes')
+    .where('criado_por_id', usuarioId)
+    .whereRaw('DATE(created_at) >= ?', [ciclo.inicioStr])
+    .whereRaw('DATE(created_at) < ?', [ciclo.fimStr])
+    .count('id as total')
+    .first();
+
+  return Number(resultado?.total || 0);
+}
+
+async function listarVendasDoCiclo(vendedoraId, ciclo) {
+  const dataReferencia = "COALESCE(NULLIF(NULLIF(v.data_venda, '0000-00-00'), '1899-11-30'), NULLIF(DATE(v.criado_em), '0000-00-00'), DATE(v.created_at))";
 
   return knex('vendas as v')
     .leftJoin('tipos_venda as tv', 'v.tipo_venda_id', 'tv.id')
     .leftJoin('servicos as s', 'v.servico_id', 's.id')
-    .select('tv.nome as tipo_venda', 's.nome as servico')
-    .count('v.id as total')
+    .select(
+      'v.id',
+      'v.operadora_id',
+      'v.quantidade_linhas',
+      'v.valores_unitarios_chips',
+      'tv.nome as tipo_venda',
+      's.nome as servico'
+    )
     .where('v.vendedora_id', vendedoraId)
     .whereNot('v.status_funil', 'retorno')
     .whereRaw(`${dataReferencia} >= ?`, [ciclo.inicioStr])
-    .whereRaw(`${dataReferencia} < ?`, [ciclo.fimStr])
-    .groupBy('tv.nome', 's.nome');
+    .whereRaw(`${dataReferencia} < ?`, [ciclo.fimStr]);
 }
 
-function classificar(rows) {
-  let registro_cliente = 0, chip_novo = 0, portabilidade = 0, internet = 0;
+function classificarVendas(rows, registroCliente = 0) {
+  const totais = {
+    registro_cliente: registroCliente,
+    chip_novo: 0,
+    portabilidade: 0,
+    internet: 0
+  };
+
   for (const row of rows) {
-    const count = Number(row.total);
-    registro_cliente += count;
-    if (row.tipo_venda === 'Portabilidade') portabilidade += count;
-    if (row.servico === 'Internet') internet += count;
-    if (row.tipo_venda === 'Novo') chip_novo += count;
+    const tipoVenda = normalizarTexto(row.tipo_venda);
+    const servico = normalizarTexto(row.servico);
+
+    if (tipoVenda === 'portabilidade') {
+      totais.portabilidade += somarQuantidadeChips(row.valores_unitarios_chips, row.quantidade_linhas);
+    }
+
+    if (servico === 'internet') {
+      totais.internet += 1;
+    }
+
+    if (tipoVenda === 'novo') {
+      totais.chip_novo += somarQuantidadeChips(row.valores_unitarios_chips, row.quantidade_linhas);
+    }
   }
-  return { registro_cliente, chip_novo, portabilidade, internet };
+
+  return totais;
+}
+
+function calcularValorMeta(meta, vendas, registroCliente) {
+  const categoria = meta.categoria || 'registro_cliente';
+
+  if (categoria === 'registro_cliente') {
+    return registroCliente;
+  }
+
+  return vendas.reduce((acc, venda) => {
+    const tipoVenda = normalizarTexto(venda.tipo_venda);
+    const servico = normalizarTexto(venda.servico);
+
+    if (categoria === 'chip_novo' && tipoVenda === 'novo') {
+      return acc + somarQuantidadeChips(venda.valores_unitarios_chips, venda.quantidade_linhas);
+    }
+
+    if (categoria === 'portabilidade' && tipoVenda === 'portabilidade') {
+      if (meta.operadora_id && Number(venda.operadora_id) !== Number(meta.operadora_id)) {
+        return acc;
+      }
+
+      return acc + somarQuantidadeChips(venda.valores_unitarios_chips, venda.quantidade_linhas);
+    }
+
+    if (categoria === 'internet' && servico === 'internet') {
+      return acc + 1;
+    }
+
+    return acc;
+  }, 0);
+}
+
+async function calcularProgresso(usuarioId, ciclo, metas = []) {
+  const [registroCliente, vendas] = await Promise.all([
+    contarClientes(usuarioId, ciclo),
+    listarVendasDoCiclo(usuarioId, ciclo)
+  ]);
+
+  const geral = classificarVendas(vendas, registroCliente);
+  const metasProgresso = {};
+
+  metas.forEach((meta) => {
+    metasProgresso[meta.id] = calcularValorMeta(meta, vendas, registroCliente);
+  });
+
+  return {
+    geral,
+    metas: metasProgresso
+  };
 }
 
 class MetaController {
@@ -138,6 +250,7 @@ class MetaController {
         target: Number(req.body.target),
         desc: req.body.desc,
         reward: req.body.reward,
+        operadora_id: req.body.operadora_id,
         is_gift: true
       });
 
@@ -153,14 +266,17 @@ class MetaController {
       const vendedoraId = req.usuario.id;
       const cicloDiario = getCiclo('diaria');
       const cicloSemanal = getCiclo('semanal');
+      const metas = await Meta.findAll();
+      const metasDiarias = metas.filter(meta => (meta.periodo || 'diaria') === 'diaria');
+      const metasSemanais = metas.filter(meta => meta.periodo === 'semanal');
 
-      const [rowsDiaria, rowsSemanal] = await Promise.all([
-        contarVendas(vendedoraId, cicloDiario),
-        contarVendas(vendedoraId, cicloSemanal),
+      const [progressoDiario, progressoSemanal] = await Promise.all([
+        calcularProgresso(vendedoraId, cicloDiario, metasDiarias),
+        calcularProgresso(vendedoraId, cicloSemanal, metasSemanais),
       ]);
 
-      const diaria = classificar(rowsDiaria);
-      const semanal = classificar(rowsSemanal);
+      const diaria = progressoDiario.geral;
+      const semanal = progressoSemanal.geral;
       const resgates = await knex('meta_resgates')
         .where('usuario_id', vendedoraId)
         .where(builder => {
@@ -183,6 +299,10 @@ class MetaController {
         semanal_chip_novo: semanal.chip_novo,
         semanal_portabilidade: semanal.portabilidade,
         semanal_internet: semanal.internet,
+        metas: {
+          ...progressoDiario.metas,
+          ...progressoSemanal.metas
+        },
         resgatadas: resgates.map(Number),
       });
     } catch (error) {
@@ -224,9 +344,8 @@ class MetaController {
         });
       }
 
-      const rows = await contarVendas(usuarioId, ciclo);
-      const progresso = classificar(rows);
-      const current = progresso[meta.categoria] || 0;
+      const progresso = await calcularProgresso(usuarioId, ciclo, [meta]);
+      const current = progresso.metas[meta.id] ?? progresso.geral[meta.categoria] ?? 0;
       const target = Number(meta.target) || 0;
 
       if (current < target) {

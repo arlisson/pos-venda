@@ -9,7 +9,7 @@ const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 router.use(authMiddleware);
 
 router.get('/vendedoras', exigirUmaPermissao(['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']), vendaController.vendedoras);
-router.get('/resumo', exigirUmaPermissao(['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar']), vendaController.resumo);
+router.get('/resumo', exigirUmaPermissao(['dashboard_resumo_vendas']), vendaController.resumo);
 router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.lixeira);
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.index);
 router.get('/:id', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.show);

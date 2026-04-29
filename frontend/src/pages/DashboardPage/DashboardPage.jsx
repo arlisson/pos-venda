@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getMetas, getProgresso, resgatarMeta } from '../../services/meta.service';
 import { obterResumoVendas } from '../../services/venda.service';
-import { getUsuarioLocal } from '../../services/auth.service';
+import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import * as I from '../../components/Icons';
 import './DashboardPage.css';
 
@@ -92,23 +92,28 @@ function DashboardPage() {
   const [openedGifts, setOpenedGifts] = useState(new Set());
   const [claimingId, setClaimingId] = useState(null);
   const [selectedReward, setSelectedReward] = useState(null);
+  const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
 
   useEffect(() => {
     getMetas().then(setMetas).catch(console.error);
-    obterResumoVendas().then(setStats).catch(console.error);
+
+    if (podeVerResumoVendas) {
+      obterResumoVendas().then(setStats).catch(console.error);
+    }
+
     getProgresso()
       .then(data => {
         setProgresso(data);
         setOpenedGifts(new Set((data.resgatadas || []).map(Number)));
       })
       .catch(console.error);
-  }, []);
+  }, [podeVerResumoVendas]);
 
   const giftMetas = metas.filter(m => m.is_gift);
   
   // Calcular metas atingidas
   const metasComProgresso = giftMetas.map(meta => {
-    const current = progresso[getMetaKey(meta)] ?? 0;
+    const current = progresso.metas?.[meta.id] ?? progresso[getMetaKey(meta)] ?? 0;
     const target = Number(meta.target) || 0;
     const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
     return { ...meta, current, pct, achieved: pct >= 100 };
@@ -176,6 +181,8 @@ function DashboardPage() {
         )}
 
         {/* KPIs do DIA */}
+        {podeVerResumoVendas && (
+          <>
         <h2 className="home-section-title">Hoje</h2>
         <div className="stats-row">
           <div className="stat-card">
@@ -199,6 +206,8 @@ function DashboardPage() {
             <div className="delta">{stats.pipelineCount} em andamento</div>
           </div>
         </div>
+          </>
+        )}
 
         {/* Sistema de recompensas DIÁRIAS */}
         {metasComProgresso.length > 0 && (

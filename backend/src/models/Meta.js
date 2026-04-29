@@ -23,7 +23,8 @@ function normalizarMeta(meta) {
     target: Number(meta.target || 0),
     desc: meta.desc,
     reward: meta.reward || null,
-    is_gift: meta.is_gift !== undefined ? meta.is_gift : true
+    is_gift: meta.is_gift !== undefined ? meta.is_gift : true,
+    operadora_id: categoria === 'portabilidade' && meta.operadora_id ? Number(meta.operadora_id) : null
   };
 }
 
@@ -56,6 +57,7 @@ class Meta {
             target: dados.target,
             desc: dados.desc,
             reward: dados.reward,
+            operadora_id: dados.operadora_id,
             updated_at: db.fn.now()
           });
       });

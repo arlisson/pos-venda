@@ -424,7 +424,7 @@ async function listarVendas(filtros = {}, usuarioId) {
 }
 
 async function obterResumoDashboard(usuarioId) {
-  const escopo = await buscarEscopoVendas(usuarioId);
+  const escopo = { podeVerTodas: true, podeVerProprias: true };
   const dataReferencia = dataReferenciaVendaSQL('v');
   const hoje = new Date();
   const inicioHoje = [

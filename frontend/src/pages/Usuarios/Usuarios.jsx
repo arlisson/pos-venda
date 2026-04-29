@@ -23,6 +23,23 @@ function parsePermissoes(permissoes) {
 
 const GRUPOS_PERMISSOES = [
   {
+    id: 'inicio',
+    titulo: 'Pagina inicial',
+    descricao: 'Controle os indicadores exibidos no inicio do sistema.',
+    secoes: [
+      {
+        titulo: 'Cards liberados',
+        itens: [
+          {
+            chave: 'dashboard_resumo_vendas',
+            nome: 'Resumo de vendas',
+            descricao: 'Mostra os cards Vendas no dia, Valor vendido hoje, Concluidas hoje e Em pipeline.'
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'vendas',
     titulo: 'Vendas',
     descricao: 'Controle as telas, a visualizacao e as acoes permitidas no modulo de vendas.',

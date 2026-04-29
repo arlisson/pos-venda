@@ -149,7 +149,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={event => !salvando && event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <form className="modal cliente-modal" onSubmit={handleSubmit}>
         <div className="modal-header">
           <div className="modal-header-row">
