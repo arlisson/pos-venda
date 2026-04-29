@@ -30,6 +30,11 @@ const PERMISSOES = [
     descricao: 'Permite excluir vendas que o usuario pode acessar.'
   },
   {
+    chave: 'funil_vendas',
+    nome: 'Funil de vendas',
+    descricao: 'Permite acessar a pagina do funil de vendas.'
+  },
+  {
     chave: 'crud_usuarios',
     nome: 'Cadastro de usuarios',
     descricao: 'Permite acessar o modulo de usuarios. As acoes dependem das subpermissoes.'

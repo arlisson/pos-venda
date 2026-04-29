@@ -42,7 +42,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
       
-      <Route path="/funil" element={<PrivateRoute><FunilPage /></PrivateRoute>} />
+      <Route path="/funil" element={<PrivateRoute permission="funil_vendas"><FunilPage /></PrivateRoute>} />
 
       <Route path="/vendas" element={<PrivateRoute permission={['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir']}><VendasPage /></PrivateRoute>} />
       <Route path="/vendas/lixeira" element={<PrivateRoute permission={['vendas_ver_proprias', 'vendas_ver_todas']}><VendasLixeiraPage /></PrivateRoute>} />

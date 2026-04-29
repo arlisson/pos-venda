@@ -59,6 +59,7 @@ const VENDA_VAZIA = {
 };
 
 const ITEM_CHIP_VAZIO = { quantidade: '', valor_unitario: '' };
+const NUMERO_PORTADO_VAZIO = '';
 
 const CAMPOS_CLIENTE_DERIVADOS = [
   'nome',
@@ -94,7 +95,7 @@ const CAMPOS = [
   { name: 'gb', label: 'GB (Gigas)' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
   { name: 'valores_unitarios_chips', label: 'Valores unitarios de cada chip', type: 'chips', span: true },
-  { name: 'numeros_portados', label: 'Numeros a serem portados', type: 'textarea', span: true },
+  { name: 'numeros_portados', label: 'Numeros a serem portados', type: 'portedNumbers', span: true },
 
   { section: 'Local de instalacao/entrega' },
   { name: 'endereco', label: 'Endereco' },
@@ -211,6 +212,103 @@ function formatarInputMoedaBR(valor) {
   });
 }
 
+function apenasDigitos(valor, limite) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  return limite ? digitos.slice(0, limite) : digitos;
+}
+
+function formatarTelefoneComDdd(valor, celular = true) {
+  const limite = celular ? 11 : 10;
+  const digitos = apenasDigitos(valor, limite);
+
+  if (digitos.length <= 2) {
+    return digitos ? `(${digitos}` : '';
+  }
+
+  const ddd = digitos.slice(0, 2);
+  const numero = digitos.slice(2);
+
+  if (celular) {
+    if (numero.length <= 5) return `(${ddd}) ${numero}`;
+    return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+  }
+
+  if (numero.length <= 4) return `(${ddd}) ${numero}`;
+  return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
+}
+
+function formatarCpf(valor) {
+  const digitos = apenasDigitos(valor, 11);
+
+  if (digitos.length <= 3) return digitos;
+  if (digitos.length <= 6) return `${digitos.slice(0, 3)}.${digitos.slice(3)}`;
+  if (digitos.length <= 9) return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6)}`;
+  return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9)}`;
+}
+
+function formatarCnpj(valor) {
+  const digitos = apenasDigitos(valor, 14);
+
+  if (digitos.length <= 2) return digitos;
+  if (digitos.length <= 5) return `${digitos.slice(0, 2)}.${digitos.slice(2)}`;
+  if (digitos.length <= 8) return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5)}`;
+  if (digitos.length <= 12) return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8)}`;
+  return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
+}
+
+function formatarCep(valor) {
+  const digitos = apenasDigitos(valor, 8);
+
+  if (digitos.length <= 5) return digitos;
+  return `${digitos.slice(0, 5)}-${digitos.slice(5)}`;
+}
+
+function formatarDiaVencimento(valor) {
+  const digitos = apenasDigitos(valor, 2);
+  if (!digitos) return '';
+
+  const dia = Math.min(Number(digitos), 31);
+  return dia > 0 ? String(dia) : '';
+}
+
+function formatarCampoVenda(campo, valor) {
+  if (campo === 'telefone') return formatarTelefoneComDdd(valor, true);
+  if (campo === 'fixo_ddd') return formatarTelefoneComDdd(valor, false);
+  if (campo === 'cpf_representante_legal' || campo === 'cpf_administrador') return formatarCpf(valor);
+  if (campo === 'cnpj') return formatarCnpj(valor);
+  if (campo === 'cep') return formatarCep(valor);
+  if (campo === 'uf') return String(valor || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+  if (campo === 'ddd') return apenasDigitos(valor, 2);
+  if (campo === 'quantidade_linhas') return apenasDigitos(valor, 4);
+  if (campo === 'dia_vencimento') return formatarDiaVencimento(valor);
+  return valor;
+}
+
+function getInputModeCampo(campo) {
+  if (['telefone', 'fixo_ddd', 'cpf_representante_legal', 'cpf_administrador', 'cnpj', 'cep', 'ddd', 'quantidade_linhas', 'dia_vencimento'].includes(campo)) {
+    return 'numeric';
+  }
+
+  return undefined;
+}
+
+function getMaxLengthCampo(campo, maxLength) {
+  const limites = {
+    telefone: 15,
+    fixo_ddd: 14,
+    cpf_representante_legal: 14,
+    cpf_administrador: 14,
+    cnpj: 18,
+    cep: 9,
+    ddd: 2,
+    uf: 2,
+    dia_vencimento: 2,
+    quantidade_linhas: 4
+  };
+
+  return limites[campo] || maxLength;
+}
+
 function calcularTotalItensChips(itens = []) {
   return itens.reduce((acc, item) => (
     acc + (Number(item.quantidade || 0) * parseValorInput(item.valor_unitario))
@@ -256,6 +354,52 @@ function parseItensChips(valor) {
   return [{ ...ITEM_CHIP_VAZIO }];
 }
 
+function normalizarTextoBusca(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function isTipoPortabilidade(tipoVenda) {
+  return normalizarTextoBusca(tipoVenda?.nome).includes('portabilidade');
+}
+
+function parseNumerosPortados(valor) {
+  if (!valor) return [NUMERO_PORTADO_VAZIO];
+
+  if (Array.isArray(valor)) {
+    const numeros = valor
+      .map(item => String(item || '').trim())
+      .filter(Boolean);
+
+    return numeros.length > 0 ? numeros : [NUMERO_PORTADO_VAZIO];
+  }
+
+  if (typeof valor === 'string') {
+    try {
+      return parseNumerosPortados(JSON.parse(valor));
+    } catch {
+      const numeros = valor
+        .split(/\r?\n|[,;]/)
+        .map(item => item.trim())
+        .filter(Boolean);
+
+      return numeros.length > 0 ? numeros : [NUMERO_PORTADO_VAZIO];
+    }
+  }
+
+  return [NUMERO_PORTADO_VAZIO];
+}
+
+function montarNumerosPortados(valor) {
+  return (Array.isArray(valor) ? valor : parseNumerosPortados(valor))
+    .map(item => String(item || '').trim())
+    .filter(Boolean)
+    .join('\n');
+}
+
 function normalizarVenda(venda) {
   return {
     ...VENDA_VAZIA,
@@ -263,6 +407,7 @@ function normalizarVenda(venda) {
     data_venda: toInputDate(venda.data_venda),
     valor_total: venda.valor_total ?? '',
     valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips),
+    numeros_portados: parseNumerosPortados(venda.numeros_portados),
     quantidade_linhas: venda.quantidade_linhas ?? '',
     dia_vencimento: venda.dia_vencimento ?? '',
     operadora_id: venda.operadora_id ? String(venda.operadora_id) : '',
@@ -338,6 +483,51 @@ function ItensChipsInput({ value, onChange }) {
   );
 }
 
+function NumerosPortadosInput({ value, onChange }) {
+  const numeros = Array.isArray(value) && value.length > 0 ? value : [NUMERO_PORTADO_VAZIO];
+
+  function atualizarNumero(index, novoValor) {
+    onChange(numeros.map((numero, numeroIndex) => (
+      numeroIndex === index ? novoValor : numero
+    )));
+  }
+
+  function adicionarNumero() {
+    onChange([...numeros, NUMERO_PORTADO_VAZIO]);
+  }
+
+  function removerNumero(index) {
+    const proximos = numeros.filter((_, numeroIndex) => numeroIndex !== index);
+    onChange(proximos.length > 0 ? proximos : [NUMERO_PORTADO_VAZIO]);
+  }
+
+  return (
+    <div className="ported-numbers">
+      {numeros.map((numero, index) => (
+        <div key={index} className="ported-number-row">
+          <input
+            type="text"
+            inputMode="numeric"
+            value={numero}
+            onChange={event => atualizarNumero(index, formatarTelefoneComDdd(event.target.value, true))}
+            placeholder="(11) 99999-9999"
+            maxLength={15}
+          />
+          <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerNumero(index)} title="Remover numero">
+            <I.Trash size={13} />
+          </button>
+        </div>
+      ))}
+
+      <div className="ported-numbers__footer">
+        <button type="button" className="btn btn-sm" onClick={adicionarNumero}>
+          <I.Plus size={13} /> Adicionar numero
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ClienteVendaSelect({ value, clientes, onChange }) {
   const [busca, setBusca] = useState('');
   const clienteSelecionado = clientes.find(cliente => String(cliente.id) === String(value));
@@ -400,10 +590,58 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : VENDA_VAZIA);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [cepStatus, setCepStatus] = useState('');
+  const tipoVendaSelecionado = tiposVenda.find(tipo => String(tipo.id) === String(form.tipo_venda_id));
+  const vendaPortabilidade = isTipoPortabilidade(tipoVendaSelecionado);
 
   function atualizarCampo(campo, valor) {
-    setForm(prev => ({ ...prev, [campo]: valor }));
+    setForm(prev => ({ ...prev, [campo]: formatarCampoVenda(campo, valor) }));
   }
+
+  useEffect(() => {
+    const cep = apenasDigitos(form.cep, 8);
+
+    if (cep.length !== 8) {
+      setCepStatus('');
+      return;
+    }
+
+    let cancelado = false;
+    setCepStatus('Buscando CEP...');
+
+    fetch(`https://viacep.com.br/ws/${cep}/json/`)
+      .then(response => {
+        if (!response.ok) throw new Error('Erro ao buscar CEP.');
+        return response.json();
+      })
+      .then(data => {
+        if (cancelado) return;
+
+        if (data.erro) {
+          setCepStatus('CEP nao encontrado.');
+          return;
+        }
+
+        setForm(prev => ({
+          ...prev,
+          endereco: data.logradouro || prev.endereco,
+          bairro: data.bairro || prev.bairro,
+          municipio: data.localidade || prev.municipio,
+          uf: data.uf || prev.uf,
+          complemento: prev.complemento || data.complemento || ''
+        }));
+        setCepStatus('Endereco preenchido pelo CEP.');
+      })
+      .catch(() => {
+        if (!cancelado) {
+          setCepStatus('Nao foi possivel buscar o CEP.');
+        }
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [form.cep]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -411,9 +649,18 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
     setSalvando(true);
 
     try {
+      const numerosPortados = montarNumerosPortados(form.numeros_portados);
+
+      if (vendaPortabilidade && !numerosPortados) {
+        setErro('Informe pelo menos um numero a ser portado.');
+        setSalvando(false);
+        return;
+      }
+
       const payload = {
         ...form,
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
+        numeros_portados: vendaPortabilidade ? numerosPortados : null,
         valores_unitarios_chips: (form.valores_unitarios_chips || [])
           .map(item => ({
             quantidade: Number(item.quantidade || 0),
@@ -459,6 +706,10 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
                 return <div key={campo.section} className="vendas-form-section">{campo.section}</div>;
               }
 
+              if (campo.name === 'numeros_portados' && !vendaPortabilidade) {
+                return null;
+              }
+
               return (
                 <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''}`}>
                   <label>{campo.label}</label>
@@ -492,6 +743,11 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
                     />
+                  ) : campo.type === 'portedNumbers' ? (
+                    <NumerosPortadosInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                    />
                   ) : campo.type === 'textarea' ? (
                     <textarea
                       value={form[campo.name] ?? ''}
@@ -503,11 +759,15 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
                       step={campo.step}
                       min={campo.min}
                       max={campo.max}
-                      maxLength={campo.maxLength}
+                      maxLength={getMaxLengthCampo(campo.name, campo.maxLength)}
+                      inputMode={getInputModeCampo(campo.name)}
                       value={form[campo.name] ?? ''}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
                       required={campo.required}
                     />
+                  )}
+                  {campo.name === 'cep' && cepStatus && (
+                    <span className="field-hint">{cepStatus}</span>
                   )}
                 </div>
               );
