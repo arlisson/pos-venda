@@ -128,6 +128,9 @@ function getHistoryLabel(item, stageLabels = STAGE_LABELS) {
   if (item.acao === 'venda.observacao_adicionada') {
     return ['Observacao adicionada', item.observacao].filter(Boolean).join(' - ');
   }
+  if (item.acao === 'venda.prioridade_atualizada') {
+    return ['Prioridade atualizada', item.observacao].filter(Boolean).join(' - ');
+  }
 
   if (item.acao === 'venda.status_atualizado') {
     return [
@@ -190,7 +193,7 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
       venda.uf
     ].filter(Boolean).join(', ') || 'Endereco nao informado',
     stage,
-    priority: 'media',
+    priority: venda.prioridade_funil || 'media',
     lancadaEm: created,
     updated,
     historico: mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabels),
@@ -206,7 +209,9 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
   const [error, setError] = useState('');
   const [returnModalOpen, setReturnModalOpen] = useState(false);
 
-  const alterou = novaFase !== sale.stage || observacao.trim() !== '';
+  const alterou = novaFase !== sale.stage
+    || novaPrioridade !== (sale.priority || 'media')
+    || observacao.trim() !== '';
 
   async function submitStatus(status, statusObservacao = observacao.trim(), motivoRetorno = '') {
     setSaving(true);
@@ -578,6 +583,7 @@ function FunilPage() {
     if (novaFase === 'retorno') {
       await atualizarStatusVenda(saleId, {
         status_funil: 'retorno',
+        prioridade_funil: novaPrioridade,
         motivo_retorno: motivoRetorno,
         observacao
       });
@@ -588,6 +594,7 @@ function FunilPage() {
 
     const vendaAtualizada = await atualizarStatusVenda(saleId, {
       status_funil: novaFase,
+      prioridade_funil: novaPrioridade,
       observacao
     });
 
@@ -595,8 +602,7 @@ function FunilPage() {
       if (sale.id !== saleId) return sale;
       return {
         ...sale,
-        ...mapVendaToSale(vendaAtualizada, stageLabels),
-        priority: novaPrioridade
+        ...mapVendaToSale(vendaAtualizada, stageLabels)
       };
     }));
   }

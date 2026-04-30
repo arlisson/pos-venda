@@ -59,6 +59,7 @@ class Venda extends Model {
         tipo_venda_id: { type: ['integer', 'null'] },
         servico_id: { type: ['integer', 'null'] },
         status_funil: { type: 'string', maxLength: 40 },
+        prioridade_funil: { type: 'string', maxLength: 20 },
         status_anterior_retorno: { type: ['string', 'null'], maxLength: 40 },
         motivo_retorno: { type: ['string', 'null'], maxLength: 255 },
         nota_correcao_retorno: { type: ['string', 'null'] },

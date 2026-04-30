@@ -46,6 +46,7 @@ const CAMPOS = [
   'operadora_id',
   'vendedora_id',
   'status_funil',
+  'prioridade_funil',
   'status_anterior_retorno',
   'motivo_retorno',
   'nota_correcao_retorno',
@@ -64,6 +65,8 @@ const FUNIL_STATUS_LABELS = {
   concluido: 'Concluido',
   retorno: 'Retorno recebido'
 };
+
+const FUNIL_PRIORIDADES = ['alta', 'media', 'baixa'];
 
 function limparValor(valor) {
   if (valor === undefined) return undefined;
@@ -283,6 +286,13 @@ function montarPayload(dados) {
 
   if (payload.data_venda !== undefined) {
     payload.data_venda = normalizarData(payload.data_venda);
+  }
+
+  if (payload.prioridade_funil !== undefined) {
+    const prioridadeNormalizada = String(payload.prioridade_funil || '').trim().toLowerCase();
+    payload.prioridade_funil = FUNIL_PRIORIDADES.includes(prioridadeNormalizada)
+      ? prioridadeNormalizada
+      : 'media';
   }
 
   return payload;
@@ -990,11 +1000,21 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   const agora = formatarDateTimeSQL();
   const status = dados.status_funil;
   const observacao = String(dados.observacao || '').trim();
+  const prioridadeInformada = dados.prioridade_funil !== undefined
+    ? String(dados.prioridade_funil || '').trim().toLowerCase()
+    : undefined;
+  const prioridade = prioridadeInformada === undefined
+    ? venda.prioridade_funil || 'media'
+    : prioridadeInformada;
 
   const retornoVoltandoParaOrigem = venda.status_funil === 'retorno' && status === (venda.status_anterior_retorno || 'aprovacao');
 
   if (!retornoVoltandoParaOrigem && !await validarStatusFunil(status)) {
     return { status: 'invalid', message: 'Status do funil invalido.' };
+  }
+
+  if (!FUNIL_PRIORIDADES.includes(prioridade)) {
+    return { status: 'invalid', message: 'Prioridade do funil invalida.' };
   }
 
   if (status === 'retorno') {
@@ -1008,6 +1028,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
       const vendaAtualizada = await Venda.transaction(async trx => {
         const atualizada = await Venda.query(trx).patchAndFetchById(id, {
           motivo_retorno: motivo,
+          prioridade_funil: prioridade,
           ultima_atividade_em: agora,
           updated_at: agora
         });
@@ -1040,6 +1061,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
     const vendaAtualizada = await Venda.transaction(async trx => {
       const atualizada = await Venda.query(trx).patchAndFetchById(id, {
         status_funil: 'retorno',
+        prioridade_funil: prioridade,
         status_anterior_retorno: statusAnterior,
         motivo_retorno: motivo,
         nota_correcao_retorno: null,
@@ -1082,6 +1104,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
     const vendaAtualizada = await Venda.transaction(async trx => {
       const atualizada = await Venda.query(trx).patchAndFetchById(id, {
         status_funil: destino,
+        prioridade_funil: prioridade,
         nota_correcao_retorno: nota,
         corrigido_em: agora,
         ultima_atividade_em: agora,
@@ -1111,6 +1134,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   const vendaAtualizada = await Venda.transaction(async trx => {
     const atualizada = await Venda.query(trx).patchAndFetchById(id, {
       status_funil: status,
+      prioridade_funil: prioridade,
       ultima_atividade_em: agora,
       updated_at: agora
     });
@@ -1118,13 +1142,19 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
     await registrarHistoricoVenda({
       vendaId: id,
       usuarioId,
-      acao: status !== venda.status_funil ? 'venda.status_atualizado' : 'venda.observacao_adicionada',
+      acao: status !== venda.status_funil
+        ? 'venda.status_atualizado'
+        : prioridade !== (venda.prioridade_funil || 'media')
+          ? 'venda.prioridade_atualizada'
+          : 'venda.observacao_adicionada',
       statusAnterior: venda.status_funil || null,
       statusNovo: status,
       observacao: observacao || null,
       dados: {
         status_funil: status,
         status_anterior: venda.status_funil || null,
+        prioridade_funil: prioridade,
+        prioridade_anterior: venda.prioridade_funil || 'media',
         observacao
       },
       createdAt: agora,
