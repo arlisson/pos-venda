@@ -54,6 +54,16 @@ const CAMPOS = [
 
 const FUNIL_STATUS = ['aprovacao', 'ativacao', 'envio', 'entrega', 'confirmacao', 'concluido', 'retorno'];
 
+const FUNIL_STATUS_LABELS = {
+  aprovacao: 'Aprovacao',
+  ativacao: 'Ativacao',
+  envio: 'Envio / Logistica',
+  entrega: 'Entrega',
+  confirmacao: 'Confirmacao do cliente',
+  concluido: 'Concluido',
+  retorno: 'Retorno recebido'
+};
+
 function limparValor(valor) {
   if (valor === undefined) return undefined;
   if (valor === '') return null;
@@ -354,7 +364,9 @@ async function buscarEscopoVendas(usuarioId) {
   };
 }
 
-function aplicarEscopoVendas(query, usuarioId, escopo) {
+function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
+  const campo = (nome) => alias ? `${alias}.${nome}` : nome;
+
   if (escopo.podeVerTodas) {
     return query;
   }
@@ -366,8 +378,8 @@ function aplicarEscopoVendas(query, usuarioId, escopo) {
 
   query.where((builder) => {
     builder
-      .where('criado_por_id', usuarioId)
-      .orWhere('vendedora_id', usuarioId);
+      .where(campo('criado_por_id'), usuarioId)
+      .orWhere(campo('vendedora_id'), usuarioId);
   });
 
   return query;
@@ -472,6 +484,51 @@ function montarResumoAgrupado(mapa) {
     .sort((a, b) => b.valor - a.valor);
 }
 
+function montarResumoFases(vendas = []) {
+  const statusEncontrados = Array.from(new Set(
+    vendas
+      .map(venda => venda.status_funil || 'aprovacao')
+      .filter(Boolean)
+  ));
+  const statusOrdenados = [
+    ...FUNIL_STATUS,
+    ...statusEncontrados.filter(status => !FUNIL_STATUS.includes(status))
+  ];
+  const fasesMap = new Map(statusOrdenados.map(status => [
+    status,
+    {
+      id: status,
+      nome: FUNIL_STATUS_LABELS[status] || status,
+      valor: 0,
+      vendas: 0,
+      chips: 0,
+      retorno: status === 'retorno'
+    }
+  ]));
+
+  vendas.forEach(venda => {
+    const status = venda.status_funil || 'aprovacao';
+    const fase = fasesMap.get(status) || {
+      id: status,
+      nome: FUNIL_STATUS_LABELS[status] || status,
+      valor: 0,
+      vendas: 0,
+      chips: 0,
+      retorno: status === 'retorno'
+    };
+
+    fase.valor += Number(venda.valor_total || 0);
+    fase.vendas += 1;
+    fase.chips += obterQuantidadeChipsVenda(venda);
+    fasesMap.set(status, fase);
+  });
+
+  return Array.from(fasesMap.values()).map(fase => ({
+    ...fase,
+    valor: Number(fase.valor.toFixed(2))
+  }));
+}
+
 async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
   const escopo = await buscarEscopoVendas(usuarioId);
 
@@ -565,7 +622,7 @@ async function listarVendas(filtros = {}, usuarioId) {
 }
 
 async function obterResumoDashboard(usuarioId) {
-  const escopo = { podeVerTodas: true, podeVerProprias: true };
+  const escopo = await buscarEscopoVendas(usuarioId);
   const dataReferencia = dataReferenciaVendaSQL('v');
   const hoje = new Date();
   const inicioHoje = [
@@ -575,7 +632,7 @@ async function obterResumoDashboard(usuarioId) {
   ].join('-');
 
   const queryHoje = Venda.query().alias('v');
-  aplicarEscopoVendas(queryHoje, usuarioId, escopo);
+  aplicarEscopoVendas(queryHoje, usuarioId, escopo, 'v');
 
   const vendasHoje = await queryHoje
     .whereNull('v.excluido_em')
@@ -589,7 +646,7 @@ async function obterResumoDashboard(usuarioId) {
     .first();
 
   const queryPipeline = Venda.query().alias('v');
-  aplicarEscopoVendas(queryPipeline, usuarioId, escopo);
+  aplicarEscopoVendas(queryPipeline, usuarioId, escopo, 'v');
 
   const pipeline = await queryPipeline
     .whereNull('v.excluido_em')
@@ -601,16 +658,20 @@ async function obterResumoDashboard(usuarioId) {
     .first();
 
   const queryRetornos = Venda.query().alias('v');
-  aplicarEscopoVendas(queryRetornos, usuarioId, escopo);
+  aplicarEscopoVendas(queryRetornos, usuarioId, escopo, 'v');
 
   const retornos = await queryRetornos
     .whereNull('v.excluido_em')
     .where('v.status_funil', 'retorno')
     .select(
-      Venda.raw('COUNT(*) as retornos'),
-      Venda.raw('COALESCE(SUM(COALESCE(v.valor_total, 0)), 0) as perda')
-    )
-    .first();
+      'v.id',
+      'v.valor_total',
+      'v.valores_unitarios_chips',
+      'v.quantidade_linhas'
+    );
+
+  const chipsRetornados = retornos.reduce((total, venda) => total + obterQuantidadeChipsVenda(venda), 0);
+  const perdaRetornos = retornos.reduce((total, venda) => total + Number(venda.valor_total || 0), 0);
 
   return {
     vendasDia: Number(vendasHoje?.vendas_dia || 0),
@@ -618,8 +679,8 @@ async function obterResumoDashboard(usuarioId) {
     concluidasDia: Number(vendasHoje?.concluidas_dia || 0),
     pipeline: Number(pipeline?.pipeline || 0),
     pipelineCount: Number(pipeline?.pipeline_count || 0),
-    retornos: Number(retornos?.retornos || 0),
-    perda: Number(retornos?.perda || 0)
+    retornos: chipsRetornados,
+    perda: Number(perdaRetornos.toFixed(2))
   };
 }
 
@@ -726,6 +787,7 @@ async function obterRelatoriosVendas(filtros = {}) {
         chipsVendidos
       }
     },
+    vendasPorFase: montarResumoFases(vendas),
     porOperadora: montarResumoAgrupado(porOperadoraMap),
     rankingVendedores: montarResumoAgrupado(rankingMap)
   };

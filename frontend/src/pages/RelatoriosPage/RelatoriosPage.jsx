@@ -18,6 +18,7 @@ const EMPTY_REPORT = {
     perdaRetorno: { quantidade: 0, valor: 0, chips: 0 },
     taxaRetorno: { percentual: 0, chipsRetornados: 0, chipsVendidos: 0 }
   },
+  vendasPorFase: [],
   porOperadora: [],
   rankingVendedores: []
 };
@@ -124,6 +125,10 @@ function RelatoriosPage() {
     Math.max(...(relatorio.porOperadora || []).map(item => Number(item.valor || 0)), 0)
   ), [relatorio.porOperadora]);
 
+  const maxFase = useMemo(() => (
+    Math.max(...(relatorio.vendasPorFase || []).map(item => Number(item.valor || 0)), 0)
+  ), [relatorio.vendasPorFase]);
+
   const maxRanking = useMemo(() => (
     Math.max(...(relatorio.rankingVendedores || []).map(item => Number(item.valor || 0)), 0)
   ), [relatorio.rankingVendedores]);
@@ -197,10 +202,35 @@ function RelatoriosPage() {
         </div>
 
         <div className="relatorios-grid">
-          <section className="relatorios-panel">
+          <section className="relatorios-panel relatorios-panel--fases">
+            <div className="relatorios-panel-header">
+              <h2>Vendas por fase</h2>
+              {carregando && <span>Carregando...</span>}
+            </div>
+            {(relatorio.vendasPorFase || []).length === 0 ? (
+              <EmptyState>Nenhuma fase encontrada no periodo.</EmptyState>
+            ) : (
+              <div className="relatorios-bars">
+                {relatorio.vendasPorFase.map(item => {
+                  const width = maxFase > 0 ? Math.max(item.valor > 0 ? 4 : 0, (Number(item.valor || 0) / maxFase) * 100) : 0;
+
+                  return (
+                    <div className={`relatorios-bar-row ${item.retorno ? 'is-danger' : ''}`} key={item.id || item.nome}>
+                      <span className="bar-label">{item.nome}</span>
+                      <div className="bar-track">
+                        <div className="bar-fill" style={{ width: `${width}%` }} />
+                      </div>
+                      <strong>{formatarMoeda(item.valor)}</strong>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="relatorios-panel relatorios-panel--operadoras">
             <div className="relatorios-panel-header">
               <h2>Por operadora</h2>
-              {carregando && <span>Carregando...</span>}
             </div>
             {(relatorio.porOperadora || []).length === 0 ? (
               <EmptyState>Nenhuma venda encontrada no periodo.</EmptyState>
@@ -223,7 +253,7 @@ function RelatoriosPage() {
             )}
           </section>
 
-          <section className="relatorios-panel">
+          <section className="relatorios-panel relatorios-panel--ranking">
             <div className="relatorios-panel-header">
               <h2>Ranking de vendedores</h2>
               <span>{vendedoraId ? 'Usuario filtrado' : 'Todos os usuarios'}</span>

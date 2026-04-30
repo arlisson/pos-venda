@@ -109,6 +109,7 @@ function DashboardPage() {
   const [usuarioMetaFiltro, setUsuarioMetaFiltro] = useState('');
   const [usuarioMetaBusca, setUsuarioMetaBusca] = useState('');
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
+  const podeVerRetornos = temPermissao(usuario, ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']);
   const podeVerMetasUsuarios = temPermissao(usuario, 'metas_ver_usuarios');
 
   useEffect(() => {
@@ -120,7 +121,7 @@ function DashboardPage() {
   useEffect(() => {
     getMetas().then(setMetas).catch(console.error);
 
-    if (podeVerResumoVendas) {
+    if (podeVerResumoVendas || podeVerRetornos) {
       obterResumoVendas().then(setStats).catch(console.error);
     }
 
@@ -130,7 +131,7 @@ function DashboardPage() {
         setOpenedGifts(new Set((data.resgatadas || []).map(Number)));
       })
       .catch(console.error);
-  }, [podeVerResumoVendas]);
+  }, [podeVerResumoVendas, podeVerRetornos]);
 
   useEffect(() => {
     if (!podeVerMetasUsuarios) return undefined;

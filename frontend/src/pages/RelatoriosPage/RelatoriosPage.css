@@ -95,8 +95,12 @@
 
 .relatorios-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
   gap: 12px;
+}
+
+.relatorios-panel--ranking {
+  grid-column: 1 / -1;
 }
 
 .relatorios-panel {
@@ -164,6 +168,14 @@
   height: 100%;
   border-radius: 4px;
   background: var(--text);
+}
+
+.relatorios-bar-row.is-danger .bar-fill {
+  background: #b91c1c;
+}
+
+.relatorios-bar-row.is-danger strong {
+  color: #b91c1c;
 }
 
 .ranking-row {
