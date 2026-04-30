@@ -187,6 +187,10 @@
   margin-bottom: 2px;
 }
 
+.return-observation-preview {
+  border-left-color: var(--text);
+}
+
 .return-item-right {
   text-align: right;
   display: flex;
@@ -261,6 +265,23 @@
 .return-status-modal .obs-textarea {
   min-height: 160px;
   resize: vertical;
+}
+
+.return-status-modal .return-observation-textarea {
+  min-height: 96px;
+}
+
+.return-observation-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.return-observation-actions span {
+  color: var(--text-3);
+  font-size: 12px;
 }
 
 @media (max-width: 1100px) {

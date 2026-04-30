@@ -3,17 +3,21 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   atualizarLinkExterno,
+  atualizarEtapaFunil,
   atualizarOperadora,
   atualizarServico,
   atualizarTipoVenda,
   criarLinkExterno,
+  criarEtapaFunil,
   criarOperadora,
   criarServico,
   criarTipoVenda,
   excluirLinkExterno,
+  excluirEtapaFunil,
   excluirOperadora,
   excluirServico,
   excluirTipoVenda,
+  listarEtapasFunilAdmin,
   listarLinksExternosAdmin,
   listarOperadorasAdmin,
   listarServicosAdmin,
@@ -41,6 +45,7 @@ function ConfiguracoesPage() {
     operadoras: temPermissao(usuario, 'crud_operadoras'),
     tiposVenda: temPermissao(usuario, 'crud_tipos_venda'),
     servicos: temPermissao(usuario, 'crud_servicos'),
+    funilEtapas: temPermissao(usuario, 'crud_funil_etapas'),
     links: temPermissao(usuario, 'crud_links')
   };
 
@@ -48,14 +53,16 @@ function ConfiguracoesPage() {
     { id: 'operadoras', label: 'Operadoras', permitido: permissoes.operadoras },
     { id: 'tiposVenda', label: 'Tipos de venda', permitido: permissoes.tiposVenda },
     { id: 'servicos', label: 'Serviços', permitido: permissoes.servicos },
+    { id: 'funilEtapas', label: 'Etapas do funil', permitido: permissoes.funilEtapas },
     { id: 'links', label: 'Links externos', permitido: permissoes.links }
-  ].filter(aba => aba.permitido), [permissoes.operadoras, permissoes.tiposVenda, permissoes.servicos, permissoes.links]);
+  ].filter(aba => aba.permitido), [permissoes.operadoras, permissoes.tiposVenda, permissoes.servicos, permissoes.funilEtapas, permissoes.links]);
 
   const [aba, setAba] = useState(abas[0]?.id || '');
   const [dados, setDados] = useState({
     operadoras: [],
     tiposVenda: [],
     servicos: [],
+    funilEtapas: [],
     links: []
   });
   const [formSimples, setFormSimples] = useState(FORM_SIMPLES);
@@ -82,14 +89,15 @@ function ConfiguracoesPage() {
     setCarregando(true);
 
     try {
-      const [operadoras, tiposVenda, servicos, links] = await Promise.all([
+      const [operadoras, tiposVenda, servicos, funilEtapas, links] = await Promise.all([
         permissoes.operadoras ? listarOperadorasAdmin() : Promise.resolve([]),
         permissoes.tiposVenda ? listarTiposVendaAdmin() : Promise.resolve([]),
         permissoes.servicos ? listarServicosAdmin() : Promise.resolve([]),
+        permissoes.funilEtapas ? listarEtapasFunilAdmin() : Promise.resolve([]),
         permissoes.links ? listarLinksExternosAdmin() : Promise.resolve([])
       ]);
 
-      setDados({ operadoras, tiposVenda, servicos, links });
+      setDados({ operadoras, tiposVenda, servicos, funilEtapas, links });
     } catch (error) {
       setErro(error.message || 'Erro ao carregar configurações.');
     } finally {
@@ -144,7 +152,8 @@ function ConfiguracoesPage() {
     const mapa = {
       operadoras: [criarOperadora, atualizarOperadora],
       tiposVenda: [criarTipoVenda, atualizarTipoVenda],
-      servicos: [criarServico, atualizarServico]
+      servicos: [criarServico, atualizarServico],
+      funilEtapas: [criarEtapaFunil, atualizarEtapaFunil]
     };
     const [criar, atualizar] = mapa[aba];
     const payload = { ...formSimples, ordem: Number(formSimples.ordem || 0) };
@@ -191,6 +200,7 @@ function ConfiguracoesPage() {
       operadoras: excluirOperadora,
       tiposVenda: excluirTipoVenda,
       servicos: excluirServico,
+      funilEtapas: excluirEtapaFunil,
       links: excluirLinkExterno
     };
 

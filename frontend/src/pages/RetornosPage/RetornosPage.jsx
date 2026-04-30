@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { DEFAULT_OPERATORS as OPERATORS, STAGES } from '../../config/constants';
+import { listarEtapasFunil } from '../../services/config.service';
 import { atualizarStatusVenda, listarVendas } from '../../services/venda.service';
 import './RetornosPage.css';
 
@@ -17,7 +18,7 @@ const RETURN_REASON_GROUPS = [
   { id: 'outros', label: 'Outros motivos', desc: 'Casos sem categoria definida', match: () => true },
 ];
 
-const STAGE_LABELS = Object.fromEntries(STAGES.map(stage => [stage.id, stage.name]));
+const FALLBACK_STAGE_LABELS = Object.fromEntries(STAGES.map(stage => [stage.id, stage.name]));
 
 function classifyReason(reason) {
   return RETURN_REASON_GROUPS.find(group => group.match(reason || '')) || RETURN_REASON_GROUPS.at(-1);
@@ -61,11 +62,44 @@ function getDestination(venda) {
   return venda.status_anterior_retorno || 'aprovacao';
 }
 
-function ResolveReturnModal({ venda, onClose, onConfirm }) {
+function parseHistoricoDados(dados) {
+  if (!dados) return {};
+  if (typeof dados === 'string') {
+    try {
+      return JSON.parse(dados);
+    } catch {
+      return {};
+    }
+  }
+  return dados;
+}
+
+function getReturnObservation(venda) {
+  const historico = Array.isArray(venda.historico) ? venda.historico : [];
+  const registro = historico.find(item => (
+    item.acao === 'venda.retorno_observacao_atualizada'
+    || item.acao === 'venda.retorno_registrado'
+  ));
+
+  if (!registro) return '';
+
+  const dados = parseHistoricoDados(registro.dados);
+  return dados.observacao || registro.observacao || '';
+}
+
+function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm, onSaveObservation }) {
   const [note, setNote] = useState('');
+  const [returnObservation, setReturnObservation] = useState(() => getReturnObservation(venda));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingObservation, setSavingObservation] = useState(false);
   const destination = getDestination(venda);
+  const originalObservation = getReturnObservation(venda);
+
+  useEffect(() => {
+    setReturnObservation(getReturnObservation(venda));
+    setSavingObservation(false);
+  }, [venda]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -83,6 +117,19 @@ function ResolveReturnModal({ venda, onClose, onConfirm }) {
     } catch (err) {
       setError(err.message || 'Erro ao atualizar status.');
       setSaving(false);
+    }
+  }
+
+  async function handleSaveObservation() {
+    setSavingObservation(true);
+    setError('');
+
+    try {
+      await onSaveObservation(venda, returnObservation.trim());
+      setSavingObservation(false);
+    } catch (err) {
+      setError(err.message || 'Erro ao salvar observacao do retorno.');
+      setSavingObservation(false);
     }
   }
 
@@ -109,7 +156,29 @@ function ResolveReturnModal({ venda, onClose, onConfirm }) {
             </div>
             <div>
               <span>Destino após correção</span>
-              <strong>{STAGE_LABELS[destination] || destination}</strong>
+              <strong>{stageLabels[destination] || destination}</strong>
+            </div>
+          </div>
+
+          <div className="form-field">
+            <label>Observacao do retorno</label>
+            <textarea
+              className="obs-textarea return-observation-textarea"
+              value={returnObservation}
+              onChange={event => setReturnObservation(event.target.value)}
+              placeholder="Nenhuma observacao foi registrada neste retorno."
+              rows={5}
+            />
+            <div className="return-observation-actions">
+              <span>{originalObservation ? 'Observacao registrada no retorno.' : 'Sem observacao registrada.'}</span>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={handleSaveObservation}
+                disabled={savingObservation || returnObservation.trim() === originalObservation.trim()}
+              >
+                {savingObservation ? 'Salvando...' : 'Salvar observacao'}
+              </button>
             </div>
           </div>
 
@@ -146,19 +215,25 @@ function RetornosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedReturn, setSelectedReturn] = useState(null);
+  const [stageLabels, setStageLabels] = useState(FALLBACK_STAGE_LABELS);
 
   async function carregarRetornos() {
     setLoading(true);
     setError('');
 
     try {
-      const [returnsData, salesData] = await Promise.all([
+      const [returnsData, salesData, etapasData] = await Promise.all([
         listarVendas({ status_funil: 'retorno' }),
-        listarVendas({})
+        listarVendas({}),
+        listarEtapasFunil()
       ]);
 
       setAllReturns(returnsData);
       setAllSales(salesData);
+      setStageLabels({
+        ...FALLBACK_STAGE_LABELS,
+        ...Object.fromEntries((etapasData || []).map(etapa => [etapa.codigo || etapa.id, etapa.nome || etapa.name]))
+      });
     } catch (err) {
       setError(err.message || 'Erro ao carregar retornos.');
     } finally {
@@ -212,13 +287,31 @@ function RetornosPage() {
     setSelectedReturn(null);
   }
 
+  async function handleSaveReturnObservation(venda, observacao) {
+    const vendaAtualizada = await atualizarStatusVenda(venda.id, {
+      status_funil: 'retorno',
+      motivo_retorno: venda.motivo_retorno,
+      observacao
+    });
+
+    setAllReturns(prev => prev.map(item => (
+      item.id === venda.id ? vendaAtualizada : item
+    )));
+    setAllSales(prev => prev.map(item => (
+      item.id === venda.id ? vendaAtualizada : item
+    )));
+    setSelectedReturn(vendaAtualizada);
+  }
+
   return (
     <LayoutPrivado>
       {selectedReturn && (
         <ResolveReturnModal
           venda={selectedReturn}
+          stageLabels={stageLabels}
           onClose={() => setSelectedReturn(null)}
           onConfirm={handleResolveReturn}
+          onSaveObservation={handleSaveReturnObservation}
         />
       )}
 
@@ -335,6 +428,12 @@ function RetornosPage() {
                           <span>Descrição</span>
                           <div>{item.motivo_retorno || 'Sem descrição informada'}</div>
                         </div>
+                        {getReturnObservation(item) && (
+                          <div className="return-reason-detail return-observation-preview">
+                            <span>Observacao</span>
+                            <div>{getReturnObservation(item)}</div>
+                          </div>
+                        )}
                       </div>
                       <div className="return-item-right">
                         <div className="return-value">{formatBRL(getValue(item))}</div>

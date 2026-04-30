@@ -1,15 +1,36 @@
 import { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
-import { STAGES, DEFAULT_OPERATORS as OPERATORS } from '../../config/constants';
+import { DEFAULT_OPERATORS as OPERATORS, STAGES as FALLBACK_STAGES } from '../../config/constants';
+import { listarEtapasFunil } from '../../services/config.service';
 import { atualizarStatusVenda, listarVendas } from '../../services/venda.service';
 
 const formatBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const STAGE_LABELS = {
-  ...Object.fromEntries(STAGES.map(stage => [stage.id, stage.name])),
+  ...Object.fromEntries(FALLBACK_STAGES.map(stage => [stage.id, stage.name])),
   retorno: 'Retorno',
 };
+
+function normalizarEtapasFunil(etapas = []) {
+  const normalizadas = etapas
+    .map((etapa, index) => ({
+      id: etapa.codigo || etapa.id,
+      name: etapa.nome || etapa.name,
+      dot: etapa.codigo || etapa.id || `etapa_${index}`,
+      ordem: Number(etapa.ordem ?? index)
+    }))
+    .filter(etapa => etapa.id && etapa.name);
+
+  return normalizadas.length > 0 ? normalizadas : FALLBACK_STAGES;
+}
+
+function montarStageLabels(stages = []) {
+  return {
+    ...STAGE_LABELS,
+    ...Object.fromEntries(stages.map(stage => [stage.id, stage.name]))
+  };
+}
 
 const PRIORITIES = {
   alta: { label: 'Prioridade Alta', color: '#ef4444' },
@@ -96,7 +117,7 @@ function getHistoryAuthor(item) {
   return item.usuario?.nome || (item.usuario_id ? `Usuario #${item.usuario_id}` : 'Sistema');
 }
 
-function getHistoryLabel(item) {
+function getHistoryLabel(item, stageLabels = STAGE_LABELS) {
   if (item.acao === 'venda.criada') return 'Venda cadastrada';
   if (item.acao === 'venda.retorno_registrado') {
     return ['Marcada como retorno', item.observacao].filter(Boolean).join(' - ');
@@ -107,10 +128,13 @@ function getHistoryLabel(item) {
   if (item.acao === 'venda.observacao_adicionada') {
     return ['Observacao adicionada', item.observacao].filter(Boolean).join(' - ');
   }
+  if (item.acao === 'venda.prioridade_atualizada') {
+    return ['Prioridade atualizada', item.observacao].filter(Boolean).join(' - ');
+  }
 
   if (item.acao === 'venda.status_atualizado') {
     return [
-      `Movido para ${STAGE_LABELS[item.status_novo] || item.status_novo}`,
+      `Movido para ${stageLabels[item.status_novo] || item.status_novo}`,
       item.observacao
     ].filter(Boolean).join(' - ');
   }
@@ -126,25 +150,25 @@ function getHistoryType(item) {
   return 'move';
 }
 
-function mapHistoricoVenda(venda, stage, updated, created, sellerName) {
+function mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabels = STAGE_LABELS) {
   const historico = Array.isArray(venda.historico) ? venda.historico : [];
 
   if (historico.length === 0) {
     return [
-      { acao: `Status atual: ${STAGE_LABELS[stage] || stage}`, autor: 'Sistema', data: updated, tipo: 'move' },
+      { acao: `Status atual: ${stageLabels[stage] || stage}`, autor: 'Sistema', data: updated, tipo: 'move' },
       { acao: 'Venda cadastrada', autor: sellerName, data: created, tipo: 'create' },
     ];
   }
 
   return historico.map(item => ({
-    acao: getHistoryLabel(item),
+    acao: getHistoryLabel(item, stageLabels),
     autor: getHistoryAuthor(item),
     data: parseDate(item.created_at),
     tipo: getHistoryType(item)
   }));
 }
 
-function mapVendaToSale(venda) {
+function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
   const sellerName = venda.vendedora?.nome || 'Sem vendedor';
   const updated = parseDate(venda.ultima_atividade_em || venda.updated_at || venda.created_at);
   const created = parseDate(venda.criado_em || venda.created_at || venda.data_venda);
@@ -169,14 +193,14 @@ function mapVendaToSale(venda) {
       venda.uf
     ].filter(Boolean).join(', ') || 'Endereco nao informado',
     stage,
-    priority: 'media',
+    priority: venda.prioridade_funil || 'media',
     lancadaEm: created,
     updated,
-    historico: mapHistoricoVenda(venda, stage, updated, created, sellerName),
+    historico: mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabels),
   };
 }
 
-function SaleModal({ sale, onClose, onUpdateSale }) {
+function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
   const [tab, setTab] = useState('info');
   const [novaFase, setNovaFase] = useState(sale.stage);
   const [novaPrioridade, setNovaPrioridade] = useState(sale.priority || 'media');
@@ -185,7 +209,9 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
   const [error, setError] = useState('');
   const [returnModalOpen, setReturnModalOpen] = useState(false);
 
-  const alterou = novaFase !== sale.stage || observacao.trim() !== '';
+  const alterou = novaFase !== sale.stage
+    || novaPrioridade !== (sale.priority || 'media')
+    || observacao.trim() !== '';
 
   async function submitStatus(status, statusObservacao = observacao.trim(), motivoRetorno = '') {
     setSaving(true);
@@ -232,7 +258,7 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <span className="pill">
                 <span className="pill-dot"></span>
-                {STAGE_LABELS[sale.stage]}
+                {stageLabels[sale.stage] || sale.stage}
               </span>
               <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={saving}>
                 <I.Close size={14} />
@@ -333,7 +359,7 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
                 Mover esta venda para a fase
               </div>
               <div className="stage-selector">
-                {STAGES.map(st => (
+                {stages.map(st => (
                   <button
                     type="button"
                     key={st.id}
@@ -521,6 +547,7 @@ function SaleCard({ sale, onClick }) {
 
 function FunilPage() {
   const [sales, setSales] = useState([]);
+  const [stages, setStages] = useState(FALLBACK_STAGES);
   const [filter, setFilter] = useState('todas');
   const [selectedSaleId, setSelectedSaleId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -531,8 +558,14 @@ function FunilPage() {
     setError('');
 
     try {
-      const vendas = await listarVendas();
-      setSales(Array.isArray(vendas) ? vendas.map(mapVendaToSale) : []);
+      const [vendas, etapas] = await Promise.all([
+        listarVendas(),
+        listarEtapasFunil()
+      ]);
+      const etapasNormalizadas = normalizarEtapasFunil(etapas);
+      const labels = montarStageLabels(etapasNormalizadas);
+      setStages(etapasNormalizadas);
+      setSales(Array.isArray(vendas) ? vendas.map(venda => mapVendaToSale(venda, labels)) : []);
     } catch (err) {
       setError(err.message || 'Erro ao carregar funil.');
     } finally {
@@ -550,6 +583,7 @@ function FunilPage() {
     if (novaFase === 'retorno') {
       await atualizarStatusVenda(saleId, {
         status_funil: 'retorno',
+        prioridade_funil: novaPrioridade,
         motivo_retorno: motivoRetorno,
         observacao
       });
@@ -560,6 +594,7 @@ function FunilPage() {
 
     const vendaAtualizada = await atualizarStatusVenda(saleId, {
       status_funil: novaFase,
+      prioridade_funil: novaPrioridade,
       observacao
     });
 
@@ -567,8 +602,7 @@ function FunilPage() {
       if (sale.id !== saleId) return sale;
       return {
         ...sale,
-        ...mapVendaToSale(vendaAtualizada),
-        priority: novaPrioridade
+        ...mapVendaToSale(vendaAtualizada, stageLabels)
       };
     }));
   }
@@ -578,6 +612,20 @@ function FunilPage() {
   );
   const total = filtradas.reduce((sum, s) => sum + s.value, 0);
   const selectedSale = selectedSaleId ? sales.find(s => s.id === selectedSaleId) : null;
+  const stagesVisiveis = useMemo(() => {
+    const conhecidos = new Set(stages.map(stage => stage.id));
+    const extras = Array.from(new Set(
+      sales
+        .map(sale => sale.stage)
+        .filter(stage => stage && stage !== 'retorno' && !conhecidos.has(stage))
+    ));
+
+    return [
+      ...stages,
+      ...extras.map(stage => ({ id: stage, name: STAGE_LABELS[stage] || stage, dot: stage }))
+    ];
+  }, [sales, stages]);
+  const stageLabels = useMemo(() => montarStageLabels(stagesVisiveis), [stagesVisiveis]);
   const operators = useMemo(
     () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),
     [sales]
@@ -588,6 +636,8 @@ function FunilPage() {
       {selectedSale && (
         <SaleModal
           sale={selectedSale}
+          stages={stagesVisiveis}
+          stageLabels={stageLabels}
           onClose={() => setSelectedSaleId(null)}
           onUpdateSale={handleUpdateSale}
         />
@@ -619,7 +669,7 @@ function FunilPage() {
         {error && <div className="alert-error" style={{ margin: 16 }}>{error}</div>}
 
         <div className="kanban">
-          {STAGES.map(st => {
+          {stagesVisiveis.map(st => {
             const priorityWeight = { alta: 1, media: 2, baixa: 3 };
             const items = filtradas
               .filter(s => s.stage === st.id)

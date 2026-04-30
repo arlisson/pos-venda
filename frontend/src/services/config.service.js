@@ -20,6 +20,10 @@ export async function listarServicos() {
   return apiGet('/config/servicos');
 }
 
+export async function listarEtapasFunil() {
+  return apiGet('/config/funil-etapas');
+}
+
 export async function listarOperadorasAdmin() {
   return apiGet('/config/admin/operadoras');
 }
@@ -82,6 +86,22 @@ export async function atualizarServico(id, dados) {
 
 export async function excluirServico(id) {
   return apiDelete(`/config/admin/servicos/${id}`);
+}
+
+export async function listarEtapasFunilAdmin() {
+  return apiGet('/config/admin/funil-etapas');
+}
+
+export async function criarEtapaFunil(dados) {
+  return apiPost('/config/admin/funil-etapas', dados);
+}
+
+export async function atualizarEtapaFunil(id, dados) {
+  return apiPut(`/config/admin/funil-etapas/${id}`, dados);
+}
+
+export async function excluirEtapaFunil(id) {
+  return apiDelete(`/config/admin/funil-etapas/${id}`);
 }
 
 export async function listarLinksExternosAdmin() {
