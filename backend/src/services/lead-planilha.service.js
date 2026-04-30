@@ -17,6 +17,7 @@ const SINGLE_ROW_MAX_BYTES = Number(process.env.LEAD_IMPORT_ROW_MAX_BYTES || 300
 const SELECT_BATCH_SIZE = 2000;
 const DB_RETRY_ATTEMPTS = 2;
 const USAR_LOAD_INFILE = process.env.LEAD_IMPORT_USE_LOAD_INFILE === 'true';
+const UPDATED_COLUMN_SUFFIX = ' (atualizado)';
 
 const TRANSIENT_DB_ERRORS = [
   'closed state',
@@ -445,21 +446,27 @@ async function excluirPlanilha(planilhaId) {
     }
   }
 
-  const linhaDistribuida = await LeadLinha.query()
-    .select('id')
+  const enviosAfetados = await LeadLinha.query()
+    .distinct('envio_id')
     .where('planilha_id', planilhaId)
-    .where(builder => {
-      builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id');
-    })
-    .first();
-
-  if (linhaDistribuida) {
-    throw criarHttpError(409, 'Esta planilha ja possui leads distribuidos e nao pode ser excluida.');
-  }
+    .whereNotNull('envio_id');
 
   await withDbRetry(planilhaId, 'excluirPlanilha.delete', () => (
     LeadPlanilha.query().deleteById(planilhaId)
   ));
+
+  const envioIds = enviosAfetados.map(item => item.envio_id).filter(Boolean);
+  for (const envioId of envioIds) {
+    const linhasRestantes = await LeadLinha.query()
+      .where('envio_id', envioId)
+      .resultSize();
+
+    if (linhasRestantes === 0) {
+      await withDbRetry(planilhaId, 'excluirPlanilha.envio_orfao', () => (
+        LeadEnvio.query().deleteById(envioId)
+      ));
+    }
+  }
 
   if (planilha.arquivo_temporario) {
     removerArquivoImportacao(planilhaId, planilha.arquivo_temporario, 'exclusao').catch(() => {});
@@ -480,6 +487,89 @@ function idsFromQuery(valor) {
 function getJsonValueExpr(coluna) {
   const pathSeguro = String(coluna || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   return `JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$."${pathSeguro}"'))`;
+}
+
+function getColunaNome(coluna) {
+  return coluna?.nome || coluna?.label || coluna;
+}
+
+function criarColunaAtualizada(coluna) {
+  if (typeof coluna === 'string') return `${coluna}${UPDATED_COLUMN_SUFFIX}`;
+
+  const nome = coluna.nome || coluna.label || '';
+  const label = coluna.label || nome;
+
+  return {
+    ...coluna,
+    id: `${coluna.id || nome}::updated`,
+    nome: `${nome}${UPDATED_COLUMN_SUFFIX}`,
+    label: `${label}${UPDATED_COLUMN_SUFFIX}`,
+    sources: Array.isArray(coluna.sources)
+      ? coluna.sources.map(source => ({
+        ...source,
+        nome: `${source.nome}${UPDATED_COLUMN_SUFFIX}`
+      }))
+      : coluna.sources
+  };
+}
+
+function colunaAtualizadaExiste(coluna, chavesAtualizadas) {
+  if (!coluna || String(getColunaNome(coluna)).endsWith(UPDATED_COLUMN_SUFFIX)) return false;
+
+  if (Array.isArray(coluna.sources) && coluna.sources.length > 0) {
+    return coluna.sources.some(source => chavesAtualizadas.has(`${source.nome}${UPDATED_COLUMN_SUFFIX}`));
+  }
+
+  return chavesAtualizadas.has(`${getColunaNome(coluna)}${UPDATED_COLUMN_SUFFIX}`);
+}
+
+async function coletarChavesAtualizadas(query) {
+  const chaves = new Set();
+  let offset = 0;
+
+  while (true) {
+    const linhas = await query.clone()
+      .select('dados_json')
+      .orderBy('planilha_id', 'asc')
+      .orderBy('row_index', 'asc')
+      .offset(offset)
+      .limit(SELECT_BATCH_SIZE);
+    if (linhas.length === 0) break;
+
+    linhas.forEach(linha => {
+      Object.keys(parseJson(linha.dados_json, {}))
+        .filter(chave => chave.endsWith(UPDATED_COLUMN_SUFFIX))
+        .forEach(chave => chaves.add(chave));
+    });
+
+    offset += linhas.length;
+  }
+
+  return chaves;
+}
+
+async function expandirColunasExportacao(colunas, query) {
+  const chavesAtualizadas = await coletarChavesAtualizadas(query);
+  if (chavesAtualizadas.size === 0) return colunas;
+
+  const resultado = [];
+  const incluidas = new Set();
+
+  colunas.forEach(coluna => {
+    const nome = getColunaNome(coluna);
+    if (!incluidas.has(nome)) {
+      resultado.push(coluna);
+      incluidas.add(nome);
+    }
+
+    const nomeAtualizado = `${nome}${UPDATED_COLUMN_SUFFIX}`;
+    if (!String(nome).endsWith(UPDATED_COLUMN_SUFFIX) && colunaAtualizadaExiste(coluna, chavesAtualizadas) && !incluidas.has(nomeAtualizado)) {
+      resultado.push(criarColunaAtualizada(coluna));
+      incluidas.add(nomeAtualizado);
+    }
+  });
+
+  return resultado;
 }
 
 function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
@@ -528,6 +618,11 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
   aplicarFiltrosQuery(baseQuery, filtros, opcoes);
 
   const total = await baseQuery.clone().resultSize();
+  const enviados = await baseQuery.clone()
+    .where(builder => {
+      builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id');
+    })
+    .resultSize();
   const linhas = await baseQuery
     .withGraphFetched('[planilha, envio, atribuidoPara]')
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'))
@@ -539,8 +634,51 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
   return {
     data: linhas.map(formatarLinha),
     total,
+    resumo: {
+      total,
+      enviados,
+      nao_enviados: Math.max(0, total - enviados)
+    },
     page,
     page_size: pageSize
+  };
+}
+
+async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}) {
+  const linha = await LeadLinha.query().findById(linhaId);
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+
+  if (Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Voce nao pode atualizar este lead.');
+  }
+
+  const coluna = String(dados.coluna || '').trim();
+  const valor = String(dados.valor || '').trim();
+  if (!coluna) throw criarHttpError(400, 'Informe a coluna que sera atualizada.');
+  if (coluna.endsWith(UPDATED_COLUMN_SUFFIX)) throw criarHttpError(400, 'Atualize a coluna original, nao a coluna atualizada.');
+  if (!valor) throw criarHttpError(400, 'Informe a informacao atualizada.');
+
+  const dadosJson = parseJson(linha.dados_json, {});
+  if (!Object.prototype.hasOwnProperty.call(dadosJson, coluna)) {
+    throw criarHttpError(400, 'Coluna nao encontrada neste lead.');
+  }
+
+  const colunaAtualizada = `${coluna}${UPDATED_COLUMN_SUFFIX}`;
+  dadosJson[colunaAtualizada] = valor;
+
+  await LeadLinha.query().patchAndFetchById(linha.id, {
+    dados_json: JSON.stringify(dadosJson)
+  });
+  const atualizada = await LeadLinha.query()
+    .findById(linha.id)
+    .withGraphFetched('[planilha, envio, atribuidoPara]')
+    .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
+
+  return {
+    linha: formatarLinha(atualizada),
+    coluna,
+    coluna_atualizada: colunaAtualizada,
+    valor
   };
 }
 
@@ -603,10 +741,15 @@ async function buscarIdsPorCriterios(dados, quantidadeTotal) {
     return dados.linha_ids.map(Number).filter(Boolean).slice(0, quantidadeTotal);
   }
 
+  const incluirEnviados = dados.incluir_enviados === true;
   const query = LeadLinha.query().select('id');
   aplicarFiltrosQuery(query, dados.filtros || {});
+
+  if (!incluirEnviados) {
+    query.whereNull('envio_id');
+  }
+
   const rows = await query
-    .whereNull('envio_id')
     .orderBy('planilha_id', 'asc')
     .orderBy('row_index', 'asc')
     .limit(quantidadeTotal);
@@ -625,8 +768,20 @@ async function dividirLeads(dados, usuarioId) {
 
   const linhaIds = await buscarIdsPorCriterios(dados, quantidadeTotal);
   if (linhaIds.length < quantidadeTotal) {
-    throw new Error('Nao ha leads suficientes para a quantidade solicitada.');
+    if (dados.incluir_enviados === true) {
+      throw new Error('Nao ha leads suficientes para a quantidade solicitada.');
+    }
+    throw new Error('Nao ha leads nao enviados suficientes. Ative incluir leads ja enviados para transferir linhas distribuidas.');
   }
+
+  const totalJaEnviados = dados.incluir_enviados === true
+    ? await LeadLinha.query()
+      .whereIn('id', linhaIds)
+      .where(builder => {
+        builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id');
+      })
+      .resultSize()
+    : 0;
 
   const alocacao = montarAlocacoes(usuarioIds, quantidadeTotal, dados.alocacao_manual || {});
   if (alocacao.pendente) {
@@ -676,6 +831,7 @@ async function dividirLeads(dados, usuarioId) {
 
     return {
       requires_manual_allocation: false,
+      total_reenviados: totalJaEnviados,
       envio: formatarEnvio(envioCompleto)
     };
   });
@@ -919,9 +1075,10 @@ function csvEscape(valor) {
 }
 
 async function exportarCsv(filtros, res, opcoes = {}) {
-  const colunas = Array.isArray(filtros.colunas) ? filtros.colunas : [];
+  const colunasOriginais = Array.isArray(filtros.colunas) ? filtros.colunas : [];
   const query = LeadLinha.query();
   aplicarFiltrosQuery(query, filtros, opcoes);
+  const colunas = await expandirColunasExportacao(colunasOriginais, query);
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="leads.csv"');
@@ -962,6 +1119,7 @@ module.exports = {
   atualizarSchema,
   excluirPlanilha,
   listarLinhas,
+  atualizarCampoLinhaRecebida,
   listarEnviosDoUsuario,
   listarTodosEnvios,
   dividirLeads,

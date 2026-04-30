@@ -161,6 +161,16 @@ async function minhasLinhas(req, res) {
   }
 }
 
+async function atualizarMeuCampo(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.atualizarCampoLinhaRecebida(req.params.id, req.usuario.id, req.body || {}));
+  } catch (error) {
+    console.error(error);
+    const statusCode = error.statusCode || 400;
+    return res.status(statusCode).json({ message: error.message || 'Erro ao atualizar lead recebido.' });
+  }
+}
+
 async function exportarMinhas(req, res) {
   try {
     await leadPlanilhaService.exportarCsv(req.body || {}, res, { usuarioId: req.usuario.id });
@@ -189,5 +199,6 @@ module.exports = {
   envios,
   meusEnvios,
   minhasLinhas,
+  atualizarMeuCampo,
   exportarMinhas
 };

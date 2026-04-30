@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import {
@@ -726,8 +726,8 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
   );
 }
 
-function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave, onCreateClient }) {
-  const [form, setForm] = useState(venda ? normalizarVenda(venda) : VENDA_VAZIA);
+function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave, onCreateClient }) {
+  const [form, setForm] = useState(venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [cepStatus, setCepStatus] = useState('');
@@ -978,7 +978,8 @@ function ConfirmarLixeiraModal({ venda, deletando, onClose, onConfirm }) {
 
 function VendasPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [vendas, setVendas] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
@@ -1000,6 +1001,7 @@ function VendasPage() {
   const [sucesso, setSucesso] = useState('');
   const [modalVenda, setModalVenda] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [vendaInicial, setVendaInicial] = useState(null);
   const [vendaParaLixeira, setVendaParaLixeira] = useState(null);
   const [deletando, setDeletando] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
@@ -1080,8 +1082,9 @@ function VendasPage() {
   }, [filtros]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
-  function abrirNovaVenda() {
+  function abrirNovaVenda(initialValues = null) {
     setModalVenda(null);
+    setVendaInicial(initialValues);
     setModalAberto(true);
   }
 
@@ -1099,14 +1102,15 @@ function VendasPage() {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (searchParams.get('nova') === '1' && podeCriarVenda) {
-      abrirNovaVenda();
-      setSearchParams({}, { replace: true });
+      abrirNovaVenda(location.state?.vendaPreenchida || null);
+      navigate('/vendas', { replace: true, state: null });
     }
-  }, [searchParams, setSearchParams, podeCriarVenda]);
+  }, [searchParams, podeCriarVenda, location.state, navigate]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function abrirEdicao(venda) {
     setModalVenda(venda);
+    setVendaInicial(null);
     setModalAberto(true);
   }
 
@@ -1122,6 +1126,7 @@ function VendasPage() {
 
     setModalAberto(false);
     setModalVenda(null);
+    setVendaInicial(null);
     await carregarDados();
     setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
   }
@@ -1160,12 +1165,16 @@ function VendasPage() {
       {modalAberto && (
         <VendaModal
           venda={modalVenda}
+          initialValues={vendaInicial}
           clientes={clientes}
           vendedoras={vendedoras}
           operadoras={operadoras}
           tiposVenda={tiposVenda}
           servicos={servicos}
-          onClose={() => setModalAberto(false)}
+          onClose={() => {
+            setModalAberto(false);
+            setVendaInicial(null);
+          }}
           onSave={salvarVenda}
           onCreateClient={() => navigate('/clientes/novo')}
         />

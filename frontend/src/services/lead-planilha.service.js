@@ -117,3 +117,7 @@ export function exportarMinhasLeadLinhas(dados = {}) {
     body: JSON.stringify(dados)
   });
 }
+
+export function atualizarCampoLeadRecebido(linhaId, dados) {
+  return apiPut(`/lead-planilhas/me/linhas/${linhaId}/campo-atualizado`, dados);
+}

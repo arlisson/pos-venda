@@ -52,6 +52,16 @@ function getValorColuna(linha, coluna) {
   return linha.dados_json?.[source?.nome || coluna.nome] ?? '';
 }
 
+function getStatusDistribuicao(linha) {
+  return linha.atribuido_para_id || linha.atribuidoPara || linha.envio_id || linha.envio
+    ? 'Enviado'
+    : 'Nao enviado';
+}
+
+function formatarNumero(valor) {
+  return Number(valor || 0).toLocaleString('pt-BR');
+}
+
 function getConflitosColunas(planilhasSelecionadas) {
   const mapa = new Map();
 
@@ -95,7 +105,7 @@ function montarFiltrosBackend(filtros, colunas, planilhasSelecionadas, schema) {
   });
 }
 
-function DividirModal({ totalLinhas, colunas, vendedoras, filtrosDivisao, onClose, onSave }) {
+function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDivisao, onClose, onSave }) {
   const [nome, setNome] = useState(`Envio ${new Date().toLocaleDateString('pt-BR')}`);
   const [usuarios, setUsuarios] = useState([]);
   const [quantidade, setQuantidade] = useState(String(totalLinhas));
@@ -103,6 +113,7 @@ function DividirModal({ totalLinhas, colunas, vendedoras, filtrosDivisao, onClos
   const [manual, setManual] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [incluirEnviados, setIncluirEnviados] = useState(false);
 
   function toggleUsuario(id) {
     setUsuarios(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -129,6 +140,7 @@ function DividirModal({ totalLinhas, colunas, vendedoras, filtrosDivisao, onClos
         usuario_ids: usuarios,
         filtros: filtrosDivisao,
         colunas_visiveis: colunasVisiveis,
+        incluir_enviados: incluirEnviados,
         alocacao_manual: manual?.valores || {}
       });
 
@@ -151,6 +163,14 @@ function DividirModal({ totalLinhas, colunas, vendedoras, filtrosDivisao, onClos
 
   const sobraManual = manual
     ? Object.values(manual.valores).reduce((acc, valor) => acc + Number(valor || 0), 0)
+    : 0;
+  const quantidadeNumerica = Number(quantidade || 0);
+  const disponiveisPadrao = Number(resumoLeads?.nao_enviados || 0);
+  const jaEnviados = Number(resumoLeads?.enviados || 0);
+  const totalResumo = Number(resumoLeads?.total || totalLinhas || 0);
+  const capacidadeAtual = incluirEnviados ? totalResumo : disponiveisPadrao;
+  const vaiTransferir = incluirEnviados
+    ? Math.max(0, quantidadeNumerica - disponiveisPadrao)
     : 0;
 
   return (
@@ -179,6 +199,49 @@ function DividirModal({ totalLinhas, colunas, vendedoras, filtrosDivisao, onClos
               <input type="number" min="1" max={totalLinhas} value={quantidade} onChange={event => setQuantidade(event.target.value)} required />
             </div>
           </div>
+
+          <div className="leads-divide-summary">
+            <div>
+              <span>Disponiveis agora</span>
+              <strong>{formatarNumero(disponiveisPadrao)}</strong>
+            </div>
+            <div>
+              <span>Ja enviados</span>
+              <strong>{formatarNumero(jaEnviados)}</strong>
+            </div>
+            <div>
+              <span>Capacidade selecionada</span>
+              <strong>{formatarNumero(capacidadeAtual)}</strong>
+            </div>
+            <div className={quantidadeNumerica > capacidadeAtual ? 'danger' : ''}>
+              <span>Quantidade deste envio</span>
+              <strong>{formatarNumero(quantidadeNumerica)}</strong>
+            </div>
+          </div>
+
+          <div className="leads-divide-help">
+            {incluirEnviados
+              ? `Este envio pode usar leads novos e transferir ate ${formatarNumero(Math.min(vaiTransferir, jaEnviados))} lead(s) ja enviados.`
+              : 'O envio automatico comeca no proximo lead ainda nao enviado e ignora os leads ja distribuidos.'}
+          </div>
+
+          <label className="leads-transfer-toggle">
+            <input
+              type="checkbox"
+              checked={incluirEnviados}
+              onChange={event => setIncluirEnviados(event.target.checked)}
+            />
+            <span>
+              <strong>Incluir leads ja enviados</strong>
+              <small>Use para transferir leads que ja foram enviados para outro vendedor.</small>
+            </span>
+          </label>
+
+          {incluirEnviados && (
+            <div className="leads-warning">
+              Leads ja enviados que entrarem nesta divisao serao transferidos para o novo vendedor e novo envio.
+            </div>
+          )}
 
           <div className="leads-block-title">Vendedores</div>
           <div className="leads-seller-grid">
@@ -324,7 +387,7 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
           <div className="modal-header-row">
             <div>
               <div className="modal-client">Excluir planilha?</div>
-              <div className="modal-sub">Essa acao remove a planilha e suas linhas importadas quando ainda nao houve distribuicao.</div>
+              <div className="modal-sub">Essa acao remove a planilha, suas linhas importadas e os leads enviados aos usuarios.</div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={carregando}>
               <I.Close size={14} />
@@ -340,6 +403,7 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
             <div>
               <strong>{planilha.nome}</strong>
               <span>{planilha.total_linhas || 0} linha(s)</span>
+              <small>Se houver leads distribuidos, eles deixarao de aparecer para os vendedores.</small>
               {planilha.status === 'processando' && (
                 <small>A planilha ainda esta processando e o backend vai bloquear a exclusao.</small>
               )}
@@ -366,6 +430,7 @@ function AdminLeadsPage() {
   const [selecionadas, setSelecionadas] = useState([]);
   const [linhas, setLinhas] = useState([]);
   const [totalLinhas, setTotalLinhas] = useState(0);
+  const [resumoLeads, setResumoLeads] = useState({ total: 0, enviados: 0, nao_enviados: 0 });
   const [vendedoras, setVendedoras] = useState([]);
   const [busca, setBusca] = useState('');
   const [filtros, setFiltros] = useState([]);
@@ -473,6 +538,7 @@ function AdminLeadsPage() {
     if (selecionadas.length === 0) {
       setLinhas([]);
       setTotalLinhas(0);
+      setResumoLeads({ total: 0, enviados: 0, nao_enviados: 0 });
       return;
     }
 
@@ -489,6 +555,11 @@ function AdminLeadsPage() {
         if (!cancelado) {
           setLinhas(data.data || []);
           setTotalLinhas(data.total || 0);
+          setResumoLeads(data.resumo || {
+            total: data.total || 0,
+            enviados: 0,
+            nao_enviados: data.total || 0
+          });
         }
       })
       .catch(error => setErro(error.message || 'Erro ao carregar linhas.'))
@@ -509,6 +580,9 @@ function AdminLeadsPage() {
   }, [linhasFiltradas]);
 
   const totalPaginas = Math.max(1, Math.ceil(totalLinhas / PAGE_SIZE));
+  const percentualEnviado = resumoLeads.total > 0
+    ? Math.round((Number(resumoLeads.enviados || 0) / Number(resumoLeads.total || 1)) * 100)
+    : 0;
 
   async function importarArquivo(file) {
     if (!file.name.toLowerCase().endsWith('.csv')) return;
@@ -730,7 +804,9 @@ function AdminLeadsPage() {
       }
     });
     if (!resultado?.requires_manual_allocation) {
-      setSucesso('Leads enviados para os vendedores.');
+      setSucesso(resultado?.total_reenviados > 0
+        ? `Leads enviados. ${resultado.total_reenviados} lead(s) ja enviados foram transferidos.`
+        : 'Leads enviados para os vendedores.');
       setSelecionadas([...selecionadas]);
     }
     return resultado;
@@ -812,6 +888,7 @@ function AdminLeadsPage() {
       {modalDividir && (
         <DividirModal
           totalLinhas={totalLinhas}
+          resumoLeads={resumoLeads}
           colunas={colunasDivisao}
           vendedoras={vendedoras}
           filtrosDivisao={{
@@ -964,27 +1041,61 @@ function AdminLeadsPage() {
           {totalLinhas} lead(s) encontrados
         </div>
 
+        {resumoLeads.total > 0 && (
+          <div className="lead-summary-panel">
+            <div className="lead-summary-card">
+              <span>Total filtrado</span>
+              <strong>{formatarNumero(resumoLeads.total)}</strong>
+            </div>
+            <div className="lead-summary-card sent">
+              <span>Leads enviados</span>
+              <strong>{formatarNumero(resumoLeads.enviados)}</strong>
+            </div>
+            <div className="lead-summary-card pending">
+              <span>A enviar</span>
+              <strong>{formatarNumero(resumoLeads.nao_enviados)}</strong>
+            </div>
+            <div className="lead-summary-progress">
+              <div className="lead-summary-progress__top">
+                <span>Progresso de envio</span>
+                <strong>{percentualEnviado}%</strong>
+              </div>
+              <div className="lead-summary-progress__bar">
+                <span style={{ width: `${percentualEnviado}%` }}></span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="list-table lead-table">
           <div className="scroll">
             <table>
               <thead>
                 <tr>
                   <th>Planilha</th>
+                  <th>Status</th>
+                  <th>Enviado para</th>
+                  <th>Envio</th>
                   {colunas.map(coluna => <th key={coluna.id}>{coluna.label}</th>)}
-                  <th>Atribuido</th>
                 </tr>
               </thead>
               <tbody>
                 {carregando ? (
-                  <tr><td colSpan={colunas.length + 2} className="muted">Carregando...</td></tr>
+                  <tr><td colSpan={colunas.length + 4} className="muted">Carregando...</td></tr>
                 ) : linhasPagina.length === 0 ? (
-                  <tr><td colSpan={colunas.length + 2} className="muted">Selecione uma planilha para visualizar os leads.</td></tr>
+                  <tr><td colSpan={colunas.length + 4} className="muted">Selecione uma planilha para visualizar os leads.</td></tr>
                 ) : (
                   linhasPagina.map(linha => (
                     <tr key={linha.id}>
                       <td><span className="tag">{linha.planilha?.nome || '-'}</span></td>
-                      {colunas.map(coluna => <td key={coluna.id}>{getValorColuna(linha, coluna) || '-'}</td>)}
+                      <td>
+                        <span className={`lead-send-status ${getStatusDistribuicao(linha) === 'Enviado' ? 'sent' : 'pending'}`}>
+                          {getStatusDistribuicao(linha)}
+                        </span>
+                      </td>
                       <td>{linha.atribuidoPara?.nome || '-'}</td>
+                      <td>{linha.envio?.nome || '-'}</td>
+                      {colunas.map(coluna => <td key={coluna.id}>{getValorColuna(linha, coluna) || '-'}</td>)}
                     </tr>
                   ))
                 )}

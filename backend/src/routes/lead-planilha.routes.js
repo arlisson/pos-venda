@@ -11,6 +11,20 @@ router.use(authMiddleware);
 router.get('/me/envios', leadPlanilhaController.meusEnvios);
 router.get('/me/linhas', leadPlanilhaController.minhasLinhas);
 router.post('/me/exportar', leadPlanilhaController.exportarMinhas);
+router.put(
+  '/me/linhas/:id/campo-atualizado',
+  auditar({
+    acao: 'lead_linha.campo_atualizado',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: (req, resultado) => ({
+      coluna: resultado?.coluna || req.body?.coluna,
+      coluna_atualizada: resultado?.coluna_atualizada,
+      usuario_id: req.usuario?.id
+    })
+  }),
+  leadPlanilhaController.atualizarMeuCampo
+);
 
 router.get('/', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.index);
 router.post('/uploads', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.upload);

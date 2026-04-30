@@ -5,7 +5,11 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { atualizarCliente, criarCliente, excluirCliente, listarClientes } from '../../services/cliente.service';
 import { listarOperadoras } from '../../services/config.service';
-import { listarMeusLeadEnvios, listarMinhasLeadLinhas } from '../../services/lead-planilha.service';
+import {
+  atualizarCampoLeadRecebido,
+  listarMeusLeadEnvios,
+  listarMinhasLeadLinhas
+} from '../../services/lead-planilha.service';
 import './Clientes.css';
 
 const FORM_INICIAL = {
@@ -21,6 +25,33 @@ const FORM_INICIAL = {
   operadora_atual_id: '',
   quantidade_chips: ''
 };
+
+const CAMPOS_VENDA_LEAD = [
+  { name: 'nome', label: 'Nome do cliente', required: true, aliases: ['nome', 'cliente', 'razao', 'empresa'] },
+  { name: 'telefone', label: 'Telefone/WhatsApp', aliases: ['telefone', 'whatsapp', 'celular', 'contato'] },
+  { name: 'email', label: 'E-mail', aliases: ['email', 'e-mail'] },
+  { name: 'razao_social', label: 'Razao social', aliases: ['razao social', 'empresa'] },
+  { name: 'cnpj', label: 'CNPJ', aliases: ['cnpj'] },
+  { name: 'nome_representante_legal', label: 'Representante legal', aliases: ['representante', 'responsavel', 'rl'] },
+  { name: 'cpf_representante_legal', label: 'CPF representante', aliases: ['cpf representante', 'cpf rl', 'cpf'] },
+  { name: 'nome_administrador', label: 'Administrador', aliases: ['administrador', 'adm'] },
+  { name: 'cpf_administrador', label: 'CPF administrador', aliases: ['cpf administrador', 'cpf adm'] },
+  { name: 'nome_fechou_venda', label: 'Nome com quem fechou', aliases: ['fechou', 'contato', 'responsavel'] },
+  { name: 'setor_funcao', label: 'Setor/Funcao', aliases: ['setor', 'funcao', 'cargo'] },
+  { name: 'quantidade_linhas', label: 'Quantidade de linhas', aliases: ['quantidade', 'linhas', 'chips'] },
+  { name: 'ddd', label: 'DDD', aliases: ['ddd'] },
+  { name: 'data_venda', label: 'Data da venda', aliases: ['data', 'data venda'] },
+  { name: 'dia_vencimento', label: 'Dia de vencimento', aliases: ['vencimento'] },
+  { name: 'cep', label: 'CEP', aliases: ['cep'] },
+  { name: 'endereco', label: 'Endereco', aliases: ['endereco', 'logradouro', 'rua'] },
+  { name: 'numero_endereco', label: 'Numero endereco', aliases: ['numero', 'num'] },
+  { name: 'complemento', label: 'Complemento', aliases: ['complemento'] },
+  { name: 'bairro', label: 'Bairro', aliases: ['bairro'] },
+  { name: 'municipio', label: 'Municipio', aliases: ['municipio', 'cidade'] },
+  { name: 'uf', label: 'UF', aliases: ['uf', 'estado'] },
+  { name: 'ponto_referencia', label: 'Ponto de referencia', aliases: ['referencia'] },
+  { name: 'observacoes', label: 'Observacoes', aliases: ['observacao', 'observacoes', 'obs'] }
+];
 
 function normalizarDataInput(valor) {
   if (!valor) return '';
@@ -141,8 +172,20 @@ function formatarFidelidade(aviso) {
   return { label: `${aviso.dias_restantes} dias`, className: 'success' };
 }
 
+function normalizarTextoLead(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function getValorLeadRecebido(linha, coluna) {
   if (!coluna) return '';
+  if (coluna.atualizada) {
+    const colunaBase = getNomeColunaLeadRecebido(linha, coluna.base);
+    return colunaBase ? linha.dados_json?.[`${colunaBase} (atualizado)`] ?? '' : '';
+  }
   if (typeof coluna === 'string') return linha.dados_json?.[coluna] ?? '';
   if (coluna.planilhaId && Number(linha.planilha_id) !== Number(coluna.planilhaId)) return '';
 
@@ -150,7 +193,236 @@ function getValorLeadRecebido(linha, coluna) {
   return linha.dados_json?.[source?.nome || coluna.nome] ?? '';
 }
 
+function getNomeColunaLeadRecebido(linha, coluna) {
+  if (!coluna) return '';
+  if (typeof coluna === 'string') return coluna;
+  if (coluna.planilhaId && Number(linha.planilha_id) !== Number(coluna.planilhaId)) return '';
+
+  const source = coluna.sources?.find(item => Number(item.planilhaId) === Number(linha.planilha_id));
+  return source?.nome || coluna.nome || coluna.label || '';
+}
+
+function getLabelColunaLeadRecebido(coluna) {
+  if (typeof coluna === 'string') return coluna;
+  return coluna?.label || coluna?.nome || '';
+}
+
+function getColunaKeyLeadRecebido(coluna) {
+  if (typeof coluna === 'string') return coluna;
+  return coluna?.id || coluna?.nome || coluna?.label || '';
+}
+
+function criarColunaAtualizadaLeadRecebido(coluna) {
+  const key = getColunaKeyLeadRecebido(coluna);
+  const nome = typeof coluna === 'string' ? coluna : coluna?.nome || coluna?.label || '';
+  const sources = Array.isArray(coluna?.sources)
+    ? coluna.sources.map(source => ({ ...source, nome: `${source.nome} (atualizado)` }))
+    : coluna?.sources;
+
+  return {
+    ...(typeof coluna === 'string' ? {} : coluna),
+    id: `${key}::updated`,
+    nome: `${nome} (atualizado)`,
+    label: `${getLabelColunaLeadRecebido(coluna)} (atualizado)`,
+    sources,
+    atualizada: true,
+    base: coluna
+  };
+}
+
+function linhaTemColunaAtualizada(linhas, coluna) {
+  return linhas.some(linha => {
+    const nome = getNomeColunaLeadRecebido(linha, coluna);
+    return nome && Object.prototype.hasOwnProperty.call(linha.dados_json || {}, `${nome} (atualizado)`);
+  });
+}
+
+function getValorLeadPorNome(linha, nomeColuna) {
+  if (!nomeColuna) return '';
+  const dados = linha.dados_json || {};
+  const nomeAtualizado = `${nomeColuna} (atualizado)`;
+  return dados[nomeAtualizado] ?? dados[nomeColuna] ?? '';
+}
+
+function getColunasMapeaveisLead(linha, colunas) {
+  const opcoes = new Map();
+
+  colunas.forEach(coluna => {
+    if (coluna.atualizada) return;
+    const nome = getNomeColunaLeadRecebido(linha, coluna);
+    if (!nome || opcoes.has(nome)) return;
+    opcoes.set(nome, {
+      nome,
+      label: getLabelColunaLeadRecebido(coluna),
+      valor: getValorLeadPorNome(linha, nome)
+    });
+  });
+
+  if (opcoes.size === 0) {
+    Object.keys(linha.dados_json || {})
+      .filter(chave => !chave.endsWith(' (atualizado)'))
+      .forEach(chave => opcoes.set(chave, {
+        nome: chave,
+        label: chave,
+        valor: getValorLeadPorNome(linha, chave)
+      }));
+  }
+
+  return Array.from(opcoes.values());
+}
+
+function sugerirColunaVenda(campo, opcoes) {
+  const aliases = [campo.label, campo.name, ...(campo.aliases || [])].map(normalizarTextoLead);
+  const encontrada = opcoes.find(opcao => {
+    const label = normalizarTextoLead(opcao.label);
+    const nome = normalizarTextoLead(opcao.nome);
+    return aliases.some(alias => alias && (label.includes(alias) || nome.includes(alias) || alias.includes(label)));
+  });
+
+  return encontrada?.nome || '';
+}
+
+function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
+  const payload = usuario?.id ? { vendedora_id: String(usuario.id) } : {};
+
+  CAMPOS_VENDA_LEAD.forEach(campo => {
+    const coluna = mapeamento?.[campo.name];
+    const valor = getValorLeadPorNome(linha, coluna);
+    if (String(valor || '').trim()) {
+      payload[campo.name] = valor;
+    }
+  });
+
+  return payload;
+}
+
+function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }) {
+  const opcoesColunas = useMemo(() => getColunasMapeaveisLead(linha, colunas), [linha, colunas]);
+  const [mapeamento, setMapeamento] = useState(() => (
+    CAMPOS_VENDA_LEAD.reduce((acc, campo) => ({
+      ...acc,
+      [campo.name]: sugerirColunaVenda(campo, opcoesColunas)
+    }), {})
+  ));
+
+  function atualizarMapeamento(campo, valor) {
+    setMapeamento(prev => ({ ...prev, [campo]: valor }));
+  }
+
+  function submit(event) {
+    event.preventDefault();
+    onConfirm(montarVendaPreenchidaDoLead(linha, mapeamento, usuario));
+  }
+
+  return (
+    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <form className="modal lead-sale-modal" onSubmit={submit}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Registrar venda</div>
+              <div className="modal-sub">Escolha quais colunas vao preencher a nova venda.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="lead-sale-map-head">
+            <span>Campo da venda</span>
+            <span>Coluna da planilha</span>
+            <span>Valor que sera levado</span>
+          </div>
+
+          <div className="lead-sale-map-list">
+            {CAMPOS_VENDA_LEAD.map(campo => {
+              const coluna = mapeamento[campo.name] || '';
+              const valor = getValorLeadPorNome(linha, coluna);
+
+              return (
+                <div key={campo.name} className="lead-sale-map-row">
+                  <label>{campo.label}</label>
+                  <select value={coluna} onChange={event => atualizarMapeamento(campo.name, event.target.value)}>
+                    <option value="">Nao preencher</option>
+                    {opcoesColunas.map(opcao => (
+                      <option key={opcao.nome} value={opcao.nome}>{opcao.label}</option>
+                    ))}
+                  </select>
+                  <span title={valor || ''}>{valor || '-'}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn btn-primary">Continuar na nova venda</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
+  const [valor, setValor] = useState(dados?.valorAtualizado || '');
+
+  if (!dados) return null;
+
+  function submit(event) {
+    event.preventDefault();
+    onSave(valor);
+  }
+
+  return (
+    <div className="modal-overlay" onClick={event => !salvando && event.target === event.currentTarget && onClose()}>
+      <form className="modal lead-update-modal" onSubmit={submit}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Atualizar informacao</div>
+              <div className="modal-sub">{dados.label}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={salvando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="lead-update-summary">
+            <span>Informacao original</span>
+            <strong>{dados.valorOriginal || '-'}</strong>
+          </div>
+
+          <div className="form-field">
+            <label>Informacao atualizada</label>
+            <input
+              autoFocus
+              value={valor}
+              onChange={event => setValor(event.target.value)}
+              required
+            />
+          </div>
+
+          {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={salvando || !valor.trim()}>
+            {salvando ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function LeadsRecebidosView() {
+  const navigate = useNavigate();
   const [envios, setEnvios] = useState([]);
   const [selecionados, setSelecionados] = useState([]);
   const [linhas, setLinhas] = useState([]);
@@ -159,6 +431,13 @@ function LeadsRecebidosView() {
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
+  const [modalAtualizacao, setModalAtualizacao] = useState(null);
+  const [salvandoAtualizacao, setSalvandoAtualizacao] = useState(false);
+  const [erroAtualizacao, setErroAtualizacao] = useState('');
+  const [modalVenda, setModalVenda] = useState(null);
+  const usuario = useMemo(() => getUsuarioLocal(), []);
+  const podeRegistrarVenda = temPermissao(usuario, 'vendas_criar');
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -210,18 +489,25 @@ function LeadsRecebidosView() {
 
     enviosSelecionados.forEach(envio => {
       (envio.colunas_visiveis || []).forEach(coluna => {
-        const key = typeof coluna === 'string' ? coluna : coluna.id;
+        if (getLabelColunaLeadRecebido(coluna).endsWith(' (atualizado)')) return;
+        const key = getColunaKeyLeadRecebido(coluna);
         mapa.set(key, coluna);
       });
     });
 
     if (mapa.size === 0) {
       linhas.forEach(linha => {
-        Object.keys(linha.dados_json || {}).forEach(coluna => mapa.set(coluna, coluna));
+        Object.keys(linha.dados_json || {})
+          .filter(coluna => !coluna.endsWith(' (atualizado)'))
+          .forEach(coluna => mapa.set(coluna, coluna));
       });
     }
 
-    return Array.from(mapa.values());
+    return Array.from(mapa.values()).flatMap(coluna => (
+      linhaTemColunaAtualizada(linhas, coluna)
+        ? [coluna, criarColunaAtualizadaLeadRecebido(coluna)]
+        : [coluna]
+    ));
   }, [enviosSelecionados, linhas]);
 
   const linhasFiltradas = useMemo(() => {
@@ -235,8 +521,92 @@ function LeadsRecebidosView() {
     setPagina(1);
   }
 
+  function abrirAtualizacao(linha, coluna) {
+    const nomeColuna = getNomeColunaLeadRecebido(linha, coluna);
+    if (!nomeColuna) return;
+
+    setErroAtualizacao('');
+    setModalAtualizacao({
+      linhaId: linha.id,
+      coluna: nomeColuna,
+      label: getLabelColunaLeadRecebido(coluna),
+      valorOriginal: getValorLeadRecebido(linha, coluna),
+      valorAtualizado: linha.dados_json?.[`${nomeColuna} (atualizado)`] || ''
+    });
+  }
+
+  async function salvarAtualizacao(valor) {
+    if (!modalAtualizacao || !valor.trim()) {
+      setErroAtualizacao('Informe a informacao atualizada.');
+      return;
+    }
+
+    setSalvandoAtualizacao(true);
+    setErroAtualizacao('');
+    setErro('');
+    setSucesso('');
+
+    try {
+      const resultado = await atualizarCampoLeadRecebido(modalAtualizacao.linhaId, {
+        coluna: modalAtualizacao.coluna,
+        valor
+      });
+
+      setLinhas(prev => prev.map(linha => (
+        linha.id === resultado.linha?.id ? resultado.linha : linha
+      )));
+      setModalAtualizacao(null);
+      setSucesso('Informacao atualizada salva.');
+    } catch (error) {
+      setErroAtualizacao(error.message || 'Erro ao atualizar lead recebido.');
+    } finally {
+      setSalvandoAtualizacao(false);
+    }
+  }
+
+  function abrirRegistroVenda(linha) {
+    setModalVenda(linha);
+  }
+
+  function continuarRegistroVenda(vendaPreenchida) {
+    navigate('/vendas?nova=1', {
+      state: {
+        vendaPreenchida,
+        origemLead: {
+          linha_id: modalVenda?.id,
+          envio: modalVenda?.envio?.nome || ''
+        }
+      }
+    });
+  }
+
   return (
     <div className="clientes-leads-view">
+      {modalAtualizacao && (
+        <LeadAtualizacaoModal
+          key={`${modalAtualizacao.linhaId}:${modalAtualizacao.coluna}`}
+          dados={modalAtualizacao}
+          salvando={salvandoAtualizacao}
+          erro={erroAtualizacao}
+          onClose={() => {
+            if (salvandoAtualizacao) return;
+            setModalAtualizacao(null);
+            setErroAtualizacao('');
+          }}
+          onSave={salvarAtualizacao}
+        />
+      )}
+
+      {modalVenda && (
+        <RegistrarVendaLeadModal
+          linha={modalVenda}
+          colunas={colunas}
+          usuario={usuario}
+          onClose={() => setModalVenda(null)}
+          onConfirm={continuarRegistroVenda}
+        />
+      )}
+
       <div className="clientes-leads-strip">
         <div className="clientes-leads-strip__title">Planilhas recebidas</div>
         <div className="clientes-leads-docs">
@@ -264,12 +634,15 @@ function LeadsRecebidosView() {
         <div className="clientes-toolbar__meta">
           {totalLinhas} lead(s) recebidos
         </div>
-        <form className="clientes-search" onSubmit={event => event.preventDefault()}>
-          <I.Search size={14} />
-          <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar nos leads recebidos" />
-        </form>
+        <div className="clientes-leads-actions">
+          <form className="clientes-search" onSubmit={event => event.preventDefault()}>
+            <I.Search size={14} />
+            <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar nos leads recebidos" />
+          </form>
+        </div>
       </div>
 
+      {sucesso && <div className="alert-success alert-timed alert-timed--success">{sucesso}</div>}
       {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
 
       <div className="list-table clientes-leads-table" style={{ margin: 0 }}>
@@ -278,19 +651,48 @@ function LeadsRecebidosView() {
             <thead>
               <tr>
                 <th>Envio</th>
-                {colunas.map(coluna => <th key={coluna.id || coluna}>{coluna.label || coluna}</th>)}
+                <th>Registrar venda</th>
+                {colunas.map(coluna => <th key={getColunaKeyLeadRecebido(coluna)}>{getLabelColunaLeadRecebido(coluna)}</th>)}
               </tr>
             </thead>
             <tbody>
               {carregando ? (
-                <tr><td colSpan={colunas.length + 1} className="muted" style={{ textAlign: 'center', padding: 40 }}>Carregando leads...</td></tr>
+                <tr><td colSpan={colunas.length + 2} className="muted" style={{ textAlign: 'center', padding: 40 }}>Carregando leads...</td></tr>
               ) : linhasFiltradas.length === 0 ? (
-                <tr><td colSpan={colunas.length + 1} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
+                <tr><td colSpan={colunas.length + 2} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
               ) : (
                 linhasFiltradas.map(linha => (
                   <tr key={linha.id}>
                     <td><span className="tag">{linha.envio?.nome || '-'}</span></td>
-                    {colunas.map(coluna => <td key={coluna.id || coluna}>{getValorLeadRecebido(linha, coluna) || '-'}</td>)}
+                    <td>
+                      {podeRegistrarVenda ? (
+                        <button type="button" className="lead-register-sale-btn" onClick={() => abrirRegistroVenda(linha)}>
+                          Registrar venda
+                        </button>
+                      ) : '-'}
+                    </td>
+                    {colunas.map(coluna => {
+                      const valor = getValorLeadRecebido(linha, coluna);
+                      const key = getColunaKeyLeadRecebido(coluna);
+                      const podeAtualizar = !coluna.atualizada && Boolean(getNomeColunaLeadRecebido(linha, coluna));
+
+                      return (
+                        <td key={key} className={coluna.atualizada ? 'lead-updated-cell' : ''}>
+                          {coluna.atualizada || !podeAtualizar ? (
+                            valor || '-'
+                          ) : (
+                            <button
+                              type="button"
+                              className="lead-cell-button"
+                              onClick={() => abrirAtualizacao(linha, coluna)}
+                              title="Atualizar informacao"
+                            >
+                              {valor || '-'}
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))
               )}
