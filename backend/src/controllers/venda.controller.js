@@ -28,6 +28,20 @@ async function resumo(req, res) {
   }
 }
 
+async function relatorios(req, res) {
+  try {
+    const relatorio = await vendaService.obterRelatoriosVendas(req.query, req.usuario.id);
+
+    return res.json(relatorio);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao carregar relatorios de vendas.'
+    });
+  }
+}
+
 async function show(req, res) {
   try {
     const venda = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
@@ -204,6 +218,7 @@ async function vendedoras(req, res) {
 module.exports = {
   index,
   resumo,
+  relatorios,
   show,
   store,
   update,

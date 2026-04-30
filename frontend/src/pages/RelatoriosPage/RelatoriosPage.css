@@ -1,0 +1,262 @@
+.relatorios-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.relatorios-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.relatorios-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.relatorios-toolbar select,
+.relatorios-toolbar input {
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  padding: 0 12px;
+  text-transform: none;
+}
+
+.relatorios-alert {
+  padding: 12px 14px;
+  border: 1px solid rgba(185, 28, 28, 0.22);
+  border-radius: 8px;
+  color: #991b1b;
+  background: #fef2f2;
+  font-size: 14px;
+}
+
+.relatorios-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.relatorios-card,
+.relatorios-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.relatorios-card {
+  min-height: 112px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.relatorios-card span {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.relatorios-card strong {
+  color: var(--text);
+  font-size: 27px;
+  line-height: 1.1;
+}
+
+.relatorios-card small {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.relatorios-card.is-danger strong,
+.relatorios-card.is-danger small {
+  color: #b91c1c;
+}
+
+.relatorios-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: 12px;
+}
+
+.relatorios-panel--ranking {
+  grid-column: 1 / -1;
+}
+
+.relatorios-panel {
+  min-height: 280px;
+  overflow: hidden;
+}
+
+.relatorios-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.relatorios-panel-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.relatorios-panel-header span {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.relatorios-bars,
+.relatorios-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 16px;
+}
+
+.relatorios-bar-row,
+.ranking-row {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+}
+
+.relatorios-bar-row {
+  grid-template-columns: minmax(80px, 110px) minmax(120px, 1fr) minmax(96px, auto);
+}
+
+.bar-label,
+.relatorios-bar-row strong,
+.ranking-row span,
+.ranking-row small {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.relatorios-page .bar-track,
+.relatorios-page .ranking-bar {
+  height: 16px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.relatorios-page .bar-fill,
+.relatorios-page .ranking-bar div {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--text);
+}
+
+.relatorios-bar-row.is-danger .bar-fill {
+  background: #b91c1c;
+}
+
+.relatorios-bar-row.is-danger strong {
+  color: #b91c1c;
+}
+
+.ranking-row {
+  grid-template-columns: minmax(180px, 260px) minmax(140px, 1fr) minmax(96px, auto) 48px;
+}
+
+.ranking-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ranking-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ranking-person strong,
+.ranking-person small {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ranking-person strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.ranking-person small {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.relatorios-empty {
+  padding: 28px 16px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .relatorios-cards,
+  .relatorios-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .relatorios-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .relatorios-toolbar label,
+  .relatorios-toolbar select,
+  .relatorios-toolbar input {
+    width: 100%;
+  }
+
+  .relatorios-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .relatorios-bar-row,
+  .ranking-row {
+    grid-template-columns: 1fr;
+  }
+
+  .relatorios-page .ranking-bar,
+  .relatorios-page .bar-track {
+    width: 100%;
+  }
+}

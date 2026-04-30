@@ -58,7 +58,7 @@ const VENDA_VAZIA = {
   vendedora_id: ''
 };
 
-const ITEM_CHIP_VAZIO = { quantidade: '', valor_unitario: '' };
+const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '' };
 const NUMERO_PORTADO_VAZIO = '';
 
 const CAMPOS_CLIENTE_DERIVADOS = [
@@ -92,19 +92,18 @@ const CAMPOS = [
   { name: 'servico_id', label: 'Servico', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
-  { name: 'gb', label: 'GB (Gigas)' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
-  { name: 'valores_unitarios_chips', label: 'Valores unitarios de cada chip', type: 'chips', span: true },
+  { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitarios', type: 'chips', span: true },
   { name: 'numeros_portados', label: 'Numeros a serem portados', type: 'portedNumbers', span: true },
 
   { section: 'Local de instalacao/entrega' },
+  { name: 'cep', label: 'CEP' },
   { name: 'endereco', label: 'Endereco' },
   { name: 'numero_endereco', label: 'Numero de endereco' },
   { name: 'complemento', label: 'Complemento' },
   { name: 'bairro', label: 'Bairro' },
   { name: 'municipio', label: 'Municipio' },
   { name: 'uf', label: 'UF', maxLength: 2 },
-  { name: 'cep', label: 'CEP' },
   { name: 'ponto_referencia', label: 'Ponto de referencia', span: true },
   { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condominio, shopping...', span: true },
 
@@ -315,12 +314,21 @@ function calcularTotalItensChips(itens = []) {
   ), 0);
 }
 
-function parseItensChips(valor) {
+function resumirGigasItensChips(itens = []) {
+  const valores = itens
+    .map(item => String(item.gb || '').trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(valores)).join(', ');
+}
+
+function parseItensChips(valor, gbPadrao = '') {
   if (!valor) return [{ ...ITEM_CHIP_VAZIO }];
 
   if (Array.isArray(valor)) {
     const itens = valor.map(item => ({
       quantidade: item.quantidade ? String(item.quantidade) : '',
+      gb: item.gb ? String(item.gb) : (gbPadrao ? String(gbPadrao) : ''),
       valor_unitario: item.valor_unitario ? String(item.valor_unitario).replace('.', ',') : ''
     }));
 
@@ -329,7 +337,7 @@ function parseItensChips(valor) {
 
   if (typeof valor === 'string') {
     try {
-      return parseItensChips(JSON.parse(valor));
+      return parseItensChips(JSON.parse(valor), gbPadrao);
     } catch {
       const itens = valor
         .split(/\r?\n/)
@@ -342,6 +350,7 @@ function parseItensChips(valor) {
 
           return {
             quantidade: match[1],
+            gb: gbPadrao ? String(gbPadrao) : '',
             valor_unitario: match[2]
           };
         })
@@ -406,7 +415,7 @@ function normalizarVenda(venda) {
     ...venda,
     data_venda: toInputDate(venda.data_venda),
     valor_total: venda.valor_total ?? '',
-    valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips),
+    valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips, venda.gb),
     numeros_portados: parseNumerosPortados(venda.numeros_portados),
     quantidade_linhas: venda.quantidade_linhas ?? '',
     dia_vencimento: venda.dia_vencimento ?? '',
@@ -441,6 +450,7 @@ function ItensChipsInput({ value, onChange }) {
     <div className="chip-items">
       <div className="chip-items__head">
         <span>Quantidade</span>
+        <span>GB</span>
         <span>Valor unitario</span>
         <span>Subtotal</span>
         <span></span>
@@ -460,6 +470,12 @@ function ItensChipsInput({ value, onChange }) {
             />
             <input
               type="text"
+              value={item.gb}
+              onChange={e => atualizarItem(index, 'gb', e.target.value)}
+              placeholder="20GB"
+            />
+            <input
+              type="text"
               inputMode="decimal"
               value={item.valor_unitario}
               onChange={e => atualizarItem(index, 'valor_unitario', formatarInputMoedaBR(e.target.value))}
@@ -475,7 +491,7 @@ function ItensChipsInput({ value, onChange }) {
 
       <div className="chip-items__footer">
         <button type="button" className="btn btn-sm" onClick={adicionarItem}>
-          <I.Plus size={13} /> Adicionar valor
+          <I.Plus size={13} /> Adicionar chip
         </button>
         <strong>{formatarMoeda(total)}</strong>
       </div>
@@ -794,6 +810,7 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
         valores_unitarios_chips: (form.valores_unitarios_chips || [])
           .map(item => ({
             quantidade: Number(item.quantidade || 0),
+            gb: String(item.gb || '').trim(),
             valor_unitario: parseValorInput(item.valor_unitario)
           }))
           .filter(item => item.quantidade > 0 && item.valor_unitario > 0)
@@ -806,6 +823,7 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
       }
 
       payload.valor_total = calcularTotalItensChips(form.valores_unitarios_chips);
+      payload.gb = resumirGigasItensChips(payload.valores_unitarios_chips);
 
       await onSave(payload);
     } catch (error) {

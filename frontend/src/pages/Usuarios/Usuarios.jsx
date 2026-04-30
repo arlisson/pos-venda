@@ -34,6 +34,28 @@ const GRUPOS_PERMISSOES = [
             chave: 'dashboard_resumo_vendas',
             nome: 'Resumo de vendas',
             descricao: 'Mostra os cards Vendas no dia, Valor vendido hoje, Concluidas hoje e Em pipeline.'
+          },
+          {
+            chave: 'metas_ver_usuarios',
+            nome: 'Metas por usuario',
+            descricao: 'Mostra no dashboard quem bateu ou ainda nao bateu cada meta.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'relatorios',
+    titulo: 'Relatorios',
+    descricao: 'Controle o acesso a pagina de relatorios comerciais.',
+    secoes: [
+      {
+        titulo: 'Acesso a pagina',
+        itens: [
+          {
+            chave: 'relatorios_visualizar',
+            nome: 'Visualizar relatorios',
+            descricao: 'Permite acessar a pagina Relatorios pela barra lateral.'
           }
         ]
       }
@@ -155,6 +177,18 @@ function getChavesGrupo(grupo) {
   return Array.from(new Set(grupo.secoes.flatMap(secao => secao.itens.map(item => item.chave))));
 }
 
+function getPermissoesDeclaradas() {
+  return GRUPOS_PERMISSOES.flatMap(grupo => (
+    grupo.secoes.flatMap(secao => (
+      secao.itens.map(item => ({
+        chave: item.chave,
+        nome: item.nome,
+        descricao: item.descricao
+      }))
+    ))
+  ));
+}
+
 function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle }) {
   return (
     <label className={`permissions-option ${selecionado ? 'is-active' : ''} ${exclusivo ? 'permissions-option--exclusive' : ''}`}>
@@ -273,7 +307,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
   }
 
   const isAdmin = usuario?.role?.nome === 'admin';
-  const permissoesPorChave = permissoes.reduce((acc, permissao) => {
+  const permissoesPorChave = [...permissoes, ...getPermissoesDeclaradas()].reduce((acc, permissao) => {
     acc[permissao.chave] = permissao;
     return acc;
   }, {});
@@ -447,6 +481,14 @@ function Usuarios() {
     setUsuarios(prev =>
       prev.map(u => u.id === id ? { ...u, permissoes: permissoesSelecionadas } : u)
     );
+
+    if (Number(usuarioLogado?.id) === Number(id)) {
+      localStorage.setItem('usuario', JSON.stringify({
+        ...usuarioLogado,
+        permissoes: permissoesSelecionadas
+      }));
+    }
+
     setSucesso('Permissoes atualizadas com sucesso.');
   }
 

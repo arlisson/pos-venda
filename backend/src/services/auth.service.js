@@ -41,14 +41,18 @@ async function montarUsuarioComPermissoes(usuario) {
       return acc;
     }, {});
   } else {
-    const permissoesUsuario = Array.isArray(usuario.permissoes)
-      ? usuario.permissoes
-      : JSON.parse(usuario.permissoes || '[]');
+    const permissoesUsuario = parsePermissoes(usuario.permissoes);
+    const permissoesRole = parsePermissoes(usuario.role?.permissoes);
+    const permissoesPermitidas = new Set([...permissoesUsuario, ...permissoesRole]);
 
     permissoesFinais = todasPermissoes.reduce((acc, permissao) => {
-      acc[permissao.chave] = permissoesUsuario.includes(permissao.chave);
+      acc[permissao.chave] = permissoesPermitidas.has(permissao.chave);
       return acc;
     }, {});
+
+    permissoesPermitidas.forEach(permissao => {
+      permissoesFinais[permissao] = true;
+    });
   }
 
   const usuarioJson = usuario.toJSON();
@@ -57,6 +61,29 @@ async function montarUsuarioComPermissoes(usuario) {
     ...usuarioJson,
     permissoes: permissoesFinais
   };
+}
+
+function parsePermissoes(permissoes) {
+  if (!permissoes) {
+    return [];
+  }
+
+  if (Array.isArray(permissoes)) {
+    return permissoes;
+  }
+
+  if (typeof permissoes === 'string') {
+    try {
+      const parsed = JSON.parse(permissoes);
+      return parsePermissoes(parsed);
+    } catch {
+      return [];
+    }
+  }
+
+  return Object.entries(permissoes)
+    .filter(([, permitido]) => permitido === true)
+    .map(([chave]) => chave);
 }
 
 async function atualizarPerfil(usuarioId, dados) {

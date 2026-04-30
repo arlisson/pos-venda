@@ -404,7 +404,7 @@
 .chip-items__head,
 .chip-item-row {
   display: grid;
-  grid-template-columns: minmax(84px, 0.75fr) minmax(110px, 1fr) minmax(110px, 1fr) 32px;
+  grid-template-columns: minmax(78px, 0.65fr) minmax(86px, 0.75fr) minmax(110px, 1fr) minmax(110px, 1fr) 32px;
   gap: 8px;
   align-items: center;
 }
@@ -548,8 +548,17 @@
     grid-template-columns: 1fr 1fr 32px;
   }
 
+  .chip-item-row input:nth-of-type(3) {
+    grid-column: 1 / 3;
+  }
+
   .chip-item-subtotal {
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
+  }
+
+  .chip-item-row .btn {
+    grid-column: 3;
+    grid-row: 1;
   }
 
   .venda-cliente-card {

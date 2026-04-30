@@ -40,6 +40,16 @@ const PERMISSOES = [
     descricao: 'Permite visualizar os cards de resumo de vendas na pagina inicial.'
   },
   {
+    chave: 'metas_ver_usuarios',
+    nome: 'Metas: ver por usuario',
+    descricao: 'Permite acompanhar no dashboard quais usuarios bateram ou nao as metas.'
+  },
+  {
+    chave: 'relatorios_visualizar',
+    nome: 'Relatorios: visualizar',
+    descricao: 'Permite acessar a pagina de relatorios comerciais.'
+  },
+  {
     chave: 'crud_usuarios',
     nome: 'Cadastro de usuarios',
     descricao: 'Permite acessar o modulo de usuarios. As acoes dependem das subpermissoes.'

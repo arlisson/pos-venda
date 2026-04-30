@@ -6,6 +6,7 @@ import Usuarios from '../pages/Usuarios/Usuarios';
 import CadastroUsuario from '../pages/CadastroUsuario/CadastroUsuario';
 import FunilPage from '../pages/FunilPage/FunilPage';
 import DashboardPage from '../pages/DashboardPage/DashboardPage';
+import RelatoriosPage from '../pages/RelatoriosPage/RelatoriosPage';
 import EditarPerfilPage from '../pages/EditarPerfilPage/EditarPerfilPage';
 import EditarUsuarioPage from '../pages/EditarUsuarioPage/EditarUsuarioPage';
 import HistoricoPage from '../pages/HistoricoPage/HistoricoPage';
@@ -85,6 +86,7 @@ function AppRoutes() {
 
       <Route path="/retornos" element={<PrivateRoute><RetornosPage /></PrivateRoute>} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
+      <Route path="/relatorios" element={<PrivateRoute permission="relatorios_visualizar"><RelatoriosPage /></PrivateRoute>} />
       <Route path="/historico" element={<PrivateRoute permission="historico_visualizar"><HistoricoPage /></PrivateRoute>} />
       <Route
         path="/clientes"

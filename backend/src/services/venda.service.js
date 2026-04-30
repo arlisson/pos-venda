@@ -54,6 +54,16 @@ const CAMPOS = [
 
 const FUNIL_STATUS = ['aprovacao', 'ativacao', 'envio', 'entrega', 'confirmacao', 'concluido', 'retorno'];
 
+const FUNIL_STATUS_LABELS = {
+  aprovacao: 'Aprovacao',
+  ativacao: 'Ativacao',
+  envio: 'Envio / Logistica',
+  entrega: 'Entrega',
+  confirmacao: 'Confirmacao do cliente',
+  concluido: 'Concluido',
+  retorno: 'Retorno recebido'
+};
+
 function limparValor(valor) {
   if (valor === undefined) return undefined;
   if (valor === '') return null;
@@ -159,6 +169,10 @@ function parseValorMonetario(valor) {
   return Number(texto) || 0;
 }
 
+function normalizarGigas(valor) {
+  return String(valor || '').trim().slice(0, 40);
+}
+
 function normalizarItensChips(valor) {
   if (!valor) return [];
 
@@ -166,6 +180,7 @@ function normalizarItensChips(valor) {
     return valor
       .map(item => ({
         quantidade: Number(item.quantidade || 0),
+        gb: normalizarGigas(item.gb),
         valor_unitario: parseValorMonetario(item.valor_unitario)
       }))
       .filter(item => item.quantidade > 0 && item.valor_unitario > 0);
@@ -187,6 +202,7 @@ function normalizarItensChips(valor) {
 
           return {
             quantidade: Number(match[1]),
+            gb: '',
             valor_unitario: parseValorMonetario(match[2])
           };
         })
@@ -203,6 +219,14 @@ function calcularTotalChips(itens) {
   }, 0);
 
   return Number(total.toFixed(2));
+}
+
+function resumirGigasItensChips(itens) {
+  return Array.from(new Set(
+    itens
+      .map(item => normalizarGigas(item.gb))
+      .filter(Boolean)
+  )).join(', ');
 }
 
 function montarPayload(dados) {
@@ -253,6 +277,7 @@ function montarPayload(dados) {
   if (dados.valores_unitarios_chips !== undefined) {
     payload.valores_unitarios_chips = itensChips.length > 0 ? JSON.stringify(itensChips) : null;
     payload.valor_total = calcularTotalChips(itensChips);
+    payload.gb = resumirGigasItensChips(itensChips) || payload.gb || null;
   }
 
   if (payload.data_venda !== undefined) {
@@ -339,7 +364,9 @@ async function buscarEscopoVendas(usuarioId) {
   };
 }
 
-function aplicarEscopoVendas(query, usuarioId, escopo) {
+function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
+  const campo = (nome) => alias ? `${alias}.${nome}` : nome;
+
   if (escopo.podeVerTodas) {
     return query;
   }
@@ -351,8 +378,8 @@ function aplicarEscopoVendas(query, usuarioId, escopo) {
 
   query.where((builder) => {
     builder
-      .where('criado_por_id', usuarioId)
-      .orWhere('vendedora_id', usuarioId);
+      .where(campo('criado_por_id'), usuarioId)
+      .orWhere(campo('vendedora_id'), usuarioId);
   });
 
   return query;
@@ -360,6 +387,146 @@ function aplicarEscopoVendas(query, usuarioId, escopo) {
 
 function dataReferenciaVendaSQL(alias = 'v') {
   return `COALESCE(NULLIF(NULLIF(${alias}.data_venda, '0000-00-00'), '1899-11-30'), NULLIF(DATE(${alias}.criado_em), '0000-00-00'), DATE(${alias}.created_at))`;
+}
+
+function formatarDataISO(data) {
+  return [
+    data.getFullYear(),
+    String(data.getMonth() + 1).padStart(2, '0'),
+    String(data.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
+function adicionarDias(data, dias) {
+  const novaData = new Date(data);
+  novaData.setDate(novaData.getDate() + dias);
+  return novaData;
+}
+
+function resolverPeriodoRelatorio(filtros = {}) {
+  const hoje = new Date();
+  const periodo = filtros.periodo || 'mes_atual';
+  let inicio;
+  let fim;
+
+  if (periodo === 'hoje') {
+    inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    fim = inicio;
+  } else if (periodo === 'semana_atual') {
+    const diaSemana = hoje.getDay();
+    const diasDesdeSegunda = diaSemana === 0 ? 6 : diaSemana - 1;
+    inicio = adicionarDias(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()), -diasDesdeSegunda);
+    fim = hoje;
+  } else if (periodo === 'ultimos_30_dias') {
+    inicio = adicionarDias(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()), -29);
+    fim = hoje;
+  } else if (periodo === 'personalizado') {
+    const inicioCustom = normalizarData(filtros.data_inicio);
+    const fimCustom = normalizarData(filtros.data_fim);
+
+    inicio = inicioCustom ? new Date(`${inicioCustom}T00:00:00`) : new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    fim = fimCustom ? new Date(`${fimCustom}T00:00:00`) : hoje;
+  } else {
+    inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    fim = hoje;
+  }
+
+  if (inicio > fim) {
+    const temporaria = inicio;
+    inicio = fim;
+    fim = temporaria;
+  }
+
+  return {
+    tipo: periodo,
+    dataInicio: formatarDataISO(inicio),
+    dataFim: formatarDataISO(fim),
+    dataFimExclusiva: formatarDataISO(adicionarDias(fim, 1))
+  };
+}
+
+function obterQuantidadeChipsVenda(venda) {
+  let totalItens = 0;
+
+  if (Array.isArray(venda.valores_unitarios_chips)) {
+    totalItens = venda.valores_unitarios_chips.reduce((total, item) => total + Number(item.quantidade || 0), 0);
+  } else if (typeof venda.valores_unitarios_chips === 'string' && venda.valores_unitarios_chips.trim()) {
+    try {
+      const itens = JSON.parse(venda.valores_unitarios_chips);
+      totalItens = Array.isArray(itens)
+        ? itens.reduce((total, item) => total + Number(item.quantidade || 0), 0)
+        : 0;
+    } catch {
+      totalItens = normalizarItensChips(venda.valores_unitarios_chips)
+        .reduce((total, item) => total + Number(item.quantidade || 0), 0);
+    }
+  }
+
+  if (totalItens > 0) {
+    return totalItens;
+  }
+
+  const quantidadeLinhas = Number(venda.quantidade_linhas || 0);
+
+  return quantidadeLinhas > 0 ? quantidadeLinhas : 1;
+}
+
+function somarValorVendas(vendas = []) {
+  return Number(vendas.reduce((total, venda) => total + Number(venda.valor_total || 0), 0).toFixed(2));
+}
+
+function montarResumoAgrupado(mapa) {
+  return Array.from(mapa.values())
+    .map(item => ({
+      ...item,
+      valor: Number(item.valor.toFixed(2))
+    }))
+    .sort((a, b) => b.valor - a.valor);
+}
+
+function montarResumoFases(vendas = []) {
+  const statusEncontrados = Array.from(new Set(
+    vendas
+      .map(venda => venda.status_funil || 'aprovacao')
+      .filter(Boolean)
+  ));
+  const statusOrdenados = [
+    ...FUNIL_STATUS,
+    ...statusEncontrados.filter(status => !FUNIL_STATUS.includes(status))
+  ];
+  const fasesMap = new Map(statusOrdenados.map(status => [
+    status,
+    {
+      id: status,
+      nome: FUNIL_STATUS_LABELS[status] || status,
+      valor: 0,
+      vendas: 0,
+      chips: 0,
+      retorno: status === 'retorno'
+    }
+  ]));
+
+  vendas.forEach(venda => {
+    const status = venda.status_funil || 'aprovacao';
+    const fase = fasesMap.get(status) || {
+      id: status,
+      nome: FUNIL_STATUS_LABELS[status] || status,
+      valor: 0,
+      vendas: 0,
+      chips: 0,
+      retorno: status === 'retorno'
+    };
+
+    fase.valor += Number(venda.valor_total || 0);
+    fase.vendas += 1;
+    fase.chips += obterQuantidadeChipsVenda(venda);
+    fasesMap.set(status, fase);
+  });
+
+  return Array.from(fasesMap.values()).map(fase => ({
+    ...fase,
+    valor: Number(fase.valor.toFixed(2))
+  }));
 }
 
 async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
@@ -455,7 +622,7 @@ async function listarVendas(filtros = {}, usuarioId) {
 }
 
 async function obterResumoDashboard(usuarioId) {
-  const escopo = { podeVerTodas: true, podeVerProprias: true };
+  const escopo = await buscarEscopoVendas(usuarioId);
   const dataReferencia = dataReferenciaVendaSQL('v');
   const hoje = new Date();
   const inicioHoje = [
@@ -465,7 +632,7 @@ async function obterResumoDashboard(usuarioId) {
   ].join('-');
 
   const queryHoje = Venda.query().alias('v');
-  aplicarEscopoVendas(queryHoje, usuarioId, escopo);
+  aplicarEscopoVendas(queryHoje, usuarioId, escopo, 'v');
 
   const vendasHoje = await queryHoje
     .whereNull('v.excluido_em')
@@ -479,7 +646,7 @@ async function obterResumoDashboard(usuarioId) {
     .first();
 
   const queryPipeline = Venda.query().alias('v');
-  aplicarEscopoVendas(queryPipeline, usuarioId, escopo);
+  aplicarEscopoVendas(queryPipeline, usuarioId, escopo, 'v');
 
   const pipeline = await queryPipeline
     .whereNull('v.excluido_em')
@@ -491,16 +658,20 @@ async function obterResumoDashboard(usuarioId) {
     .first();
 
   const queryRetornos = Venda.query().alias('v');
-  aplicarEscopoVendas(queryRetornos, usuarioId, escopo);
+  aplicarEscopoVendas(queryRetornos, usuarioId, escopo, 'v');
 
   const retornos = await queryRetornos
     .whereNull('v.excluido_em')
     .where('v.status_funil', 'retorno')
     .select(
-      Venda.raw('COUNT(*) as retornos'),
-      Venda.raw('COALESCE(SUM(COALESCE(v.valor_total, 0)), 0) as perda')
-    )
-    .first();
+      'v.id',
+      'v.valor_total',
+      'v.valores_unitarios_chips',
+      'v.quantidade_linhas'
+    );
+
+  const chipsRetornados = retornos.reduce((total, venda) => total + obterQuantidadeChipsVenda(venda), 0);
+  const perdaRetornos = retornos.reduce((total, venda) => total + Number(venda.valor_total || 0), 0);
 
   return {
     vendasDia: Number(vendasHoje?.vendas_dia || 0),
@@ -508,8 +679,117 @@ async function obterResumoDashboard(usuarioId) {
     concluidasDia: Number(vendasHoje?.concluidas_dia || 0),
     pipeline: Number(pipeline?.pipeline || 0),
     pipelineCount: Number(pipeline?.pipeline_count || 0),
-    retornos: Number(retornos?.retornos || 0),
-    perda: Number(retornos?.perda || 0)
+    retornos: chipsRetornados,
+    perda: Number(perdaRetornos.toFixed(2))
+  };
+}
+
+async function obterRelatoriosVendas(filtros = {}) {
+  const periodo = resolverPeriodoRelatorio(filtros);
+  const dataReferencia = dataReferenciaVendaSQL('v');
+  const vendedoraId = filtros.vendedora_id ? Number(filtros.vendedora_id) : null;
+
+  const query = Venda.query()
+    .alias('v')
+    .leftJoin('operadoras as o', 'v.operadora_id', 'o.id')
+    .leftJoin('usuarios as u', 'v.vendedora_id', 'u.id')
+    .whereNull('v.excluido_em')
+    .whereRaw(`${dataReferencia} >= ?`, [periodo.dataInicio])
+    .whereRaw(`${dataReferencia} < ?`, [periodo.dataFimExclusiva])
+    .select(
+      'v.id',
+      'v.status_funil',
+      'v.valor_total',
+      'v.valores_unitarios_chips',
+      'v.quantidade_linhas',
+      'v.operadora_id',
+      'v.vendedora_id',
+      'o.nome as operadora_nome',
+      'u.nome as vendedora_nome',
+      'u.email as vendedora_email'
+    );
+
+  if (vendedoraId) {
+    query.where('v.vendedora_id', vendedoraId);
+  }
+
+  const vendas = await query;
+  const vendasAndamento = vendas.filter(venda => !['concluido', 'retorno'].includes(venda.status_funil));
+  const vendasConcluidas = vendas.filter(venda => venda.status_funil === 'concluido');
+  const vendasRetorno = vendas.filter(venda => venda.status_funil === 'retorno');
+  const vendasValidas = vendas.filter(venda => venda.status_funil !== 'retorno');
+  const chipsRetornados = vendasRetorno.reduce((total, venda) => total + obterQuantidadeChipsVenda(venda), 0);
+  const chipsVendidos = vendas.reduce((total, venda) => total + obterQuantidadeChipsVenda(venda), 0);
+  const porOperadoraMap = new Map();
+  const rankingMap = new Map();
+
+  vendasValidas.forEach(venda => {
+    const valor = Number(venda.valor_total || 0);
+    const chips = obterQuantidadeChipsVenda(venda);
+    const operadoraId = venda.operadora_id ? Number(venda.operadora_id) : null;
+    const chaveOperadora = operadoraId || 'sem_operadora';
+    const operadoraAtual = porOperadoraMap.get(chaveOperadora) || {
+      id: operadoraId,
+      nome: venda.operadora_nome || 'Sem operadora',
+      valor: 0,
+      vendas: 0,
+      chips: 0
+    };
+
+    operadoraAtual.valor += valor;
+    operadoraAtual.vendas += 1;
+    operadoraAtual.chips += chips;
+    porOperadoraMap.set(chaveOperadora, operadoraAtual);
+
+    const vendedorId = venda.vendedora_id ? Number(venda.vendedora_id) : null;
+    const chaveVendedor = vendedorId || 'sem_vendedor';
+    const vendedorAtual = rankingMap.get(chaveVendedor) || {
+      id: vendedorId,
+      nome: venda.vendedora_nome || 'Sem vendedor',
+      email: venda.vendedora_email || '',
+      valor: 0,
+      vendas: 0,
+      chips: 0
+    };
+
+    vendedorAtual.valor += valor;
+    vendedorAtual.vendas += 1;
+    vendedorAtual.chips += chips;
+    rankingMap.set(chaveVendedor, vendedorAtual);
+  });
+
+  return {
+    periodo: {
+      tipo: periodo.tipo,
+      data_inicio: periodo.dataInicio,
+      data_fim: periodo.dataFim
+    },
+    filtros: {
+      vendedora_id: vendedoraId
+    },
+    cards: {
+      vendasAndamento: {
+        quantidade: vendasAndamento.length,
+        valor: somarValorVendas(vendasAndamento)
+      },
+      concluidas: {
+        quantidade: vendasConcluidas.length,
+        valor: somarValorVendas(vendasConcluidas)
+      },
+      perdaRetorno: {
+        quantidade: vendasRetorno.length,
+        valor: somarValorVendas(vendasRetorno),
+        chips: chipsRetornados
+      },
+      taxaRetorno: {
+        percentual: chipsVendidos > 0 ? Number(((chipsRetornados / chipsVendidos) * 100).toFixed(1)) : 0,
+        chipsRetornados,
+        chipsVendidos
+      }
+    },
+    vendasPorFase: montarResumoFases(vendas),
+    porOperadora: montarResumoAgrupado(porOperadoraMap),
+    rankingVendedores: montarResumoAgrupado(rankingMap)
   };
 }
 
@@ -849,6 +1129,7 @@ module.exports = {
   listarVendas,
   listarVendasLixeira,
   obterResumoDashboard,
+  obterRelatoriosVendas,
   buscarVendaPorId,
   criarVenda,
   atualizarVenda,
