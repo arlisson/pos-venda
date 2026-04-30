@@ -83,6 +83,11 @@ const GRUPOS_PERMISSOES = [
             chave: 'funil_vendas',
             nome: 'Funil de vendas',
             descricao: 'Permite acessar a pagina do funil de vendas.'
+          },
+          {
+            chave: 'crud_funil_etapas',
+            nome: 'Gerenciar etapas do funil',
+            descricao: 'Permite criar, editar e desativar colunas do funil de vendas.'
           }
         ]
       },

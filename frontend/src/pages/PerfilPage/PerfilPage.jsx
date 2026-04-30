@@ -16,7 +16,7 @@ const GRUPOS_PERMISSOES = [
   },
   {
     titulo: 'Vendas',
-    chaves: ['vendas', 'funil_vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir']
+    chaves: ['vendas', 'funil_vendas', 'crud_funil_etapas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir']
   },
   {
     titulo: 'Usuarios',
@@ -34,6 +34,7 @@ const NOMES_PERMISSOES = {
   relatorios_visualizar: 'Relatorios',
   vendas: 'Acesso ao modulo',
   funil_vendas: 'Funil de vendas',
+  crud_funil_etapas: 'Gerenciar etapas do funil',
   vendas_ver_proprias: 'Ver proprias',
   vendas_ver_todas: 'Ver todas',
   vendas_criar: 'Criar',

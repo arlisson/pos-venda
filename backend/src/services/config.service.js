@@ -3,6 +3,7 @@ const Operadora = require('../models/Operadora');
 const TipoProduto = require('../models/TipoProduto');
 const TipoVenda = require('../models/TipoVenda');
 const Servico = require('../models/Servico');
+const FunilEtapa = require('../models/FunilEtapa');
 
 function orderConfig(query) {
   return query.orderBy('ordem', 'asc').orderBy('nome', 'asc');
@@ -32,6 +33,12 @@ async function listarServicos() {
   return orderConfig(Servico.query());
 }
 
+async function listarFunilEtapas() {
+  return FunilEtapa.query()
+    .orderBy('ordem', 'asc')
+    .orderBy('nome', 'asc');
+}
+
 async function listarOperadorasAtivas() {
   return Operadora.query()
     .where('ativo', true)
@@ -49,6 +56,13 @@ async function listarTiposVendaAtivos() {
 
 async function listarServicosAtivos() {
   return orderConfig(Servico.query().where('ativo', true));
+}
+
+async function listarFunilEtapasAtivas() {
+  return FunilEtapa.query()
+    .where('ativo', true)
+    .orderBy('ordem', 'asc')
+    .orderBy('nome', 'asc');
 }
 
 async function listarLinksExternosAtivos() {
@@ -146,6 +160,47 @@ async function excluirServico(id) {
   return Servico.query().deleteById(id);
 }
 
+function normalizarCodigoEtapa(valor) {
+  return String(valor || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40);
+}
+
+async function criarFunilEtapa(dados) {
+  const codigo = normalizarCodigoEtapa(dados.codigo || dados.nome);
+
+  if (!codigo) {
+    throw new Error('Informe um nome valido para a etapa.');
+  }
+
+  return FunilEtapa.query().insert({
+    codigo,
+    nome: dados.nome,
+    ativo: dados.ativo ?? true,
+    ordem: dados.ordem ?? 0
+  });
+}
+
+async function atualizarFunilEtapa(id, dados) {
+  const atualizacao = {};
+
+  if (dados.codigo !== undefined) atualizacao.codigo = normalizarCodigoEtapa(dados.codigo);
+  if (dados.nome !== undefined) atualizacao.nome = dados.nome;
+  if (dados.ativo !== undefined) atualizacao.ativo = dados.ativo;
+  if (dados.ordem !== undefined) atualizacao.ordem = dados.ordem;
+
+  return FunilEtapa.query().patchAndFetchById(id, atualizacao);
+}
+
+async function excluirFunilEtapa(id) {
+  return FunilEtapa.query().patchAndFetchById(id, { ativo: false });
+}
+
 async function criarLinkExterno(dados) {
   return LinkExterno.query().insert({
     chave: dados.chave,
@@ -195,6 +250,11 @@ module.exports = {
   criarServico,
   atualizarServico,
   excluirServico,
+  listarFunilEtapas,
+  listarFunilEtapasAtivas,
+  criarFunilEtapa,
+  atualizarFunilEtapa,
+  excluirFunilEtapa,
   listarLinksExternos,
   listarLinksExternosAtivos,
   criarLinkExterno,

@@ -62,6 +62,16 @@ async function servicos(req, res) {
   }
 }
 
+async function funilEtapas(req, res) {
+  try {
+    const dados = await configService.listarFunilEtapasAtivas();
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar etapas do funil.' });
+  }
+}
+
 async function adminOperadoras(req, res) {
   try {
     const dados = await configService.listarOperadoras();
@@ -222,6 +232,56 @@ async function excluirServico(req, res) {
   }
 }
 
+async function adminFunilEtapas(req, res) {
+  try {
+    const dados = await configService.listarFunilEtapas();
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar etapas do funil.' });
+  }
+}
+
+async function criarFunilEtapa(req, res) {
+  try {
+    const etapa = await configService.criarFunilEtapa(req.body);
+    return res.status(201).json(etapa);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: error.message || 'Erro ao criar etapa do funil.' });
+  }
+}
+
+async function atualizarFunilEtapa(req, res) {
+  try {
+    const etapa = await configService.atualizarFunilEtapa(req.params.id, req.body);
+
+    if (!etapa) {
+      return res.status(404).json({ message: 'Etapa do funil nao encontrada.' });
+    }
+
+    return res.json(etapa);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: error.message || 'Erro ao atualizar etapa do funil.' });
+  }
+}
+
+async function excluirFunilEtapa(req, res) {
+  try {
+    const etapa = await configService.excluirFunilEtapa(req.params.id);
+
+    if (!etapa) {
+      return res.status(404).json({ message: 'Etapa do funil nao encontrada.' });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao excluir etapa do funil.' });
+  }
+}
+
 async function criarOperadora(req, res) {
   try {
     const operadora = await configService.criarOperadora(req.body);
@@ -318,6 +378,7 @@ module.exports = {
   tiposProduto,
   tiposVenda,
   servicos,
+  funilEtapas,
   adminOperadoras,
   criarOperadora,
   atualizarOperadora,
@@ -334,6 +395,10 @@ module.exports = {
   criarServico,
   atualizarServico,
   excluirServico,
+  adminFunilEtapas,
+  criarFunilEtapa,
+  atualizarFunilEtapa,
+  excluirFunilEtapa,
   adminLinksExternos,
   criarLinkExterno,
   atualizarLinkExterno,

@@ -9,7 +9,7 @@ import {
   listarVendas,
   listarVendedoras
 } from '../../services/venda.service';
-import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
+import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import './VendasPage.css';
@@ -123,6 +123,20 @@ const STATUS_FUNIL_FILTROS = [
   { id: 'concluido', label: 'Concluido' },
   { id: 'retorno', label: 'Retorno' }
 ];
+
+function normalizarStatusFunilFiltros(etapas = []) {
+  const normalizados = etapas
+    .map(etapa => ({
+      id: etapa.codigo || etapa.id,
+      label: etapa.nome || etapa.name
+    }))
+    .filter(etapa => etapa.id && etapa.label);
+
+  return [
+    ...(normalizados.length > 0 ? normalizados : STATUS_FUNIL_FILTROS.filter(status => status.id !== 'retorno')),
+    { id: 'retorno', label: 'Retorno' }
+  ];
+}
 
 function toInputDate(value) {
   if (!value) return '';
@@ -985,6 +999,7 @@ function VendasPage() {
   const [operadoras, setOperadoras] = useState([]);
   const [tiposVenda, setTiposVenda] = useState([]);
   const [servicos, setServicos] = useState([]);
+  const [statusFunilFiltros, setStatusFunilFiltros] = useState(STATUS_FUNIL_FILTROS);
   const [busca, setBusca] = useState('');
   const [vendedoraId, setVendedoraId] = useState('');
   const [operadoraId, setOperadoraId] = useState('');
@@ -1052,13 +1067,14 @@ function VendasPage() {
     setCarregando(true);
 
     try {
-      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
+      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData] = await Promise.all([
         listarVendas(filtros),
         podeListarClientes ? listarClientes() : Promise.resolve([]),
         listarVendedoras(),
         listarOperadoras(),
         listarTiposVenda(),
-        listarServicos()
+        listarServicos(),
+        listarEtapasFunil()
       ]);
 
       setVendas(vendasData);
@@ -1067,6 +1083,7 @@ function VendasPage() {
       setOperadoras(operadorasData);
       setTiposVenda(tiposVendaData);
       setServicos(servicosData);
+      setStatusFunilFiltros(normalizarStatusFunilFiltros(etapasFunilData));
     } catch (error) {
       setErro(error.message || 'Erro ao carregar vendas.');
     } finally {
@@ -1231,7 +1248,7 @@ function VendasPage() {
                   <label>Status</label>
                   <select value={statusFunil} onChange={e => setStatusFunil(e.target.value)}>
                     <option value="">Todos</option>
-                    {STATUS_FUNIL_FILTROS.map(status => (
+                    {statusFunilFiltros.map(status => (
                       <option key={status.id} value={status.id}>{status.label}</option>
                     ))}
                   </select>

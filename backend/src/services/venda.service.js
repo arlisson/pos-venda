@@ -1,6 +1,7 @@
 const Venda = require('../models/Venda');
 const VendaHistorico = require('../models/VendaHistorico');
 const Usuario = require('../models/Usuario');
+const FunilEtapa = require('../models/FunilEtapa');
 const clienteService = require('./cliente.service');
 
 const CAMPOS = [
@@ -529,6 +530,93 @@ function montarResumoFases(vendas = []) {
   }));
 }
 
+async function listarEtapasFunilOrdenadas() {
+  try {
+    const etapas = await FunilEtapa.query()
+      .where('ativo', true)
+      .orderBy('ordem', 'asc')
+      .orderBy('nome', 'asc');
+
+    if (etapas.length > 0) {
+      return etapas.map(etapa => ({
+        id: etapa.codigo,
+        nome: etapa.nome,
+        ordem: etapa.ordem,
+        retorno: false
+      }));
+    }
+  } catch {
+    return FUNIL_STATUS
+      .filter(status => status !== 'retorno')
+      .map((status, index) => ({
+        id: status,
+        nome: FUNIL_STATUS_LABELS[status] || status,
+        ordem: index + 1,
+        retorno: false
+      }));
+  }
+
+  return FUNIL_STATUS
+    .filter(status => status !== 'retorno')
+    .map((status, index) => ({
+      id: status,
+      nome: FUNIL_STATUS_LABELS[status] || status,
+      ordem: index + 1,
+      retorno: false
+    }));
+}
+
+async function montarResumoFasesDinamico(vendas = []) {
+  const etapas = await listarEtapasFunilOrdenadas();
+  const statusBase = [...etapas.map(etapa => etapa.id), 'retorno'];
+  const statusEncontrados = Array.from(new Set(
+    vendas
+      .map(venda => venda.status_funil || etapas[0]?.id || 'aprovacao')
+      .filter(Boolean)
+  ));
+  const statusOrdenados = [
+    ...statusBase,
+    ...statusEncontrados.filter(status => !statusBase.includes(status))
+  ];
+  const nomes = {
+    ...FUNIL_STATUS_LABELS,
+    ...Object.fromEntries(etapas.map(etapa => [etapa.id, etapa.nome]))
+  };
+  const fasesMap = new Map(statusOrdenados.map(status => [
+    status,
+    {
+      id: status,
+      nome: nomes[status] || status,
+      valor: 0,
+      vendas: 0,
+      chips: 0,
+      retorno: status === 'retorno'
+    }
+  ]));
+
+  vendas.forEach(venda => {
+    const status = venda.status_funil || etapas[0]?.id || 'aprovacao';
+    const fase = fasesMap.get(status) || {
+      id: status,
+      nome: nomes[status] || status,
+      valor: 0,
+      vendas: 0,
+      chips: 0,
+      retorno: status === 'retorno'
+    };
+
+    fase.valor += Number(venda.valor_total || 0);
+    fase.vendas += 1;
+    fase.chips += obterQuantidadeChipsVenda(venda);
+    fasesMap.set(status, fase);
+  });
+
+  return Array.from(fasesMap.values()).map(fase => ({
+    ...fase,
+    valor: Number(fase.valor.toFixed(2))
+  }));
+}
+
 async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
   const escopo = await buscarEscopoVendas(usuarioId);
 
@@ -787,7 +875,7 @@ async function obterRelatoriosVendas(filtros = {}) {
         chipsVendidos
       }
     },
-    vendasPorFase: montarResumoFases(vendas),
+    vendasPorFase: await montarResumoFasesDinamico(vendas),
     porOperadora: montarResumoAgrupado(porOperadoraMap),
     rankingVendedores: montarResumoAgrupado(rankingMap)
   };
@@ -877,8 +965,13 @@ async function atualizarVenda(id, dados, usuarioId) {
   });
 }
 
-function validarStatusFunil(status) {
-  return FUNIL_STATUS.includes(status);
+async function validarStatusFunil(status) {
+  if (status === 'retorno') {
+    return true;
+  }
+
+  const etapas = await listarEtapasFunilOrdenadas();
+  return etapas.some(etapa => etapa.id === status);
 }
 
 async function atualizarStatusVenda(id, dados, usuarioId) {
@@ -898,15 +991,46 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   const status = dados.status_funil;
   const observacao = String(dados.observacao || '').trim();
 
-  if (!validarStatusFunil(status)) {
+  const retornoVoltandoParaOrigem = venda.status_funil === 'retorno' && status === (venda.status_anterior_retorno || 'aprovacao');
+
+  if (!retornoVoltandoParaOrigem && !await validarStatusFunil(status)) {
     return { status: 'invalid', message: 'Status do funil invalido.' };
   }
 
   if (status === 'retorno') {
-    const motivo = String(dados.motivo_retorno || '').trim();
+    const motivo = String(dados.motivo_retorno || venda.motivo_retorno || '').trim();
 
     if (!motivo) {
       return { status: 'invalid', message: 'Informe o motivo do retorno.' };
+    }
+
+    if (venda.status_funil === 'retorno') {
+      const vendaAtualizada = await Venda.transaction(async trx => {
+        const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+          motivo_retorno: motivo,
+          ultima_atividade_em: agora,
+          updated_at: agora
+        });
+
+        await registrarHistoricoVenda({
+          vendaId: id,
+          usuarioId,
+          acao: 'venda.retorno_observacao_atualizada',
+          statusAnterior: 'retorno',
+          statusNovo: 'retorno',
+          observacao: observacao || null,
+          dados: {
+            motivo_retorno: motivo,
+            observacao
+          },
+          createdAt: agora,
+          trx
+        });
+
+        return atualizada;
+      });
+
+      return { status: 'ok', venda: vendaAtualizada };
     }
 
     const statusAnterior = venda.status_funil && venda.status_funil !== 'retorno'

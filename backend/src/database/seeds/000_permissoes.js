@@ -35,6 +35,11 @@ const PERMISSOES = [
     descricao: 'Permite acessar a pagina do funil de vendas.'
   },
   {
+    chave: 'crud_funil_etapas',
+    nome: 'Funil: gerenciar etapas',
+    descricao: 'Permite criar, editar, listar e desativar etapas do funil de vendas.'
+  },
+  {
     chave: 'dashboard_resumo_vendas',
     nome: 'Inicio: resumo de vendas',
     descricao: 'Permite visualizar os cards de resumo de vendas na pagina inicial.'
