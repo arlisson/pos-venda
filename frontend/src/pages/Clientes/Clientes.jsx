@@ -5,6 +5,7 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { atualizarCliente, criarCliente, excluirCliente, listarClientes } from '../../services/cliente.service';
 import { listarOperadoras } from '../../services/config.service';
+import { listarMeusLeadEnvios, listarMinhasLeadLinhas } from '../../services/lead-planilha.service';
 import './Clientes.css';
 
 const FORM_INICIAL = {
@@ -138,6 +139,171 @@ function formatarFidelidade(aviso) {
   }
 
   return { label: `${aviso.dias_restantes} dias`, className: 'success' };
+}
+
+function normalizarBusca(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function getValorLeadRecebido(linha, coluna) {
+  if (!coluna) return '';
+  if (typeof coluna === 'string') return linha.dados_json?.[coluna] ?? '';
+  if (coluna.planilhaId && Number(linha.planilha_id) !== Number(coluna.planilhaId)) return '';
+
+  const source = coluna.sources?.find(item => Number(item.planilhaId) === Number(linha.planilha_id));
+  return linha.dados_json?.[source?.nome || coluna.nome] ?? '';
+}
+
+function LeadsRecebidosView() {
+  const [envios, setEnvios] = useState([]);
+  const [selecionados, setSelecionados] = useState([]);
+  const [linhas, setLinhas] = useState([]);
+  const [busca, setBusca] = useState('');
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    let cancelado = false;
+    setCarregando(true);
+    listarMeusLeadEnvios()
+      .then(data => {
+        if (!cancelado) setEnvios(data);
+      })
+      .catch(error => setErro(error.message || 'Erro ao carregar leads recebidos.'))
+      .finally(() => !cancelado && setCarregando(false));
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (selecionados.length === 0) {
+      setLinhas([]);
+      return;
+    }
+
+    let cancelado = false;
+    setCarregando(true);
+    listarMinhasLeadLinhas({ envio_ids: selecionados })
+      .then(data => {
+        if (!cancelado) setLinhas(data);
+      })
+      .catch(error => setErro(error.message || 'Erro ao carregar leads recebidos.'))
+      .finally(() => !cancelado && setCarregando(false));
+
+    return () => {
+      cancelado = true;
+    };
+  }, [selecionados]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const enviosSelecionados = useMemo(() => (
+    envios.filter(envio => selecionados.includes(envio.id))
+  ), [envios, selecionados]);
+
+  const colunas = useMemo(() => {
+    const mapa = new Map();
+
+    enviosSelecionados.forEach(envio => {
+      (envio.colunas_visiveis || []).forEach(coluna => {
+        const key = typeof coluna === 'string' ? coluna : coluna.id;
+        mapa.set(key, coluna);
+      });
+    });
+
+    if (mapa.size === 0) {
+      linhas.forEach(linha => {
+        Object.keys(linha.dados_json || {}).forEach(coluna => mapa.set(coluna, coluna));
+      });
+    }
+
+    return Array.from(mapa.values());
+  }, [enviosSelecionados, linhas]);
+
+  const linhasFiltradas = useMemo(() => {
+    const termo = normalizarBusca(busca);
+    if (!termo) return linhas;
+
+    return linhas.filter(linha => (
+      Object.values(linha.dados_json || {}).some(valor => normalizarBusca(valor).includes(termo))
+    ));
+  }, [linhas, busca]);
+
+  function toggleEnvio(id) {
+    setSelecionados(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+  }
+
+  return (
+    <div className="clientes-leads-view">
+      <div className="clientes-leads-strip">
+        <div className="clientes-leads-strip__title">Planilhas recebidas</div>
+        <div className="clientes-leads-docs">
+          {envios.map(envio => (
+            <button
+              key={envio.id}
+              type="button"
+              className={`clientes-leads-doc ${selecionados.includes(envio.id) ? 'active' : ''}`}
+              onClick={() => toggleEnvio(envio.id)}
+            >
+              <div className="clientes-leads-preview">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <strong title={envio.nome}>{envio.nome}</strong>
+              <small>{new Date(envio.created_at).toLocaleDateString('pt-BR')} - {envio.total_linhas} leads</small>
+            </button>
+          ))}
+          {!carregando && envios.length === 0 && (
+            <div className="lead-doc-empty">Nenhum envio recebido.</div>
+          )}
+        </div>
+      </div>
+
+      <div className="clientes-leads-toolbar">
+        <div className="clientes-toolbar__meta">
+          {linhasFiltradas.length} lead(s) recebidos
+        </div>
+        <form className="clientes-search" onSubmit={event => event.preventDefault()}>
+          <I.Search size={14} />
+          <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar nos leads recebidos" />
+        </form>
+      </div>
+
+      {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
+
+      <div className="list-table clientes-leads-table" style={{ margin: 0 }}>
+        <div className="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Envio</th>
+                {colunas.map(coluna => <th key={coluna.id || coluna}>{coluna.label || coluna}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {carregando ? (
+                <tr><td colSpan={colunas.length + 1} className="muted" style={{ textAlign: 'center', padding: 40 }}>Carregando leads...</td></tr>
+              ) : linhasFiltradas.length === 0 ? (
+                <tr><td colSpan={colunas.length + 1} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
+              ) : (
+                linhasFiltradas.map(linha => (
+                  <tr key={linha.id}>
+                    <td><span className="tag">{linha.envio?.nome || '-'}</span></td>
+                    {colunas.map(coluna => <td key={coluna.id || coluna}>{getValorLeadRecebido(linha, coluna) || '-'}</td>)}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ClienteModal({ cliente, operadoras, onClose, onSave }) {
@@ -339,6 +505,7 @@ function Clientes() {
   const [clienteParaLixeira, setClienteParaLixeira] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState('clientes');
 
   const filtros = useMemo(() => ({
     busca,
@@ -532,6 +699,27 @@ function Clientes() {
       )}
 
       <div className="clientes-page">
+        <div className="clientes-tabs">
+          <button
+            type="button"
+            className={`clientes-tab ${abaAtiva === 'clientes' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('clientes')}
+          >
+            Clientes cadastrados
+          </button>
+          <button
+            type="button"
+            className={`clientes-tab ${abaAtiva === 'leads' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('leads')}
+          >
+            Leads recebidos
+          </button>
+        </div>
+
+        {abaAtiva === 'leads' ? (
+          <LeadsRecebidosView />
+        ) : (
+          <>
         <div className="clientes-toolbar">
           <div className="clientes-toolbar__meta">
             {clientes.length} clientes cadastrados
@@ -670,6 +858,8 @@ function Clientes() {
             </table>
           </div>
         </div>
+          </>
+        )}
       </div>
     </LayoutPrivado>
   );

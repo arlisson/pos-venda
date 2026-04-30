@@ -118,6 +118,11 @@ const PERMISSOES = [
     chave: 'clientes_excluir',
     nome: 'Clientes: excluir',
     descricao: 'Permite excluir clientes acessiveis pelo usuario.'
+  },
+  {
+    chave: 'gerenciar_leads',
+    nome: 'Gerenciar leads',
+    descricao: 'Permite importar planilhas, filtrar e distribuir leads entre vendedores.'
   }
 ];
 

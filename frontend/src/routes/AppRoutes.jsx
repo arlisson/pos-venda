@@ -16,6 +16,7 @@ import RetornosPage from '../pages/RetornosPage/RetornosPage';
 import Clientes from '../pages/Clientes/Clientes';
 import ClienteFormPage from '../pages/Clientes/ClienteFormPage';
 import ClientesLixeiraPage from '../pages/Clientes/ClientesLixeiraPage';
+import AdminLeadsPage from '../pages/AdminLeadsPage/AdminLeadsPage';
 import '../pages/HistoricoPage/HistoricoPage.css';
 
 import { getUsuarioLocal, temPermissao } from '../services/auth.service';
@@ -76,6 +77,10 @@ function AppRoutes() {
       <Route
         path="/admin/metas"
         element={<PrivateRoute permission="gerenciar_metas"><AdminMetasPage /></PrivateRoute>}
+      />
+      <Route
+        path="/admin/leads"
+        element={<PrivateRoute permission="gerenciar_leads"><AdminLeadsPage /></PrivateRoute>}
       />
 
       <Route path="/retornos" element={<PrivateRoute><RetornosPage /></PrivateRoute>} />

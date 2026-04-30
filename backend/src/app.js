@@ -12,6 +12,7 @@ const configRoutes = require('./routes/config.routes');
 const metaRoutes = require('./routes/meta.routes');
 const vendaRoutes = require('./routes/venda.routes');
 const clienteRoutes = require('./routes/cliente.routes');
+const leadPlanilhaRoutes = require('./routes/lead-planilha.routes');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/config', configRoutes);
 app.use('/api/metas', metaRoutes);
 app.use('/api/vendas', vendaRoutes);
 app.use('/api/clientes', clienteRoutes);
+app.use('/api/lead-planilhas', leadPlanilhaRoutes);
 
 app.get('/api/health', (req, res) => {
   return res.json({
