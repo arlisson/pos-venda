@@ -6,14 +6,17 @@ import {
   atualizarLeadSchema,
   criarLeadPlanilha,
   dividirLeadLinhas,
+  excluirLeadPlanilha,
+  exportarLeadLinhas,
+  finalizarLeadPlanilha,
   listarLeadLinhas,
   listarLeadPlanilhas,
+  marcarErroLeadPlanilha,
   salvarLeadLinhas
 } from '../../services/lead-planilha.service';
 import './AdminLeadsPage.css';
 
 const PAGE_SIZE = 200;
-const BATCH_SIZE = 1000;
 const OPS = {
   string: [
     ['contains', 'Contem'],
@@ -39,94 +42,6 @@ function normalizarTexto(valor) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
-}
-
-function parseNumero(valor) {
-  const texto = String(valor ?? '').trim();
-  if (!texto) return null;
-
-  const limpo = texto.replace(/\s/g, '').replace(/^R\$/i, '');
-  const temVirgula = limpo.includes(',');
-  const temPonto = limpo.includes('.');
-  let normalizado = limpo;
-
-  if (temVirgula && temPonto) {
-    normalizado = limpo.lastIndexOf(',') > limpo.lastIndexOf('.')
-      ? limpo.replace(/\./g, '').replace(',', '.')
-      : limpo.replace(/,/g, '');
-  } else if (temVirgula) {
-    normalizado = limpo.replace(',', '.');
-  }
-
-  if (!/^-?\d+(\.\d+)?$/.test(normalizado)) return null;
-  const numero = Number(normalizado);
-  return Number.isFinite(numero) ? numero : null;
-}
-
-function parseData(valor) {
-  const texto = String(valor ?? '').trim();
-  if (!texto) return '';
-
-  const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-
-  const br = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
-  if (!br) return '';
-
-  const [, dia, mes, ano] = br;
-  const anoCompleto = ano.length === 2 ? `20${ano}` : ano;
-  return `${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
-}
-
-function aplicarOperacao(valorOriginal, filtro, tipo) {
-  if (!filtro.valor && filtro.op !== 'between') return true;
-
-  if (tipo === 'date') {
-    const data = parseData(valorOriginal);
-    if (!data) return false;
-    if (filtro.op === 'between') {
-      return (!filtro.valor || data >= filtro.valor) && (!filtro.valor2 || data <= filtro.valor2);
-    }
-    return data === filtro.valor;
-  }
-
-  if (tipo === 'number') {
-    const numero = parseNumero(valorOriginal);
-    const valor = parseNumero(filtro.valor);
-    if (numero === null || valor === null) return false;
-    const textoNumero = String(numero);
-    const textoFiltro = String(valor);
-    if (filtro.op === 'exact') return numero === valor;
-    if (filtro.op === 'starts') return textoNumero.startsWith(textoFiltro);
-    if (filtro.op === 'ends') return textoNumero.endsWith(textoFiltro);
-    return textoNumero.includes(textoFiltro);
-  }
-
-  const texto = normalizarTexto(valorOriginal);
-  const busca = normalizarTexto(filtro.valor);
-  if (filtro.op === 'exact') return texto === busca;
-  if (filtro.op === 'starts') return texto.startsWith(busca);
-  if (filtro.op === 'ends') return texto.endsWith(busca);
-  return texto.includes(busca);
-}
-
-function csvEscape(valor) {
-  const texto = String(valor ?? '');
-  return /[",;\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
-}
-
-function baixarCsv(nome, colunas, linhas) {
-  const conteudo = [
-    colunas.map(coluna => csvEscape(coluna.label)).join(';'),
-    ...linhas.map(linha => colunas.map(coluna => csvEscape(getValorColuna(linha, coluna))).join(';'))
-  ].join('\n');
-  const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = nome;
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 function getValorColuna(linha, coluna) {
@@ -162,10 +77,28 @@ function getConflitosColunas(planilhasSelecionadas) {
     .filter(grupo => new Set(grupo.ocorrencias.map(item => item.planilhaId)).size > 1);
 }
 
-function DividirModal({ linhas, colunas, vendedoras, onClose, onSave }) {
+function montarFiltrosBackend(filtros, colunas, planilhasSelecionadas, schema) {
+  return filtros.map(filtro => {
+    const coluna = colunas.find(item => item.id === filtro.coluna);
+    const planilha = coluna?.planilhaId
+      ? planilhasSelecionadas.find(item => item.id === coluna.planilhaId)
+      : null;
+
+    return {
+      coluna: coluna?.nome || filtro.coluna,
+      planilha_id: coluna?.planilhaId || null,
+      tipo: planilha?.schema_colunas?.[coluna?.nome] || schema[coluna?.nome] || 'string',
+      op: filtro.op,
+      valor: filtro.valor,
+      valor2: filtro.valor2
+    };
+  });
+}
+
+function DividirModal({ totalLinhas, colunas, vendedoras, filtrosDivisao, onClose, onSave }) {
   const [nome, setNome] = useState(`Envio ${new Date().toLocaleDateString('pt-BR')}`);
   const [usuarios, setUsuarios] = useState([]);
-  const [quantidade, setQuantidade] = useState(String(linhas.length));
+  const [quantidade, setQuantidade] = useState(String(totalLinhas));
   const [colunasVisiveis, setColunasVisiveis] = useState(colunas);
   const [manual, setManual] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -194,7 +127,7 @@ function DividirModal({ linhas, colunas, vendedoras, onClose, onSave }) {
         nome,
         quantidade_total: Number(quantidade),
         usuario_ids: usuarios,
-        linha_ids: linhas.map(linha => linha.id),
+        filtros: filtrosDivisao,
         colunas_visiveis: colunasVisiveis,
         alocacao_manual: manual?.valores || {}
       });
@@ -243,7 +176,7 @@ function DividirModal({ linhas, colunas, vendedoras, onClose, onSave }) {
             </div>
             <div className="form-field">
               <label>Quantidade</label>
-              <input type="number" min="1" max={linhas.length} value={quantidade} onChange={event => setQuantidade(event.target.value)} required />
+              <input type="number" min="1" max={totalLinhas} value={quantidade} onChange={event => setQuantidade(event.target.value)} required />
             </div>
           </div>
 
@@ -381,11 +314,58 @@ function MesclarColunasModal({ grupos, defaultSelecionadas, onClose, onConfirm }
   );
 }
 
+function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }) {
+  if (!planilha) return null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal leads-delete-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Excluir planilha?</div>
+              <div className="modal-sub">Essa acao remove a planilha e suas linhas importadas quando ainda nao houve distribuicao.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={carregando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="leads-delete-summary">
+            <div className="lead-doc-preview">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <div>
+              <strong>{planilha.nome}</strong>
+              <span>{planilha.total_linhas || 0} linha(s)</span>
+              {planilha.status === 'processando' && (
+                <small>A planilha ainda esta processando e o backend vai bloquear a exclusao.</small>
+              )}
+            </div>
+          </div>
+
+          {erro && <div className="alert-error">{erro}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={carregando}>Cancelar</button>
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={carregando}>
+            {carregando ? 'Excluindo...' : 'Excluir planilha'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminLeadsPage() {
   const inputRef = useRef(null);
   const [planilhas, setPlanilhas] = useState([]);
   const [selecionadas, setSelecionadas] = useState([]);
   const [linhas, setLinhas] = useState([]);
+  const [totalLinhas, setTotalLinhas] = useState(0);
   const [vendedoras, setVendedoras] = useState([]);
   const [busca, setBusca] = useState('');
   const [filtros, setFiltros] = useState([]);
@@ -399,6 +379,9 @@ function AdminLeadsPage() {
   const [modalDividir, setModalDividir] = useState(false);
   const [colunasMescladas, setColunasMescladas] = useState([]);
   const [modalMesclar, setModalMesclar] = useState(null);
+  const [modalExcluir, setModalExcluir] = useState(null);
+  const [excluindoId, setExcluindoId] = useState(null);
+  const [erroExclusao, setErroExclusao] = useState('');
 
   async function carregarBase() {
     setCarregando(true);
@@ -422,28 +405,6 @@ function AdminLeadsPage() {
     carregarBase();
   }, []);
 
-  useEffect(() => {
-    if (selecionadas.length === 0) {
-      setLinhas([]);
-      return;
-    }
-
-    let cancelado = false;
-    setCarregando(true);
-    listarLeadLinhas({ planilha_ids: selecionadas })
-      .then(data => {
-        if (!cancelado) {
-          setLinhas(data);
-          setPagina(1);
-        }
-      })
-      .catch(error => setErro(error.message || 'Erro ao carregar linhas.'))
-      .finally(() => !cancelado && setCarregando(false));
-
-    return () => {
-      cancelado = true;
-    };
-  }, [selecionadas]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const planilhasSelecionadas = useMemo(() => (
@@ -503,70 +464,178 @@ function AdminLeadsPage() {
     return resultado;
   }, [planilhasSelecionadas]);
 
-  const linhasFiltradas = useMemo(() => {
-    const termo = normalizarTexto(busca);
-    return linhas.filter(linha => {
-      const dados = linha.dados_json || {};
-      const passaBusca = !termo || Object.values(dados).some(valor => normalizarTexto(valor).includes(termo));
-      if (!passaBusca) return false;
+  const filtrosBackend = useMemo(() => (
+    montarFiltrosBackend(filtros, colunas, planilhasSelecionadas, schema)
+  ), [filtros, colunas, planilhasSelecionadas, schema]);
 
-      return filtros.every(filtro => {
-        const coluna = colunas.find(item => item.id === filtro.coluna);
-        const tipo = coluna?.planilhaId
-          ? (planilhasSelecionadas.find(planilha => planilha.id === coluna.planilhaId)?.schema_colunas?.[coluna.nome] || 'string')
-          : (schema[coluna?.nome] || 'string');
-        return aplicarOperacao(getValorColuna(linha, coluna), filtro, tipo);
-      });
-    });
-  }, [linhas, busca, filtros, schema, colunas, planilhasSelecionadas]);
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (selecionadas.length === 0) {
+      setLinhas([]);
+      setTotalLinhas(0);
+      return;
+    }
+
+    let cancelado = false;
+    setCarregando(true);
+    listarLeadLinhas({
+      planilha_ids: selecionadas,
+      page: pagina,
+      page_size: PAGE_SIZE,
+      busca,
+      filters: JSON.stringify(filtrosBackend)
+    })
+      .then(data => {
+        if (!cancelado) {
+          setLinhas(data.data || []);
+          setTotalLinhas(data.total || 0);
+        }
+      })
+      .catch(error => setErro(error.message || 'Erro ao carregar linhas.'))
+      .finally(() => !cancelado && setCarregando(false));
+
+    return () => {
+      cancelado = true;
+    };
+  }, [selecionadas, pagina, busca, filtrosBackend]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const linhasFiltradas = useMemo(() => {
+    return linhas;
+  }, [linhas]);
 
   const linhasPagina = useMemo(() => {
-    const inicio = (pagina - 1) * PAGE_SIZE;
-    return linhasFiltradas.slice(inicio, inicio + PAGE_SIZE);
-  }, [linhasFiltradas, pagina]);
+    return linhasFiltradas;
+  }, [linhasFiltradas]);
 
-  const totalPaginas = Math.max(1, Math.ceil(linhasFiltradas.length / PAGE_SIZE));
+  const totalPaginas = Math.max(1, Math.ceil(totalLinhas / PAGE_SIZE));
 
   async function importarArquivo(file) {
     if (!file.name.toLowerCase().endsWith('.csv')) return;
 
-    setProcessando(`Processando ${file.name}`);
+    setProcessando(`Preparando ${file.name}`);
     setErro('');
 
-    const worker = new Worker(new URL('./csv.worker.js', import.meta.url), { type: 'module' });
+    const planilha = await criarLeadPlanilha({
+      nome: file.name,
+      colunas: [],
+      schema_colunas: {},
+      total_linhas: 0,
+      streaming: true
+    });
 
     await new Promise((resolve, reject) => {
-      worker.onmessage = async (event) => {
-        if (event.data.type === 'error') {
-          reject(new Error(event.data.message));
+      const worker = new Worker(new URL('./csv.worker.js', import.meta.url), { type: 'module' });
+      const queue = [];
+      const maxParallel = 2;
+      const maxRetries = 3;
+      let active = 0;
+      let finishedParsing = false;
+      let donePayload = null;
+      let rejected = false;
+      let parsedProgress = 0;
+      let parsedRows = 0;
+      let sentBatches = 0;
+      let totalBatches = 0;
+
+      function updateImportStatus() {
+        setProcessando(`Parseando ${parsedProgress}% | Enviando lote ${sentBatches}/${Math.max(totalBatches, sentBatches)}`);
+      }
+
+      function finishWithError(error) {
+        if (rejected) return;
+        rejected = true;
+        worker.terminate();
+        marcarErroLeadPlanilha(planilha.id, error.message || 'Erro ao importar CSV.').catch(() => {});
+        reject(error);
+      }
+
+      async function sendBatch(item) {
+        for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
+          try {
+            await salvarLeadLinhas(planilha.id, item.rows);
+            return;
+          } catch (error) {
+            if (attempt === maxRetries) throw error;
+            await new Promise(resume => setTimeout(resume, 400 * attempt));
+          }
+        }
+      }
+
+      async function tryFinish() {
+        if (!finishedParsing || active > 0 || queue.length > 0 || rejected) return;
+
+        try {
+          setProcessando(`Finalizando ${file.name}: ${donePayload?.total_linhas || parsedRows} linhas`);
+          await finalizarLeadPlanilha(planilha.id, {
+            colunas: donePayload?.colunas || [],
+            schema_colunas: donePayload?.schema_colunas || {}
+          });
+          worker.terminate();
+          resolve();
+        } catch (error) {
+          finishWithError(error);
+        }
+      }
+
+      function pumpQueue() {
+        while (active < maxParallel && queue.length > 0 && !rejected) {
+          const item = queue.shift();
+          active += 1;
+          sendBatch(item)
+            .then(() => {
+              sentBatches += 1;
+              updateImportStatus();
+            })
+            .catch(finishWithError)
+            .finally(() => {
+              active -= 1;
+              pumpQueue();
+              tryFinish();
+            });
+        }
+      }
+
+      worker.onmessage = (event) => {
+        const message = event.data || {};
+
+        if (message.type === 'progress') {
+          parsedProgress = message.progress || 0;
+          parsedRows = message.parsedRows || parsedRows;
+          updateImportStatus();
           return;
         }
 
-        if (event.data.type !== 'done') return;
+        if (message.type === 'batch') {
+          parsedProgress = message.progress || parsedProgress;
+          parsedRows = message.parsedRows || parsedRows;
+          totalBatches += 1;
+          queue.push({ batchId: message.batchId, rows: message.rows || [] });
+          updateImportStatus();
+          pumpQueue();
+          return;
+        }
 
-        try {
-          const payload = event.data.payload;
-          const planilha = await criarLeadPlanilha({
-            nome: payload.nome,
-            colunas: payload.colunas,
-            schema_colunas: payload.schema_colunas,
-            total_linhas: payload.rows.length
-          });
+        if (message.type === 'done') {
+          finishedParsing = true;
+          parsedProgress = 100;
+          donePayload = message;
+          updateImportStatus();
+          tryFinish();
+          return;
+        }
 
-          for (let i = 0; i < payload.rows.length; i += BATCH_SIZE) {
-            setProcessando(`Salvando ${payload.nome}: ${Math.min(i + BATCH_SIZE, payload.rows.length)}/${payload.rows.length}`);
-            await salvarLeadLinhas(planilha.id, payload.rows.slice(i, i + BATCH_SIZE));
-          }
-
-          resolve();
-        } catch (error) {
-          reject(error);
+        if (message.type === 'error') {
+          finishWithError(new Error(message.message || 'Erro ao processar CSV.'));
         }
       };
 
-      worker.onerror = () => reject(new Error('Erro ao processar CSV.'));
+      worker.onerror = () => {
+        finishWithError(new Error('Erro no worker de processamento CSV.'));
+      };
+
       worker.postMessage({ file });
-    }).finally(() => worker.terminate());
+    });
   }
 
   async function handleUpload(event) {
@@ -577,6 +646,7 @@ function AdminLeadsPage() {
       for (const file of files) {
         await importarArquivo(file);
       }
+      setProcessando('');
       await carregarBase();
       setSucesso('Planilha importada com sucesso.');
     } catch (error) {
@@ -627,6 +697,21 @@ function AdminLeadsPage() {
     setPagina(1);
   }
 
+  async function exportarCsvBackend() {
+    const blob = await exportarLeadLinhas({
+      planilha_ids: selecionadas,
+      busca,
+      filters: filtrosBackend,
+      colunas
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'leads.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function alterarTipo(planilha, coluna, tipo) {
     const schemaAtualizado = {
       ...(planilha.schema_colunas || {}),
@@ -637,12 +722,45 @@ function AdminLeadsPage() {
   }
 
   async function salvarDivisao(payload) {
-    const resultado = await dividirLeadLinhas(payload);
+    const resultado = await dividirLeadLinhas({
+      ...payload,
+      filtros: {
+        ...(payload.filtros || {}),
+        filters: filtrosBackend
+      }
+    });
     if (!resultado?.requires_manual_allocation) {
       setSucesso('Leads enviados para os vendedores.');
       setSelecionadas([...selecionadas]);
     }
     return resultado;
+  }
+
+  async function confirmarExclusaoPlanilha() {
+    if (!modalExcluir) return;
+
+    setErro('');
+    setSucesso('');
+    setErroExclusao('');
+    setExcluindoId(modalExcluir.id);
+
+    try {
+      await excluirLeadPlanilha(modalExcluir.id);
+      setSelecionadas(prev => prev.filter(id => id !== modalExcluir.id));
+      setFiltros([]);
+      setNovoFiltro({ coluna: '', op: 'contains', valor: '', valor2: '' });
+      setColunasMescladas([]);
+      setPagina(1);
+      setModalExcluir(null);
+      await carregarBase();
+      setSucesso('Planilha excluida com sucesso.');
+    } catch (error) {
+      const mensagem = error.message || 'Erro ao excluir planilha.';
+      setErroExclusao(mensagem);
+      setErro(mensagem);
+    } finally {
+      setExcluindoId(null);
+    }
   }
 
   function getTipoColunaPorId(colunaId) {
@@ -677,11 +795,30 @@ function AdminLeadsPage() {
         />
       )}
 
+      {modalExcluir && (
+        <ExcluirPlanilhaModal
+          planilha={modalExcluir}
+          carregando={excluindoId === modalExcluir.id}
+          erro={erroExclusao}
+          onClose={() => {
+            if (excluindoId) return;
+            setModalExcluir(null);
+            setErroExclusao('');
+          }}
+          onConfirm={confirmarExclusaoPlanilha}
+        />
+      )}
+
       {modalDividir && (
         <DividirModal
-          linhas={linhasFiltradas}
+          totalLinhas={totalLinhas}
           colunas={colunasDivisao}
           vendedoras={vendedoras}
+          filtrosDivisao={{
+            planilha_ids: selecionadas,
+            busca,
+            filters: filtrosBackend
+          }}
           onClose={() => setModalDividir(false)}
           onSave={salvarDivisao}
         />
@@ -700,18 +837,42 @@ function AdminLeadsPage() {
 
           <div className="lead-doc-list">
             {planilhas.map(planilha => (
-              <button
+              <div
                 key={planilha.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className={`lead-doc-card ${selecionadas.includes(planilha.id) ? 'active' : ''}`}
                 onClick={() => togglePlanilha(planilha.id)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    togglePlanilha(planilha.id);
+                  }
+                }}
               >
+                <button
+                  type="button"
+                  className="lead-doc-delete"
+                  title="Excluir planilha"
+                  aria-label={`Excluir ${planilha.nome}`}
+                  onClick={event => {
+                    event.stopPropagation();
+                    setErroExclusao('');
+                    setModalExcluir(planilha);
+                  }}
+                >
+                  <I.Trash size={13} />
+                </button>
                 <div className="lead-doc-preview">
                   <span></span><span></span><span></span><span></span>
                 </div>
                 <strong title={planilha.nome}>{planilha.nome}</strong>
-                <small>{planilha.total_linhas} linhas</small>
-              </button>
+                <small>
+                  {planilha.status === 'processando'
+                    ? 'Processando...'
+                    : `${planilha.total_linhas} linhas`}
+                </small>
+              </div>
             ))}
 
             {!carregando && planilhas.length === 0 && (
@@ -751,10 +912,10 @@ function AdminLeadsPage() {
           <button className="btn" type="button" onClick={() => setSchemaAberto(prev => !prev)}>
             Tipos
           </button>
-          <button className="btn" type="button" onClick={() => baixarCsv('leads.csv', colunas, linhasFiltradas)} disabled={linhasFiltradas.length === 0}>
+          <button className="btn" type="button" onClick={exportarCsvBackend} disabled={totalLinhas === 0}>
             Exportar CSV
           </button>
-          <button className="btn btn-primary" type="button" onClick={() => setModalDividir(true)} disabled={linhasFiltradas.length === 0}>
+          <button className="btn btn-primary" type="button" onClick={() => setModalDividir(true)} disabled={totalLinhas === 0}>
             Dividir clientes
           </button>
         </div>
@@ -791,12 +952,16 @@ function AdminLeadsPage() {
           </div>
         )}
 
-        {sucesso && <div className="alert-success alert-timed alert-timed--success">{sucesso}</div>}
-        {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
-        {processando && <div className="lead-processing">{processando}</div>}
+        {(sucesso || erro || processando) && (
+          <div className="lead-message-stack">
+            {sucesso && <div className="alert-success alert-timed alert-timed--success">{sucesso}</div>}
+            {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
+            {processando && <div className="lead-processing">{processando}</div>}
+          </div>
+        )}
 
         <div className="lead-results-meta">
-          {linhasFiltradas.length} lead(s) exibidos de {linhas.length} carregados
+          {totalLinhas} lead(s) encontrados
         </div>
 
         <div className="list-table lead-table">

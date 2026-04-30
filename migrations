@@ -3,3 +3,4 @@ cd backend
 npm run rollback -- --all
 npm run migrate
 npm run seed
+npm run dev

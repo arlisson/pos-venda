@@ -2,11 +2,15 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem('token');
+  const isFormData = options.body instanceof FormData;
 
   const headers = {
-    'Content-Type': 'application/json',
     ...(options.headers || {})
   };
+
+  if (!isFormData) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -28,6 +32,33 @@ export async function apiRequest(endpoint, options = {}) {
   }
 
   return data;
+}
+
+export async function apiBlob(endpoint, options = {}) {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers
+  });
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type');
+    const data = contentType?.includes('application/json')
+      ? await response.json()
+      : null;
+    throw new Error(data?.message || data?.error || 'Erro na requisição.');
+  }
+
+  return response.blob();
 }
 
 export function apiGet(endpoint) {
