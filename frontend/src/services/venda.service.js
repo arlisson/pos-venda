@@ -25,6 +25,10 @@ export async function obterResumoVendas() {
   return apiGet('/vendas/resumo');
 }
 
+export async function obterRelatoriosVendas(filtros) {
+  return apiGet(`/vendas/relatorios${montarQuery(filtros)}`);
+}
+
 export async function buscarVendaPorId(id) {
   return apiGet(`/vendas/${id}`);
 }

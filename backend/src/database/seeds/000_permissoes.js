@@ -45,6 +45,11 @@ const PERMISSOES = [
     descricao: 'Permite acompanhar no dashboard quais usuarios bateram ou nao as metas.'
   },
   {
+    chave: 'relatorios_visualizar',
+    nome: 'Relatorios: visualizar',
+    descricao: 'Permite acessar a pagina de relatorios comerciais.'
+  },
+  {
     chave: 'crud_usuarios',
     nome: 'Cadastro de usuarios',
     descricao: 'Permite acessar o modulo de usuarios. As acoes dependem das subpermissoes.'

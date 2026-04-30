@@ -1,7 +1,8 @@
 import { matchPath, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import Header from '../../components/Header/Header';
-import { getUsuarioLocal, logout } from '../../services/auth.service';
+import { buscarPerfil, getUsuarioLocal, logout } from '../../services/auth.service';
 
 const routeConfigs = [
   { path: '/', title: 'Dashboard', sub: 'Indicadores, metas e gamificacao', id: 'dashboard', end: true },
@@ -13,6 +14,7 @@ const routeConfigs = [
   { path: '/clientes/:id/editar', title: 'Editar cliente', sub: 'Atualize dados do representante e fidelidade', id: 'clientes' },
   { path: '/funil', title: 'Funil de vendas', sub: 'Acompanhe cada venda do lancamento ate a conclusao', id: 'funil' },
   { path: '/retornos', title: 'Retornos', sub: 'Chips que retornaram por algum erro', id: 'retornos' },
+  { path: '/relatorios', title: 'Relatorios', sub: 'Indicadores comerciais e desempenho por usuario', id: 'relatorios' },
   { path: '/historico', title: 'Historico', sub: 'Todas as movimentacoes do sistema', id: 'historico' },
   { path: '/usuarios', title: 'Usuarios', sub: 'Gerencie acessos e permissoes', id: 'usuarios', end: true },
   { path: '/usuarios/novo', title: 'Novo Usuario', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
@@ -36,8 +38,24 @@ function getRouteConfig(pathname) {
 function LayoutPrivado({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const usuario = getUsuarioLocal();
+  const [usuario, setUsuario] = useState(() => getUsuarioLocal());
   const currentConfig = getRouteConfig(location.pathname);
+
+  useEffect(() => {
+    let ativo = true;
+
+    buscarPerfil()
+      .then(usuarioAtualizado => {
+        if (!ativo) return;
+        localStorage.setItem('usuario', JSON.stringify(usuarioAtualizado));
+        setUsuario(usuarioAtualizado);
+      })
+      .catch(() => {});
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   function handleLogout() {
     logout();
@@ -51,6 +69,7 @@ function LayoutPrivado({ children }) {
       clientes: '/clientes',
       funil: '/funil',
       retornos: '/retornos',
+      relatorios: '/relatorios',
       historico: '/historico',
       usuarios: '/usuarios',
       config: '/configuracoes',

@@ -11,6 +11,10 @@ const GRUPOS_PERMISSOES = [
     chaves: ['dashboard_resumo_vendas', 'metas_ver_usuarios']
   },
   {
+    titulo: 'Relatorios',
+    chaves: ['relatorios_visualizar']
+  },
+  {
     titulo: 'Vendas',
     chaves: ['vendas', 'funil_vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir']
   },
@@ -27,6 +31,7 @@ const GRUPOS_PERMISSOES = [
 const NOMES_PERMISSOES = {
   dashboard_resumo_vendas: 'Resumo de vendas',
   metas_ver_usuarios: 'Metas por usuario',
+  relatorios_visualizar: 'Relatorios',
   vendas: 'Acesso ao modulo',
   funil_vendas: 'Funil de vendas',
   vendas_ver_proprias: 'Ver proprias',
