@@ -24,7 +24,7 @@ function normalizarMeta(meta) {
     desc: meta.desc,
     reward: meta.reward || null,
     is_gift: meta.is_gift !== undefined ? meta.is_gift : true,
-    operadora_id: categoria === 'portabilidade' && meta.operadora_id ? Number(meta.operadora_id) : null
+    operadora_id: meta.operadora_id ? Number(meta.operadora_id) : null
   };
 }
 
@@ -40,7 +40,10 @@ class Meta {
   }
 
   static async findAll() {
-    return db(this.tableName).select('*').orderBy('id', 'asc');
+    return db(`${this.tableName} as m`)
+      .leftJoin('operadoras as o', 'm.operadora_id', 'o.id')
+      .select('m.*', 'o.nome as operadora_nome')
+      .orderBy('m.id', 'asc');
   }
 
   static async updateAll(metasArray) {

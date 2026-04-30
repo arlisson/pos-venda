@@ -90,13 +90,17 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
             }).length}/{giftMetas.length}</span>
           </div>
           {giftMetas.map(meta => {
-            const current = progresso[getMetaKey(meta)] ?? 0;
+            const current = progresso.metas?.[meta.id] ?? progresso[getMetaKey(meta)] ?? 0;
             const target = Number(meta.target) || 0;
             const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
             const achieved = pct >= 100;
             const claimed = resgatadas.has(Number(meta.id));
             return (
-              <div key={meta.id} className={`sidebar-goal ${achieved ? 'achieved' : ''} ${claimed ? 'claimed' : ''}`} title={claimed ? 'Recompensa resgatada' : 'Recompensa ainda nao resgatada'}>
+              <div
+                key={meta.id}
+                className={`sidebar-goal ${achieved ? 'achieved' : ''} ${claimed ? 'claimed' : ''}`}
+                title={`${claimed ? 'Recompensa resgatada' : 'Recompensa ainda nao resgatada'}${meta.operadora_nome ? ` - ${meta.operadora_nome}` : ''}`}
+              >
                 <div className="top">
                   <span className="g-icon">{claimed ? '✅' : '🎁'}</span>
                   <span className="g-name">{meta.desc}</span>

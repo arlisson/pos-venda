@@ -73,7 +73,7 @@ function normalizarTexto(valor) {
     .trim();
 }
 
-function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas) {
+function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas, fallback = 0) {
   if (valoresUnitariosChips) {
     try {
       const itens = typeof valoresUnitariosChips === 'string'
@@ -92,18 +92,15 @@ function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas) {
     }
   }
 
-  return Number(quantidadeLinhas || 0) || 0;
+  return Number(quantidadeLinhas || 0) || fallback;
 }
 
-async function contarClientes(usuarioId, ciclo) {
-  const resultado = await knex('clientes')
+async function listarClientesDoCiclo(usuarioId, ciclo) {
+  return knex('clientes')
+    .select('id', 'operadora_atual_id')
     .where('criado_por_id', usuarioId)
     .whereRaw('DATE(created_at) >= ?', [ciclo.inicioStr])
-    .whereRaw('DATE(created_at) < ?', [ciclo.fimStr])
-    .count('id as total')
-    .first();
-
-  return Number(resultado?.total || 0);
+    .whereRaw('DATE(created_at) < ?', [ciclo.fimStr]);
 }
 
 async function listarVendasDoCiclo(vendedoraId, ciclo) {
@@ -126,9 +123,17 @@ async function listarVendasDoCiclo(vendedoraId, ciclo) {
     .whereRaw(`${dataReferencia} < ?`, [ciclo.fimStr]);
 }
 
-function classificarVendas(rows, registroCliente = 0) {
+function vendaPertenceOperadora(venda, operadoraId) {
+  return !operadoraId || Number(venda.operadora_id) === Number(operadoraId);
+}
+
+function clientePertenceOperadora(cliente, operadoraId) {
+  return !operadoraId || Number(cliente.operadora_atual_id) === Number(operadoraId);
+}
+
+function classificarVendas(rows, clientes = []) {
   const totais = {
-    registro_cliente: registroCliente,
+    registro_cliente: clientes.length,
     chip_novo: 0,
     portabilidade: 0,
     internet: 0
@@ -143,7 +148,7 @@ function classificarVendas(rows, registroCliente = 0) {
     }
 
     if (servico === 'internet') {
-      totais.internet += 1;
+      totais.internet += somarQuantidadeChips(row.valores_unitarios_chips, row.quantidade_linhas, 1);
     }
 
     if (tipoVenda === 'novo') {
@@ -154,11 +159,12 @@ function classificarVendas(rows, registroCliente = 0) {
   return totais;
 }
 
-function calcularValorMeta(meta, vendas, registroCliente) {
+function calcularValorMeta(meta, vendas, clientes) {
   const categoria = meta.categoria || 'registro_cliente';
+  const operadoraId = meta.operadora_id ? Number(meta.operadora_id) : null;
 
   if (categoria === 'registro_cliente') {
-    return registroCliente;
+    return clientes.filter(cliente => clientePertenceOperadora(cliente, operadoraId)).length;
   }
 
   return vendas.reduce((acc, venda) => {
@@ -166,11 +172,15 @@ function calcularValorMeta(meta, vendas, registroCliente) {
     const servico = normalizarTexto(venda.servico);
 
     if (categoria === 'chip_novo' && tipoVenda === 'novo') {
+      if (!vendaPertenceOperadora(venda, operadoraId)) {
+        return acc;
+      }
+
       return acc + somarQuantidadeChips(venda.valores_unitarios_chips, venda.quantidade_linhas);
     }
 
     if (categoria === 'portabilidade' && tipoVenda === 'portabilidade') {
-      if (meta.operadora_id && Number(venda.operadora_id) !== Number(meta.operadora_id)) {
+      if (!vendaPertenceOperadora(venda, operadoraId)) {
         return acc;
       }
 
@@ -178,7 +188,11 @@ function calcularValorMeta(meta, vendas, registroCliente) {
     }
 
     if (categoria === 'internet' && servico === 'internet') {
-      return acc + 1;
+      if (!vendaPertenceOperadora(venda, operadoraId)) {
+        return acc;
+      }
+
+      return acc + somarQuantidadeChips(venda.valores_unitarios_chips, venda.quantidade_linhas, 1);
     }
 
     return acc;
@@ -186,22 +200,36 @@ function calcularValorMeta(meta, vendas, registroCliente) {
 }
 
 async function calcularProgresso(usuarioId, ciclo, metas = []) {
-  const [registroCliente, vendas] = await Promise.all([
-    contarClientes(usuarioId, ciclo),
+  const [clientes, vendas] = await Promise.all([
+    listarClientesDoCiclo(usuarioId, ciclo),
     listarVendasDoCiclo(usuarioId, ciclo)
   ]);
 
-  const geral = classificarVendas(vendas, registroCliente);
+  const geral = classificarVendas(vendas, clientes);
   const metasProgresso = {};
 
   metas.forEach((meta) => {
-    metasProgresso[meta.id] = calcularValorMeta(meta, vendas, registroCliente);
+    metasProgresso[meta.id] = calcularValorMeta(meta, vendas, clientes);
   });
 
   return {
     geral,
     metas: metasProgresso
   };
+}
+
+function agruparResgatesPorUsuario(resgates = []) {
+  return resgates.reduce((acc, resgate) => {
+    const usuarioId = Number(resgate.usuario_id);
+    const metaId = Number(resgate.meta_id);
+
+    if (!acc[usuarioId]) {
+      acc[usuarioId] = new Set();
+    }
+
+    acc[usuarioId].add(metaId);
+    return acc;
+  }, {});
 }
 
 class MetaController {
@@ -308,6 +336,112 @@ class MetaController {
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: 'Erro ao calcular progresso.' });
+    }
+  }
+
+  async progressoUsuarios(req, res) {
+    try {
+      const cicloDiario = getCiclo('diaria');
+      const cicloSemanal = getCiclo('semanal');
+      const metas = await Meta.findAll();
+      const metasGift = metas.filter(metaEhGift);
+      const metasDiarias = metasGift.filter(meta => (meta.periodo || 'diaria') === 'diaria');
+      const metasSemanais = metasGift.filter(meta => meta.periodo === 'semanal');
+      const usuarios = await knex('usuarios as u')
+        .leftJoin('roles as r', 'u.role_id', 'r.id')
+        .select(
+          'u.id',
+          'u.nome',
+          'u.email',
+          'u.foto_perfil',
+          'u.ativo',
+          'r.nome as role_nome'
+        )
+        .where('u.ativo', true)
+        .orderBy('u.nome', 'asc');
+      const usuarioIds = usuarios.map(usuario => usuario.id);
+      const resgates = usuarioIds.length > 0
+        ? await knex('meta_resgates')
+          .whereIn('usuario_id', usuarioIds)
+          .where(builder => {
+            builder
+              .where(query => {
+                query.where('periodo', 'diaria').where('periodo_inicio', cicloDiario.inicioStr);
+              })
+              .orWhere(query => {
+                query.where('periodo', 'semanal').where('periodo_inicio', cicloSemanal.inicioStr);
+              });
+          })
+          .select('usuario_id', 'meta_id')
+        : [];
+      const resgatesPorUsuario = agruparResgatesPorUsuario(resgates);
+
+      const usuariosComProgresso = await Promise.all(usuarios.map(async (usuario) => {
+        const [progressoDiario, progressoSemanal] = await Promise.all([
+          calcularProgresso(usuario.id, cicloDiario, metasDiarias),
+          calcularProgresso(usuario.id, cicloSemanal, metasSemanais)
+        ]);
+        const progressoMetas = {
+          ...progressoDiario.metas,
+          ...progressoSemanal.metas
+        };
+        const metasUsuario = metasGift.map((meta) => {
+          const current = progressoMetas[meta.id] || 0;
+          const target = Number(meta.target || 0);
+          const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+          const achieved = pct >= 100;
+          const claimed = resgatesPorUsuario[Number(usuario.id)]?.has(Number(meta.id)) || false;
+
+          return {
+            id: meta.id,
+            periodo: meta.periodo,
+            categoria: meta.categoria,
+            desc: meta.desc,
+            reward: meta.reward,
+            target,
+            current,
+            pct,
+            achieved,
+            claimed,
+            operadora_id: meta.operadora_id,
+            operadora_nome: meta.operadora_nome
+          };
+        });
+        const atingidas = metasUsuario.filter(meta => meta.achieved).length;
+        const resgatadas = metasUsuario.filter(meta => meta.claimed).length;
+
+        return {
+          id: usuario.id,
+          nome: usuario.nome,
+          email: usuario.email,
+          foto_perfil: usuario.foto_perfil,
+          role: { nome: usuario.role_nome },
+          metas: metasUsuario,
+          resumo: {
+            total: metasUsuario.length,
+            atingidas,
+            pendentes: metasUsuario.length - atingidas,
+            resgatadas
+          }
+        };
+      }));
+
+      res.json({
+        ciclo: {
+          diaria: {
+            inicio: cicloDiario.inicioStr,
+            fim: cicloDiario.fimStr
+          },
+          semanal: {
+            inicio: cicloSemanal.inicioStr,
+            fim: cicloSemanal.fimStr
+          }
+        },
+        usuarios: usuariosComProgresso
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Erro ao calcular progresso por usuario.' });
     }
   }
 

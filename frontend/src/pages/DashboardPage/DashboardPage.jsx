@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { getMetas, getProgresso, resgatarMeta } from '../../services/meta.service';
+import { getMetas, getProgresso, getProgressoUsuarios, resgatarMeta } from '../../services/meta.service';
 import { obterResumoVendas } from '../../services/venda.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import * as I from '../../components/Icons';
@@ -37,7 +37,8 @@ function getMetaKey(meta) {
 function getMetaScope(meta) {
   const periodo = PERIOD_LABELS[meta.periodo] || 'Diaria';
   const categoria = CATEGORY_LABELS[meta.categoria] || meta.categoria || 'Meta';
-  return `${periodo} - ${categoria}`;
+  const operadora = meta.operadora_nome ? ` - ${meta.operadora_nome}` : '';
+  return `${periodo} - ${categoria}${operadora}`;
 }
 
 const EMPTY_STATS = {
@@ -83,6 +84,17 @@ function RewardModal({ gift, onClose }) {
   );
 }
 
+function getInitials(name) {
+  if (!name) return '??';
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('')
+    .toUpperCase();
+}
+
 function DashboardPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -93,7 +105,11 @@ function DashboardPage() {
   const [claimingId, setClaimingId] = useState(null);
   const [selectedReward, setSelectedReward] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [progressoUsuarios, setProgressoUsuarios] = useState([]);
+  const [usuarioMetaFiltro, setUsuarioMetaFiltro] = useState('');
+  const [usuarioMetaBusca, setUsuarioMetaBusca] = useState('');
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
+  const podeVerMetasUsuarios = temPermissao(usuario, 'metas_ver_usuarios');
 
   useEffect(() => {
     if (!feedback) return undefined;
@@ -115,6 +131,29 @@ function DashboardPage() {
       })
       .catch(console.error);
   }, [podeVerResumoVendas]);
+
+  useEffect(() => {
+    if (!podeVerMetasUsuarios) return undefined;
+
+    getProgressoUsuarios()
+      .then(data => setProgressoUsuarios(data.usuarios || []))
+      .catch(console.error);
+  }, [podeVerMetasUsuarios]);
+
+  const buscaUsuarioMetaNormalizada = usuarioMetaBusca.trim().toLowerCase();
+  const progressoUsuariosFiltrados = progressoUsuarios.filter(item => {
+    if (usuarioMetaFiltro && String(item.id) !== String(usuarioMetaFiltro)) {
+      return false;
+    }
+
+    if (!buscaUsuarioMetaNormalizada) {
+      return true;
+    }
+
+    return [item.nome, item.email]
+      .filter(Boolean)
+      .some(valor => String(valor).toLowerCase().includes(buscaUsuarioMetaNormalizada));
+  });
 
   const giftMetas = metas.filter(m => m.is_gift);
   
@@ -295,6 +334,11 @@ function DashboardPage() {
                     </div>
                     
                     <div className="reward-name">{meta.desc}</div>
+                    {isClaimed && meta.reward && (
+                      <div className="reward-claimed-prize">
+                        Prêmio ganho: {meta.reward}
+                      </div>
+                    )}
                     
                     <div className="reward-progress">
                       <div className="progress-track" style={{ height: 8 }}>
@@ -334,6 +378,89 @@ function DashboardPage() {
               })}
             </div>
           </>
+        )}
+
+        {podeVerMetasUsuarios && progressoUsuarios.length > 0 && (
+          <section className="team-goals">
+            <div className="team-goals__header">
+              <div>
+                <h2>Metas por usuario</h2>
+                <p>Acompanhe quem ja bateu as metas e quem ainda esta pendente.</p>
+              </div>
+
+              <div className="team-goals__filters">
+                <label className="team-goals__filter">
+                  <span>Buscar</span>
+                  <input
+                    value={usuarioMetaBusca}
+                    onChange={event => setUsuarioMetaBusca(event.target.value)}
+                    placeholder="Nome ou e-mail"
+                  />
+                </label>
+
+                <label className="team-goals__filter">
+                  <span>Usuario</span>
+                  <select value={usuarioMetaFiltro} onChange={event => setUsuarioMetaFiltro(event.target.value)}>
+                    <option value="">Todos os usuarios</option>
+                    {progressoUsuarios.map(item => (
+                      <option key={item.id} value={item.id}>{item.nome}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div className="team-goals__grid">
+              {progressoUsuariosFiltrados.map(item => {
+                const total = item.resumo?.total || 0;
+                const atingidas = item.resumo?.atingidas || 0;
+                const pct = total > 0 ? Math.round((atingidas / total) * 100) : 0;
+
+                return (
+                  <article key={item.id} className="team-goal-card">
+                    <div className="team-goal-card__top">
+                      <div className="mini-avatar">
+                        {item.foto_perfil ? (
+                          <img src={item.foto_perfil} alt={item.nome || 'Usuario'} />
+                        ) : (
+                          getInitials(item.nome)
+                        )}
+                      </div>
+                      <div>
+                        <strong>{item.nome}</strong>
+                        <span>{atingidas}/{total} metas atingidas · {item.resumo?.resgatadas || 0} resgatadas</span>
+                      </div>
+                      <b>{pct}%</b>
+                    </div>
+
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{ width: `${pct}%` }} />
+                    </div>
+
+                    <div className="team-goal-list">
+                      {(item.metas || []).map(meta => (
+                        <div key={meta.id} className={`team-goal-item ${meta.achieved ? 'is-achieved' : ''}`}>
+                          <span className="team-goal-item__status">
+                            {meta.claimed ? <I.Check size={12} /> : meta.achieved ? <I.Check size={12} /> : `${meta.pct}%`}
+                          </span>
+                          <div>
+                            <strong>{meta.desc}</strong>
+                            <span>
+                              {formatGoalValue(meta, meta.current)} / {formatGoalValue(meta, meta.target)}
+                              {meta.operadora_nome ? ` · ${meta.operadora_nome}` : ''}
+                            </span>
+                            {meta.claimed && meta.reward && (
+                              <em>Premio ganho: {meta.reward}</em>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
         )}
       </div>
     </LayoutPrivado>

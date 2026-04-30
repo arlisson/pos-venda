@@ -64,10 +64,6 @@ function AdminMetasPage() {
         updated.tipo = `${updated.periodo || 'diaria'}_${updated.categoria || 'registro_cliente'}`;
       }
 
-      if (field === 'categoria' && value !== 'portabilidade') {
-        updated.operadora_id = null;
-      }
-
       return updated;
     }));
   }
@@ -232,20 +228,16 @@ function AdminMetasPage() {
                         </select>
                       </td>
                       <td>
-                        {gift.categoria === 'portabilidade' ? (
-                          <select
-                            style={inputStyle}
-                            value={gift.operadora_id || ''}
-                            onChange={event => handleMetasChange(gift.id, 'operadora_id', event.target.value || null)}
-                          >
-                            <option value="">Todas</option>
-                            {operadoras.map(operadora => (
-                              <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="muted" style={{ fontSize: 12 }}>-</span>
-                        )}
+                        <select
+                          style={inputStyle}
+                          value={gift.operadora_id || ''}
+                          onChange={event => handleMetasChange(gift.id, 'operadora_id', event.target.value || null)}
+                        >
+                          <option value="">Todas</option>
+                          {operadoras.map(operadora => (
+                            <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
+                          ))}
+                        </select>
                       </td>
                       <td>
                         <input

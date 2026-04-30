@@ -6,6 +6,7 @@ const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 
 router.use(authMiddleware);
 
+router.get('/progresso/usuarios', exigirUmaPermissao(['metas_ver_usuarios']), metaController.progressoUsuarios);
 router.get('/progresso', metaController.progresso);
 router.get('/', metaController.index);
 

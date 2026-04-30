@@ -34,6 +34,11 @@ const GRUPOS_PERMISSOES = [
             chave: 'dashboard_resumo_vendas',
             nome: 'Resumo de vendas',
             descricao: 'Mostra os cards Vendas no dia, Valor vendido hoje, Concluidas hoje e Em pipeline.'
+          },
+          {
+            chave: 'metas_ver_usuarios',
+            nome: 'Metas por usuario',
+            descricao: 'Mostra no dashboard quem bateu ou ainda nao bateu cada meta.'
           }
         ]
       }

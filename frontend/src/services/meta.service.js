@@ -24,6 +24,11 @@ export const getProgresso = async () => {
   return data;
 };
 
+export const getProgressoUsuarios = async () => {
+  const data = await apiGet('/metas/progresso/usuarios');
+  return data;
+};
+
 export const resgatarMeta = async (id) => {
   const data = await apiPost(`/metas/${id}/resgatar`, {});
   return data;
