@@ -141,14 +141,6 @@ function formatarFidelidade(aviso) {
   return { label: `${aviso.dias_restantes} dias`, className: 'success' };
 }
 
-function normalizarBusca(valor) {
-  return String(valor || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
 function getValorLeadRecebido(linha, coluna) {
   if (!coluna) return '';
   if (typeof coluna === 'string') return linha.dados_json?.[coluna] ?? '';
@@ -162,6 +154,8 @@ function LeadsRecebidosView() {
   const [envios, setEnvios] = useState([]);
   const [selecionados, setSelecionados] = useState([]);
   const [linhas, setLinhas] = useState([]);
+  const [totalLinhas, setTotalLinhas] = useState(0);
+  const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -185,14 +179,18 @@ function LeadsRecebidosView() {
   useEffect(() => {
     if (selecionados.length === 0) {
       setLinhas([]);
+      setTotalLinhas(0);
       return;
     }
 
     let cancelado = false;
     setCarregando(true);
-    listarMinhasLeadLinhas({ envio_ids: selecionados })
+    listarMinhasLeadLinhas({ envio_ids: selecionados, page: pagina, page_size: 200, busca })
       .then(data => {
-        if (!cancelado) setLinhas(data);
+        if (!cancelado) {
+          setLinhas(data.data || []);
+          setTotalLinhas(data.total || 0);
+        }
       })
       .catch(error => setErro(error.message || 'Erro ao carregar leads recebidos.'))
       .finally(() => !cancelado && setCarregando(false));
@@ -200,7 +198,7 @@ function LeadsRecebidosView() {
     return () => {
       cancelado = true;
     };
-  }, [selecionados]);
+  }, [selecionados, pagina, busca]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const enviosSelecionados = useMemo(() => (
@@ -227,16 +225,14 @@ function LeadsRecebidosView() {
   }, [enviosSelecionados, linhas]);
 
   const linhasFiltradas = useMemo(() => {
-    const termo = normalizarBusca(busca);
-    if (!termo) return linhas;
+    return linhas;
+  }, [linhas]);
 
-    return linhas.filter(linha => (
-      Object.values(linha.dados_json || {}).some(valor => normalizarBusca(valor).includes(termo))
-    ));
-  }, [linhas, busca]);
+  const totalPaginas = Math.max(1, Math.ceil(totalLinhas / 200));
 
   function toggleEnvio(id) {
     setSelecionados(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+    setPagina(1);
   }
 
   return (
@@ -266,7 +262,7 @@ function LeadsRecebidosView() {
 
       <div className="clientes-leads-toolbar">
         <div className="clientes-toolbar__meta">
-          {linhasFiltradas.length} lead(s) recebidos
+          {totalLinhas} lead(s) recebidos
         </div>
         <form className="clientes-search" onSubmit={event => event.preventDefault()}>
           <I.Search size={14} />
@@ -301,6 +297,12 @@ function LeadsRecebidosView() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="lead-pagination">
+        <button className="btn" type="button" disabled={pagina <= 1} onClick={() => setPagina(prev => Math.max(1, prev - 1))}>Anterior</button>
+        <span>Pagina {pagina} de {totalPaginas}</span>
+        <button className="btn" type="button" disabled={pagina >= totalPaginas} onClick={() => setPagina(prev => Math.min(totalPaginas, prev + 1))}>Proxima</button>
       </div>
     </div>
   );

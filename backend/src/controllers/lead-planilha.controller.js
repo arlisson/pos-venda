@@ -19,6 +19,31 @@ async function store(req, res) {
   }
 }
 
+async function upload(req, res) {
+  try {
+    const planilha = await leadPlanilhaService.iniciarUpload(req, req.usuario.id);
+    return res.status(201).json(planilha);
+  } catch (error) {
+    console.error(error);
+    return res.status(400).json({ message: error.message || 'Erro ao iniciar upload.' });
+  }
+}
+
+async function status(req, res) {
+  try {
+    const planilha = await leadPlanilhaService.buscarStatus(req.params.id);
+
+    if (!planilha) {
+      return res.status(404).json({ message: 'Planilha nao encontrada.' });
+    }
+
+    return res.json(planilha);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao consultar status da planilha.' });
+  }
+}
+
 async function storeLinhas(req, res) {
   try {
     const resultado = await leadPlanilhaService.salvarLinhasLote(req.params.id, req.body.linhas || []);
@@ -26,6 +51,28 @@ async function storeLinhas(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(400).json({ message: error.message || 'Erro ao salvar linhas da planilha.' });
+  }
+}
+
+async function finalizar(req, res) {
+  try {
+    const planilha = await leadPlanilhaService.finalizarPlanilha(req.params.id, req.body || {});
+    return res.json(planilha);
+  } catch (error) {
+    console.error(error);
+    const statusCode = error.statusCode || 400;
+    return res.status(statusCode).json({ message: error.message || 'Erro ao finalizar planilha.' });
+  }
+}
+
+async function erro(req, res) {
+  try {
+    const planilha = await leadPlanilhaService.marcarErroPlanilha(req.params.id, req.body?.message || req.body?.mensagem);
+    return res.json(planilha);
+  } catch (error) {
+    console.error(error);
+    const statusCode = error.statusCode || 400;
+    return res.status(statusCode).json({ message: error.message || 'Erro ao marcar erro da planilha.' });
   }
 }
 
@@ -44,12 +91,37 @@ async function updateSchema(req, res) {
   }
 }
 
+async function destroy(req, res) {
+  try {
+    await leadPlanilhaService.excluirPlanilha(req.params.id);
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({
+      message: error.message || 'Erro ao excluir planilha.'
+    });
+  }
+}
+
 async function linhas(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarLinhas(req.query));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Erro ao listar linhas de leads.' });
+  }
+}
+
+async function exportar(req, res) {
+  try {
+    await leadPlanilhaService.exportarCsv(req.body || {}, res);
+  } catch (error) {
+    console.error(error);
+    if (!res.headersSent) {
+      return res.status(500).json({ message: 'Erro ao exportar CSV.' });
+    }
+    return res.end();
   }
 }
 
@@ -89,14 +161,33 @@ async function minhasLinhas(req, res) {
   }
 }
 
+async function exportarMinhas(req, res) {
+  try {
+    await leadPlanilhaService.exportarCsv(req.body || {}, res, { usuarioId: req.usuario.id });
+  } catch (error) {
+    console.error(error);
+    if (!res.headersSent) {
+      return res.status(500).json({ message: 'Erro ao exportar CSV.' });
+    }
+    return res.end();
+  }
+}
+
 module.exports = {
   index,
   store,
+  upload,
+  status,
   storeLinhas,
+  finalizar,
+  erro,
   updateSchema,
+  destroy,
   linhas,
+  exportar,
   dividir,
   envios,
   meusEnvios,
-  minhasLinhas
+  minhasLinhas,
+  exportarMinhas
 };

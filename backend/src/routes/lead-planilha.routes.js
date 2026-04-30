@@ -10,8 +10,10 @@ router.use(authMiddleware);
 
 router.get('/me/envios', leadPlanilhaController.meusEnvios);
 router.get('/me/linhas', leadPlanilhaController.minhasLinhas);
+router.post('/me/exportar', leadPlanilhaController.exportarMinhas);
 
 router.get('/', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.index);
+router.post('/uploads', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.upload);
 router.post(
   '/',
   exigirUmaPermissao(['gerenciar_leads']),
@@ -24,9 +26,24 @@ router.post(
   leadPlanilhaController.store
 );
 router.post('/:id/linhas', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.storeLinhas);
+router.post('/:id/finalizar', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.finalizar);
+router.post('/:id/erro', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.erro);
 router.put('/:id/schema', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.updateSchema);
+router.get('/:id/status', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.status);
+router.delete(
+  '/:id',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_planilha.excluida',
+    entidade: 'lead_planilhas',
+    entidade_id: req => req.params.id,
+    dados: req => ({ planilha_id: req.params.id })
+  }),
+  leadPlanilhaController.destroy
+);
 router.get('/linhas', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.linhas);
 router.get('/envios', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.envios);
+router.post('/exportar', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.exportar);
 router.post(
   '/dividir',
   exigirUmaPermissao(['gerenciar_leads']),

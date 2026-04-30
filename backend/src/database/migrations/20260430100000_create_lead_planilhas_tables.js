@@ -1,4 +1,7 @@
-exports.up = async function (knex) {
+async function createLeadPlanilhas(knex) {
+  const exists = await knex.schema.hasTable('lead_planilhas');
+  if (exists) return;
+
   await knex.schema.createTable('lead_planilhas', function (table) {
     table.increments('id').primary();
     table.string('nome', 240).notNullable();
@@ -18,6 +21,11 @@ exports.up = async function (knex) {
 
     table.index(['criado_por_id']);
   });
+}
+
+async function createLeadEnvios(knex) {
+  const exists = await knex.schema.hasTable('lead_envios');
+  if (exists) return;
 
   await knex.schema.createTable('lead_envios', function (table) {
     table.increments('id').primary();
@@ -37,6 +45,11 @@ exports.up = async function (knex) {
 
     table.index(['criado_por_id']);
   });
+}
+
+async function createLeadLinhas(knex) {
+  const exists = await knex.schema.hasTable('lead_linhas');
+  if (exists) return;
 
   await knex.schema.createTable('lead_linhas', function (table) {
     table.increments('id').primary();
@@ -73,6 +86,11 @@ exports.up = async function (knex) {
     table.index(['atribuido_para_id']);
     table.index(['envio_id']);
   });
+}
+
+async function createLeadEnvioUsuarios(knex) {
+  const exists = await knex.schema.hasTable('lead_envio_usuarios');
+  if (exists) return;
 
   await knex.schema.createTable('lead_envio_usuarios', function (table) {
     table.increments('id').primary();
@@ -99,6 +117,13 @@ exports.up = async function (knex) {
     table.unique(['envio_id', 'usuario_id']);
     table.index(['usuario_id']);
   });
+}
+
+exports.up = async function (knex) {
+  await createLeadPlanilhas(knex);
+  await createLeadEnvios(knex);
+  await createLeadLinhas(knex);
+  await createLeadEnvioUsuarios(knex);
 };
 
 exports.down = async function (knex) {
@@ -106,4 +131,8 @@ exports.down = async function (knex) {
   await knex.schema.dropTableIfExists('lead_linhas');
   await knex.schema.dropTableIfExists('lead_envios');
   await knex.schema.dropTableIfExists('lead_planilhas');
+};
+
+exports.config = {
+  transaction: false
 };
