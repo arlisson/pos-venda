@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -528,10 +528,16 @@ function NumerosPortadosInput({ value, onChange }) {
   );
 }
 
-function ClienteVendaSelect({ value, clientes, onChange }) {
+function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
+  const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
   const [busca, setBusca] = useState('');
+  const [aberto, setAberto] = useState(false);
+  const [indiceAtivo, setIndiceAtivo] = useState(0);
   const clienteSelecionado = clientes.find(cliente => String(cliente.id) === String(value));
-  const buscaNormalizada = busca.trim().toLowerCase();
+  const textoClienteSelecionado = clienteSelecionado?.nome || clienteSelecionado?.razao_social || '';
+  const textoBusca = busca || textoClienteSelecionado;
+  const buscaNormalizada = textoBusca.trim().toLowerCase();
   const clientesFiltrados = clientes.filter(cliente => {
     if (!buscaNormalizada) return true;
 
@@ -542,31 +548,146 @@ function ClienteVendaSelect({ value, clientes, onChange }) {
       cliente.email,
       cliente.responsavel_nome
     ].filter(Boolean).some(valor => String(valor).toLowerCase().includes(buscaNormalizada));
-  });
+  }).slice(0, 8);
+
+  useEffect(() => {
+    function handleClickFora(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setAberto(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickFora);
+    return () => document.removeEventListener('mousedown', handleClickFora);
+  }, []);
+
+  function selecionarCliente(cliente) {
+    onChange(String(cliente.id));
+    setBusca('');
+    setAberto(false);
+  }
+
+  function limparCliente() {
+    onChange('');
+    setBusca('');
+    setAberto(true);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setAberto(true);
+      setIndiceAtivo(prev => Math.min(prev + 1, Math.max(clientesFiltrados.length - 1, 0)));
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setAberto(true);
+      setIndiceAtivo(prev => Math.max(prev - 1, 0));
+      return;
+    }
+
+    if (event.key === 'Enter' && aberto && clientesFiltrados[indiceAtivo]) {
+      event.preventDefault();
+      selecionarCliente(clientesFiltrados[indiceAtivo]);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      setAberto(false);
+    }
+  }
+
+  const mostrarLista = aberto && clientes.length > 0;
+  const activeDescendant = mostrarLista && clientesFiltrados[indiceAtivo]
+    ? `cliente-option-${clientesFiltrados[indiceAtivo].id}`
+    : undefined;
 
   return (
-    <div className="venda-cliente-select">
-      <div className="venda-cliente-select__search">
+    <div className="venda-cliente-select" ref={wrapperRef}>
+      <div className={`venda-cliente-combobox ${mostrarLista ? 'is-open' : ''}`}>
         <I.Search size={14} />
         <input
-          value={busca}
-          onChange={event => setBusca(event.target.value)}
-          placeholder="Buscar cliente por nome, razao social, CNPJ ou e-mail"
-        />
-      </div>
+          ref={inputRef}
+          value={textoBusca}
+          onChange={event => {
+            setBusca(event.target.value);
+            setIndiceAtivo(0);
+            setAberto(true);
 
-      <select value={value} onChange={event => onChange(event.target.value)} required>
-        <option value="">Selecione um cliente</option>
-        {clientesFiltrados.map(cliente => (
-          <option key={cliente.id} value={cliente.id}>
-            {cliente.nome} {cliente.razao_social ? `- ${cliente.razao_social}` : ''} {cliente.cnpj ? `- ${cliente.cnpj}` : ''}
-          </option>
-        ))}
-      </select>
+            if (value) {
+              onChange('');
+            }
+          }}
+          onFocus={() => setAberto(true)}
+          onKeyDown={handleKeyDown}
+          placeholder="Buscar cliente por nome, razao social, CNPJ ou e-mail"
+          role="combobox"
+          aria-expanded={mostrarLista}
+          aria-controls="cliente-options"
+          aria-activedescendant={activeDescendant}
+          aria-autocomplete="list"
+        />
+        <button
+          type="button"
+          className="venda-cliente-combobox__toggle"
+          onClick={() => setAberto(prev => !prev)}
+          title={aberto ? 'Fechar resultados' : 'Abrir resultados'}
+        >
+          <I.ChevronDown size={14} />
+        </button>
+
+        {mostrarLista && (
+          <div className="venda-cliente-options" id="cliente-options" role="listbox">
+            {clientesFiltrados.length > 0 ? (
+              clientesFiltrados.map((cliente, index) => {
+                const selecionado = String(cliente.id) === String(value);
+                const ativo = index === indiceAtivo;
+
+                return (
+                  <button
+                    key={cliente.id}
+                    id={`cliente-option-${cliente.id}`}
+                    type="button"
+                    className={`venda-cliente-option ${ativo ? 'is-active' : ''} ${selecionado ? 'is-selected' : ''}`}
+                    onMouseEnter={() => setIndiceAtivo(index)}
+                    onMouseDown={event => event.preventDefault()}
+                    onClick={() => selecionarCliente(cliente)}
+                    role="option"
+                    aria-selected={selecionado}
+                  >
+                    <span className="venda-cliente-option__main">
+                      <strong>{cliente.nome || 'Cliente sem nome'}</strong>
+                      <span>{cliente.razao_social || 'Sem razao social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
+                    </span>
+                    <span className="venda-cliente-option__meta">
+                      <span>{cliente.email || cliente.responsavel_nome || 'Sem contato principal'}</span>
+                      <span>{cliente.operadoraAtual?.nome || 'Sem operadora'} - {cliente.quantidade_chips ?? 0} chips</span>
+                    </span>
+                    {selecionado && <I.Check size={14} />}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="venda-cliente-no-results">
+                <span>Nenhum cliente encontrado.</span>
+                <button type="button" className="btn btn-sm" onMouseDown={event => event.preventDefault()} onClick={onCreateClient}>
+                  <I.Plus size={13} /> Cadastrar cliente
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {clientes.length === 0 && (
         <div className="venda-cliente-empty">
-          Nenhum cliente disponivel. Cadastre um cliente ou solicite permissao para visualizar clientes.
+          <span>Nenhum cliente disponivel. Cadastre um cliente ou solicite permissao para visualizar clientes.</span>
+          <button type="button" className="btn btn-sm" onClick={onCreateClient}>
+            <I.Plus size={13} /> Cadastrar cliente
+          </button>
         </div>
       )}
 
@@ -580,13 +701,16 @@ function ClienteVendaSelect({ value, clientes, onChange }) {
             <span>{clienteSelecionado.email || 'Sem e-mail'}</span>
             <span>{clienteSelecionado.operadoraAtual?.nome || 'Sem operadora'} - {clienteSelecionado.quantidade_chips ?? 0} chips</span>
           </div>
+          <button type="button" className="btn btn-icon btn-ghost" onClick={limparCliente} title="Trocar cliente">
+            <I.Close size={13} />
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave }) {
+function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave, onCreateClient }) {
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : VENDA_VAZIA);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -649,6 +773,12 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
     setSalvando(true);
 
     try {
+      if (!form.cliente_id) {
+        setErro('Selecione um cliente para cadastrar a venda.');
+        setSalvando(false);
+        return;
+      }
+
       const numerosPortados = montarNumerosPortados(form.numeros_portados);
 
       if (vendaPortabilidade && !numerosPortados) {
@@ -718,6 +848,7 @@ function VendaModal({ venda, clientes, vendedoras, operadoras, tiposVenda, servi
                       value={form[campo.name] ?? ''}
                       clientes={clientes}
                       onChange={valor => atualizarCampo(campo.name, valor)}
+                      onCreateClient={onCreateClient}
                     />
                   ) : ['seller', 'operator', 'saleType', 'service'].includes(campo.type) ? (
                     <select
@@ -1018,6 +1149,7 @@ function VendasPage() {
           servicos={servicos}
           onClose={() => setModalAberto(false)}
           onSave={salvarVenda}
+          onCreateClient={() => navigate('/clientes/novo')}
         />
       )}
 
