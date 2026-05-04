@@ -16,6 +16,8 @@ const leadPlanilhaRoutes = require('./routes/lead-planilha.routes');
 const cnpjRoutes = require('./routes/cnpj.routes');
 const notificacaoRoutes = require('./routes/notificacao.routes');
 const notaRoutes = require('./routes/nota.routes');
+const planoRoutes = require('./routes/plano.routes');
+const fechamentoRoutes = require('./routes/fechamento.routes');
 
 const app = express();
 
@@ -45,6 +47,8 @@ app.use('/api/lead-planilhas', leadPlanilhaRoutes);
 app.use('/api/cnpj', cnpjRoutes);
 app.use('/api/notificacoes', notificacaoRoutes);
 app.use('/api/notas', notaRoutes);
+app.use('/api/planos', planoRoutes);
+app.use('/api/fechamento', fechamentoRoutes);
 
 app.get('/api/health', (req, res) => {
   return res.json({

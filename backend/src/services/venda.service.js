@@ -44,6 +44,7 @@ const CAMPOS = [
   'nome_administrador',
   'cpf_administrador',
   'operadora_id',
+  'plano_id',
   'vendedora_id',
   'status_funil',
   'prioridade_funil',
@@ -281,6 +282,10 @@ function montarPayload(dados) {
 
   if (payload.operadora_id !== undefined && payload.operadora_id !== null) {
     payload.operadora_id = Number(payload.operadora_id);
+  }
+
+  if (payload.plano_id !== undefined && payload.plano_id !== null) {
+    payload.plano_id = Number(payload.plano_id);
   }
 
   if (payload.cliente_id !== undefined && payload.cliente_id !== null) {
@@ -682,7 +687,7 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador, historico.usuario]')
+    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, plano.operadora, criador, historico.usuario]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
     .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
@@ -923,7 +928,7 @@ async function buscarVendaPorId(id, usuarioId) {
   const query = Venda.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador, historico.usuario]')
+    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, plano.operadora, criador, historico.usuario]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
     .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'));
