@@ -8,7 +8,7 @@ function somarColuna(linhas, campo) {
   return linhas.reduce((soma, linha) => soma + Number(linha[campo] || 0), 0);
 }
 
-function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, onAlterarTaxa, secao, loading }) {
+function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, secao, loading }) {
   const totais = {
     total_vendas: somarColuna(linhas, 'total_vendas'),
     contratos: somarColuna(linhas, 'contratos'),
@@ -29,11 +29,6 @@ function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, onAlterar
           {subtitulo && <span>{subtitulo}</span>}
         </div>
         <div className="fechamento-secao__actions">
-          {secao === 'ativas' && onAlterarTaxa && (
-            <button type="button" className="btn btn-sm" onClick={onAlterarTaxa}>
-              <I.Settings size={14} /> Alterar taxa de comissão
-            </button>
-          )}
           <button
             type="button"
             className="btn btn-sm btn-primary"
@@ -48,7 +43,7 @@ function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, onAlterar
       {loading ? (
         <div className="fechamento-empty">Carregando...</div>
       ) : linhas.length === 0 ? (
-        <div className="fechamento-empty">Nenhuma venda no período.</div>
+        <div className="fechamento-empty">Nenhuma venda no periodo.</div>
       ) : (
         <div className="fechamento-table-wrapper">
           <table className="fechamento-table">
@@ -59,11 +54,11 @@ function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, onAlterar
                 <th rowSpan={2}>Contratos</th>
                 <th rowSpan={2}>UGRs</th>
                 <th colSpan={3} className="group-product">Produto</th>
-                <th colSpan={2} className="group-service">Serviço</th>
+                <th colSpan={2} className="group-service">Servico</th>
                 <th rowSpan={2}>Receita</th>
               </tr>
               <tr>
-                <th className="group-product">Móvel</th>
+                <th className="group-product">Movel</th>
                 <th>Fixo</th>
                 <th className="group-product">Internet</th>
                 <th className="group-service">Novo</th>
