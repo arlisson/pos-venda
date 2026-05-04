@@ -15,7 +15,6 @@ import { consultarCnpj, isCnpjRepetido, sanitizarCnpj } from '../../services/cnp
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
-import { listarPlanos } from '../../services/plano.service';
 import './VendasPage.css';
 
 const VENDA_VAZIA = {
@@ -59,7 +58,6 @@ const VENDA_VAZIA = {
   nome_administrador: '',
   cpf_administrador: '',
   operadora_id: '',
-  plano_id: '',
   vendedora_id: ''
 };
 
@@ -94,7 +92,6 @@ const CAMPOS = [
 
   { section: 'Produto e valores' },
   { name: 'operadora_id', label: 'Operadora adquirida', type: 'operator', required: true },
-  { name: 'plano_id', label: 'Plano', type: 'plan' },
   { name: 'tipo_venda_id', label: 'Tipo de venda', type: 'saleType', required: true },
   { name: 'servico_id', label: 'Serviço', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
@@ -441,7 +438,6 @@ function normalizarVenda(venda) {
     quantidade_linhas: venda.quantidade_linhas ?? '',
     dia_vencimento: venda.dia_vencimento ?? '',
     operadora_id: venda.operadora_id ? String(venda.operadora_id) : '',
-    plano_id: venda.plano_id ? String(venda.plano_id) : '',
     tipo_venda_id: venda.tipo_venda_id ? String(venda.tipo_venda_id) : '',
     servico_id: venda.servico_id ? String(venda.servico_id) : '',
     vendedora_id: venda.vendedora_id ? String(venda.vendedora_id) : '',
@@ -767,8 +763,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
   function atualizarCampo(campo, valor) {
     setForm(prev => ({
       ...prev,
-      [campo]: formatarCampoVenda(campo, valor),
-      ...(campo === 'operadora_id' ? { plano_id: '' } : {})
+      [campo]: formatarCampoVenda(campo, valor)
     }));
   }
 
@@ -956,7 +951,6 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
       const payload = {
         ...form,
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
-        plano_id: form.plano_id || null,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
         valores_unitarios_chips: (form.valores_unitarios_chips || [])
           .map(item => ({
@@ -1270,15 +1264,14 @@ function VendasPage() {
     setCarregando(true);
 
     try {
-      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData, planosData] = await Promise.all([
+      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData] = await Promise.all([
         listarVendas(filtros),
         podeListarClientes ? listarClientes() : Promise.resolve([]),
         listarVendedoras(),
         listarOperadoras(),
         listarTiposVenda(),
         listarServicos(),
-        listarEtapasFunil(),
-        listarPlanos({ ativo: true })
+        listarEtapasFunil()
       ]);
 
       setVendas(vendasData);
@@ -1287,7 +1280,6 @@ function VendasPage() {
       setOperadoras(operadorasData);
       setTiposVenda(tiposVendaData);
       setServicos(servicosData);
-      setPlanos(planosData || []);
       setStatusFunilFiltros(normalizarStatusFunilFiltros(etapasFunilData));
     } catch (error) {
       setErro(error.message || 'Erro ao carregar vendas.');

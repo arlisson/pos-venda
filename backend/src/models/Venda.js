@@ -58,7 +58,7 @@ class Venda extends Model {
         tipo_produto_id: { type: ['integer', 'null'] },
         tipo_venda_id: { type: ['integer', 'null'] },
         servico_id: { type: ['integer', 'null'] },
-        plano_id: { type: ['integer', 'null'] },
+
         status_funil: { type: 'string', maxLength: 40 },
         prioridade_funil: { type: 'string', maxLength: 20 },
         status_anterior_retorno: { type: ['string', 'null'], maxLength: 40 },
@@ -84,7 +84,6 @@ class Venda extends Model {
     const TipoProduto = require('./TipoProduto');
     const TipoVenda = require('./TipoVenda');
     const Servico = require('./Servico');
-    const Plano = require('./Plano');
     const VendaHistorico = require('./VendaHistorico');
 
     return {
@@ -128,14 +127,7 @@ class Venda extends Model {
           to: 'servicos.id'
         }
       },
-      plano: {
-        relation: Model.BelongsToOneRelation,
-        modelClass: Plano,
-        join: {
-          from: 'vendas.plano_id',
-          to: 'planos.id'
-        }
-      },
+
       criador: {
         relation: Model.BelongsToOneRelation,
         modelClass: Usuario,

@@ -95,7 +95,7 @@ function DetalhesModal({ secao, periodo, onClose }) {
                     <th>Cliente</th>
                     <th>CNPJ</th>
                     <th>Operadora</th>
-                    <th>Plano</th>
+                    <th>GB</th>
                     <th>Tipo</th>
                     <th>Serviço</th>
                     <th className="num">Linhas</th>
@@ -114,7 +114,7 @@ function DetalhesModal({ secao, periodo, onClose }) {
                       <td>{venda.cliente?.nome || venda.cliente?.razao_social || '—'}</td>
                       <td>{venda.cliente?.cnpj || '—'}</td>
                       <td>{venda.operadora?.nome || '—'}</td>
-                      <td>{venda.plano?.nome || '—'}</td>
+                      <td>{venda.gb || '—'}</td>
                       <td>{venda.tipo_venda || '—'}</td>
                       <td>{venda.servico || '—'}</td>
                       <td className="num">{venda.chips_total}</td>

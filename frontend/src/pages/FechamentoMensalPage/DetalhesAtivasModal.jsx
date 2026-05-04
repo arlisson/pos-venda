@@ -78,7 +78,7 @@ function DetalhesAtivasModal({ periodo, onClose }) {
                       <th>Cliente</th>
                       <th>CNPJ</th>
                       <th>Operadora</th>
-                      <th>Plano</th>
+                      <th>GB</th>
                       <th>Tipo</th>
                       <th>Serviço</th>
                       <th>Chip</th>
@@ -99,7 +99,7 @@ function DetalhesAtivasModal({ periodo, onClose }) {
                         <td>{linha.cliente?.nome || linha.cliente?.razao_social || '—'}</td>
                         <td>{linha.cliente?.cnpj || '—'}</td>
                         <td>{linha.operadora?.nome || '—'}</td>
-                        <td>{linha.plano?.nome || '—'}</td>
+                        <td>{linha.gb || '—'}</td>
                         <td>{linha.tipo_venda || '—'}</td>
                         <td>{linha.servico || '—'}</td>
                         <td>{linha.chip_index}</td>
@@ -120,7 +120,7 @@ function DetalhesAtivasModal({ periodo, onClose }) {
               <div className="fechamento-totais">
                 <div className="fechamento-totais__title">Comissão por vendedora</div>
                 {dados.totais_por_vendedora.length === 0 ? (
-                  <div className="muted">Nenhuma comissão calculada (vincule um plano às vendas).</div>
+                  <div className="muted">Nenhuma comissão calculada.</div>
                 ) : (
                   dados.totais_por_vendedora.map(item => (
                     <div className="fechamento-totais__row" key={item.vendedora_id ?? item.vendedora_nome}>

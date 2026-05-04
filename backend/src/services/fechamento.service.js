@@ -81,7 +81,7 @@ function carregarVendasNoPeriodo(filtros) {
     .leftJoin('servicos as s', 'v.servico_id', 's.id')
     .leftJoin('usuarios as u', 'v.vendedora_id', 'u.id')
     .leftJoin('clientes as c', 'v.cliente_id', 'c.id')
-    .leftJoin('planos as p', 'v.plano_id', 'p.id')
+    
     .whereNull('v.excluido_em')
     .whereNot('v.status_funil', 'retorno')
     .select(
@@ -101,7 +101,6 @@ function carregarVendasNoPeriodo(filtros) {
       'v.tipo_venda_id',
       'v.servico_id',
       'v.cliente_id',
-      'v.plano_id',
       'o.nome as operadora_nome',
       'tv.nome as tipo_venda_nome',
       's.nome as servico_nome',
@@ -111,10 +110,7 @@ function carregarVendasNoPeriodo(filtros) {
       'c.razao_social as cliente_razao_social',
       'c.cnpj as cliente_cnpj',
       'c.fidelidade_fim as cliente_fidelidade_fim',
-      'p.nome as plano_nome',
-      'p.taxa_comissao as plano_taxa_comissao',
-      'p.categoria as plano_categoria',
-      'p.tipo_servico as plano_tipo_servico'
+
     );
 
   if (inicio) {
@@ -267,13 +263,7 @@ function montarVendaResumo(venda) {
     servico: venda.servico_nome || null,
     categoria,
     tipo_servico_normalizado: tipoServico,
-    plano: venda.plano_id ? {
-      id: venda.plano_id,
-      nome: venda.plano_nome,
-      taxa_comissao: Number(venda.plano_taxa_comissao || 0),
-      categoria: venda.plano_categoria,
-      tipo_servico: venda.plano_tipo_servico
-    } : null
+
   };
 }
 
@@ -305,8 +295,8 @@ async function obterDetalhesChips(filtros = {}) {
 
   filtradas.forEach(venda => {
     const chips = parseChips(venda.valores_unitarios_chips);
-    const taxa = Number(venda.plano_taxa_comissao || 0);
-    const temPlano = !!venda.plano_id;
+    const taxa = null;
+    const temPlano = false;
 
     if (chips.length === 0) {
       const linhasFallback = Number(venda.quantidade_linhas || 0) || 1;
@@ -397,11 +387,7 @@ function montarLinhaChip(venda, chip) {
     } : null,
     tipo_venda: venda.tipo_venda_nome || null,
     servico: venda.servico_nome || null,
-    plano: venda.plano_id ? {
-      id: venda.plano_id,
-      nome: venda.plano_nome,
-      taxa_comissao: Number(venda.plano_taxa_comissao || 0)
-    } : null,
+
     tem_plano: chip.tem_plano,
     taxa_comissao: chip.tem_plano ? chip.taxa : null,
     comissao: chip.comissao

@@ -4,7 +4,6 @@ import { getResumo } from '../../services/fechamento.service';
 import DetalhesAtivasModal from './DetalhesAtivasModal';
 import DetalhesModal from './DetalhesModal';
 import FechamentoSecao from './FechamentoSecao';
-import PlanosManagerModal from './PlanosManagerModal';
 import './FechamentoMensalPage.css';
 
 function dataISO(data) {
@@ -32,7 +31,6 @@ function FechamentoMensalPage() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [modalDetalhes, setModalDetalhes] = useState(null);
-  const [modalPlanos, setModalPlanos] = useState(false);
 
   const periodoConsulta = useMemo(() => ({
     data_inicio: periodo.data_inicio,
@@ -118,7 +116,6 @@ function FechamentoMensalPage() {
           secao="ativas"
           loading={loading}
           onDetalhes={setModalDetalhes}
-          onAlterarTaxa={() => setModalPlanos(true)}
         />
 
         {modalDetalhes && modalDetalhes !== 'ativas' && (
@@ -136,9 +133,7 @@ function FechamentoMensalPage() {
           />
         )}
 
-        {modalPlanos && (
-          <PlanosManagerModal onClose={() => setModalPlanos(false)} />
-        )}
+
       </div>
     </LayoutPrivado>
   );
