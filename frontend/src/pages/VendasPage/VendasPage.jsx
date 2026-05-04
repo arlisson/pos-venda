@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
+import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import {
@@ -750,6 +751,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
   const [cepStatus, setCepStatus] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const [abaAtiva, setAbaAtiva] = useState('venda');
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
   const cepPreenchidoPorCnpjRef = useRef('');
   const tipoVendaSelecionado = tiposVenda.find(tipo => String(tipo.id) === String(form.tipo_venda_id));
@@ -980,8 +982,29 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
           </div>
         </div>
 
+        <div className="modal-tabs">
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'venda' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('venda')}
+          >
+            <I.Chart size={14} /> Venda
+          </button>
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('notas')}
+          >
+            <I.Note size={14} /> Notas
+          </button>
+        </div>
+
         <div className="modal-body">
-          <div className="vendas-form-grid">
+          {abaAtiva === 'notas' ? (
+            <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
+          ) : (
+          <>
+            <div className="vendas-form-grid">
             {CAMPOS.map(campo => {
               if (campo.section) {
                 return <div key={campo.section} className="vendas-form-section">{campo.section}</div>;
@@ -1084,13 +1107,21 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
           </div>
 
           {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
+          </>
+          )}
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="btn" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="btn btn-primary" disabled={salvando}>
-            {salvando ? 'Salvando...' : 'Salvar venda'}
-          </button>
+          {abaAtiva === 'notas' ? (
+            <button type="button" className="btn" onClick={onClose}>Fechar</button>
+          ) : (
+            <>
+              <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+              <button type="submit" className="btn btn-primary" disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar venda'}
+              </button>
+            </>
+          )}
         </div>
       </form>
     </div>

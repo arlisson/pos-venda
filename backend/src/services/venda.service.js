@@ -155,6 +155,33 @@ async function registrarHistoricoVenda({
   });
 }
 
+async function copiarNotasClienteParaVenda({ clienteId, vendaId, createdAt, trx }) {
+  if (!clienteId || !vendaId) return 0;
+
+  const notasCliente = await trx('entidade_notas')
+    .where({
+      entidade_tipo: 'cliente',
+      entidade_id: Number(clienteId)
+    })
+    .select('usuario_id', 'titulo', 'conteudo');
+
+  if (notasCliente.length === 0) {
+    return 0;
+  }
+
+  await trx('entidade_notas').insert(notasCliente.map(nota => ({
+    entidade_tipo: 'venda',
+    entidade_id: Number(vendaId),
+    usuario_id: nota.usuario_id,
+    titulo: nota.titulo,
+    conteudo: nota.conteudo,
+    created_at: createdAt,
+    updated_at: createdAt
+  })));
+
+  return notasCliente.length;
+}
+
 function parseValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
 
@@ -943,6 +970,15 @@ async function criarVenda(dados, usuarioId) {
       createdAt: agora,
       trx
     });
+
+    if (payload.cliente_id) {
+      await copiarNotasClienteParaVenda({
+        clienteId: payload.cliente_id,
+        vendaId: venda.id,
+        createdAt: agora,
+        trx
+      });
+    }
 
     return venda;
   });

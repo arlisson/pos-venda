@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
+import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -718,6 +719,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   const [erro, setErro] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const [abaAtiva, setAbaAtiva] = useState('cliente');
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
   const editando = Boolean(cliente);
 
@@ -830,8 +832,29 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
           </div>
         </div>
 
+        <div className="modal-tabs">
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'cliente' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('cliente')}
+          >
+            <I.User size={14} /> Cliente
+          </button>
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('notas')}
+          >
+            <I.Note size={14} /> Notas
+          </button>
+        </div>
+
         <div className="modal-body">
-          <div className="cliente-form-grid">
+          {abaAtiva === 'notas' ? (
+            <NotasEntidadeTab tipo="cliente" entidadeId={cliente?.id} />
+          ) : (
+          <>
+            <div className="cliente-form-grid">
             <div className="form-field">
               <label>Nome</label>
               <input value={form.nome} onChange={event => atualizarCampo('nome', event.target.value)} required />
@@ -934,13 +957,21 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
           </div>
 
           {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
+          </>
+          )}
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button>
-          <button type="submit" className="btn btn-primary" disabled={salvando}>
-            {salvando ? 'Salvando...' : 'Salvar cliente'}
-          </button>
+          {abaAtiva === 'notas' ? (
+            <button type="button" className="btn" onClick={onClose}>Fechar</button>
+          ) : (
+            <>
+              <button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button>
+              <button type="submit" className="btn btn-primary" disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar cliente'}
+              </button>
+            </>
+          )}
         </div>
       </form>
     </div>
