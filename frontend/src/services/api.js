@@ -1,4 +1,15 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+let redirecionandoLogin = false;
+
+function encerrarSessaoExpirada() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+
+  if (!redirecionandoLogin && window.location.pathname !== '/login') {
+    redirecionandoLogin = true;
+    window.location.replace('/login');
+  }
+}
 
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem('token');
@@ -28,6 +39,10 @@ export async function apiRequest(endpoint, options = {}) {
     : null;
 
   if (!response.ok) {
+    if (response.status === 401) {
+      encerrarSessaoExpirada();
+    }
+
     throw new Error(data?.message || data?.error || 'Erro na requisição.');
   }
 
@@ -51,6 +66,10 @@ export async function apiBlob(endpoint, options = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      encerrarSessaoExpirada();
+    }
+
     const contentType = response.headers.get('content-type');
     const data = contentType?.includes('application/json')
       ? await response.json()

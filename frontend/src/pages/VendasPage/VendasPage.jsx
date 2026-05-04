@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import {
@@ -9,6 +10,7 @@ import {
   listarVendas,
   listarVendedoras
 } from '../../services/venda.service';
+import { consultarCnpj, isCnpjRepetido, sanitizarCnpj } from '../../services/cnpj.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -78,6 +80,7 @@ const CAMPOS_CLIENTE_DERIVADOS = [
 const CAMPOS = [
   { section: 'Cliente' },
   { name: 'cliente_id', label: 'Cliente', type: 'client', required: true, span: true },
+  { name: 'cnpj', label: 'CNPJ para preencher dados', type: 'cnpj' },
   { name: 'vendedora_id', label: 'Vendedora', type: 'seller', required: true },
 
   { section: 'Dados da venda' },
@@ -98,20 +101,20 @@ const CAMPOS = [
 
   { section: 'Local de instalacao/entrega' },
   { name: 'cep', label: 'CEP' },
-  { name: 'endereco', label: 'Endereco' },
+  { name: 'endereco', label: 'Endereco', type: 'longText' },
   { name: 'numero_endereco', label: 'Numero de endereco' },
-  { name: 'complemento', label: 'Complemento' },
+  { name: 'complemento', label: 'Complemento', type: 'longText' },
   { name: 'bairro', label: 'Bairro' },
   { name: 'municipio', label: 'Municipio' },
   { name: 'uf', label: 'UF', maxLength: 2 },
-  { name: 'ponto_referencia', label: 'Ponto de referencia', span: true },
-  { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condominio, shopping...', span: true },
+  { name: 'ponto_referencia', label: 'Ponto de referencia', type: 'longText', span: true },
+  { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condominio, shopping...', type: 'longText', span: true },
 
   { section: 'Aceite e recebimento' },
   { name: 'horario_aceite_voz', label: 'Horario para aceite de voz' },
   { name: 'responsavel_recebimento', label: 'Responsavel pelo recebimento' },
   { name: 'rg_responsavel_recebimento', label: 'RG do responsavel pelo recebimento' },
-  { name: 'observacoes', label: 'Observacoes', type: 'textarea', span: true },
+  { name: 'observacoes', label: 'Observacoes', type: 'longText', span: true, maxRows: 6 },
 ];
 
 const STATUS_FUNIL_FILTROS = [
@@ -745,6 +748,10 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [cepStatus, setCepStatus] = useState('');
+  const [consultandoCnpj, setConsultandoCnpj] = useState(false);
+  const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
+  const cepPreenchidoPorCnpjRef = useRef('');
   const tipoVendaSelecionado = tiposVenda.find(tipo => String(tipo.id) === String(form.tipo_venda_id));
   const vendaPortabilidade = isTipoPortabilidade(tipoVendaSelecionado);
 
@@ -752,11 +759,123 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
     setForm(prev => ({ ...prev, [campo]: formatarCampoVenda(campo, valor) }));
   }
 
+  function formatarMensagemCnpj(dados) {
+    const totalFontes = dados.fontesComSucesso?.length || (dados.fonte ? 1 : 0);
+    const origem = totalFontes > 1 ? `${totalFontes} fontes` : (dados.fonte || 'fonte publica');
+    const cache = dados.cache ? ' Dados recentes do cache.' : '';
+
+    return `Dados combinados de ${origem}. Confira antes de salvar.${cache}`;
+  }
+
+  function atualizarClienteVenda(valor) {
+    const clienteSelecionado = clientes.find(cliente => String(cliente.id) === String(valor));
+
+    setForm(prev => ({
+      ...prev,
+      cliente_id: valor,
+      nome: prev.nome || clienteSelecionado?.nome || '',
+      razao_social: prev.razao_social || clienteSelecionado?.razao_social || '',
+      cnpj: prev.cnpj || formatarCnpj(clienteSelecionado?.cnpj || ''),
+      email: prev.email || clienteSelecionado?.email || ''
+    }));
+  }
+
+  function aplicarDadosCnpj(dados, sobrescrever = false) {
+    setForm(prev => {
+      const cepFormatado = formatarCep(dados.cep);
+      if (cepFormatado) {
+        cepPreenchidoPorCnpjRef.current = apenasDigitos(cepFormatado, 8);
+      }
+
+      return {
+        ...prev,
+        nome: sobrescrever
+          ? (dados.nomeFantasia || dados.razaoSocial || prev.nome || '')
+          : (prev.nome || dados.nomeFantasia || dados.razaoSocial || ''),
+        razao_social: sobrescrever ? (dados.razaoSocial || prev.razao_social || '') : (prev.razao_social || dados.razaoSocial || ''),
+        email: sobrescrever ? (dados.email || prev.email || '') : (prev.email || dados.email || ''),
+        telefone: sobrescrever
+          ? (formatarTelefoneComDdd(dados.telefone, true) || prev.telefone || '')
+          : (prev.telefone || formatarTelefoneComDdd(dados.telefone, true)),
+        cep: sobrescrever ? (cepFormatado || prev.cep || '') : (prev.cep || cepFormatado),
+        endereco: sobrescrever ? (dados.endereco || prev.endereco || '') : (prev.endereco || dados.endereco || ''),
+        numero_endereco: sobrescrever ? (dados.numero || prev.numero_endereco || '') : (prev.numero_endereco || dados.numero || ''),
+        complemento: sobrescrever ? (dados.complemento || prev.complemento || '') : (prev.complemento || dados.complemento || ''),
+        bairro: sobrescrever ? (dados.bairro || prev.bairro || '') : (prev.bairro || dados.bairro || ''),
+        municipio: sobrescrever ? (dados.municipio || prev.municipio || '') : (prev.municipio || dados.municipio || ''),
+        uf: sobrescrever ? (formatarCampoVenda('uf', dados.uf) || prev.uf || '') : (prev.uf || formatarCampoVenda('uf', dados.uf))
+      };
+    });
+  }
+
+  async function buscarDadosCnpj(manual = false) {
+    const cnpj = sanitizarCnpj(form.cnpj);
+
+    if (cnpj.length !== 14) {
+      if (manual) {
+        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 digitos.' });
+      }
+      return;
+    }
+
+    if (isCnpjRepetido(cnpj)) {
+      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+      return;
+    }
+
+    if (!manual && ultimoCnpjConsultadoRef.current === cnpj) {
+      return;
+    }
+
+    ultimoCnpjConsultadoRef.current = cnpj;
+    setConsultandoCnpj(true);
+    setCnpjStatus({ tipo: 'info', mensagem: 'Buscando CNPJ...' });
+
+    try {
+      const dados = await consultarCnpj(cnpj);
+      aplicarDadosCnpj(dados, manual);
+      setCnpjStatus({
+        tipo: 'sucesso',
+        mensagem: formatarMensagemCnpj(dados)
+      });
+    } catch (error) {
+      setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Nao foi possivel consultar o CNPJ.' });
+    } finally {
+      setConsultandoCnpj(false);
+    }
+  }
+
+  useEffect(() => {
+    const cnpj = sanitizarCnpj(form.cnpj);
+
+    if (cnpj.length === 0) {
+      setCnpjStatus({ tipo: '', mensagem: '' });
+      return;
+    }
+
+    if (cnpj.length === 14) {
+      if (isCnpjRepetido(cnpj)) {
+        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+        return;
+      }
+
+      buscarDadosCnpj(false);
+    }
+  }, [form.cnpj]);
+
   useEffect(() => {
     const cep = apenasDigitos(form.cep, 8);
 
     if (cep.length !== 8) {
       setCepStatus('');
+      return;
+    }
+
+    if (
+      cepPreenchidoPorCnpjRef.current === cep
+      && (form.endereco || form.bairro || form.municipio || form.uf)
+    ) {
+      setCepStatus('Endereco preenchido pelo CNPJ.');
       return;
     }
 
@@ -879,9 +998,35 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                     <ClienteVendaSelect
                       value={form[campo.name] ?? ''}
                       clientes={clientes}
-                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      onChange={atualizarClienteVenda}
                       onCreateClient={onCreateClient}
                     />
+                  ) : campo.type === 'cnpj' ? (
+                    <>
+                      <input
+                        type="text"
+                        maxLength={getMaxLengthCampo(campo.name, campo.maxLength)}
+                        inputMode={getInputModeCampo(campo.name)}
+                        value={form[campo.name] ?? ''}
+                        onChange={e => atualizarCampo(campo.name, e.target.value)}
+                        placeholder="00.000.000/0000-00"
+                      />
+                      <div className="cnpj-lookup-row">
+                        {cnpjStatus.mensagem && (
+                          <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
+                            {cnpjStatus.mensagem}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => buscarDadosCnpj(true)}
+                          disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
+                        >
+                          {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
+                        </button>
+                      </div>
+                    </>
                   ) : ['seller', 'operator', 'saleType', 'service'].includes(campo.type) ? (
                     <select
                       value={form[campo.name] ?? ''}
@@ -911,10 +1056,11 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
                     />
-                  ) : campo.type === 'textarea' ? (
-                    <textarea
+                  ) : campo.type === 'longText' ? (
+                    <AutoResizeTextarea
                       value={form[campo.name] ?? ''}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
+                      maxRows={campo.maxRows || 5}
                     />
                   ) : (
                     <input

@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { atualizarCliente, criarCliente, excluirCliente, listarClientes } from '../../services/cliente.service';
+import { consultarCnpj, isCnpjRepetido, sanitizarCnpj } from '../../services/cnpj.service';
 import { listarOperadoras } from '../../services/config.service';
 import {
   atualizarCampoLeadRecebido,
@@ -714,11 +716,91 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   const [form, setForm] = useState(() => normalizarClienteForm(cliente));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [consultandoCnpj, setConsultandoCnpj] = useState(false);
+  const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
   const editando = Boolean(cliente);
 
   function atualizarCampo(campo, valor) {
     setForm(prev => ({ ...prev, [campo]: valor }));
   }
+
+  function formatarMensagemCnpj(dados) {
+    const totalFontes = dados.fontesComSucesso?.length || (dados.fonte ? 1 : 0);
+    const origem = totalFontes > 1 ? `${totalFontes} fontes` : (dados.fonte || 'fonte publica');
+    const cache = dados.cache ? ' Dados recentes do cache.' : '';
+
+    return `Dados combinados de ${origem}. Confira antes de salvar.${cache}`;
+  }
+
+  function aplicarDadosCnpj(dados, sobrescrever = false) {
+    setForm(prev => ({
+      ...prev,
+      nome: sobrescrever
+        ? (dados.nomeFantasia || dados.razaoSocial || prev.nome || '')
+        : (prev.nome || dados.nomeFantasia || dados.razaoSocial || ''),
+      razao_social: sobrescrever ? (dados.razaoSocial || prev.razao_social || '') : (prev.razao_social || dados.razaoSocial || ''),
+      email: sobrescrever ? (dados.email || prev.email || '') : (prev.email || dados.email || ''),
+      whatsapp: sobrescrever
+        ? (formatarTelefoneComDdd(dados.telefone, true) || prev.whatsapp || '')
+        : (prev.whatsapp || formatarTelefoneComDdd(dados.telefone, true))
+    }));
+  }
+
+  async function buscarDadosCnpj(manual = false) {
+    const cnpj = sanitizarCnpj(form.cnpj);
+
+    if (cnpj.length !== 14) {
+      if (manual) {
+        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 digitos.' });
+      }
+      return;
+    }
+
+    if (isCnpjRepetido(cnpj)) {
+      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+      return;
+    }
+
+    if (!manual && ultimoCnpjConsultadoRef.current === cnpj) {
+      return;
+    }
+
+    ultimoCnpjConsultadoRef.current = cnpj;
+    setConsultandoCnpj(true);
+    setCnpjStatus({ tipo: 'info', mensagem: 'Buscando CNPJ...' });
+
+    try {
+      const dados = await consultarCnpj(cnpj);
+      aplicarDadosCnpj(dados, manual);
+      setCnpjStatus({
+        tipo: 'sucesso',
+        mensagem: formatarMensagemCnpj(dados)
+      });
+    } catch (error) {
+      setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Nao foi possivel consultar o CNPJ.' });
+    } finally {
+      setConsultandoCnpj(false);
+    }
+  }
+
+  useEffect(() => {
+    const cnpj = sanitizarCnpj(form.cnpj);
+
+    if (cnpj.length === 0) {
+      setCnpjStatus({ tipo: '', mensagem: '' });
+      return;
+    }
+
+    if (cnpj.length === 14) {
+      if (isCnpjRepetido(cnpj)) {
+        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+        return;
+      }
+
+      buscarDadosCnpj(false);
+    }
+  }, [form.cnpj]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -757,7 +839,11 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
 
             <div className="form-field">
               <label>Razao social</label>
-              <input value={form.razao_social} onChange={event => atualizarCampo('razao_social', event.target.value)} />
+              <AutoResizeTextarea
+                value={form.razao_social}
+                onChange={event => atualizarCampo('razao_social', event.target.value)}
+                maxRows={4}
+              />
             </div>
 
             <div className="form-field">
@@ -769,6 +855,21 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
                 inputMode="numeric"
                 maxLength={18}
               />
+              <div className="cnpj-lookup-row">
+                {cnpjStatus.mensagem && (
+                  <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
+                    {cnpjStatus.mensagem}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => buscarDadosCnpj(true)}
+                  disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
+                >
+                  {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
+                </button>
+              </div>
             </div>
 
             <div className="form-field">

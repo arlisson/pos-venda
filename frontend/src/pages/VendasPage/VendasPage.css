@@ -188,17 +188,8 @@
   border-top: none;
 }
 
-.vendas-form-grid textarea {
-  width: 100%;
-  min-height: 78px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 13.5px;
-  resize: vertical;
-  outline: none;
+.vendas-form-grid .auto-resize-textarea {
+  display: block;
 }
 
 .venda-cliente-select {
