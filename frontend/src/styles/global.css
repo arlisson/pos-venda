@@ -822,10 +822,53 @@ input, select, textarea { font-family: inherit; }
   border-color: var(--border-strong);
 }
 
+.note-return {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.note-return__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: min(220px, 100%);
+}
+
+.note-return__field span {
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.note-return__field input {
+  width: 100%;
+}
+
 .note-editor__actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.note-card__return {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.note-card__return span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .notes-empty {

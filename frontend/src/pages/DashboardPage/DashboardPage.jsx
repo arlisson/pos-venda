@@ -96,6 +96,23 @@ function getInitials(name) {
     .toUpperCase();
 }
 
+function getNotificationTarget(notificacao) {
+  if (notificacao.tipo === 'cliente_fidelidade') {
+    return '/clientes?fidelidade=alerta';
+  }
+
+  if (notificacao.entidade === 'clientes') {
+    const clienteId = notificacao.entidade_id || notificacao.dados?.entidade_id;
+    return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
+  }
+
+  if (notificacao.entidade === 'vendas') {
+    return '/vendas';
+  }
+
+  return null;
+}
+
 function DashboardPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -163,8 +180,10 @@ function DashboardPage() {
       window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
     }
 
-    if (notificacao.tipo === 'cliente_fidelidade' || notificacao.entidade === 'clientes') {
-      navigate('/clientes?fidelidade=alerta');
+    const target = getNotificationTarget(notificacao);
+
+    if (target) {
+      navigate(target);
     }
   }
 
