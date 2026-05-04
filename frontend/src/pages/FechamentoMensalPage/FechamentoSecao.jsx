@@ -50,7 +50,7 @@ function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, onAlterar
       ) : linhas.length === 0 ? (
         <div className="fechamento-empty">Nenhuma venda no período.</div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div className="fechamento-table-wrapper">
           <table className="fechamento-table">
             <thead>
               <tr>
