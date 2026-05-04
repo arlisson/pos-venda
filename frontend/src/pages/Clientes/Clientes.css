@@ -522,7 +522,7 @@
 }
 
 .clientes-page table {
-  min-width: 1060px;
+  min-width: 1140px;
 }
 
 .clientes-page th,
@@ -562,6 +562,105 @@
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.cliente-note-status-btn {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.cliente-note-status-btn:hover,
+.cliente-note-status-btn:focus-visible {
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.cliente-note-status-btn.success {
+  border-color: #bbf7d0;
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.cliente-note-status-btn.danger {
+  border-color: #fecaca;
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.cliente-note-status-btn.muted {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+.cliente-notes-readonly-modal {
+  width: min(680px, calc(100vw - 24px));
+}
+
+.cliente-notes-readonly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cliente-note-readonly-card {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+
+.cliente-note-readonly-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.cliente-note-readonly-card__head strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.cliente-note-readonly-card__head span {
+  flex: 0 0 auto;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.cliente-note-readonly-card p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cliente-note-readonly-card__return {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .cliente-primary {

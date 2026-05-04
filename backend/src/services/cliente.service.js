@@ -231,6 +231,46 @@ function formatarCliente(cliente) {
   };
 }
 
+async function montarResumoNotasClientes(clientes, usuarioId) {
+  const ids = clientes.map(cliente => Number(cliente.id)).filter(Boolean);
+
+  if (ids.length === 0) {
+    return new Map();
+  }
+
+  const linhas = await Cliente.knex()('entidade_notas')
+    .where('entidade_tipo', 'cliente')
+    .where('usuario_id', Number(usuarioId))
+    .whereIn('entidade_id', ids)
+    .groupBy('entidade_id')
+    .select('entidade_id')
+    .count('id as notas_total')
+    .select(Cliente.knex().raw('SUM(CASE WHEN retorno_agendado_para IS NULL THEN 0 ELSE 1 END) as notas_com_retorno_total'))
+    .min('retorno_agendado_para as proximo_retorno_agendado_para');
+
+  return new Map(linhas.map(linha => ([
+    Number(linha.entidade_id),
+    {
+      notas_total: Number(linha.notas_total || 0),
+      notas_com_retorno_total: Number(linha.notas_com_retorno_total || 0),
+      proximo_retorno_agendado_para: linha.proximo_retorno_agendado_para || null
+    }
+  ])));
+}
+
+async function adicionarResumoNotasClientes(clientes, usuarioId) {
+  const resumoPorCliente = await montarResumoNotasClientes(clientes, usuarioId);
+
+  return clientes.map(cliente => ({
+    ...cliente,
+    notas_resumo: resumoPorCliente.get(Number(cliente.id)) || {
+      notas_total: 0,
+      notas_com_retorno_total: 0,
+      proximo_retorno_agendado_para: null
+    }
+  }));
+}
+
 async function listarClientes(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoClientes(usuarioId);
   const query = Cliente.query()
@@ -273,7 +313,7 @@ async function listarClientes(filtros = {}, usuarioId) {
     query.where('quantidade_chips', '<=', Number(filtros.chips_max));
   }
 
-  const clientes = (await query).map(formatarCliente);
+  const clientes = await adicionarResumoNotasClientes((await query).map(formatarCliente), usuarioId);
 
   if (filtros.avisos_fidelidade) {
     return clientes.filter(cliente => cliente.aviso_fidelidade?.deve_avisar);

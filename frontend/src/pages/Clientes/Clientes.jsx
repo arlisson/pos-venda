@@ -6,6 +6,7 @@ import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { atualizarCliente, criarCliente, excluirCliente, listarClientes } from '../../services/cliente.service';
+import { listarNotasEntidade } from '../../services/nota.service';
 import { consultarCnpj, isCnpjRepetido, sanitizarCnpj } from '../../services/cnpj.service';
 import { listarOperadoras } from '../../services/config.service';
 import {
@@ -173,6 +174,44 @@ function formatarFidelidade(aviso) {
   }
 
   return { label: `${aviso.dias_restantes} dias`, className: 'success' };
+}
+
+function formatarDataHoraNota(valor) {
+  if (!valor) return '';
+
+  const data = new Date(String(valor).replace(' ', 'T'));
+  if (Number.isNaN(data.getTime())) return '';
+
+  return data.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function getRetornoNotaStatus(cliente) {
+  const resumo = cliente.notas_resumo || {};
+
+  if (Number(resumo.notas_com_retorno_total || 0) > 0) {
+    return {
+      className: 'success',
+      title: `Retorno marcado para ${formatarDataHoraNota(resumo.proximo_retorno_agendado_para) || 'este cliente'}`
+    };
+  }
+
+  if (cliente.aviso_fidelidade?.dias_restantes < 0) {
+    return {
+      className: 'danger',
+      title: 'Fidelidade vencida sem retorno marcado'
+    };
+  }
+
+  return {
+    className: 'muted',
+    title: 'Sem retorno marcado'
+  };
 }
 
 function normalizarTextoLead(valor) {
@@ -1017,6 +1056,63 @@ function ConfirmarLixeiraModal({ cliente, excluindo, onClose, onConfirm }) {
   );
 }
 
+function NotasClienteReadOnlyModal({ cliente, notas, carregando, erro, onClose }) {
+  if (!cliente) return null;
+
+  return (
+    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <div className="modal cliente-notes-readonly-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Notas do cliente</div>
+              <div className="modal-sub">{cliente.nome || cliente.razao_social || `Cliente #${cliente.id}`}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          {erro && <div className="alert-error">{erro}</div>}
+
+          {carregando ? (
+            <div className="notes-loading">Carregando notas...</div>
+          ) : notas.length === 0 ? (
+            <div className="notes-empty notes-empty--compact">
+              <I.Note size={20} />
+              <strong>Nenhuma nota ainda.</strong>
+              <span>Este cliente ainda nao tem anotacoes.</span>
+            </div>
+          ) : (
+            <div className="cliente-notes-readonly-list">
+              {notas.map(nota => (
+                <article key={nota.id} className="cliente-note-readonly-card">
+                  <div className="cliente-note-readonly-card__head">
+                    <strong>{nota.titulo || 'Sem titulo'}</strong>
+                    <span>{formatarDataHoraNota(nota.updated_at)}</span>
+                  </div>
+                  <p>{nota.conteudo || '-'}</p>
+                  {nota.retorno_agendado_para && (
+                    <div className="cliente-note-readonly-card__return">
+                      <I.Calendar size={13} /> Retorno em {formatarDataHoraNota(nota.retorno_agendado_para)}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Clientes() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1047,6 +1143,10 @@ function Clientes() {
   const [excluindo, setExcluindo] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState('clientes');
+  const [clienteNotasModal, setClienteNotasModal] = useState(null);
+  const [notasCliente, setNotasCliente] = useState([]);
+  const [carregandoNotasCliente, setCarregandoNotasCliente] = useState(false);
+  const [erroNotasCliente, setErroNotasCliente] = useState('');
 
   const filtros = useMemo(() => ({
     busca,
@@ -1179,6 +1279,22 @@ function Clientes() {
     }
   }
 
+  async function abrirNotasCliente(cliente) {
+    setClienteNotasModal(cliente);
+    setNotasCliente([]);
+    setErroNotasCliente('');
+    setCarregandoNotasCliente(true);
+
+    try {
+      const notas = await listarNotasEntidade('cliente', cliente.id);
+      setNotasCliente(Array.isArray(notas) ? notas : []);
+    } catch (error) {
+      setErroNotasCliente(error.message || 'Erro ao carregar notas.');
+    } finally {
+      setCarregandoNotasCliente(false);
+    }
+  }
+
   return (
     <LayoutPrivado>
       {modalAberto && (
@@ -1195,6 +1311,18 @@ function Clientes() {
         excluindo={excluindo}
         onClose={() => setClienteParaLixeira(null)}
         onConfirm={confirmarExclusaoCliente}
+      />
+
+      <NotasClienteReadOnlyModal
+        cliente={clienteNotasModal}
+        notas={notasCliente}
+        carregando={carregandoNotasCliente}
+        erro={erroNotasCliente}
+        onClose={() => {
+          setClienteNotasModal(null);
+          setNotasCliente([]);
+          setErroNotasCliente('');
+        }}
       />
 
       {filtrosAbertos && (
@@ -1328,19 +1456,20 @@ function Clientes() {
                   <th>Registrado por</th>
                   <th>Chips</th>
                   <th>Fidelidade</th>
+                  <th>Retorno</th>
                   {podeExcluir && <th>Excluir</th>}
                 </tr>
               </thead>
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan={podeExcluir ? 8 : 7} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 9 : 8} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando clientes...
                     </td>
                   </tr>
                 ) : clientes.length === 0 ? (
                   <tr>
-                    <td colSpan={podeExcluir ? 8 : 7} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 9 : 8} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhum cliente encontrado.
                     </td>
                   </tr>
@@ -1348,6 +1477,7 @@ function Clientes() {
                   clientes.map(cliente => {
                     const contato = formatarContato(cliente);
                     const fidelidade = formatarFidelidade(cliente.aviso_fidelidade);
+                    const retornoNota = getRetornoNotaStatus(cliente);
 
                     return (
                       <tr
@@ -1393,6 +1523,20 @@ function Clientes() {
                             <span className="pill-dot"></span>
                             {fidelidade.label}
                           </span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className={`cliente-note-status-btn ${retornoNota.className}`}
+                            title={retornoNota.title}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              abrirNotasCliente(cliente);
+                            }}
+                          >
+                            <I.Note size={13} />
+                            Nota
+                          </button>
                         </td>
                         {podeExcluir && (
                           <td>
