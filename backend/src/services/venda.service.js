@@ -3,6 +3,7 @@ const VendaHistorico = require('../models/VendaHistorico');
 const Usuario = require('../models/Usuario');
 const FunilEtapa = require('../models/FunilEtapa');
 const clienteService = require('./cliente.service');
+const { renderEmailVenda } = require('./venda-email-template.service');
 
 const CAMPOS = [
   'nome',
@@ -936,6 +937,16 @@ async function buscarVendaPorId(id, usuarioId) {
   return query;
 }
 
+async function gerarEmailTemplateVenda(id, usuarioId) {
+  const venda = await buscarVendaPorId(id, usuarioId);
+
+  if (!venda) {
+    return null;
+  }
+
+  return renderEmailVenda(venda);
+}
+
 async function criarVenda(dados, usuarioId) {
   const agora = formatarDateTimeSQL();
   let payload = montarPayload(dados);
@@ -1322,6 +1333,7 @@ module.exports = {
   obterResumoDashboard,
   obterRelatoriosVendas,
   buscarVendaPorId,
+  gerarEmailTemplateVenda,
   criarVenda,
   atualizarVenda,
   atualizarStatusVenda,

@@ -15,6 +15,11 @@ router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_to
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.index);
 router.get('/:id', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.show);
 router.post(
+  '/:id/email-template',
+  exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']),
+  vendaController.emailTemplate
+);
+router.post(
   '/',
   exigirUmaPermissao(['vendas_criar']),
   auditar({

@@ -54,13 +54,24 @@
 
 .vendas-page .list-table .vendas-actions-col {
   position: sticky;
-  right: 0;
   min-width: 60px;
   width: 60px;
   z-index: 2;
   border-left: 1px solid var(--border);
   box-shadow: none;
   text-align: center;
+}
+
+.vendas-page .list-table .vendas-email-actions-col {
+  right: 0;
+}
+
+.vendas-page .list-table .vendas-email-actions-col.has-delete {
+  right: 60px;
+}
+
+.vendas-page .list-table .vendas-delete-actions-col {
+  right: 0;
 }
 
 .vendas-page .list-table th.vendas-actions-col {
@@ -487,6 +498,8 @@
 .trash-confirm-modal {
   max-width: 460px;
 }
+
+/* moved to global.css */
 
 .trash-warning {
   display: flex;

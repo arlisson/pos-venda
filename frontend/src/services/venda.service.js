@@ -33,6 +33,10 @@ export async function buscarVendaPorId(id) {
   return apiGet(`/vendas/${id}`);
 }
 
+export async function gerarEmailVenda(id) {
+  return apiPost(`/vendas/${id}/email-template`, {});
+}
+
 export async function criarVenda(dados) {
   return apiPost('/vendas', dados);
 }

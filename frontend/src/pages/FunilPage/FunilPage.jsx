@@ -10,7 +10,7 @@ import {
   listarEtapasFunil,
   listarEtapasFunilAdmin
 } from '../../services/config.service';
-import { atualizarStatusVenda, listarVendas } from '../../services/venda.service';
+import { atualizarStatusVenda, gerarEmailVenda, listarVendas } from '../../services/venda.service';
 
 const formatBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -18,6 +18,39 @@ const STAGE_LABELS = {
   ...Object.fromEntries(FALLBACK_STAGES.map(stage => [stage.id, stage.name])),
   retorno: 'Retorno',
 };
+
+function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
+  if (!dados) return null;
+
+  return (
+    <div className="modal-overlay" onClick={event => !copiando && event.target === event.currentTarget && onClose()}>
+      <div className="modal venda-email-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Corpo do email</div>
+              <div className="modal-sub">{dados.operadora} - {dados.venda?.cliente?.nome || dados.venda?.nome || `Venda #${dados.venda?.id}`}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={copiando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+        <div className="modal-body">
+          <div className="venda-email-container">
+            <textarea className="venda-email-preview" value={dados.texto || ''} readOnly />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={copiando}>Fechar</button>
+          <button type="button" className="btn btn-primary" onClick={onCopy} disabled={copiando}>
+            {copiando ? 'Copiando...' : 'Copiar e-mail'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function normalizarAtivo(valor) {
   if (typeof valor === 'string') {
@@ -579,7 +612,7 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
   );
 }
 
-function SaleCard({ sale, onClick }) {
+function SaleCard({ sale, onClick, onEmail, gerandoEmailId }) {
   const priorityColor = PRIORITIES[sale.priority || 'media']?.color || '#3b82f6';
   return (
     <div className="sale-card" onClick={onClick}>
@@ -603,7 +636,26 @@ function SaleCard({ sale, onClick }) {
           <span className="seller-name">{sale.seller.name}</span>
           <span>#{sale.id}</span>
         </span>
-        <span style={{ fontSize: '10px' }}>{timeAgo(sale.updated)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            type="button"
+            className="btn btn-icon btn-ghost"
+            title="Gerar corpo de email"
+            disabled={gerandoEmailId === sale.id}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEmail(sale.raw);
+            }}
+            style={{ padding: 4, height: 24, width: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {gerandoEmailId === sale.id ? (
+              <div className="spinner-small" style={{ width: 12, height: 12, border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            ) : (
+              <I.Note size={12} />
+            )}
+          </button>
+          <span style={{ fontSize: '10px' }}>{timeAgo(sale.updated)}</span>
+        </div>
       </div>
     </div>
   );
@@ -634,6 +686,48 @@ function FunilPage() {
   const [stageToDelete, setStageToDelete] = useState(null);
   const [error, setError] = useState('');
   const [stageFeedback, setStageFeedback] = useState({ type: '', message: '' });
+
+  const [emailTemplate, setEmailTemplate] = useState(null);
+  const [gerandoEmailId, setGerandoEmailId] = useState(null);
+  const [copiandoEmail, setCopiandoEmail] = useState(false);
+
+  async function abrirEmailVenda(venda) {
+    if (!venda?.id) return;
+    setGerandoEmailId(venda.id);
+
+    try {
+      const resultado = await gerarEmailVenda(venda.id);
+      setEmailTemplate({ ...resultado, venda });
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: err.message || 'Erro ao gerar corpo de email.' });
+    } finally {
+      setGerandoEmailId(null);
+    }
+  }
+
+  async function copiarEmailVenda() {
+    if (!emailTemplate?.texto) return;
+
+    setCopiandoEmail(true);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(emailTemplate.texto);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = emailTemplate.texto;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setStageFeedback({ type: 'success', message: 'Corpo do email copiado.' });
+      setEmailTemplate(null);
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: 'Erro ao copiar email.' });
+    } finally {
+      setCopiandoEmail(false);
+    }
+  }
 
   function sincronizarEtapas(etapas, { atualizarAdmin = false, fallbackAdminEtapa = null } = {}) {
     const etapasNormalizadas = normalizarEtapasFunil(etapas, !atualizarAdmin);
@@ -1090,7 +1184,13 @@ function FunilPage() {
                     </div>
                   ) : (
                     items.map(s => (
-                      <SaleCard key={s.id} sale={s} onClick={() => setSelectedSaleId(s.id)} />
+                      <SaleCard
+                        key={s.id}
+                        sale={s}
+                        onClick={() => setSelectedSaleId(s.id)}
+                        onEmail={abrirEmailVenda}
+                        gerandoEmailId={gerandoEmailId}
+                      />
                     ))
                   )}
                 </div>
@@ -1099,6 +1199,13 @@ function FunilPage() {
           })}
         </div>
       </div>
+
+      <EmailTemplateModal
+        dados={emailTemplate}
+        copiando={copiandoEmail}
+        onClose={() => setEmailTemplate(null)}
+        onCopy={copiarEmailVenda}
+      />
     </LayoutPrivado>
   );
 }

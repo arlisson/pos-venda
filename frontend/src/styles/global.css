@@ -1160,3 +1160,28 @@ input, select, textarea { font-family: inherit; }
   flex-shrink: 0;
 }
 .sidebar-goal.achieved .g-pct { color: var(--success); font-weight: 600; }
+
+/* Venda Email Modal */
+.venda-email-modal {
+  max-width: 760px;
+}
+
+.venda-email-container {
+  margin-top: 10px;
+}
+
+.venda-email-preview {
+  width: 100%;
+  min-height: 420px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 14px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  white-space: pre-wrap;
+}

@@ -8,6 +8,7 @@ import {
   atualizarVenda,
   criarVenda,
   deletarVenda,
+  gerarEmailVenda,
   listarVendas,
   listarVendedoras
 } from '../../services/venda.service';
@@ -213,6 +214,8 @@ function formatarMoeda(value) {
 
 function parseValorInput(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+
   return Number(String(valor).replace(/\./g, '').replace(',', '.')) || 0;
 }
 
@@ -1179,6 +1182,39 @@ function ConfirmarLixeiraModal({ venda, deletando, onClose, onConfirm }) {
   );
 }
 
+function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
+  if (!dados) return null;
+
+  return (
+    <div className="modal-overlay" onClick={event => !copiando && event.target === event.currentTarget && onClose()}>
+      <div className="modal venda-email-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Corpo do email</div>
+              <div className="modal-sub">{dados.operadora} - {dados.venda?.cliente?.nome || dados.venda?.nome || `Venda #${dados.venda?.id}`}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={copiando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <textarea className="venda-email-preview" value={dados.texto || ''} readOnly />
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={copiando}>Fechar</button>
+          <button type="button" className="btn btn-primary" onClick={onCopy} disabled={copiando || !dados.texto}>
+            {copiando ? 'Copiando...' : 'Copiar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function VendasPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1210,6 +1246,9 @@ function VendasPage() {
   const [vendaParaLixeira, setVendaParaLixeira] = useState(null);
   const [deletando, setDeletando] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [emailTemplate, setEmailTemplate] = useState(null);
+  const [gerandoEmailId, setGerandoEmailId] = useState(null);
+  const [copiandoEmail, setCopiandoEmail] = useState(false);
   const usuarioLogado = getUsuarioLocal();
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, 'vendas_editar');
@@ -1359,6 +1398,48 @@ function VendasPage() {
     }
   }
 
+  async function abrirEmailVenda(venda) {
+    setErro('');
+    setSucesso('');
+    setGerandoEmailId(venda.id);
+
+    try {
+      const resultado = await gerarEmailVenda(venda.id);
+      setEmailTemplate({ ...resultado, venda });
+    } catch (error) {
+      setErro(error.message || 'Erro ao gerar corpo de email.');
+    } finally {
+      setGerandoEmailId(null);
+    }
+  }
+
+  async function copiarEmailVenda() {
+    if (!emailTemplate?.texto) return;
+
+    setCopiandoEmail(true);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(emailTemplate.texto);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = emailTemplate.texto;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setSucesso('Corpo do email copiado.');
+      setEmailTemplate(null);
+    } catch {
+      setErro('Não foi possível copiar o texto automaticamente.');
+    } finally {
+      setCopiandoEmail(false);
+    }
+  }
+
   function limparFiltros() {
     setBusca('');
     setVendedoraId('');
@@ -1398,6 +1479,13 @@ function VendasPage() {
         deletando={deletando}
         onClose={() => setVendaParaLixeira(null)}
         onConfirm={confirmarRemocaoVenda}
+      />
+
+      <EmailTemplateModal
+        dados={emailTemplate}
+        copiando={copiandoEmail}
+        onClose={() => setEmailTemplate(null)}
+        onCopy={copiarEmailVenda}
       />
 
       {filtrosAbertos && (
@@ -1534,21 +1622,22 @@ function VendasPage() {
                   <th>Venc.</th>
                   <th>Data</th>
                   <th>Vendedor(a)</th>
+                  <th className={`vendas-actions-col vendas-email-actions-col ${podeExcluirVenda ? 'has-delete' : ''}`}>Email</th>
                   {podeExcluirVenda && (
-                    <th className="vendas-actions-col">Excluir</th>
+                    <th className="vendas-actions-col vendas-delete-actions-col">Excluir</th>
                   )}  
                 </tr>
               </thead>
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan={podeExcluirVenda ? 11 : 10} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluirVenda ? 12 : 11} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando vendas...
                     </td>
                   </tr>
                 ) : vendas.length === 0 ? (
                   <tr>
-                    <td colSpan={podeExcluirVenda ? 11 : 10} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluirVenda ? 12 : 11} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhuma venda encontrada.
                     </td>
                   </tr>
@@ -1583,8 +1672,21 @@ function VendasPage() {
                       <td>{venda.dia_vencimento || '-'}</td>
                       <td>{formatarData(venda.data_venda)}</td>
                       <td><span className="tag">{venda.vendedora?.nome || '-'}</span></td>
+                      <td className={`vendas-actions-col vendas-email-actions-col ${podeExcluirVenda ? 'has-delete' : ''}`}>
+                        <button
+                          className="btn btn-icon btn-ghost"
+                          title="Gerar corpo de email"
+                          disabled={gerandoEmailId === venda.id}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            abrirEmailVenda(venda);
+                          }}
+                        >
+                          <I.Note size={13} />
+                        </button>
+                      </td>
                       {podeExcluirVenda && (
-                        <td className="vendas-actions-col">
+                        <td className="vendas-actions-col vendas-delete-actions-col">
                           <button
                             className="btn btn-icon btn-ghost btn-danger-icon"
                             title="Excluir"

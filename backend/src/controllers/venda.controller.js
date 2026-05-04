@@ -62,6 +62,26 @@ async function show(req, res) {
   }
 }
 
+async function emailTemplate(req, res) {
+  try {
+    const resultado = await vendaService.gerarEmailTemplateVenda(req.params.id, req.usuario.id);
+
+    if (!resultado) {
+      return res.status(404).json({
+        message: 'Venda não encontrada.'
+      });
+    }
+
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao gerar corpo de email.'
+    });
+  }
+}
+
 async function store(req, res) {
   try {
     const venda = await vendaService.criarVenda(req.body, req.usuario.id);
@@ -220,6 +240,7 @@ module.exports = {
   resumo,
   relatorios,
   show,
+  emailTemplate,
   store,
   update,
   updateStatus,
