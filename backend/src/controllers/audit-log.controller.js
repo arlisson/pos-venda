@@ -12,7 +12,7 @@ async function index(req, res) {
     console.error(error);
 
     return res.status(500).json({
-      message: 'Erro ao listar historico.'
+      message: 'Erro ao listar histórico.'
     });
   }
 }

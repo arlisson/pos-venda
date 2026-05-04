@@ -58,7 +58,7 @@ function montarRegistro(req, dadosAuditoria) {
 
 async function registrar(req, dadosAuditoria) {
   if (!dadosAuditoria?.acao) {
-    throw new Error('A acao da auditoria e obrigatoria.');
+    throw new Error('A ação da auditoria é obrigatória.');
   }
 
   return AuditLog.query().insert(montarRegistro(req, dadosAuditoria));

@@ -161,7 +161,7 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm, onSaveObse
           </div>
 
           <div className="form-field">
-            <label>Observacao do retorno</label>
+            <label>Observação do retorno</label>
             <textarea
               className="obs-textarea return-observation-textarea"
               value={returnObservation}
@@ -170,7 +170,7 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm, onSaveObse
               rows={5}
             />
             <div className="return-observation-actions">
-              <span>{originalObservation ? 'Observacao registrada no retorno.' : 'Sem observacao registrada.'}</span>
+              <span>{originalObservation ? 'Observação registrada no retorno.' : 'Sem observação registrada.'}</span>
               <button
                 type="button"
                 className="btn btn-sm"
@@ -430,7 +430,7 @@ function RetornosPage() {
                         </div>
                         {getReturnObservation(item) && (
                           <div className="return-reason-detail return-observation-preview">
-                            <span>Observacao</span>
+                            <span>Observação</span>
                             <div>{getReturnObservation(item)}</div>
                           </div>
                         )}

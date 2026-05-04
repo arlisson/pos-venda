@@ -6,7 +6,7 @@ const TIPOS_VALIDOS = ['cliente', 'venda'];
 
 function validarTipo(tipo) {
   if (!TIPOS_VALIDOS.includes(tipo)) {
-    throw new Error('Tipo de entidade invalido.');
+    throw new Error('Tipo de entidade inválido.');
   }
 }
 
@@ -55,7 +55,7 @@ function montarPayload(dados = {}) {
   const conteudo = String(dados.conteudo || '').trim();
 
   if (!titulo && !conteudo) {
-    throw new Error('Informe um titulo ou conteudo para a nota.');
+    throw new Error('Informe um título ou conteúdo para a nota.');
   }
 
   return {

@@ -107,7 +107,7 @@ async function atualizarTipoProduto(req, res) {
     const tipoProduto = await configService.atualizarTipoProduto(req.params.id, req.body);
 
     if (!tipoProduto) {
-      return res.status(404).json({ message: 'Tipo de produto nao encontrado.' });
+      return res.status(404).json({ message: 'Tipo de produto não encontrado.' });
     }
 
     return res.json(tipoProduto);
@@ -122,7 +122,7 @@ async function excluirTipoProduto(req, res) {
     const totalExcluido = await configService.excluirTipoProduto(req.params.id);
 
     if (!totalExcluido) {
-      return res.status(404).json({ message: 'Tipo de produto nao encontrado.' });
+      return res.status(404).json({ message: 'Tipo de produto não encontrado.' });
     }
 
     return res.status(204).send();
@@ -157,7 +157,7 @@ async function atualizarTipoVenda(req, res) {
     const tipoVenda = await configService.atualizarTipoVenda(req.params.id, req.body);
 
     if (!tipoVenda) {
-      return res.status(404).json({ message: 'Tipo de venda nao encontrado.' });
+      return res.status(404).json({ message: 'Tipo de venda não encontrado.' });
     }
 
     return res.json(tipoVenda);
@@ -172,7 +172,7 @@ async function excluirTipoVenda(req, res) {
     const totalExcluido = await configService.excluirTipoVenda(req.params.id);
 
     if (!totalExcluido) {
-      return res.status(404).json({ message: 'Tipo de venda nao encontrado.' });
+      return res.status(404).json({ message: 'Tipo de venda não encontrado.' });
     }
 
     return res.status(204).send();
@@ -198,7 +198,7 @@ async function criarServico(req, res) {
     return res.status(201).json(servico);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Erro ao criar servico.' });
+    return res.status(500).json({ message: 'Erro ao criar serviço.' });
   }
 }
 
@@ -207,13 +207,13 @@ async function atualizarServico(req, res) {
     const servico = await configService.atualizarServico(req.params.id, req.body);
 
     if (!servico) {
-      return res.status(404).json({ message: 'Servico nao encontrado.' });
+      return res.status(404).json({ message: 'Serviço não encontrado.' });
     }
 
     return res.json(servico);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Erro ao atualizar servico.' });
+    return res.status(500).json({ message: 'Erro ao atualizar serviço.' });
   }
 }
 
@@ -222,13 +222,13 @@ async function excluirServico(req, res) {
     const totalExcluido = await configService.excluirServico(req.params.id);
 
     if (!totalExcluido) {
-      return res.status(404).json({ message: 'Servico nao encontrado.' });
+      return res.status(404).json({ message: 'Serviço não encontrado.' });
     }
 
     return res.status(204).send();
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Erro ao excluir servico.' });
+    return res.status(500).json({ message: 'Erro ao excluir serviço.' });
   }
 }
 
@@ -257,7 +257,7 @@ async function atualizarFunilEtapa(req, res) {
     const etapa = await configService.atualizarFunilEtapa(req.params.id, req.body);
 
     if (!etapa) {
-      return res.status(404).json({ message: 'Etapa do funil nao encontrada.' });
+      return res.status(404).json({ message: 'Etapa do funil não encontrada.' });
     }
 
     return res.json(etapa);
@@ -272,7 +272,7 @@ async function excluirFunilEtapa(req, res) {
     const etapa = await configService.excluirFunilEtapa(req.params.id);
 
     if (!etapa) {
-      return res.status(404).json({ message: 'Etapa do funil nao encontrada.' });
+      return res.status(404).json({ message: 'Etapa do funil não encontrada.' });
     }
 
     return res.status(204).send();
@@ -297,7 +297,7 @@ async function atualizarOperadora(req, res) {
     const operadora = await configService.atualizarOperadora(req.params.id, req.body);
 
     if (!operadora) {
-      return res.status(404).json({ message: 'Operadora nao encontrada.' });
+      return res.status(404).json({ message: 'Operadora não encontrada.' });
     }
 
     return res.json(operadora);
@@ -312,7 +312,7 @@ async function excluirOperadora(req, res) {
     const totalExcluido = await configService.excluirOperadora(req.params.id);
 
     if (!totalExcluido) {
-      return res.status(404).json({ message: 'Operadora nao encontrada.' });
+      return res.status(404).json({ message: 'Operadora não encontrada.' });
     }
 
     return res.status(204).send();
@@ -347,7 +347,7 @@ async function atualizarLinkExterno(req, res) {
     const link = await configService.atualizarLinkExterno(req.params.id, req.body);
 
     if (!link) {
-      return res.status(404).json({ message: 'Link externo nao encontrado.' });
+      return res.status(404).json({ message: 'Link externo não encontrado.' });
     }
 
     return res.json(link);
@@ -362,7 +362,7 @@ async function excluirLinkExterno(req, res) {
     const totalExcluido = await configService.excluirLinkExterno(req.params.id);
 
     if (!totalExcluido) {
-      return res.status(404).json({ message: 'Link externo nao encontrado.' });
+      return res.status(404).json({ message: 'Link externo não encontrado.' });
     }
 
     return res.status(204).send();

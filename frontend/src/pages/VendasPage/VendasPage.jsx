@@ -87,44 +87,44 @@ const CAMPOS = [
   { section: 'Dados da venda' },
   { name: 'data_venda', label: 'Data da venda', type: 'date' },
   { name: 'nome_fechou_venda', label: 'Nome com quem fechou a venda' },
-  { name: 'setor_funcao', label: 'Setor/Funcao' },
+  { name: 'setor_funcao', label: 'Setor/Função' },
   { name: 'qc_feito_por', label: 'QC feito por' },
 
   { section: 'Produto e valores' },
   { name: 'operadora_id', label: 'Operadora adquirida', type: 'operator', required: true },
   { name: 'tipo_venda_id', label: 'Tipo de venda', type: 'saleType', required: true },
-  { name: 'servico_id', label: 'Servico', type: 'service', required: true },
+  { name: 'servico_id', label: 'Serviço', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
-  { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitarios', type: 'chips', span: true },
-  { name: 'numeros_portados', label: 'Numeros a serem portados', type: 'portedNumbers', span: true },
+  { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitários', type: 'chips', span: true },
+  { name: 'numeros_portados', label: 'Números a serem portados', type: 'portedNumbers', span: true },
 
-  { section: 'Local de instalacao/entrega' },
+  { section: 'Local de instalação/entrega' },
   { name: 'cep', label: 'CEP' },
-  { name: 'endereco', label: 'Endereco', type: 'longText' },
-  { name: 'numero_endereco', label: 'Numero de endereco' },
+  { name: 'endereco', label: 'Endereço', type: 'longText' },
+  { name: 'numero_endereco', label: 'Número de endereço' },
   { name: 'complemento', label: 'Complemento', type: 'longText' },
   { name: 'bairro', label: 'Bairro' },
-  { name: 'municipio', label: 'Municipio' },
+  { name: 'municipio', label: 'Município' },
   { name: 'uf', label: 'UF', maxLength: 2 },
-  { name: 'ponto_referencia', label: 'Ponto de referencia', type: 'longText', span: true },
-  { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condominio, shopping...', type: 'longText', span: true },
+  { name: 'ponto_referencia', label: 'Ponto de referência', type: 'longText', span: true },
+  { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condomínio, shopping...', type: 'longText', span: true },
 
   { section: 'Aceite e recebimento' },
-  { name: 'horario_aceite_voz', label: 'Horario para aceite de voz' },
-  { name: 'responsavel_recebimento', label: 'Responsavel pelo recebimento' },
-  { name: 'rg_responsavel_recebimento', label: 'RG do responsavel pelo recebimento' },
-  { name: 'observacoes', label: 'Observacoes', type: 'longText', span: true, maxRows: 6 },
+  { name: 'horario_aceite_voz', label: 'Horário para aceite de voz' },
+  { name: 'responsavel_recebimento', label: 'Responsável pelo recebimento' },
+  { name: 'rg_responsavel_recebimento', label: 'RG do responsável pelo recebimento' },
+  { name: 'observacoes', label: 'Observações', type: 'longText', span: true, maxRows: 6 },
 ];
 
 const STATUS_FUNIL_FILTROS = [
-  { id: 'aprovacao', label: 'Aprovacao' },
-  { id: 'ativacao', label: 'Ativacao' },
+  { id: 'aprovacao', label: 'Aprovação' },
+  { id: 'ativacao', label: 'Ativação' },
   { id: 'envio', label: 'Envio' },
   { id: 'entrega', label: 'Entrega' },
-  { id: 'confirmacao', label: 'Confirmacao' },
-  { id: 'concluido', label: 'Concluido' },
+  { id: 'confirmacao', label: 'Confirmação' },
+  { id: 'concluido', label: 'Concluído' },
   { id: 'retorno', label: 'Retorno' }
 ];
 
@@ -657,7 +657,7 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
           }}
           onFocus={() => setAberto(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Buscar cliente por nome, razao social, CNPJ ou e-mail"
+          placeholder="Buscar cliente por nome, razão social, CNPJ ou e-mail"
           role="combobox"
           aria-expanded={mostrarLista}
           aria-controls="cliente-options"
@@ -694,7 +694,7 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
                   >
                     <span className="venda-cliente-option__main">
                       <strong>{cliente.nome || 'Cliente sem nome'}</strong>
-                      <span>{cliente.razao_social || 'Sem razao social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
+                      <span>{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
                     </span>
                     <span className="venda-cliente-option__meta">
                       <span>{cliente.email || cliente.responsavel_nome || 'Sem contato principal'}</span>
@@ -718,7 +718,7 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
 
       {clientes.length === 0 && (
         <div className="venda-cliente-empty">
-          <span>Nenhum cliente disponivel. Cadastre um cliente ou solicite permissao para visualizar clientes.</span>
+          <span>Nenhum cliente disponível. Cadastre um cliente ou solicite permissão para visualizar clientes.</span>
           <button type="button" className="btn btn-sm" onClick={onCreateClient}>
             <I.Plus size={13} /> Cadastrar cliente
           </button>
@@ -729,7 +729,7 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
         <div className="venda-cliente-card">
           <div>
             <strong>{clienteSelecionado.nome}</strong>
-            <span>{clienteSelecionado.razao_social || 'Sem razao social'} - {clienteSelecionado.cnpj || 'Sem CNPJ'}</span>
+            <span>{clienteSelecionado.razao_social || 'Sem razão social'} - {clienteSelecionado.cnpj || 'Sem CNPJ'}</span>
           </div>
           <div>
             <span>{clienteSelecionado.email || 'Sem e-mail'}</span>
@@ -815,13 +815,13 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
 
     if (cnpj.length !== 14) {
       if (manual) {
-        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 digitos.' });
+        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 dígitos.' });
       }
       return;
     }
 
     if (isCnpjRepetido(cnpj)) {
-      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
       return;
     }
 
@@ -841,7 +841,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
         mensagem: formatarMensagemCnpj(dados)
       });
     } catch (error) {
-      setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Nao foi possivel consultar o CNPJ.' });
+      setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Não foi possível consultar o CNPJ.' });
     } finally {
       setConsultandoCnpj(false);
     }
@@ -857,7 +857,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
 
     if (cnpj.length === 14) {
       if (isCnpjRepetido(cnpj)) {
-        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
         return;
       }
 
@@ -877,7 +877,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
       cepPreenchidoPorCnpjRef.current === cep
       && (form.endereco || form.bairro || form.municipio || form.uf)
     ) {
-      setCepStatus('Endereco preenchido pelo CNPJ.');
+      setCepStatus('Endereço preenchido pelo CNPJ.');
       return;
     }
 
@@ -893,7 +893,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
         if (cancelado) return;
 
         if (data.erro) {
-          setCepStatus('CEP nao encontrado.');
+          setCepStatus('CEP não encontrado.');
           return;
         }
 
@@ -905,11 +905,11 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
           uf: data.uf || prev.uf,
           complemento: prev.complemento || data.complemento || ''
         }));
-        setCepStatus('Endereco preenchido pelo CEP.');
+        setCepStatus('Endereço preenchido pelo CEP.');
       })
       .catch(() => {
         if (!cancelado) {
-          setCepStatus('Nao foi possivel buscar o CEP.');
+          setCepStatus('Não foi possível buscar o CEP.');
         }
       });
 
@@ -1150,8 +1150,8 @@ function ConfirmarLixeiraModal({ venda, deletando, onClose, onConfirm }) {
           <div className="trash-warning">
             <I.AlertTriangle size={20} />
             <div>
-              <strong>Esta venda sera enviada para a lixeira.</strong>
-              <span>Ela ficara disponivel para restauracao e sera permanentemente deletada daqui a 1 mes.</span>
+              <strong>Esta venda será enviada para a lixeira.</strong>
+              <span>Ela ficará disponível para restauração e será permanentemente deletada daqui a 1 mês.</span>
             </div>
           </div>
         </div>
@@ -1421,7 +1421,7 @@ function VendasPage() {
                 </select>
               </div>
               <div className="filter-field">
-                <label>Servico</label>
+                <label>Serviço</label>
                 <select value={servicoId} onChange={e => setServicoId(e.target.value)}>
                   <option value="">Todos</option>
                   {servicos.map(servico => (
@@ -1476,7 +1476,7 @@ function VendasPage() {
             <input
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar por nome, telefone, tipo, servico, CNPJ ou cidade"
+              placeholder="Buscar por nome, telefone, tipo, serviço, CNPJ ou cidade"
             />
           </div>
 
@@ -1508,7 +1508,7 @@ function VendasPage() {
                   <th>Cliente</th>
                   <th>Operadora</th>
                   <th>Tipo</th>
-                  <th>Servico</th>
+                  <th>Serviço</th>
                   <th>Linhas</th>
                   <th>GB</th>
                   <th>Valor</th>

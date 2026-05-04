@@ -11,11 +11,11 @@ function validarMeta(meta) {
   }
 
   if (!Meta.periodosValidos.includes(meta.periodo)) {
-    return 'Periodo invalido.';
+    return 'Período inválido.';
   }
 
   if (!Meta.categoriasValidas.includes(meta.categoria)) {
-    return 'Categoria invalida.';
+    return 'Categoria inválida.';
   }
 
   return null;
@@ -88,7 +88,7 @@ function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas, fallback 
         }
       }
     } catch {
-      // Usa fallback abaixo quando o JSON antigo estiver invalido.
+      // Usa fallback abaixo quando o JSON antigo estiver inválido.
     }
   }
 
@@ -247,7 +247,7 @@ class MetaController {
     try {
       const { metas } = req.body;
       if (!Array.isArray(metas)) {
-        return res.status(400).json({ error: 'Formato invalido. Esperado um array de metas.' });
+        return res.status(400).json({ error: 'Formato inválido. Esperado um array de metas.' });
       }
 
       const invalida = metas.find(meta => metaEhGift(meta) && validarMeta(meta));
@@ -451,11 +451,11 @@ class MetaController {
       const meta = await knex('metas').where({ id: req.params.id }).first();
 
       if (!meta) {
-        return res.status(404).json({ error: 'Meta nao encontrada.' });
+        return res.status(404).json({ error: 'Meta não encontrada.' });
       }
 
       if (!metaEhGift(meta)) {
-        return res.status(400).json({ error: 'Esta meta nao possui recompensa para resgate.' });
+        return res.status(400).json({ error: 'Esta meta não possui recompensa para resgate.' });
       }
 
       const ciclo = getCiclo(meta.periodo);
@@ -484,7 +484,7 @@ class MetaController {
 
       if (current < target) {
         return res.status(400).json({
-          error: 'Meta ainda nao atingida.',
+          error: 'Meta ainda não atingida.',
           current,
           target
         });
@@ -549,7 +549,7 @@ class MetaController {
       const deleted = await Meta.deleteById(req.params.id);
 
       if (!deleted) {
-        return res.status(404).json({ error: 'Meta nao encontrada.' });
+        return res.status(404).json({ error: 'Meta não encontrada.' });
       }
 
       res.status(204).send();

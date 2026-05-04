@@ -92,7 +92,7 @@ function Header({ title, subtitle, onNew }) {
           </div>
         )}
 
-        <button type="button" className="btn btn-icon btn-ghost btn-notification" title="Notificacoes">
+        <button type="button" className="btn btn-icon btn-ghost btn-notification" title="Notificações">
           <I.Bell size={16} />
           <I.ChevronDown size={10} className="chevron" />
         </button>

@@ -56,7 +56,7 @@ function exigirPermissao(permissao) {
 
       if (!permitido) {
         return res.status(403).json({
-          message: 'Voce nao tem permissao para executar esta acao.'
+          message: 'Você não tem permissão para executar esta ação.'
         });
       }
 
@@ -65,7 +65,7 @@ function exigirPermissao(permissao) {
       console.error(error);
 
       return res.status(500).json({
-        message: 'Erro ao validar permissoes.'
+        message: 'Erro ao validar permissões.'
       });
     }
   };
@@ -83,13 +83,13 @@ function exigirUmaPermissao(permissoes) {
       }
 
       return res.status(403).json({
-        message: 'Voce nao tem permissao para executar esta acao.'
+        message: 'Você não tem permissão para executar esta ação.'
       });
     } catch (error) {
       console.error(error);
 
       return res.status(500).json({
-        message: 'Erro ao validar permissoes.'
+        message: 'Erro ao validar permissões.'
       });
     }
   };
@@ -110,7 +110,7 @@ function exigirAdminParaAlterarAdmin(req, res, next) {
 
       if (Number(req.body?.role_id) === 1 && !solicitanteEhAdmin) {
         return res.status(403).json({
-          message: 'Apenas administradores podem promover usuarios para administrador.'
+          message: 'Apenas administradores podem promover usuários para administrador.'
         });
       }
 
@@ -134,7 +134,7 @@ function exigirAdminParaAlterarAdmin(req, res, next) {
       console.error(error);
 
       return res.status(500).json({
-        message: 'Erro ao validar permissoes.'
+        message: 'Erro ao validar permissões.'
       });
     });
 }
@@ -142,7 +142,7 @@ function exigirAdminParaAlterarAdmin(req, res, next) {
 function impedirAutoExclusao(req, res, next) {
   if (Number(req.params.id) === Number(req.usuario?.id)) {
     return res.status(403).json({
-      message: 'Voce nao pode excluir o proprio usuario.'
+      message: 'Você não pode excluir o próprio usuário.'
     });
   }
 

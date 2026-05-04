@@ -113,7 +113,7 @@ function montarPayload(dados) {
   }
 
   if (!['adm', 'rl'].includes(payload.responsavel_tipo)) {
-    throw new Error('Tipo do responsavel invalido.');
+    throw new Error('Tipo do responsável inválido.');
   }
 
   if (payload.operadora_atual_id !== undefined && payload.operadora_atual_id !== null) {

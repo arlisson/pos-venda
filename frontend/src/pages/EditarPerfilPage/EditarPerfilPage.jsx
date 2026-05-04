@@ -119,7 +119,7 @@ function EditarPerfilPage() {
       setSenha('');
       setSucesso('Alteracoes salvas com sucesso.');
     } catch (error) {
-      setErro(error.message || 'Erro ao salvar alteracoes.');
+      setErro(error.message || 'Erro ao salvar alterações.');
     } finally {
       setSalvando(false);
     }
@@ -212,7 +212,7 @@ function EditarPerfilPage() {
               <div className="form-field">
                 <label>E-mail de acesso</label>
                 <input value={usuario?.email || ''} disabled />
-                <div className="editar-perfil-help">O e-mail nao pode ser alterado por aqui.</div>
+                <div className="editar-perfil-help">O e-mail não pode ser alterado por aqui.</div>
               </div>
             </div>
           </section>
@@ -265,7 +265,7 @@ function EditarPerfilPage() {
         <div className="editar-perfil-actions">
           <button type="button" className="btn" onClick={() => navigate('/perfil')}>Cancelar</button>
           <button type="submit" className="btn btn-primary" disabled={salvando || !temAlteracoes}>
-            {salvando ? 'Salvando...' : 'Salvar alteracoes'}
+            {salvando ? 'Salvando...' : 'Salvar alterações'}
           </button>
         </div>
       </form>

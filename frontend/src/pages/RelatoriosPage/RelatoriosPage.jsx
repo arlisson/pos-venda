@@ -4,8 +4,8 @@ import { listarVendedoras, obterRelatoriosVendas } from '../../services/venda.se
 import './RelatoriosPage.css';
 
 const PERIODOS = [
-  { value: 'mes_atual', label: 'Mes atual' },
-  { value: 'ultimos_30_dias', label: 'Ultimos 30 dias' },
+  { value: 'mes_atual', label: 'Mês atual' },
+  { value: 'ultimos_30_dias', label: 'Últimos 30 dias' },
   { value: 'hoje', label: 'Hoje' },
   { value: 'semana_atual', label: 'Semana atual' },
   { value: 'personalizado', label: 'Personalizado' }
@@ -76,7 +76,7 @@ function RelatoriosPage() {
   useEffect(() => {
     listarVendedoras()
       .then(setVendedoras)
-      .catch(error => setErro(error.message || 'Erro ao listar usuarios.'));
+      .catch(error => setErro(error.message || 'Erro ao listar usuários.'));
   }, []);
 
   useEffect(() => {
@@ -104,7 +104,7 @@ function RelatoriosPage() {
         }
       } catch (error) {
         if (ativo) {
-          setErro(error.message || 'Erro ao carregar relatorios.');
+          setErro(error.message || 'Erro ao carregar relatórios.');
           setRelatorio(EMPTY_REPORT);
         }
       } finally {
@@ -141,7 +141,7 @@ function RelatoriosPage() {
       <section className="relatorios-page">
         <div className="relatorios-toolbar">
           <label>
-            <span>Periodo</span>
+            <span>Período</span>
             <select value={periodo} onChange={event => setPeriodo(event.target.value)}>
               {PERIODOS.map(item => (
                 <option key={item.value} value={item.value}>{item.label}</option>
@@ -152,7 +152,7 @@ function RelatoriosPage() {
           {mostrarDatas && (
             <>
               <label>
-                <span>Inicio</span>
+            <span>Início</span>
                 <input type="date" value={dataInicio} onChange={event => setDataInicio(event.target.value)} />
               </label>
               <label>
@@ -163,7 +163,7 @@ function RelatoriosPage() {
           )}
 
           <label>
-            <span>Usuario</span>
+            <span>Usuário</span>
             <select value={vendedoraId} onChange={event => setVendedoraId(event.target.value)}>
               <option value="">Todos</option>
               {vendedoras.map(usuario => (
@@ -184,9 +184,9 @@ function RelatoriosPage() {
             detail={`${formatarMoeda(cards.vendasAndamento.valor)} em pipeline`}
           />
           <MetricCard
-            label="Concluidas"
+            label="Concluídas"
             value={formatarMoeda(cards.concluidas.valor)}
-            detail={`${cards.concluidas.quantidade} vendas no periodo`}
+            detail={`${cards.concluidas.quantidade} vendas no período`}
           />
           <MetricCard
             label="Perda por retorno"
@@ -208,7 +208,7 @@ function RelatoriosPage() {
               {carregando && <span>Carregando...</span>}
             </div>
             {(relatorio.vendasPorFase || []).length === 0 ? (
-              <EmptyState>Nenhuma fase encontrada no periodo.</EmptyState>
+              <EmptyState>Nenhuma fase encontrada no período.</EmptyState>
             ) : (
               <div className="relatorios-bars">
                 {relatorio.vendasPorFase.map(item => {
@@ -233,7 +233,7 @@ function RelatoriosPage() {
               <h2>Por operadora</h2>
             </div>
             {(relatorio.porOperadora || []).length === 0 ? (
-              <EmptyState>Nenhuma venda encontrada no periodo.</EmptyState>
+              <EmptyState>Nenhuma venda encontrada no período.</EmptyState>
             ) : (
               <div className="relatorios-bars">
                 {relatorio.porOperadora.map(item => {
@@ -256,7 +256,7 @@ function RelatoriosPage() {
           <section className="relatorios-panel relatorios-panel--ranking">
             <div className="relatorios-panel-header">
               <h2>Ranking de vendedores</h2>
-              <span>{vendedoraId ? 'Usuario filtrado' : 'Todos os usuarios'}</span>
+              <span>{vendedoraId ? 'Usuário filtrado' : 'Todos os usuários'}</span>
             </div>
             {(relatorio.rankingVendedores || []).length === 0 ? (
               <EmptyState>Nenhum desempenho encontrado.</EmptyState>

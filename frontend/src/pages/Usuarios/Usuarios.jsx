@@ -24,8 +24,8 @@ function parsePermissoes(permissoes) {
 const GRUPOS_PERMISSOES = [
   {
     id: 'inicio',
-    titulo: 'Pagina inicial',
-    descricao: 'Controle os indicadores exibidos no inicio do sistema.',
+    titulo: 'Página inicial',
+    descricao: 'Controle os indicadores exibidos no início do sistema.',
     secoes: [
       {
         titulo: 'Cards liberados',
@@ -33,12 +33,12 @@ const GRUPOS_PERMISSOES = [
           {
             chave: 'dashboard_resumo_vendas',
             nome: 'Resumo de vendas',
-            descricao: 'Mostra os cards Vendas no dia, Valor vendido hoje, Concluidas hoje e Em pipeline.'
+            descricao: 'Mostra os cards Vendas no dia, Valor vendido hoje, Concluídas hoje e Em pipeline.'
           },
           {
             chave: 'metas_ver_usuarios',
-            nome: 'Metas por usuario',
-            descricao: 'Mostra no dashboard quem bateu ou ainda nao bateu cada meta.'
+            nome: 'Metas por usuário',
+            descricao: 'Mostra no dashboard quem bateu ou ainda não bateu cada meta.'
           }
         ]
       }
@@ -46,16 +46,16 @@ const GRUPOS_PERMISSOES = [
   },
   {
     id: 'relatorios',
-    titulo: 'Relatorios',
-    descricao: 'Controle o acesso a pagina de relatorios comerciais.',
+    titulo: 'Relatórios',
+    descricao: 'Controle o acesso à página de relatórios comerciais.',
     secoes: [
       {
-        titulo: 'Acesso a pagina',
+        titulo: 'Acesso à página',
         itens: [
           {
             chave: 'relatorios_visualizar',
-            nome: 'Visualizar relatorios',
-            descricao: 'Permite acessar a pagina Relatorios pela barra lateral.'
+            nome: 'Visualizar relatórios',
+            descricao: 'Permite acessar a página Relatórios pela barra lateral.'
           }
         ]
       }
@@ -64,10 +64,10 @@ const GRUPOS_PERMISSOES = [
   {
     id: 'vendas',
     titulo: 'Vendas',
-    descricao: 'Controle as telas, a visualizacao e as acoes permitidas no modulo de vendas.',
+    descricao: 'Controle as telas, a visualização e as ações permitidas no módulo de vendas.',
     secoes: [
       {
-        titulo: 'Acesso ao modulo',
+        titulo: 'Acesso ao módulo',
         itens: [
           {
             chave: 'vendas',
@@ -92,13 +92,13 @@ const GRUPOS_PERMISSOES = [
         ]
       },
       {
-        titulo: 'Visualizacao',
+        titulo: 'Visualização',
         exclusivo: true,
         itens: [
           {
             chave: 'vendas_ver_proprias',
-            nome: 'Ver proprias',
-            descricao: 'Mostra vendas criadas pelo usuario ou vinculadas a ele.'
+            nome: 'Ver próprias',
+            descricao: 'Mostra vendas criadas pelo usuário ou vinculadas a ele.'
           },
           {
             chave: 'vendas_ver_todas',
@@ -108,7 +108,7 @@ const GRUPOS_PERMISSOES = [
         ]
       },
       {
-        titulo: 'Acoes',
+        titulo: 'Ações',
         itens: [
           {
             chave: 'vendas_criar',
@@ -118,12 +118,12 @@ const GRUPOS_PERMISSOES = [
           {
             chave: 'vendas_editar',
             nome: 'Editar',
-            descricao: 'Permite editar vendas acessiveis.'
+            descricao: 'Permite editar vendas acessíveis.'
           },
           {
             chave: 'vendas_excluir',
             nome: 'Excluir',
-            descricao: 'Permite excluir vendas acessiveis.'
+            descricao: 'Permite excluir vendas acessíveis.'
           }
         ]
       }
@@ -131,46 +131,46 @@ const GRUPOS_PERMISSOES = [
   },
   {
     id: 'usuarios',
-    titulo: 'Usuarios',
-    descricao: 'Controle o acesso ao cadastro de usuarios e a administracao de permissoes.',
+    titulo: 'Usuários',
+    descricao: 'Controle o acesso ao cadastro de usuários e a administração de permissões.',
     secoes: [
       {
-        titulo: 'Acesso ao modulo',
+        titulo: 'Acesso ao módulo',
         itens: [
           {
             chave: 'crud_usuarios',
-            nome: 'Acesso ao modulo',
-            descricao: 'Permite acessar a area de cadastro de usuarios.'
+            nome: 'Acesso ao módulo',
+            descricao: 'Permite acessar a área de cadastro de usuários.'
           }
         ]
       },
       {
-        titulo: 'Acoes',
+        titulo: 'Ações',
         itens: [
           {
             chave: 'usuarios_listar',
             nome: 'Listar',
-            descricao: 'Permite visualizar usuarios cadastrados.'
+            descricao: 'Permite visualizar usuários cadastrados.'
           },
           {
             chave: 'usuarios_criar',
             nome: 'Criar',
-            descricao: 'Permite criar novos usuarios.'
+            descricao: 'Permite criar novos usuários.'
           },
           {
             chave: 'usuarios_editar',
             nome: 'Editar',
-            descricao: 'Permite editar dados de usuarios.'
+            descricao: 'Permite editar dados de usuários.'
           },
           {
             chave: 'usuarios_excluir',
             nome: 'Excluir',
-            descricao: 'Permite excluir usuarios comuns.'
+            descricao: 'Permite excluir usuários comuns.'
           },
           {
             chave: 'gerenciar_permissoes',
-            nome: 'Gerenciar permissoes',
-            descricao: 'Permite atribuir ou remover permissoes.'
+            nome: 'Gerenciar permissões',
+            descricao: 'Permite atribuir ou remover permissões.'
           }
         ]
       }
@@ -204,7 +204,7 @@ function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle 
       />
       <span>
         <strong>{item.nome}</strong>
-        <small>{item.descricao || 'Permissao do sistema.'}</small>
+        <small>{item.descricao || 'Permissão do sistema.'}</small>
       </span>
     </label>
   );
@@ -306,7 +306,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
       await onSave(usuarioId, selecionadas);
       onClose();
     } catch (error) {
-      setErro(error.message || 'Erro ao salvar permissoes.');
+      setErro(error.message || 'Erro ao salvar permissões.');
       setSalvando(false);
     }
   }
@@ -341,11 +341,11 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
   const grupoOutrasPermissoes = permissoesRestantes.length > 0
     ? {
         id: 'outras',
-        titulo: 'Outras permissoes',
-        descricao: 'Permissoes adicionais do sistema que nao fazem parte dos grupos principais.',
+        titulo: 'Outras permissões',
+        descricao: 'Permissões adicionais do sistema que não fazem parte dos grupos principais.',
         secoes: [
           {
-            titulo: 'Permissoes',
+            titulo: 'Permissões',
             itens: permissoesRestantes
           }
         ]
@@ -361,10 +361,10 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
       <div className="panel permissions-modal">
         <div className="panel-header permissions-modal__header">
           <div>
-            <h3 style={{ margin: 0 }}>Gerenciar permissoes</h3>
+            <h3 style={{ margin: 0 }}>Gerenciar permissões</h3>
             {usuario && (
               <div className="permissions-modal__sub">
-                {usuario.nome} · {totalSelecionadas} permissoes selecionadas
+                {usuario.nome} · {totalSelecionadas} permissões selecionadas
               </div>
             )}
           </div>
@@ -382,7 +382,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
             <div style={{ color: 'var(--danger)', fontSize: 13 }}>{erro}</div>
           ) : isAdmin ? (
             <div style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-2)' }}>
-              Administradores possuem todas as permissoes automaticamente.
+              Administradores possuem todas as permissões automaticamente.
             </div>
           ) : (
             <>
@@ -410,7 +410,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
               <div className="permissions-modal__footer">
                 <button className="btn" onClick={onClose}>Cancelar</button>
                 <button className="btn btn-primary" onClick={handleSave} disabled={salvando}>
-                  {salvando ? 'Salvando...' : 'Salvar permissoes'}
+                  {salvando ? 'Salvando...' : 'Salvar permissões'}
                 </button>
               </div>
             </>
@@ -456,7 +456,7 @@ function Usuarios() {
         const dados = await listarUsuarios();
         setUsuarios(dados);
       } catch {
-        setErro('Erro ao carregar usuarios.');
+        setErro('Erro ao carregar usuários.');
       } finally {
         setCarregando(false);
       }
@@ -470,9 +470,9 @@ function Usuarios() {
       try {
         await deletarUsuario(u.id);
         setUsuarios(prev => prev.filter(x => x.id !== u.id));
-        setSucesso('Usuario excluido com sucesso.');
+        setSucesso('Usuário excluído com sucesso.');
       } catch (error) {
-        setErro(error.message || 'Erro ao excluir usuario.');
+        setErro(error.message || 'Erro ao excluir usuário.');
       } finally {
         setDeletando(null);
       }
@@ -494,7 +494,7 @@ function Usuarios() {
       }));
     }
 
-    setSucesso('Permissoes atualizadas com sucesso.');
+    setSucesso('Permissões atualizadas com sucesso.');
   }
 
   const getInitials = (name) => {
@@ -515,11 +515,11 @@ function Usuarios() {
       <div className="users-page">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-            {usuarios.length} usuarios · {usuarios.filter(u => u.ativo).length} ativos
+            {usuarios.length} usuários · {usuarios.filter(u => u.ativo).length} ativos
           </div>
           {podeCriarUsuarios && (
             <button className="btn btn-primary" onClick={() => navigate('/usuarios/novo')}>
-              <I.Plus size={14} /> Adicionar usuario
+              <I.Plus size={14} /> Adicionar usuário
             </button>
           )}
         </div>
@@ -532,7 +532,7 @@ function Usuarios() {
             <table>
               <thead>
                 <tr>
-                  <th>Usuario</th>
+                  <th>Usuário</th>
                   <th>E-mail</th>
                   <th>Perfil</th>
                   <th>Status</th>
@@ -543,7 +543,7 @@ function Usuarios() {
                 {carregando ? (
                   <tr>
                     <td colSpan={podeMostrarAcoesUsuarios ? 5 : 4} style={{ textAlign: 'center', padding: '40px' }} className="muted">
-                      Carregando usuarios...
+                      Carregando usuários...
                     </td>
                   </tr>
                 ) : usuarios.length === 0 ? (
@@ -589,7 +589,7 @@ function Usuarios() {
 
                           {podeGerenciarPermissoes && (
                             <button className="btn btn-sm btn-ghost" onClick={() => setGerenciandoId(u.id)}>
-                              Gerenciar permissoes
+                              Gerenciar permissões
                             </button>
                           )}
 

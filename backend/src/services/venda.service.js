@@ -943,7 +943,7 @@ async function criarVenda(dados, usuarioId) {
     const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
 
     if (!cliente) {
-      throw new Error('Cliente nao encontrado.');
+      throw new Error('Cliente não encontrado.');
     }
 
     payload = aplicarDadosClienteNaVenda(payload, cliente);
@@ -998,7 +998,7 @@ async function atualizarVenda(id, dados, usuarioId) {
     const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
 
     if (!cliente) {
-      throw new Error('Cliente nao encontrado.');
+      throw new Error('Cliente não encontrado.');
     }
 
     payload = aplicarDadosClienteNaVenda(payload, cliente);
@@ -1046,7 +1046,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   const retornoVoltandoParaOrigem = venda.status_funil === 'retorno' && status === (venda.status_anterior_retorno || 'aprovacao');
 
   if (!retornoVoltandoParaOrigem && !await validarStatusFunil(status)) {
-    return { status: 'invalid', message: 'Status do funil invalido.' };
+    return { status: 'invalid', message: 'Status do funil inválido.' };
   }
 
   if (!FUNIL_PRIORIDADES.includes(prioridade)) {

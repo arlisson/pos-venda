@@ -36,12 +36,12 @@ function NotaEditor({ value, salvando, onChange, onCancel, onSave }) {
         onKeyDown={event => {
           if (event.key === 'Enter') event.preventDefault();
         }}
-        placeholder="Titulo (opcional)"
+        placeholder="Título (opcional)"
       />
       <AutoResizeTextarea
         value={value.conteudo}
         onChange={event => onChange({ ...value, conteudo: event.target.value })}
-        placeholder="Escreva uma anotacao..."
+        placeholder="Escreva uma anotação..."
         minRows={3}
         maxRows={8}
       />
@@ -160,7 +160,7 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
       <div className="notes-empty">
         <I.Note size={22} />
         <strong>Salve este {labelEntidade} primeiro.</strong>
-        <span>Depois de salvar, voce podera criar anotacoes individuais aqui.</span>
+        <span>Depois de salvar, você poderá criar anotações individuais aqui.</span>
       </div>
     );
   }
@@ -170,7 +170,7 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
       <div className="notes-toolbar">
         <div>
           <strong>Minhas notas</strong>
-          <span>{notas.length} anotacao(oes)</span>
+          <span>{notas.length} anotação(ões)</span>
         </div>
         <button type="button" className="btn btn-sm btn-primary" onClick={iniciarNovaNota} disabled={criando || salvando}>
           <I.Plus size={13} /> Nova nota
@@ -219,7 +219,7 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
                 <>
                   <div className="note-card__head">
                     <div>
-                      <strong>{nota.titulo || 'Sem titulo'}</strong>
+                      <strong>{nota.titulo || 'Sem título'}</strong>
                       <span>{formatarDataNota(nota.updated_at)}</span>
                     </div>
                     <div className="note-card__actions">

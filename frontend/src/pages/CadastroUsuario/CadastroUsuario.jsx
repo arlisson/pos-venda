@@ -46,7 +46,7 @@ function CadastroUsuario() {
         const permissoesData = await listarPermissoes();
         setPermissoes(permissoesData);
       } catch (error) {
-        setErro(error.message || 'Erro ao carregar permissoes.');
+        setErro(error.message || 'Erro ao carregar permissões.');
       }
     }
 
@@ -78,10 +78,10 @@ function CadastroUsuario() {
       }
 
       await criarUsuario(dados);
-      setSucesso('Usuario cadastrado com sucesso. Redirecionando...');
+      setSucesso('Usuário cadastrado com sucesso. Redirecionando...');
       setTimeout(() => navigate('/usuarios'), 800);
     } catch (error) {
-      setErro(error.message || 'Erro ao cadastrar usuario.');
+      setErro(error.message || 'Erro ao cadastrar usuário.');
     } finally {
       setCarregando(false);
     }
@@ -96,7 +96,7 @@ function CadastroUsuario() {
               <button className="btn btn-icon btn-ghost" onClick={() => navigate('/usuarios')}>
                 <I.ArrowRight style={{ transform: 'rotate(180deg)' }} />
               </button>
-              Novo Usuario
+              Novo Usuário
             </h3>
           </div>
           <div className="panel-body">
@@ -150,7 +150,7 @@ function CadastroUsuario() {
                         }
                       }}
                     >
-                      <option value={2}>Usuario Comum</option>
+                      <option value={2}>Usuário Comum</option>
                       <option value={1}>Administrador</option>
                     </select>
                   </div>
@@ -162,11 +162,11 @@ function CadastroUsuario() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {Number(roleId) === 1 ? (
                         <div style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-2)' }}>
-                          Administradores possuem todas as permissoes automaticamente.
+                          Administradores possuem todas as permissões automaticamente.
                         </div>
                       ) : permissoes.length === 0 ? (
                         <div className="muted" style={{ fontSize: 13 }}>
-                          Nenhuma permissao disponivel.
+                          Nenhuma permissão disponível.
                         </div>
                       ) : (
                         permissoes.map(p => (
@@ -194,7 +194,7 @@ function CadastroUsuario() {
                 </>
               ) : (
                 <div style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-2)', marginTop: 20 }}>
-                  Voce pode cadastrar usuarios, mas nao pode definir permissoes.
+                  Você pode cadastrar usuários, mas não pode definir permissões.
                 </div>
               )}
 
@@ -204,7 +204,7 @@ function CadastroUsuario() {
               <div style={{ marginTop: '24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn" onClick={() => navigate('/usuarios')}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" disabled={carregando}>
-                  {carregando ? 'Salvando...' : 'Cadastrar Usuario'}
+                  {carregando ? 'Salvando...' : 'Cadastrar Usuário'}
                 </button>
               </div>
             </form>

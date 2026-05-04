@@ -5,7 +5,7 @@ async function index(req, res) {
     const notas = await notaService.listarNotas(req.params.tipo, req.params.id, req.usuario.id);
 
     if (!notas) {
-      return res.status(404).json({ message: 'Entidade nao encontrada.' });
+      return res.status(404).json({ message: 'Entidade não encontrada.' });
     }
 
     return res.json(notas);
@@ -19,7 +19,7 @@ async function store(req, res) {
     const nota = await notaService.criarNota(req.params.tipo, req.params.id, req.usuario.id, req.body);
 
     if (!nota) {
-      return res.status(404).json({ message: 'Entidade nao encontrada.' });
+      return res.status(404).json({ message: 'Entidade não encontrada.' });
     }
 
     return res.status(201).json(nota);
@@ -33,7 +33,7 @@ async function update(req, res) {
     const nota = await notaService.atualizarNota(req.params.notaId, req.usuario.id, req.body);
 
     if (!nota) {
-      return res.status(404).json({ message: 'Nota nao encontrada.' });
+      return res.status(404).json({ message: 'Nota não encontrada.' });
     }
 
     return res.json(nota);
@@ -47,7 +47,7 @@ async function destroy(req, res) {
     const total = await notaService.excluirNota(req.params.notaId, req.usuario.id);
 
     if (!total) {
-      return res.status(404).json({ message: 'Nota nao encontrada.' });
+      return res.status(404).json({ message: 'Nota não encontrada.' });
     }
 
     return res.status(204).send();

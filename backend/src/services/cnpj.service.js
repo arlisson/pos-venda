@@ -29,7 +29,7 @@ function validarCnpj(valor) {
   }
 
   if (isCnpjRepetido(cnpj)) {
-    throw new CnpjConsultaError('CNPJ invalido.', 'cnpj_invalido');
+    throw new CnpjConsultaError('CNPJ inválido.', 'cnpj_invalido');
   }
 
   return cnpj;
@@ -335,10 +335,10 @@ async function consultarCnpj(valor) {
     }
 
     if (teveNaoEncontrado) {
-      throw new CnpjConsultaError('CNPJ nao encontrado nas fontes consultadas.', 'nao_encontrado');
+      throw new CnpjConsultaError('CNPJ não encontrado nas fontes consultadas.', 'nao_encontrado');
     }
 
-    throw new CnpjConsultaError('Nao foi possivel consultar o CNPJ agora. Tente novamente.', 'indisponivel');
+    throw new CnpjConsultaError('Não foi possível consultar o CNPJ agora. Tente novamente.', 'indisponivel');
   }
 
   await salvarCache(cnpj, payload, resultados);

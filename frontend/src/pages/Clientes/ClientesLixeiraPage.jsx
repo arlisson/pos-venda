@@ -68,7 +68,7 @@ function ClientesLixeiraPage() {
   }
 
   async function handleExcluirDefinitivo(cliente) {
-    const confirmado = window.confirm('Excluir este cliente definitivamente? Essa acao nao pode ser desfeita.');
+    const confirmado = window.confirm('Excluir este cliente definitivamente? Essa ação não pode ser desfeita.');
 
     if (!confirmado) return;
 
@@ -142,7 +142,7 @@ function ClientesLixeiraPage() {
                       <td>
                         <div className="cliente-primary">
                           <strong>{cliente.nome}</strong>
-                          <span>{cliente.razao_social || 'Sem razao social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
+                          <span>{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
                         </div>
                       </td>
                       <td>

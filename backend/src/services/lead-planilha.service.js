@@ -250,7 +250,7 @@ async function reconciliarPlanilhaProcessando(planilha) {
 
   let motivo = null;
   if (arquivoSumiu && semProgresso) {
-    motivo = 'Arquivo temporario nao encontrado; o processamento pode ter sido interrompido por reinicio do servidor ou falha antes de registrar o erro.';
+    motivo = 'Arquivo temporário não encontrado; o processamento pode ter sido interrompido por reinício do servidor ou falha antes de registrar o erro.';
   } else if (travado) {
     motivo = `Processamento sem atualizacao ha ${Math.round(tempoOcioso / 1000)}s; provavelmente o processo foi encerrado (reinicio do servidor, falta de memoria ou falha silenciosa).`;
   }
@@ -351,7 +351,7 @@ async function criarPlanilha(dados, usuarioId) {
 
 async function salvarLinhasLote(planilhaId, linhas = []) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
-  if (!planilha) throw new Error('Planilha nao encontrada.');
+  if (!planilha) throw new Error('Planilha não encontrada.');
 
   const payload = linhas.map((linha, index) => ({
     planilha_id: Number(planilhaId),
@@ -385,7 +385,7 @@ async function salvarLinhasLote(planilhaId, linhas = []) {
 
 async function finalizarPlanilha(planilhaId, dados = {}) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
-  if (!planilha) throw criarHttpError(404, 'Planilha nao encontrada.');
+  if (!planilha) throw criarHttpError(404, 'Planilha não encontrada.');
 
   const colunas = Array.isArray(dados.colunas) ? dados.colunas : null;
   const schemaColunas = dados.schema_colunas && typeof dados.schema_colunas === 'object'
@@ -410,7 +410,7 @@ async function finalizarPlanilha(planilhaId, dados = {}) {
 
 async function marcarErroPlanilha(planilhaId, mensagem) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
-  if (!planilha) throw criarHttpError(404, 'Planilha nao encontrada.');
+  if (!planilha) throw criarHttpError(404, 'Planilha não encontrada.');
 
   const atualizada = await withDbRetry(planilhaId, 'marcarErroPlanilha', () => (
     LeadPlanilha.query().patchAndFetchById(planilhaId, {
@@ -435,7 +435,7 @@ async function excluirPlanilha(planilhaId) {
   let planilha = await LeadPlanilha.query().findById(planilhaId);
 
   if (!planilha) {
-    throw criarHttpError(404, 'Planilha nao encontrada.');
+    throw criarHttpError(404, 'Planilha não encontrada.');
   }
 
   if (planilha.status === 'processando') {
@@ -646,21 +646,21 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
 
 async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
-  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
 
   if (Number(linha.atribuido_para_id) !== Number(usuarioId)) {
-    throw criarHttpError(403, 'Voce nao pode atualizar este lead.');
+    throw criarHttpError(403, 'Você não pode atualizar este lead.');
   }
 
   const coluna = String(dados.coluna || '').trim();
   const valor = String(dados.valor || '').trim();
   if (!coluna) throw criarHttpError(400, 'Informe a coluna que sera atualizada.');
-  if (coluna.endsWith(UPDATED_COLUMN_SUFFIX)) throw criarHttpError(400, 'Atualize a coluna original, nao a coluna atualizada.');
+  if (coluna.endsWith(UPDATED_COLUMN_SUFFIX)) throw criarHttpError(400, 'Atualize a coluna original, não a coluna atualizada.');
   if (!valor) throw criarHttpError(400, 'Informe a informacao atualizada.');
 
   const dadosJson = parseJson(linha.dados_json, {});
   if (!Object.prototype.hasOwnProperty.call(dadosJson, coluna)) {
-    throw criarHttpError(400, 'Coluna nao encontrada neste lead.');
+    throw criarHttpError(400, 'Coluna não encontrada neste lead.');
   }
 
   const colunaAtualizada = `${coluna}${UPDATED_COLUMN_SUFFIX}`;
@@ -769,9 +769,9 @@ async function dividirLeads(dados, usuarioId) {
   const linhaIds = await buscarIdsPorCriterios(dados, quantidadeTotal);
   if (linhaIds.length < quantidadeTotal) {
     if (dados.incluir_enviados === true) {
-      throw new Error('Nao ha leads suficientes para a quantidade solicitada.');
+      throw new Error('Não há leads suficientes para a quantidade solicitada.');
     }
-    throw new Error('Nao ha leads nao enviados suficientes. Ative incluir leads ja enviados para transferir linhas distribuidas.');
+    throw new Error('Não há leads não enviados suficientes. Ative incluir leads já enviados para transferir linhas distribuídas.');
   }
 
   const totalJaEnviados = dados.incluir_enviados === true
@@ -937,7 +937,7 @@ async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes)
     await flush();
 
     if (!colunas || colunas.length === 0) {
-      throw new Error('CSV sem cabecalho valido.');
+      throw new Error('CSV sem cabeçalho válido.');
     }
 
     await atualizarProgresso(planilhaId, {
@@ -1047,7 +1047,7 @@ function iniciarUpload(req, usuarioId) {
 
     busboy.on('finish', async () => {
       try {
-        if (!uploadPromise) throw new Error('Arquivo CSV nao enviado.');
+        if (!uploadPromise) throw new Error('Arquivo CSV não enviado.');
         const planilha = await uploadPromise;
         resolvido = true;
         resolve(planilha);

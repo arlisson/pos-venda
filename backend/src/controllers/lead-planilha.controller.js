@@ -34,7 +34,7 @@ async function status(req, res) {
     const planilha = await leadPlanilhaService.buscarStatus(req.params.id);
 
     if (!planilha) {
-      return res.status(404).json({ message: 'Planilha nao encontrada.' });
+      return res.status(404).json({ message: 'Planilha não encontrada.' });
     }
 
     return res.json(planilha);
@@ -81,7 +81,7 @@ async function updateSchema(req, res) {
     const planilha = await leadPlanilhaService.atualizarSchema(req.params.id, req.body.schema_colunas);
 
     if (!planilha) {
-      return res.status(404).json({ message: 'Planilha nao encontrada.' });
+      return res.status(404).json({ message: 'Planilha não encontrada.' });
     }
 
     return res.json(planilha);

@@ -20,11 +20,11 @@ export function validarCnpjParaConsulta(valor) {
   const cnpj = sanitizarCnpj(valor);
 
   if (cnpj.length !== 14) {
-    throw new CnpjConsultaError('Informe um CNPJ com 14 digitos.', 'cnpj_incompleto');
+    throw new CnpjConsultaError('Informe um CNPJ com 14 dígitos.', 'cnpj_incompleto');
   }
 
   if (isCnpjRepetido(cnpj)) {
-    throw new CnpjConsultaError('CNPJ invalido.', 'cnpj_invalido');
+    throw new CnpjConsultaError('CNPJ inválido.', 'cnpj_invalido');
   }
 
   return cnpj;

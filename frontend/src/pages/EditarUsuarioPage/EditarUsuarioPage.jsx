@@ -159,7 +159,7 @@ function EditarUsuarioPage() {
     event.preventDefault();
 
     if (!temMudancas) {
-      setErro('Nenhuma alteracao foi feita.');
+      setErro('Nenhuma alteração foi feita.');
       return;
     }
 
@@ -187,7 +187,7 @@ function EditarUsuarioPage() {
 
       await atualizarUsuario(id, dados);
 
-      setSucesso('Usuario atualizado com sucesso!');
+      setSucesso('Usuário atualizado com sucesso!');
       setSenha('');
       setDadosOriginais({
         nome,
@@ -209,7 +209,7 @@ function EditarUsuarioPage() {
       <LayoutPrivado>
         <div className="editar-usuario-page">
           <Card className="editar-usuario-card">
-            <div className="editar-usuario__loading">Carregando usuario...</div>
+            <div className="editar-usuario__loading">Carregando usuário...</div>
           </Card>
         </div>
       </LayoutPrivado>
@@ -226,7 +226,7 @@ function EditarUsuarioPage() {
               type="button"
               className="btn btn-icon btn-ghost editar-usuario__back"
               onClick={() => navigate('/usuarios')}
-              aria-label="Voltar para usuarios"
+              aria-label="Voltar para usuários"
               title="Voltar"
             >
               <I.ArrowRight style={{ transform: 'rotate(180deg)' }} />
@@ -235,9 +235,9 @@ function EditarUsuarioPage() {
             <div className="editar-usuario__avatar">{iniciaisUsuario}</div>
 
             <div>
-              <h1 className="editar-usuario__title">Editar usuario</h1>
+              <h1 className="editar-usuario__title">Editar usuário</h1>
               <p className="editar-usuario__subtitle">
-                Atualize dados de acesso, status e permissoes.
+                Atualize dados de acesso, status e permissões.
               </p>
             </div>
           </div>
@@ -249,12 +249,12 @@ function EditarUsuarioPage() {
             </span>
             <span className="pill">
               <I.Shield size={13} />
-              {Number(roleId) === 1 ? 'Administrador' : 'Usuario comum'}
+              {Number(roleId) === 1 ? 'Administrador' : 'Usuário comum'}
             </span>
             {temMudancas && (
               <span className="pill warn">
                 <span className="pill-dot"></span>
-                {totalMudancas} alteracao{totalMudancas > 1 ? 'es' : ''}
+                {totalMudancas} alteração{totalMudancas > 1 ? 'es' : ''}
               </span>
             )}
           </div>
@@ -272,7 +272,7 @@ function EditarUsuarioPage() {
         {temMudancas && !erro && !sucesso && (
           <div className="editar-usuario__changes-indicator">
             <span className="editar-usuario__changes-dot"></span>
-            Alteracoes nao salvas
+            Alterações não salvas
           </div>
         )}
 
@@ -280,8 +280,8 @@ function EditarUsuarioPage() {
           <section className="editar-usuario__section">
             <div className="editar-usuario__section-header">
               <div>
-                <h2>Dados do usuario</h2>
-                <p>Informacoes usadas para identificacao e login.</p>
+                <h2>Dados do usuário</h2>
+                <p>Informações usadas para identificação e login.</p>
               </div>
             </div>
 
@@ -324,7 +324,7 @@ function EditarUsuarioPage() {
             <div className="editar-usuario__section-header">
               <div>
                 <h2>Acesso</h2>
-                <p>Controle funcao e disponibilidade da conta.</p>
+                <p>Controle função e disponibilidade da conta.</p>
               </div>
             </div>
 
@@ -347,13 +347,13 @@ function EditarUsuarioPage() {
                 }}
               >
                 <option value={1}>Administrador</option>
-                <option value={2}>Usuario comum</option>
+                <option value={2}>Usuário comum</option>
               </select>
               {mudancas.roleId && <span className="editar-usuario__field-modified">modificado</span>}
             </div>
           ) : (
             <p className="editar-usuario__info">
-              Voce pode editar os dados do usuario, mas nao pode alterar funcao ou permissoes.
+              Você pode editar os dados do usuário, mas não pode alterar função ou permissões.
             </p>
           )}
 
@@ -367,7 +367,7 @@ function EditarUsuarioPage() {
 
                   <span className="editar-usuario__switch" aria-hidden="true"></span>
                   <span>
-                    <strong>Usuario ativo</strong>
+                    <strong>Usuário ativo</strong>
                     <small>{ativo ? 'Pode acessar o sistema.' : 'Acesso bloqueado.'}</small>
                   </span>
                 </label>
@@ -380,7 +380,7 @@ function EditarUsuarioPage() {
             isAdminEditado ? (
               <section className="editar-usuario__section">
                 <p className="editar-usuario__info">
-                  Administradores possuem todas as permissoes automaticamente.
+                  Administradores possuem todas as permissões automaticamente.
                 </p>
               </section>
             ) : (
@@ -388,7 +388,7 @@ function EditarUsuarioPage() {
                 <div className="editar-usuario__section-header">
                   <div>
                     <h2>Permissoes</h2>
-                    <p>Selecione quais areas e acoes este usuario pode acessar.</p>
+                    <p>Selecione quais áreas e ações este usuário pode acessar.</p>
                   </div>
 
                   <span className="editar-usuario__permissions-count">
@@ -420,7 +420,7 @@ function EditarUsuarioPage() {
 
           <div className="editar-usuario__actions">
             <Botao
-              title={salvando ? 'Salvando...' : 'Salvar alteracoes'}
+              title={salvando ? 'Salvando...' : 'Salvar alterações'}
               type="submit"
               carregando={salvando}
               disabled={!temMudancas}

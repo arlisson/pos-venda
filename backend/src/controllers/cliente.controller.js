@@ -20,7 +20,7 @@ async function show(req, res) {
 
     if (!cliente) {
       return res.status(404).json({
-        message: 'Cliente nao encontrado.'
+        message: 'Cliente não encontrado.'
       });
     }
 
@@ -55,7 +55,7 @@ async function update(req, res) {
 
     if (!cliente) {
       return res.status(404).json({
-        message: 'Cliente nao encontrado.'
+        message: 'Cliente não encontrado.'
       });
     }
 
@@ -77,7 +77,7 @@ async function destroy(req, res) {
 
     if (!totalExcluido) {
       return res.status(404).json({
-        message: 'Cliente nao encontrado.'
+        message: 'Cliente não encontrado.'
       });
     }
 
@@ -111,7 +111,7 @@ async function restore(req, res) {
 
     if (!cliente) {
       return res.status(404).json({
-        message: 'Cliente nao encontrado na lixeira.'
+        message: 'Cliente não encontrado na lixeira.'
       });
     }
 
@@ -131,7 +131,7 @@ async function destroyDefinitivo(req, res) {
 
     if (!totalExcluido) {
       return res.status(404).json({
-        message: 'Cliente nao encontrado na lixeira.'
+        message: 'Cliente não encontrado na lixeira.'
       });
     }
 
