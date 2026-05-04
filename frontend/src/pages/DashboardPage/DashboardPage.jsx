@@ -31,6 +31,8 @@ const CATEGORY_LABELS = {
   internet: 'Internet',
 };
 
+const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
+
 function getMetaKey(meta) {
   return meta.tipo || `${meta.periodo || 'diaria'}_${meta.categoria || 'registro_cliente'}`;
 }
@@ -98,10 +100,16 @@ function getInitials(name) {
 
 function getNotificationTarget(notificacao) {
   if (notificacao.tipo === 'cliente_fidelidade') {
-    return '/clientes?fidelidade=alerta';
+    return Number(notificacao.dados?.dias_restantes ?? 1) < 0
+      ? '/clientes?fidelidade=vencida'
+      : '/clientes?fidelidade=alerta';
   }
 
   if (notificacao.entidade === 'clientes') {
+    if (notificacao.tipo === 'nota_retorno_due') {
+      return '/clientes?retorno=vencido';
+    }
+
     const clienteId = notificacao.entidade_id || notificacao.dados?.entidade_id;
     return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
   }
@@ -111,6 +119,28 @@ function getNotificationTarget(notificacao) {
   }
 
   return null;
+}
+
+function getRetornoTimestamp(notificacao) {
+  const valor = notificacao?.dados?.retorno_agendado_para || notificacao?.updated_at;
+  const data = new Date(String(valor || '').replace(' ', 'T'));
+
+  return Number.isNaN(data.getTime()) ? Number.MAX_SAFE_INTEGER : data.getTime();
+}
+
+function formatarRetornoResumo(notificacao) {
+  const valor = notificacao?.dados?.retorno_agendado_para;
+  if (!valor) return 'sem data definida';
+
+  const data = new Date(String(valor).replace(' ', 'T'));
+  if (Number.isNaN(data.getTime())) return 'sem data definida';
+
+  return data.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 function DashboardPage() {
@@ -220,8 +250,16 @@ function DashboardPage() {
   const notificacoesFidelidade = notificacoes
     .filter(notificacao => notificacao.tipo === 'cliente_fidelidade')
     .sort((a, b) => Number(a.dados?.dias_restantes ?? 999) - Number(b.dados?.dias_restantes ?? 999));
-  const outrasNotificacoes = notificacoes.filter(notificacao => notificacao.tipo !== 'cliente_fidelidade');
+  const notificacoesRetorno = notificacoes
+    .filter(notificacao => TIPOS_RETORNO_NOTA.includes(notificacao.tipo))
+    .sort((a, b) => getRetornoTimestamp(a) - getRetornoTimestamp(b));
+  const outrasNotificacoes = notificacoes.filter(notificacao => (
+    notificacao.tipo !== 'cliente_fidelidade' && !TIPOS_RETORNO_NOTA.includes(notificacao.tipo)
+  ));
   const proximaFidelidade = notificacoesFidelidade[0];
+  const proximoRetorno = notificacoesRetorno[0];
+  const retornosNaoLidos = notificacoesRetorno.some(notificacao => !notificacao.lida);
+  const retornosVencidos = notificacoesRetorno.filter(notificacao => notificacao.tipo === 'nota_retorno_due').length;
   const fidelidadeTextoPrazo = proximaFidelidade?.dados?.dias_restantes < 0
     ? `vencida ha ${Math.abs(proximaFidelidade.dados.dias_restantes)} dia${Math.abs(proximaFidelidade.dados.dias_restantes) === 1 ? '' : 's'}`
     : proximaFidelidade?.dados?.dias_restantes === 0
@@ -290,7 +328,7 @@ function DashboardPage() {
           </div>
         )}
 
-        {(notificacoesFidelidade.length > 0 || outrasNotificacoes.length > 0) && (
+        {(notificacoesFidelidade.length > 0 || notificacoesRetorno.length > 0 || outrasNotificacoes.length > 0) && (
           <section className="home-notifications">
             <div className="home-notifications__header">
               <div>
@@ -303,7 +341,7 @@ function DashboardPage() {
               {notificacoesFidelidade.length > 0 && (
                 <button
                   type="button"
-                  className={`home-notification home-notification--summary ${proximaFidelidade?.lida ? '' : 'is-unread'} ${proximaFidelidade?.nivel || 'info'}`}
+                  className={`home-notification home-notification--summary home-notification--fidelity ${proximaFidelidade?.lida ? '' : 'is-unread'} ${proximaFidelidade?.nivel || 'info'}`}
                   onClick={() => handleReadNotification(proximaFidelidade)}
                 >
                   <span className="home-notification__icon">
@@ -326,6 +364,36 @@ function DashboardPage() {
                         : `${proximaFidelidade.dados.dias_restantes} dias`}
                     </span>
                   )}
+                </button>
+              )}
+
+              {notificacoesRetorno.length > 0 && (
+                <button
+                  type="button"
+                  className={`home-notification home-notification--summary ${retornosNaoLidos ? 'is-unread' : ''} ${proximoRetorno?.nivel || 'warn'}`}
+                  onClick={() => {
+                    if (retornosVencidos > 0) {
+                      navigate('/clientes?retorno=vencido');
+                      return;
+                    }
+
+                    handleReadNotification(proximoRetorno);
+                  }}
+                >
+                  <span className="home-notification__icon">
+                    <I.Bell size={16} />
+                  </span>
+                  <span className="home-notification__content">
+                    <strong>
+                      {notificacoesRetorno.length} retorno{notificacoesRetorno.length === 1 ? '' : 's'} de ligacao
+                    </strong>
+                    <span>
+                      Maior urgencia: {proximoRetorno?.dados?.titulo_nota || 'nota'} - {formatarRetornoResumo(proximoRetorno)}.
+                    </span>
+                  </span>
+                  <span className="home-notification__days">
+                    {retornosVencidos > 0 ? `${retornosVencidos} vencido${retornosVencidos === 1 ? '' : 's'}` : 'Em breve'}
+                  </span>
                 </button>
               )}
 

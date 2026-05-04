@@ -23,10 +23,16 @@ function formatDate(value) {
 
 function getNotificationTarget(notification) {
   if (notification.tipo === 'cliente_fidelidade') {
-    return '/clientes?fidelidade=alerta';
+    return Number(notification.dados?.dias_restantes ?? 1) < 0
+      ? '/clientes?fidelidade=vencida'
+      : '/clientes?fidelidade=alerta';
   }
 
   if (notification.entidade === 'clientes') {
+    if (notification.tipo === 'nota_retorno_due') {
+      return '/clientes?retorno=vencido';
+    }
+
     const clienteId = notification.entidade_id || notification.dados?.entidade_id;
     return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
   }

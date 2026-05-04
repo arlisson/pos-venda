@@ -246,14 +246,18 @@ async function montarResumoNotasClientes(clientes, usuarioId) {
     .select('entidade_id')
     .count('id as notas_total')
     .select(Cliente.knex().raw('SUM(CASE WHEN retorno_agendado_para IS NULL THEN 0 ELSE 1 END) as notas_com_retorno_total'))
-    .min('retorno_agendado_para as proximo_retorno_agendado_para');
+    .select(Cliente.knex().raw('SUM(CASE WHEN retorno_agendado_para <= NOW() THEN 1 ELSE 0 END) as notas_retorno_vencido_total'))
+    .min('retorno_agendado_para as proximo_retorno_agendado_para')
+    .select(Cliente.knex().raw('MIN(CASE WHEN retorno_agendado_para <= NOW() THEN retorno_agendado_para ELSE NULL END) as proximo_retorno_vencido_para'));
 
   return new Map(linhas.map(linha => ([
     Number(linha.entidade_id),
     {
       notas_total: Number(linha.notas_total || 0),
       notas_com_retorno_total: Number(linha.notas_com_retorno_total || 0),
-      proximo_retorno_agendado_para: linha.proximo_retorno_agendado_para || null
+      notas_retorno_vencido_total: Number(linha.notas_retorno_vencido_total || 0),
+      proximo_retorno_agendado_para: linha.proximo_retorno_agendado_para || null,
+      proximo_retorno_vencido_para: linha.proximo_retorno_vencido_para || null
     }
   ])));
 }
@@ -266,7 +270,9 @@ async function adicionarResumoNotasClientes(clientes, usuarioId) {
     notas_resumo: resumoPorCliente.get(Number(cliente.id)) || {
       notas_total: 0,
       notas_com_retorno_total: 0,
-      proximo_retorno_agendado_para: null
+      notas_retorno_vencido_total: 0,
+      proximo_retorno_agendado_para: null,
+      proximo_retorno_vencido_para: null
     }
   }));
 }
@@ -335,6 +341,10 @@ async function listarClientes(filtros = {}, usuarioId) {
     return clientes
       .filter(cliente => cliente.aviso_fidelidade?.deve_avisar)
       .sort((a, b) => a.aviso_fidelidade.dias_restantes - b.aviso_fidelidade.dias_restantes);
+  }
+
+  if (filtros.retorno === 'vencido') {
+    return clientes.filter(cliente => Number(cliente.notas_resumo?.notas_retorno_vencido_total || 0) > 0);
   }
 
   return clientes;
