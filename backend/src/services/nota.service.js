@@ -1,6 +1,7 @@
 const db = require('../database/connection');
 const clienteService = require('./cliente.service');
 const vendaService = require('./venda.service');
+const notificacaoService = require('./notificacao.service');
 
 const TIPOS_VALIDOS = ['cliente', 'venda'];
 
@@ -24,6 +25,18 @@ function formatarDateTimeSQL(data = new Date()) {
   ].join(':');
 }
 
+function parseDataHoraRetorno(valor) {
+  if (!valor) return null;
+
+  const data = new Date(String(valor).trim().replace(' ', 'T'));
+
+  if (Number.isNaN(data.getTime())) {
+    throw new Error('Data e hora de retorno invalidas.');
+  }
+
+  return formatarDateTimeSQL(data);
+}
+
 function formatarNota(nota) {
   if (!nota) return null;
 
@@ -34,6 +47,7 @@ function formatarNota(nota) {
     usuario_id: nota.usuario_id,
     titulo: nota.titulo || '',
     conteudo: nota.conteudo || '',
+    retorno_agendado_para: nota.retorno_agendado_para || null,
     created_at: nota.created_at,
     updated_at: nota.updated_at
   };
@@ -53,15 +67,20 @@ async function usuarioPodeAcessarEntidade(tipo, entidadeId, usuarioId) {
 function montarPayload(dados = {}) {
   const titulo = String(dados.titulo || '').trim().slice(0, 160);
   const conteudo = String(dados.conteudo || '').trim();
+  const payload = {
+    titulo: titulo || null,
+    conteudo: conteudo || null
+  };
 
   if (!titulo && !conteudo) {
     throw new Error('Informe um título ou conteúdo para a nota.');
   }
 
-  return {
-    titulo: titulo || null,
-    conteudo: conteudo || null
-  };
+  if (Object.prototype.hasOwnProperty.call(dados, 'retorno_agendado_para')) {
+    payload.retorno_agendado_para = parseDataHoraRetorno(dados.retorno_agendado_para);
+  }
+
+  return payload;
 }
 
 async function listarNotas(tipo, entidadeId, usuarioId) {
@@ -94,6 +113,7 @@ async function criarNota(tipo, entidadeId, usuarioId, dados) {
     entidade_tipo: tipo,
     entidade_id: Number(entidadeId),
     usuario_id: Number(usuarioId),
+    retorno_agendado_para: null,
     ...payload,
     created_at: agora,
     updated_at: agora
@@ -110,6 +130,9 @@ async function atualizarNota(notaId, usuarioId, dados) {
   if (!nota) return null;
 
   const payload = montarPayload(dados);
+  const retornoAlterado = Object.prototype.hasOwnProperty.call(payload, 'retorno_agendado_para')
+    && String(payload.retorno_agendado_para || '') !== String(nota.retorno_agendado_para || '');
+
   await db('entidade_notas')
     .where({ id: Number(notaId), usuario_id: Number(usuarioId) })
     .update({
@@ -117,13 +140,23 @@ async function atualizarNota(notaId, usuarioId, dados) {
       updated_at: formatarDateTimeSQL()
     });
 
+  if (retornoAlterado) {
+    await notificacaoService.desativarNotificacoesRetornoNota(notaId);
+  }
+
   return formatarNota(await db('entidade_notas').where({ id: Number(notaId) }).first());
 }
 
 async function excluirNota(notaId, usuarioId) {
-  return db('entidade_notas')
+  const total = await db('entidade_notas')
     .where({ id: Number(notaId), usuario_id: Number(usuarioId) })
     .delete();
+
+  if (total) {
+    await notificacaoService.desativarNotificacoesRetornoNota(notaId);
+  }
+
+  return total;
 }
 
 module.exports = {

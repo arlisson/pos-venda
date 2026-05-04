@@ -2,10 +2,14 @@ const Cliente = require('../models/Cliente');
 const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
+const db = require('../database/connection');
 
 const PERMISSAO_VISUALIZAR = 'notificacoes_visualizar';
 const PERMISSAO_RECEBER_TODAS = 'notificacoes_receber_todas';
 const TIPO_FIDELIDADE_CLIENTE = 'cliente_fidelidade';
+const TIPO_NOTA_RETORNO_PRE = 'nota_retorno_pre';
+const TIPO_NOTA_RETORNO_DUE = 'nota_retorno_due';
+const RETORNO_PRE_AVISO_MINUTOS = 15;
 
 function parsePermissoes(permissoes) {
   if (!permissoes) return [];
@@ -86,6 +90,30 @@ function montarNivel(diasRestantes) {
   return 'info';
 }
 
+function parseDataHora(valor) {
+  if (!valor) return null;
+
+  const texto = valor instanceof Date
+    ? valor.toISOString()
+    : String(valor).trim().replace(' ', 'T');
+  const data = new Date(texto);
+
+  return Number.isNaN(data.getTime()) ? null : data;
+}
+
+function formatarDataHoraBR(valor) {
+  const data = parseDataHora(valor);
+  if (!data) return '';
+
+  return data.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 async function listarUsuariosDestinatarios(cliente) {
   const usuarios = await Usuario.query()
     .withGraphFetched('role')
@@ -112,6 +140,27 @@ async function listarUsuariosDestinatarios(cliente) {
 async function desativarNotificacaoFidelidadeCliente(clienteId, trx = null) {
   return Notificacao.query(trx)
     .where('source_key', `${TIPO_FIDELIDADE_CLIENTE}:${clienteId}`)
+    .patch({ ativa: false, updated_at: new Date() });
+}
+
+async function desativarNotificacoesRetornoNota(notaId, trx = null) {
+  const sourceKeys = [
+    `${TIPO_NOTA_RETORNO_PRE}:${notaId}`,
+    `${TIPO_NOTA_RETORNO_DUE}:${notaId}`
+  ];
+
+  const notificacoes = await Notificacao.query(trx)
+    .select('id')
+    .whereIn('source_key', sourceKeys);
+
+  if (notificacoes.length > 0) {
+    await NotificacaoDestinatario.query(trx)
+      .whereIn('notificacao_id', notificacoes.map(notificacao => notificacao.id))
+      .delete();
+  }
+
+  return Notificacao.query(trx)
+    .whereIn('source_key', sourceKeys)
     .patch({ ativa: false, updated_at: new Date() });
 }
 
@@ -205,6 +254,95 @@ async function sincronizarNotificacoesFidelidade() {
   }
 }
 
+async function salvarNotificacaoRetornoNota(nota, etapa, agora) {
+  const retorno = parseDataHora(nota.retorno_agendado_para);
+  if (!retorno) {
+    await desativarNotificacoesRetornoNota(nota.id);
+    return null;
+  }
+
+  const sourceKey = `${etapa}:${nota.id}`;
+  const tituloNota = nota.titulo || 'Sem titulo';
+  const destino = nota.entidade_tipo === 'cliente' ? 'clientes' : 'vendas';
+  const retornoFormatado = formatarDataHoraBR(nota.retorno_agendado_para);
+  const isDue = etapa === TIPO_NOTA_RETORNO_DUE;
+  const payload = {
+    tipo: etapa,
+    titulo: isDue ? 'Retorno de ligacao vencido' : 'Retorno de ligacao em breve',
+    mensagem: isDue
+      ? `Retorne a ligacao de "${tituloNota}" marcada para ${retornoFormatado}.`
+      : `Retorno de "${tituloNota}" marcado para ${retornoFormatado}.`,
+    nivel: isDue ? 'danger' : 'warn',
+    entidade: destino,
+    entidade_id: nota.entidade_id,
+    source_key: sourceKey,
+    dados: JSON.stringify({
+      nota_id: nota.id,
+      entidade_tipo: nota.entidade_tipo,
+      entidade_id: nota.entidade_id,
+      retorno_agendado_para: nota.retorno_agendado_para,
+      retorno_etapa: isDue ? 'due' : 'pre',
+      titulo_nota: tituloNota
+    }),
+    ativa: true,
+    updated_at: agora
+  };
+
+  const existente = await Notificacao.query()
+    .where('source_key', sourceKey)
+    .first();
+
+  const notificacao = existente
+    ? await Notificacao.query().patchAndFetchById(existente.id, payload)
+    : await Notificacao.query().insertAndFetch(payload);
+
+  const destinatario = await NotificacaoDestinatario.query()
+    .where('notificacao_id', notificacao.id)
+    .where('usuario_id', nota.usuario_id)
+    .first();
+
+  if (!destinatario) {
+    await NotificacaoDestinatario.query().insert({
+      notificacao_id: notificacao.id,
+      usuario_id: nota.usuario_id
+    });
+  }
+
+  return notificacao;
+}
+
+async function sincronizarRetornosNotas(usuarioId = null) {
+  const agora = new Date();
+  const limitePreAviso = new Date(agora.getTime() + RETORNO_PRE_AVISO_MINUTOS * 60000);
+  const query = db('entidade_notas')
+    .whereNotNull('retorno_agendado_para')
+    .where('retorno_agendado_para', '<=', limitePreAviso)
+    .select('id', 'entidade_tipo', 'entidade_id', 'usuario_id', 'titulo', 'retorno_agendado_para');
+
+  if (usuarioId) {
+    query.where('usuario_id', Number(usuarioId));
+  }
+
+  const notas = await query;
+
+  for (const nota of notas) {
+    const retorno = parseDataHora(nota.retorno_agendado_para);
+    if (!retorno) {
+      await desativarNotificacoesRetornoNota(nota.id);
+      continue;
+    }
+
+    if (retorno <= agora) {
+      await Notificacao.query()
+        .where('source_key', `${TIPO_NOTA_RETORNO_PRE}:${nota.id}`)
+        .patch({ ativa: false, updated_at: agora });
+      await salvarNotificacaoRetornoNota(nota, TIPO_NOTA_RETORNO_DUE, agora);
+    } else {
+      await salvarNotificacaoRetornoNota(nota, TIPO_NOTA_RETORNO_PRE, agora);
+    }
+  }
+}
+
 function parseDados(dados) {
   if (!dados) return {};
 
@@ -221,6 +359,7 @@ function parseDados(dados) {
 
 async function listarNotificacoes(usuarioId, filtros = {}) {
   await sincronizarNotificacoesFidelidade();
+  await sincronizarRetornosNotas(usuarioId);
 
   const limit = Math.min(Number(filtros.limit || 20), 50);
   const query = NotificacaoDestinatario.query()
@@ -317,5 +456,7 @@ module.exports = {
   marcarComoLida,
   marcarTodasComoLidas,
   sincronizarFidelidadeCliente,
-  sincronizarNotificacoesFidelidade
+  sincronizarNotificacoesFidelidade,
+  desativarNotificacoesRetornoNota,
+  sincronizarRetornosNotas
 };

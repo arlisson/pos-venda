@@ -21,6 +21,23 @@ function formatDate(value) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+function getNotificationTarget(notification) {
+  if (notification.tipo === 'cliente_fidelidade') {
+    return '/clientes?fidelidade=alerta';
+  }
+
+  if (notification.entidade === 'clientes') {
+    const clienteId = notification.entidade_id || notification.dados?.entidade_id;
+    return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
+  }
+
+  if (notification.entidade === 'vendas') {
+    return '/vendas';
+  }
+
+  return null;
+}
+
 function Header({ title, subtitle, onNew, usuario }) {
   const navigate = useNavigate();
   const [linksExternos, setLinksExternos] = useState([]);
@@ -123,9 +140,11 @@ function Header({ title, subtitle, onNew, usuario }) {
       window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
     }
 
-    if (notification.tipo === 'cliente_fidelidade' || notification.entidade === 'clientes') {
+    const target = getNotificationTarget(notification);
+
+    if (target) {
       setNotificationsOpen(false);
-      navigate('/clientes?fidelidade=alerta');
+      navigate(target);
     }
   }
 
@@ -227,7 +246,7 @@ function Header({ title, subtitle, onNew, usuario }) {
                     <span className="notification-item__body">
                       <strong>{notification.titulo}</strong>
                       <span>{notification.mensagem}</span>
-                      <em>{formatDate(notification.dados?.fidelidade_fim || notification.updated_at)}</em>
+                      <em>{formatDate(notification.dados?.fidelidade_fim || notification.dados?.retorno_agendado_para || notification.updated_at)}</em>
                     </span>
                   </button>
                 ))

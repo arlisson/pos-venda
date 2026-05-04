@@ -8,7 +8,7 @@ import {
   listarNotasEntidade
 } from '../services/nota.service';
 
-const NOTA_VAZIA = { titulo: '', conteudo: '' };
+const NOTA_VAZIA = { titulo: '', conteudo: '', retorno_agendado_para: null };
 
 function formatarDataNota(valor) {
   if (!valor) return '';
@@ -25,8 +25,27 @@ function formatarDataNota(valor) {
   });
 }
 
+function formatarDataInput(valor) {
+  if (!valor) return '';
+
+  const data = new Date(String(valor).replace(' ', 'T'));
+  if (Number.isNaN(data.getTime())) return '';
+
+  const pad = value => String(value).padStart(2, '0');
+  return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}T${pad(data.getHours())}:${pad(data.getMinutes())}`;
+}
+
+function montarDraftNota(nota = NOTA_VAZIA) {
+  return {
+    titulo: nota.titulo || '',
+    conteudo: nota.conteudo || '',
+    retorno_agendado_para: nota.retorno_agendado_para ? formatarDataInput(nota.retorno_agendado_para) : null
+  };
+}
+
 function NotaEditor({ value, salvando, onChange, onCancel, onSave }) {
   const podeSalvar = String(value.titulo || '').trim() || String(value.conteudo || '').trim();
+  const retornoAtivo = value.retorno_agendado_para !== null && value.retorno_agendado_para !== undefined;
 
   return (
     <div className="note-editor">
@@ -45,11 +64,40 @@ function NotaEditor({ value, salvando, onChange, onCancel, onSave }) {
         minRows={3}
         maxRows={8}
       />
+      <div className="note-return">
+        <button
+          type="button"
+          className={`btn btn-sm ${retornoAtivo ? 'btn-primary' : ''}`}
+          onClick={() => onChange({
+            ...value,
+            retorno_agendado_para: retornoAtivo ? null : ''
+          })}
+          disabled={salvando}
+        >
+          <I.Calendar size={13} /> Marcar retorno
+        </button>
+
+        {retornoAtivo && (
+          <label className="note-return__field">
+            <span>Data e hora</span>
+            <input
+              type="datetime-local"
+              value={value.retorno_agendado_para || ''}
+              onChange={event => onChange({ ...value, retorno_agendado_para: event.target.value })}
+            />
+          </label>
+        )}
+      </div>
       <div className="note-editor__actions">
         <button type="button" className="btn btn-sm" onClick={onCancel} disabled={salvando}>
           Cancelar
         </button>
-        <button type="button" className="btn btn-sm btn-primary" onClick={onSave} disabled={salvando || !podeSalvar}>
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          onClick={onSave}
+          disabled={salvando || !podeSalvar || (retornoAtivo && !value.retorno_agendado_para)}
+        >
           {salvando ? 'Salvando...' : 'Salvar'}
         </button>
       </div>
@@ -97,10 +145,7 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
 
   function iniciarEdicao(nota) {
     setEditandoId(nota.id);
-    setDraftEdicao({
-      titulo: nota.titulo || '',
-      conteudo: nota.conteudo || ''
-    });
+    setDraftEdicao(montarDraftNota(nota));
     setCriando(false);
   }
 
@@ -113,6 +158,7 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
       setNotas(prev => [nota, ...prev]);
       setCriando(false);
       setDraftNova(NOTA_VAZIA);
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
     } catch (error) {
       setErro(error.message || 'Erro ao criar nota.');
     } finally {
@@ -131,6 +177,7 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
       setNotas(prev => prev.map(item => item.id === nota.id ? nota : item));
       setEditandoId(null);
       setDraftEdicao(NOTA_VAZIA);
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
     } catch (error) {
       setErro(error.message || 'Erro ao atualizar nota.');
     } finally {
@@ -148,8 +195,28 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
     try {
       await excluirNota(nota.id);
       setNotas(prev => prev.filter(item => item.id !== nota.id));
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
     } catch (error) {
       setErro(error.message || 'Erro ao excluir nota.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function removerRetorno(nota) {
+    setSalvando(true);
+    setErro('');
+
+    try {
+      const notaAtualizada = await atualizarNota(nota.id, {
+        titulo: nota.titulo || '',
+        conteudo: nota.conteudo || '',
+        retorno_agendado_para: null
+      });
+      setNotas(prev => prev.map(item => item.id === notaAtualizada.id ? notaAtualizada : item));
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    } catch (error) {
+      setErro(error.message || 'Erro ao remover retorno.');
     } finally {
       setSalvando(false);
     }
@@ -232,6 +299,14 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
                     </div>
                   </div>
                   <p>{nota.conteudo || '-'}</p>
+                  {nota.retorno_agendado_para && (
+                    <div className="note-card__return">
+                      <span><I.Calendar size={13} /> Retorno em {formatarDataNota(nota.retorno_agendado_para)}</span>
+                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => removerRetorno(nota)} disabled={salvando}>
+                        Remover
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </article>
