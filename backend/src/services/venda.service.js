@@ -286,6 +286,9 @@ function montarPayload(dados) {
 
   if (payload.plano_id !== undefined && payload.plano_id !== null) {
     payload.plano_id = Number(payload.plano_id);
+    if (!payload.plano_id) {
+      payload.plano_id = null;
+    }
   }
 
   if (payload.cliente_id !== undefined && payload.cliente_id !== null) {

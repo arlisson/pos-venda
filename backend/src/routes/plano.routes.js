@@ -13,6 +13,7 @@ router.get(
   '/',
   exigirUmaPermissao([
     'vendas_fechamento_mensal',
+    'vendas',
     'vendas_criar',
     'vendas_editar',
     'vendas_ver_proprias',

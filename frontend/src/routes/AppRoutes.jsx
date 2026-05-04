@@ -18,6 +18,7 @@ import Clientes from '../pages/Clientes/Clientes';
 import ClienteFormPage from '../pages/Clientes/ClienteFormPage';
 import ClientesLixeiraPage from '../pages/Clientes/ClientesLixeiraPage';
 import AdminLeadsPage from '../pages/AdminLeadsPage/AdminLeadsPage';
+import FechamentoMensalPage from '../pages/FechamentoMensalPage/FechamentoMensalPage';
 import '../pages/HistoricoPage/HistoricoPage.css';
 
 import { getUsuarioLocal, temPermissao } from '../services/auth.service';
@@ -78,6 +79,10 @@ function AppRoutes() {
       <Route
         path="/admin/metas"
         element={<PrivateRoute permission="gerenciar_metas"><AdminMetasPage /></PrivateRoute>}
+      />
+      <Route
+        path="/admin/fechamento-mensal"
+        element={<PrivateRoute permission="vendas_fechamento_mensal"><FechamentoMensalPage /></PrivateRoute>}
       />
       <Route
         path="/admin/leads"

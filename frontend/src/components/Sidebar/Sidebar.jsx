@@ -26,6 +26,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
     { id: 'usuarios', label: 'Usuarios', icon: <I.Users />, permission: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes'] },
     { id: 'config', label: 'Configuracoes', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos'] },
     { id: 'metas', label: 'Configurar Metas', icon: <I.Settings />, permission: ['gerenciar_metas'] },
+    { id: 'fechamento-mensal', label: 'Fechamento Mensal', icon: <I.Chart />, permission: 'vendas_fechamento_mensal' },
     { id: 'leads', label: 'Planilhas de leads', icon: <I.LayoutList />, permission: 'gerenciar_leads' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 

@@ -24,6 +24,7 @@ const routeConfigs = [
   { path: '/perfil/editar', title: 'Editar perfil', sub: 'Atualize seus dados de acesso', id: 'perfil' },
   { path: '/configuracoes', title: 'Configurações', sub: 'Gerencie operadoras, tipos de venda, serviços e links externos', id: 'config' },
   { path: '/admin/metas', title: 'Metas', sub: 'Configure desafios e recompensas do time', id: 'metas' },
+  { path: '/admin/fechamento-mensal', title: 'Fechamento Mensal', sub: 'Consolide contratos, UGRs e comissoes do periodo', id: 'fechamento-mensal' },
   { path: '/admin/leads', title: 'Planilhas de leads', sub: 'Importe, filtre e distribua leads para vendedores', id: 'leads' },
 ];
 
@@ -74,6 +75,7 @@ function LayoutPrivado({ children }) {
       usuarios: '/usuarios',
       config: '/configuracoes',
       metas: '/admin/metas',
+      'fechamento-mensal': '/admin/fechamento-mensal',
       leads: '/admin/leads',
     };
 

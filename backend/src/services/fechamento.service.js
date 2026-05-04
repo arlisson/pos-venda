@@ -83,6 +83,7 @@ function carregarVendasNoPeriodo(filtros) {
     .leftJoin('clientes as c', 'v.cliente_id', 'c.id')
     .leftJoin('planos as p', 'v.plano_id', 'p.id')
     .whereNull('v.excluido_em')
+    .whereNot('v.status_funil', 'retorno')
     .select(
       'v.id',
       'v.status_funil',

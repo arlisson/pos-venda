@@ -145,6 +145,11 @@ const PERMISSOES = [
     descricao: 'Permite receber todas as notificações geradas pelo sistema.'
   },
   {
+    chave: 'vendas_fechamento_mensal',
+    nome: 'Vendas: fechamento mensal',
+    descricao: 'Permite acessar a pagina de fechamento mensal de vendas e gerenciar planos com taxa de comissao.'
+  },
+  {
     chave: 'gerenciar_leads',
     nome: 'Gerenciar leads',
     descricao: 'Permite importar planilhas, filtrar e distribuir leads entre vendedores.'

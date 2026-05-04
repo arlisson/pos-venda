@@ -15,6 +15,7 @@ import { consultarCnpj, isCnpjRepetido, sanitizarCnpj } from '../../services/cnp
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import { listarPlanos } from '../../services/plano.service';
 import './VendasPage.css';
 
 const VENDA_VAZIA = {
@@ -58,6 +59,7 @@ const VENDA_VAZIA = {
   nome_administrador: '',
   cpf_administrador: '',
   operadora_id: '',
+  plano_id: '',
   vendedora_id: ''
 };
 
@@ -92,6 +94,7 @@ const CAMPOS = [
 
   { section: 'Produto e valores' },
   { name: 'operadora_id', label: 'Operadora adquirida', type: 'operator', required: true },
+  { name: 'plano_id', label: 'Plano', type: 'plan' },
   { name: 'tipo_venda_id', label: 'Tipo de venda', type: 'saleType', required: true },
   { name: 'servico_id', label: 'Serviço', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
@@ -438,6 +441,7 @@ function normalizarVenda(venda) {
     quantidade_linhas: venda.quantidade_linhas ?? '',
     dia_vencimento: venda.dia_vencimento ?? '',
     operadora_id: venda.operadora_id ? String(venda.operadora_id) : '',
+    plano_id: venda.plano_id ? String(venda.plano_id) : '',
     tipo_venda_id: venda.tipo_venda_id ? String(venda.tipo_venda_id) : '',
     servico_id: venda.servico_id ? String(venda.servico_id) : '',
     vendedora_id: venda.vendedora_id ? String(venda.vendedora_id) : '',
@@ -744,7 +748,7 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
   );
 }
 
-function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave, onCreateClient }) {
+function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, tiposVenda, servicos, planos, onClose, onSave, onCreateClient }) {
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -756,9 +760,16 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
   const cepPreenchidoPorCnpjRef = useRef('');
   const tipoVendaSelecionado = tiposVenda.find(tipo => String(tipo.id) === String(form.tipo_venda_id));
   const vendaPortabilidade = isTipoPortabilidade(tipoVendaSelecionado);
+  const planosFiltrados = planos.filter(plano => (
+    !form.operadora_id || String(plano.operadora_id) === String(form.operadora_id)
+  ));
 
   function atualizarCampo(campo, valor) {
-    setForm(prev => ({ ...prev, [campo]: formatarCampoVenda(campo, valor) }));
+    setForm(prev => ({
+      ...prev,
+      [campo]: formatarCampoVenda(campo, valor),
+      ...(campo === 'operadora_id' ? { plano_id: '' } : {})
+    }));
   }
 
   function formatarMensagemCnpj(dados) {
@@ -847,6 +858,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
     }
   }
 
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     const cnpj = sanitizarCnpj(form.cnpj);
 
@@ -864,7 +876,9 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
       buscarDadosCnpj(false);
     }
   }, [form.cnpj]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     const cep = apenasDigitos(form.cep, 8);
 
@@ -917,6 +931,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
       cancelado = true;
     };
   }, [form.cep]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -941,6 +956,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
       const payload = {
         ...form,
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
+        plano_id: form.plano_id || null,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
         valores_unitarios_chips: (form.valores_unitarios_chips || [])
           .map(item => ({
@@ -1050,7 +1066,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                         </button>
                       </div>
                     </>
-                  ) : ['seller', 'operator', 'saleType', 'service'].includes(campo.type) ? (
+                  ) : ['seller', 'operator', 'saleType', 'service', 'plan'].includes(campo.type) ? (
                     <select
                       value={form[campo.name] ?? ''}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
@@ -1064,7 +1080,9 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                             ? operadoras
                             : campo.type === 'saleType'
                               ? tiposVenda
-                              : servicos
+                              : campo.type === 'service'
+                                ? servicos
+                                : planosFiltrados
                       ).map(item => (
                         <option key={item.id} value={item.id}>{item.nome}</option>
                       ))}
@@ -1177,6 +1195,7 @@ function VendasPage() {
   const [operadoras, setOperadoras] = useState([]);
   const [tiposVenda, setTiposVenda] = useState([]);
   const [servicos, setServicos] = useState([]);
+  const [planos, setPlanos] = useState([]);
   const [statusFunilFiltros, setStatusFunilFiltros] = useState(STATUS_FUNIL_FILTROS);
   const [busca, setBusca] = useState('');
   const [vendedoraId, setVendedoraId] = useState('');
@@ -1222,12 +1241,17 @@ function VendasPage() {
     Object.entries(filtros).filter(([, valor]) => valor !== '').length
   ), [filtros]);
 
-  const filtrosPopupAtivos = useMemo(() => {
-    const valores = [operadoraId, tipoVendaId, servicoId, dataInicio, dataFim, valorMin, valorMax];
-    if (podeVerTodasVendas) valores.push(vendedoraId);
-    if (podeFunil) valores.push(statusFunil);
-    return valores.filter(v => v !== '').length;
-  }, [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, dataInicio, dataFim, valorMin, valorMax, podeVerTodasVendas, podeFunil]);
+  const filtrosPopupAtivos = [
+    operadoraId,
+    tipoVendaId,
+    servicoId,
+    dataInicio,
+    dataFim,
+    valorMin,
+    valorMax,
+    ...(podeVerTodasVendas ? [vendedoraId] : []),
+    ...(podeFunil ? [statusFunil] : [])
+  ].filter(v => v !== '').length;
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -1246,14 +1270,15 @@ function VendasPage() {
     setCarregando(true);
 
     try {
-      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData] = await Promise.all([
+      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData, planosData] = await Promise.all([
         listarVendas(filtros),
         podeListarClientes ? listarClientes() : Promise.resolve([]),
         listarVendedoras(),
         listarOperadoras(),
         listarTiposVenda(),
         listarServicos(),
-        listarEtapasFunil()
+        listarEtapasFunil(),
+        listarPlanos({ ativo: true })
       ]);
 
       setVendas(vendasData);
@@ -1262,6 +1287,7 @@ function VendasPage() {
       setOperadoras(operadorasData);
       setTiposVenda(tiposVendaData);
       setServicos(servicosData);
+      setPlanos(planosData || []);
       setStatusFunilFiltros(normalizarStatusFunilFiltros(etapasFunilData));
     } catch (error) {
       setErro(error.message || 'Erro ao carregar vendas.');
@@ -1365,6 +1391,7 @@ function VendasPage() {
           operadoras={operadoras}
           tiposVenda={tiposVenda}
           servicos={servicos}
+          planos={planos}
           onClose={() => {
             setModalAberto(false);
             setVendaInicial(null);
