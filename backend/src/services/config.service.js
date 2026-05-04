@@ -4,6 +4,7 @@ const TipoProduto = require('../models/TipoProduto');
 const TipoVenda = require('../models/TipoVenda');
 const Servico = require('../models/Servico');
 const FunilEtapa = require('../models/FunilEtapa');
+const Venda = require('../models/Venda');
 
 function orderConfig(query) {
   return query.orderBy('ordem', 'asc').orderBy('nome', 'asc');
@@ -198,7 +199,33 @@ async function atualizarFunilEtapa(id, dados) {
 }
 
 async function excluirFunilEtapa(id) {
-  return FunilEtapa.query().patchAndFetchById(id, { ativo: false });
+  const etapa = await FunilEtapa.query().findById(id);
+
+  if (!etapa) {
+    return null;
+  }
+
+  const vendasCount = await Venda.query()
+    .where('status_funil', etapa.codigo)
+    .resultSize();
+
+  if (vendasCount > 0) {
+    const etapaDesativada = await FunilEtapa.query().patchAndFetchById(id, { ativo: false });
+
+    return {
+      acao: 'desativada',
+      vendasCount,
+      etapa: etapaDesativada
+    };
+  }
+
+  await FunilEtapa.query().deleteById(id);
+
+  return {
+    acao: 'excluida',
+    vendasCount,
+    etapa
+  };
 }
 
 async function criarLinkExterno(dados) {

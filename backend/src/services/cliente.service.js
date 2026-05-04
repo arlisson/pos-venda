@@ -1,5 +1,6 @@
 const Cliente = require('../models/Cliente');
 const Usuario = require('../models/Usuario');
+const notificacaoService = require('./notificacao.service');
 
 const CAMPOS = [
   'nome',
@@ -204,7 +205,7 @@ function montarAvisoFidelidade(cliente) {
 
   const diasRestantes = Math.ceil((fim.getTime() - hoje.getTime()) / 86400000);
 
-  if (![30, 10, 0].includes(diasRestantes)) {
+  if (diasRestantes > 30) {
     return {
       dias_restantes: diasRestantes,
       deve_avisar: false,
@@ -215,7 +216,7 @@ function montarAvisoFidelidade(cliente) {
   return {
     dias_restantes: diasRestantes,
     deve_avisar: true,
-    nivel: diasRestantes === 0 ? 'hoje' : `${diasRestantes}_dias`
+    nivel: diasRestantes < 0 ? 'vencida' : diasRestantes === 0 ? 'hoje' : diasRestantes <= 10 ? 'urgente' : 'proximo'
   };
 }
 
@@ -238,6 +239,10 @@ async function listarClientes(filtros = {}, usuarioId) {
     .orderBy('nome', 'asc');
 
   aplicarEscopoClientes(query, usuarioId, escopo);
+
+  if (filtros.cliente_id) {
+    query.where('id', Number(filtros.cliente_id));
+  }
 
   if (filtros.busca) {
     const busca = `%${filtros.busca}%`;
@@ -287,7 +292,9 @@ async function listarClientes(filtros = {}, usuarioId) {
   }
 
   if (filtros.fidelidade === 'alerta') {
-    return clientes.filter(cliente => cliente.aviso_fidelidade?.deve_avisar);
+    return clientes
+      .filter(cliente => cliente.aviso_fidelidade?.deve_avisar)
+      .sort((a, b) => a.aviso_fidelidade.dias_restantes - b.aviso_fidelidade.dias_restantes);
   }
 
   return clientes;
@@ -332,10 +339,14 @@ async function usuarioPodeAcessarCliente(id, usuarioId, opcoes = {}) {
 }
 
 async function criarCliente(dados, usuarioId) {
-  return Cliente.query().insertAndFetch({
+  const cliente = await Cliente.query().insertAndFetch({
     ...montarPayload(dados),
     criado_por_id: usuarioId
   });
+
+  await notificacaoService.sincronizarFidelidadeCliente(cliente.id);
+
+  return cliente;
 }
 
 async function atualizarCliente(id, dados, usuarioId) {
@@ -345,10 +356,16 @@ async function atualizarCliente(id, dados, usuarioId) {
     return null;
   }
 
-  return Cliente.query().patchAndFetchById(id, {
+  const cliente = await Cliente.query().patchAndFetchById(id, {
     ...montarPayload(dados),
     updated_at: new Date()
   });
+
+  if (cliente) {
+    await notificacaoService.sincronizarFidelidadeCliente(cliente.id);
+  }
+
+  return cliente;
 }
 
 async function excluirCliente(id, usuarioId) {

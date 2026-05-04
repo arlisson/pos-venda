@@ -64,7 +64,7 @@ async function servicos(req, res) {
 
 async function funilEtapas(req, res) {
   try {
-    const dados = await configService.listarFunilEtapasAtivas();
+    const dados = await configService.listarFunilEtapas();
     return res.json(dados);
   } catch (error) {
     console.error(error);
@@ -269,13 +269,13 @@ async function atualizarFunilEtapa(req, res) {
 
 async function excluirFunilEtapa(req, res) {
   try {
-    const etapa = await configService.excluirFunilEtapa(req.params.id);
+    const resultado = await configService.excluirFunilEtapa(req.params.id);
 
-    if (!etapa) {
+    if (!resultado) {
       return res.status(404).json({ message: 'Etapa do funil nao encontrada.' });
     }
 
-    return res.status(204).send();
+    return res.json(resultado);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Erro ao excluir etapa do funil.' });

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -988,7 +988,11 @@ function ConfirmarLixeiraModal({ cliente, excluindo, onClose, onConfirm }) {
 
 function Clientes() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const usuario = getUsuarioLocal();
+  const clienteIdParam = searchParams.get('cliente_id') || '';
+  const fidelidadeParam = searchParams.get('fidelidade') || '';
+  const highlightClienteId = searchParams.get('highlight') || clienteIdParam;
 
   const podeCriar = temPermissao(usuario, 'clientes_criar');
   const podeEditar = temPermissao(usuario, 'clientes_editar');
@@ -999,9 +1003,10 @@ function Clientes() {
   const [busca, setBusca] = useState('');
   const [operadoraId, setOperadoraId] = useState('');
   const [responsavelTipo, setResponsavelTipo] = useState('');
-  const [fidelidade, setFidelidade] = useState('');
+  const [fidelidade, setFidelidade] = useState(fidelidadeParam);
   const [chipsMin, setChipsMin] = useState('');
   const [chipsMax, setChipsMax] = useState('');
+  const [clienteIdFiltro, setClienteIdFiltro] = useState(clienteIdParam);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -1018,8 +1023,9 @@ function Clientes() {
     responsavel_tipo: responsavelTipo,
     fidelidade,
     chips_min: chipsMin,
-    chips_max: chipsMax
-  }), [busca, operadoraId, responsavelTipo, fidelidade, chipsMin, chipsMax]);
+    chips_max: chipsMax,
+    cliente_id: clienteIdFiltro
+  }), [busca, operadoraId, responsavelTipo, fidelidade, chipsMin, chipsMax, clienteIdFiltro]);
 
   const filtrosAtivos = useMemo(() => (
     Object.entries(filtros).filter(([, valor]) => valor !== '').length
@@ -1062,6 +1068,20 @@ function Clientes() {
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
+    setClienteIdFiltro(clienteIdParam);
+    if (clienteIdParam) {
+      setAbaAtiva('clientes');
+    }
+  }, [clienteIdParam]);
+
+  useEffect(() => {
+    setFidelidade(fidelidadeParam);
+    if (fidelidadeParam) {
+      setAbaAtiva('clientes');
+    }
+  }, [fidelidadeParam]);
+
+  useEffect(() => {
     carregarClientes();
   }, [filtros]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
@@ -1082,6 +1102,7 @@ function Clientes() {
     setFidelidade('');
     setChipsMin('');
     setChipsMax('');
+    setClienteIdFiltro('');
   }
 
   function abrirNovoCliente() {
@@ -1300,7 +1321,10 @@ function Clientes() {
                     return (
                       <tr
                         key={cliente.id}
-                        className={podeEditar ? 'clickable-row' : ''}
+                        className={[
+                          podeEditar ? 'clickable-row' : '',
+                          String(cliente.id) === String(highlightClienteId) ? 'cliente-row-highlight' : ''
+                        ].filter(Boolean).join(' ')}
                         role={podeEditar ? 'button' : undefined}
                         tabIndex={podeEditar ? 0 : undefined}
                         onClick={() => abrirEdicaoCliente(cliente)}

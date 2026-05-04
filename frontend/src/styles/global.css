@@ -182,6 +182,111 @@ input, select, textarea { font-family: inherit; }
 
 .btn-notification { display: flex; align-items: center; gap: 4px; padding: 0 8px !important; width: auto !important; height: 38px !important; }
 .btn-notification .chevron { opacity: 0.5; margin-top: 1px; }
+.btn-notification .chevron.is-open { transform: rotate(180deg); }
+.notification-menu { position: relative; flex-shrink: 0; }
+.notification-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -9px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  border: 2px solid var(--surface);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 12px;
+  text-align: center;
+}
+.notification-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 35;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 420px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+.notification-popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.notification-popover__header strong {
+  color: var(--text);
+  font-size: 13.5px;
+}
+.notification-empty {
+  padding: 18px 14px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  text-align: center;
+}
+.notification-item {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+.notification-item:last-child { border-bottom: 0; }
+.notification-item:hover { background: var(--surface-2); }
+.notification-item.is-unread { background: #fffdf5; }
+.notification-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--info);
+}
+.notification-item.warn .notification-dot { background: var(--warn); }
+.notification-item.danger .notification-dot { background: var(--danger); }
+.notification-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.notification-item__body strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notification-item__body span {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.notification-item__body em {
+  color: var(--text-3);
+  font-size: 11px;
+  font-style: normal;
+}
 
 .btn-new-sale {
   height: 38px;
@@ -476,6 +581,102 @@ input, select, textarea { font-family: inherit; }
 .filters { display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .filter-chip { padding: 4px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; cursor: pointer; }
 .filter-chip.active { background: var(--accent); color: var(--accent-fg); border: none; }
+
+.funnel-stage-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px 0;
+  flex-shrink: 0;
+}
+
+.funnel-stage-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.funnel-stage-form input {
+  height: 32px;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  outline: none;
+}
+
+.funnel-stage-form input:focus {
+  border-color: var(--border-strong);
+}
+
+.funnel-stage-form__order {
+  width: 72px;
+}
+
+.inactive-stage-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 24px 0;
+  flex-shrink: 0;
+}
+
+.inactive-stage-bar__label {
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+.column-edit-btn {
+  width: 24px;
+  height: 24px;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.kanban-column:hover .column-edit-btn,
+.column-edit-btn:focus-visible {
+  opacity: 1;
+}
+
+.column-name-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 4px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  outline: none;
+}
+
+.column-stage-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+@media (max-width: 900px) {
+  .funnel-stage-form {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .funnel-stage-form input:first-child {
+    flex: 1;
+  }
+}
 
 /* === Modal === */
 .modal-overlay {

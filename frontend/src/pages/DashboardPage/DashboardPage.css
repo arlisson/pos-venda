@@ -19,6 +19,110 @@
   margin: 22px 0 10px;
 }
 
+.home-notifications {
+  margin-bottom: 18px;
+}
+
+.home-notifications__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin: 0 0 10px;
+}
+
+.home-notifications__header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.home-notifications__header p {
+  margin: 2px 0 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.home-notifications__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.home-notification {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--info);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+}
+
+.home-notification.warn { border-left-color: var(--warn); }
+.home-notification.danger { border-left-color: var(--danger); }
+.home-notification.is-unread { background: #fffdf5; }
+.home-notification:hover { border-color: var(--border-strong); }
+
+.home-notification__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--info-bg);
+  color: var(--info);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-notification.warn .home-notification__icon {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.home-notification.danger .home-notification__icon {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.home-notification__content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.home-notification__content strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-notification__content span {
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.home-notification__days {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* Alert Banner */
 .alert-banner {
   display: flex;

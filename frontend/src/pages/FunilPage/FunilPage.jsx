@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { DEFAULT_OPERATORS as OPERATORS, STAGES as FALLBACK_STAGES } from '../../config/constants';
-import { listarEtapasFunil } from '../../services/config.service';
+import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import {
+  atualizarEtapaFunil,
+  criarEtapaFunil,
+  excluirEtapaFunil,
+  listarEtapasFunil,
+  listarEtapasFunilAdmin
+} from '../../services/config.service';
 import { atualizarStatusVenda, listarVendas } from '../../services/venda.service';
 
 const formatBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -12,17 +19,27 @@ const STAGE_LABELS = {
   retorno: 'Retorno',
 };
 
-function normalizarEtapasFunil(etapas = []) {
+function normalizarAtivo(valor) {
+  if (typeof valor === 'string') {
+    return !['0', 'false'].includes(valor.trim().toLowerCase());
+  }
+
+  return ![false, 0].includes(valor);
+}
+
+function normalizarEtapasFunil(etapas = [], usarFallback = true) {
   const normalizadas = etapas
     .map((etapa, index) => ({
       id: etapa.codigo || etapa.id,
+      adminId: etapa.id,
       name: etapa.nome || etapa.name,
       dot: etapa.codigo || etapa.id || `etapa_${index}`,
-      ordem: Number(etapa.ordem ?? index)
+      ordem: Number(etapa.ordem ?? index),
+      ativo: normalizarAtivo(etapa.ativo)
     }))
     .filter(etapa => etapa.id && etapa.name);
 
-  return normalizadas.length > 0 ? normalizadas : FALLBACK_STAGES;
+  return normalizadas.length > 0 || !usarFallback ? normalizadas : FALLBACK_STAGES;
 }
 
 function montarStageLabels(stages = []) {
@@ -515,6 +532,53 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
   );
 }
 
+function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
+  const vendasCount = Number(stage?.vendasCount || 0);
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={event => !saving && event.target === event.currentTarget && onClose()}
+    >
+      <div className="modal delete-stage-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Excluir etapa</div>
+              <div className="modal-sub">{stage?.name || stage?.nome}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={saving}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <p className="delete-stage-text">
+            Tem certeza que deseja excluir esta etapa do funil?
+          </p>
+          {vendasCount === 0 ? (
+            <div className="alert-success">
+              Esta etapa nao possui vendas e sera excluida definitivamente.
+            </div>
+          ) : (
+            <div className="alert-error">
+              Existem {vendasCount} venda{vendasCount === 1 ? '' : 's'} nessa etapa. Por isso, ela sera apenas desativada, continuara aparecendo no funil e deixara de ser um destino valido para vendas.
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={saving}>Cancelar</button>
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={saving}>
+            {saving ? 'Processando...' : vendasCount === 0 ? 'Excluir etapa' : 'Desativar etapa'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SaleCard({ sale, onClick }) {
   const priorityColor = PRIORITIES[sale.priority || 'media']?.color || '#3b82f6';
   return (
@@ -545,13 +609,71 @@ function SaleCard({ sale, onClick }) {
   );
 }
 
+const NOVA_ETAPA = {
+  nome: '',
+  ordem: 0,
+  ativo: true
+};
+
 function FunilPage() {
+  const usuario = getUsuarioLocal();
+  const podeGerenciarEtapas = temPermissao(usuario, 'crud_funil_etapas');
   const [sales, setSales] = useState([]);
   const [stages, setStages] = useState(FALLBACK_STAGES);
+  const [adminStages, setAdminStages] = useState([]);
   const [filter, setFilter] = useState('todas');
   const [selectedSaleId, setSelectedSaleId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [stagesLoading, setStagesLoading] = useState(false);
+  const [stageSavingId, setStageSavingId] = useState(null);
+  const [creatingStage, setCreatingStage] = useState(false);
+  const [newStage, setNewStage] = useState(NOVA_ETAPA);
+  const [editStageNames, setEditStageNames] = useState({});
+  const [showNewStageForm, setShowNewStageForm] = useState(false);
+  const [editingStageId, setEditingStageId] = useState(null);
+  const [stageToDelete, setStageToDelete] = useState(null);
   const [error, setError] = useState('');
+  const [stageFeedback, setStageFeedback] = useState({ type: '', message: '' });
+
+  function sincronizarEtapas(etapas, { atualizarAdmin = false, fallbackAdminEtapa = null } = {}) {
+    const etapasNormalizadas = normalizarEtapasFunil(etapas, !atualizarAdmin);
+    const etapasComFallback = fallbackAdminEtapa
+      ? [
+        ...etapasNormalizadas.filter(etapa => etapa.adminId !== fallbackAdminEtapa.adminId),
+        fallbackAdminEtapa
+      ].sort((a, b) => {
+        if (a.ordem !== b.ordem) return a.ordem - b.ordem;
+        return a.name.localeCompare(b.name);
+      })
+      : etapasNormalizadas;
+
+    setStages(etapasComFallback.length > 0 || atualizarAdmin ? etapasComFallback : FALLBACK_STAGES);
+
+    if (atualizarAdmin) {
+      setAdminStages(etapasComFallback);
+      setEditStageNames(Object.fromEntries(etapasComFallback.map(etapa => [etapa.adminId, etapa.name])));
+    }
+
+    return montarStageLabels(etapasComFallback);
+  }
+
+  async function carregarEtapasAdmin(fallbackAdminEtapa = null) {
+    if (!podeGerenciarEtapas) return;
+
+    setStagesLoading(true);
+    try {
+      const etapas = await listarEtapasFunilAdmin();
+      sincronizarEtapas(etapas, { atualizarAdmin: true, fallbackAdminEtapa });
+    } catch (err) {
+      if (fallbackAdminEtapa) {
+        sincronizarEtapas([...adminStages, fallbackAdminEtapa], { atualizarAdmin: true });
+      } else {
+        setStageFeedback({ type: 'error', message: err.message || 'Erro ao carregar etapas do funil.' });
+      }
+    } finally {
+      setStagesLoading(false);
+    }
+  }
 
   async function carregarVendas() {
     setLoading(true);
@@ -560,11 +682,9 @@ function FunilPage() {
     try {
       const [vendas, etapas] = await Promise.all([
         listarVendas(),
-        listarEtapasFunil()
+        podeGerenciarEtapas ? listarEtapasFunilAdmin() : listarEtapasFunil()
       ]);
-      const etapasNormalizadas = normalizarEtapasFunil(etapas);
-      const labels = montarStageLabels(etapasNormalizadas);
-      setStages(etapasNormalizadas);
+      const labels = sincronizarEtapas(etapas, { atualizarAdmin: podeGerenciarEtapas });
       setSales(Array.isArray(vendas) ? vendas.map(venda => mapVendaToSale(venda, labels)) : []);
     } catch (err) {
       setError(err.message || 'Erro ao carregar funil.');
@@ -573,11 +693,115 @@ function FunilPage() {
     }
   }
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     carregarVendas();
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (!stageFeedback.message) return undefined;
+    const timer = setTimeout(() => setStageFeedback({ type: '', message: '' }), 5000);
+    return () => clearTimeout(timer);
+  }, [stageFeedback.message]);
+
+  async function atualizarEtapasAposCrud(message, fallbackAdminEtapa = null) {
+    await carregarEtapasAdmin(fallbackAdminEtapa);
+    setStageFeedback({ type: 'success', message });
+  }
+
+  async function handleCreateStage(event) {
+    event.preventDefault();
+
+    if (!newStage.nome.trim()) return;
+
+    setCreatingStage(true);
+    setStageFeedback({ type: '', message: '' });
+
+    try {
+      await criarEtapaFunil({
+        ...newStage,
+        nome: newStage.nome.trim(),
+        ordem: Number(newStage.ordem || 0)
+      });
+      setNewStage(NOVA_ETAPA);
+      setShowNewStageForm(false);
+      await atualizarEtapasAposCrud('Etapa adicionada com sucesso.');
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: err.message || 'Erro ao adicionar etapa.' });
+    } finally {
+      setCreatingStage(false);
+    }
+  }
+
+  async function handleSaveStageName(stage) {
+    const nome = editStageNames[stage.adminId]?.trim();
+    if (!stage.adminId || !nome || nome === stage.name) return;
+
+    setStageSavingId(stage.adminId);
+    setStageFeedback({ type: '', message: '' });
+
+    try {
+      await atualizarEtapaFunil(stage.adminId, {
+        nome,
+        ordem: Number(stage.ordem || 0),
+        ativo: stage.ativo
+      });
+      setEditingStageId(null);
+      await atualizarEtapasAposCrud('Nome da etapa atualizado.');
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: err.message || 'Erro ao atualizar etapa.' });
+    } finally {
+      setStageSavingId(null);
+    }
+  }
+
+  async function handleToggleStage(stage) {
+    if (!stage.adminId) return;
+
+    const proximoAtivo = !stage.ativo;
+    setStageSavingId(stage.adminId);
+    setStageFeedback({ type: '', message: '' });
+
+    try {
+      await atualizarEtapaFunil(stage.adminId, {
+        nome: editStageNames[stage.adminId]?.trim() || stage.name,
+        ordem: Number(stage.ordem || 0),
+        ativo: proximoAtivo
+      });
+      await atualizarEtapasAposCrud(proximoAtivo ? 'Etapa reativada.' : 'Etapa desativada.');
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: err.message || 'Erro ao alterar status da etapa.' });
+    } finally {
+      setStageSavingId(null);
+    }
+  }
+
+  async function handleDeleteStage(stage) {
+    if (!stage.adminId) return;
+
+    setStageSavingId(stage.adminId);
+    setStageFeedback({ type: '', message: '' });
+
+    try {
+      const resultado = await excluirEtapaFunil(stage.adminId);
+      const etapaFallback = resultado?.acao === 'desativada' && resultado?.etapa
+        ? normalizarEtapasFunil([resultado.etapa], false)[0]
+        : null;
+      setEditingStageId(null);
+      setStageToDelete(null);
+      await atualizarEtapasAposCrud(
+        resultado?.acao === 'desativada'
+          ? 'Etapa desativada porque possui vendas vinculadas. Ela continuara visivel no funil.'
+          : 'Etapa excluida com sucesso.',
+        etapaFallback
+      );
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: err.message || 'Erro ao excluir etapa.' });
+    } finally {
+      setStageSavingId(null);
+    }
+  }
 
   async function handleUpdateSale(saleId, novaFase, novaPrioridade, observacao, motivoRetorno) {
     if (novaFase === 'retorno') {
@@ -612,6 +836,14 @@ function FunilPage() {
   );
   const total = filtradas.reduce((sum, s) => sum + s.value, 0);
   const selectedSale = selectedSaleId ? sales.find(s => s.id === selectedSaleId) : null;
+  const adminStagesByCode = useMemo(
+    () => new Map(adminStages.map(stage => [stage.id, stage])),
+    [adminStages]
+  );
+  const inactiveStages = useMemo(
+    () => adminStages.filter(stage => stage.ativo === false),
+    [adminStages]
+  );
   const stagesVisiveis = useMemo(() => {
     const conhecidos = new Set(stages.map(stage => stage.id));
     const extras = Array.from(new Set(
@@ -625,7 +857,11 @@ function FunilPage() {
       ...extras.map(stage => ({ id: stage, name: STAGE_LABELS[stage] || stage, dot: stage }))
     ];
   }, [sales, stages]);
-  const stageLabels = useMemo(() => montarStageLabels(stagesVisiveis), [stagesVisiveis]);
+  const stagesValidas = useMemo(
+    () => stagesVisiveis.filter(stage => stage.ativo !== false),
+    [stagesVisiveis]
+  );
+  const stageLabels = montarStageLabels(stagesVisiveis);
   const operators = useMemo(
     () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),
     [sales]
@@ -636,10 +872,18 @@ function FunilPage() {
       {selectedSale && (
         <SaleModal
           sale={selectedSale}
-          stages={stagesVisiveis}
+          stages={stagesValidas}
           stageLabels={stageLabels}
           onClose={() => setSelectedSaleId(null)}
           onUpdateSale={handleUpdateSale}
+        />
+      )}
+      {stageToDelete && (
+        <DeleteStageModal
+          stage={stageToDelete}
+          saving={stageSavingId === stageToDelete.adminId}
+          onClose={() => setStageToDelete(null)}
+          onConfirm={() => handleDeleteStage(stageToDelete)}
         />
       )}
 
@@ -667,9 +911,85 @@ function FunilPage() {
         </div>
 
         {error && <div className="alert-error" style={{ margin: 16 }}>{error}</div>}
+        {podeGerenciarEtapas && (
+          <>
+            {stageFeedback.message && (
+              <div
+                className={stageFeedback.type === 'success' ? 'alert-success alert-timed alert-timed--success' : 'alert-error alert-timed alert-timed--error'}
+                style={{ margin: '12px 24px 0' }}
+              >
+                {stageFeedback.message}
+              </div>
+            )}
+            <div className="funnel-stage-toolbar">
+              {!showNewStageForm ? (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowNewStageForm(true)}>
+                  <I.Plus size={13} /> Nova etapa
+                </button>
+              ) : (
+                <form className="funnel-stage-form" onSubmit={handleCreateStage}>
+                  <input
+                    value={newStage.nome}
+                    onChange={event => setNewStage({ ...newStage, nome: event.target.value })}
+                    placeholder="Nome da nova etapa"
+                    disabled={creatingStage}
+                    required
+                  />
+                  <input
+                    className="funnel-stage-form__order"
+                    type="number"
+                    value={newStage.ordem}
+                    onChange={event => setNewStage({ ...newStage, ordem: event.target.value })}
+                    disabled={creatingStage}
+                    aria-label="Ordem da nova etapa"
+                  />
+                  <button type="submit" className="btn btn-primary btn-sm" disabled={creatingStage || !newStage.nome.trim()}>
+                    {creatingStage ? 'Adicionando...' : 'Adicionar'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={() => {
+                      setNewStage(NOVA_ETAPA);
+                      setShowNewStageForm(false);
+                    }}
+                    disabled={creatingStage}
+                  >
+                    Cancelar
+                  </button>
+                </form>
+              )}
+              {stagesLoading && <span className="muted" style={{ fontSize: 12 }}>Atualizando etapas...</span>}
+            </div>
+            {inactiveStages.length > 0 && (
+              <div className="inactive-stage-bar">
+                <span className="inactive-stage-bar__label">Etapas desativadas</span>
+                {inactiveStages.map(stage => (
+                  <button
+                    type="button"
+                    key={stage.adminId}
+                    className="btn btn-sm"
+                    onClick={() => handleToggleStage(stage)}
+                    disabled={stageSavingId === stage.adminId}
+                    title={`Reativar ${stage.name}`}
+                  >
+                    <I.Check size={12} />
+                    {stageSavingId === stage.adminId ? 'Reativando...' : stage.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
         <div className="kanban">
           {stagesVisiveis.map(st => {
+            const editableStage = adminStagesByCode.get(st.id) || st;
+            const canEditStage = podeGerenciarEtapas && editableStage.adminId;
+            const isEditingStage = canEditStage && editingStageId === editableStage.adminId;
+            const stageSaving = canEditStage && stageSavingId === editableStage.adminId;
+            const editValue = canEditStage ? (editStageNames[editableStage.adminId] ?? editableStage.name) : st.name;
+            const editChanged = canEditStage && editValue.trim() && editValue.trim() !== editableStage.name;
             const priorityWeight = { alta: 1, media: 2, baixa: 3 };
             const items = filtradas
               .filter(s => s.stage === st.id)
@@ -685,9 +1005,75 @@ function FunilPage() {
                 <div className="column-header">
                   <div className="column-title-row">
                     <span className={`column-dot ${st.dot}`}></span>
-                    <span className="column-name">{st.name}</span>
+                    {isEditingStage ? (
+                      <input
+                        className="column-name-input"
+                        value={editValue}
+                        onChange={event => setEditStageNames(prev => ({ ...prev, [editableStage.adminId]: event.target.value }))}
+                        disabled={stageSaving}
+                        autoFocus
+                        aria-label={`Editar nome da etapa ${editableStage.name}`}
+                      />
+                    ) : (
+                      <span className="column-name">{st.name}</span>
+                    )}
                     <span className="column-count">{items.length}</span>
+                    {canEditStage && !isEditingStage && (
+                      <button
+                        type="button"
+                        className="btn btn-icon btn-ghost column-edit-btn"
+                        onClick={() => {
+                          setEditingStageId(editableStage.adminId);
+                          setEditStageNames(prev => ({ ...prev, [editableStage.adminId]: editableStage.name }));
+                        }}
+                        title="Editar etapa"
+                      >
+                        <I.Edit size={12} />
+                      </button>
+                    )}
                   </div>
+                  {isEditingStage && (
+                    <div className="column-stage-actions">
+                      <button
+                        type="button"
+                        className="btn btn-icon btn-ghost"
+                        onClick={() => handleSaveStageName(editableStage)}
+                        disabled={stageSaving || !editChanged}
+                        title="Salvar nome"
+                      >
+                        <I.Check size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-icon btn-ghost"
+                        onClick={() => {
+                          setEditingStageId(null);
+                          setEditStageNames(prev => ({ ...prev, [editableStage.adminId]: editableStage.name }));
+                        }}
+                        disabled={stageSaving}
+                        title="Cancelar edicao"
+                      >
+                        <I.Close size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        onClick={() => handleToggleStage(editableStage)}
+                        disabled={stageSaving}
+                      >
+                        {editableStage.ativo === false ? 'Reativar' : 'Desativar'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-icon btn-ghost btn-danger-icon"
+                        onClick={() => setStageToDelete({ ...editableStage, vendasCount: items.length })}
+                        disabled={stageSaving}
+                        title="Excluir etapa"
+                      >
+                        <I.Trash size={13} />
+                      </button>
+                    </div>
+                  )}
                   <div className="column-total">
                     <span className="label">Total</span>
                     <span className="value">{formatBRL(colTotal)}</span>

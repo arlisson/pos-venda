@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getMetas, getProgresso, getProgressoUsuarios, resgatarMeta } from '../../services/meta.service';
 import { obterResumoVendas } from '../../services/venda.service';
+import { listarNotificacoes, marcarNotificacaoLida } from '../../services/notificacao.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import * as I from '../../components/Icons';
 import './DashboardPage.css';
@@ -108,6 +109,7 @@ function DashboardPage() {
   const [progressoUsuarios, setProgressoUsuarios] = useState([]);
   const [usuarioMetaFiltro, setUsuarioMetaFiltro] = useState('');
   const [usuarioMetaBusca, setUsuarioMetaBusca] = useState('');
+  const [notificacoes, setNotificacoes] = useState([]);
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
   const podeVerRetornos = temPermissao(usuario, ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']);
   const podeVerMetasUsuarios = temPermissao(usuario, 'metas_ver_usuarios');
@@ -141,6 +143,26 @@ function DashboardPage() {
       .catch(console.error);
   }, [podeVerMetasUsuarios]);
 
+  useEffect(() => {
+    listarNotificacoes({ limit: 5 })
+      .then(data => setNotificacoes(data.notificacoes || []))
+      .catch(console.error);
+  }, []);
+
+  async function handleReadNotification(notificacao) {
+    if (!notificacao.lida) {
+      await marcarNotificacaoLida(notificacao.id);
+      setNotificacoes(prev => prev.map(item => (
+        item.id === notificacao.id ? { ...item, lida: true } : item
+      )));
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    }
+
+    if (notificacao.tipo === 'cliente_fidelidade' || notificacao.entidade === 'clientes') {
+      navigate('/clientes?fidelidade=alerta');
+    }
+  }
+
   const buscaUsuarioMetaNormalizada = usuarioMetaBusca.trim().toLowerCase();
   const progressoUsuariosFiltrados = progressoUsuarios.filter(item => {
     if (usuarioMetaFiltro && String(item.id) !== String(usuarioMetaFiltro)) {
@@ -171,6 +193,16 @@ function DashboardPage() {
   const overallPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
 
   const firstName = usuario?.nome?.split(' ')[0] || 'você';
+  const notificacoesFidelidade = notificacoes
+    .filter(notificacao => notificacao.tipo === 'cliente_fidelidade')
+    .sort((a, b) => Number(a.dados?.dias_restantes ?? 999) - Number(b.dados?.dias_restantes ?? 999));
+  const outrasNotificacoes = notificacoes.filter(notificacao => notificacao.tipo !== 'cliente_fidelidade');
+  const proximaFidelidade = notificacoesFidelidade[0];
+  const fidelidadeTextoPrazo = proximaFidelidade?.dados?.dias_restantes < 0
+    ? `vencida ha ${Math.abs(proximaFidelidade.dados.dias_restantes)} dia${Math.abs(proximaFidelidade.dados.dias_restantes) === 1 ? '' : 's'}`
+    : proximaFidelidade?.dados?.dias_restantes === 0
+      ? 'vence hoje'
+      : `vence em ${proximaFidelidade?.dados?.dias_restantes} dias`;
 
   const handleOpenGift = async (meta) => {
     setClaimingId(meta.id);
@@ -232,6 +264,65 @@ function DashboardPage() {
               Ver retornos <I.ArrowRight size={14} />
             </button>
           </div>
+        )}
+
+        {(notificacoesFidelidade.length > 0 || outrasNotificacoes.length > 0) && (
+          <section className="home-notifications">
+            <div className="home-notifications__header">
+              <div>
+                <h2>Notificacoes</h2>
+                <p>Avisos importantes para acompanhar hoje.</p>
+              </div>
+            </div>
+
+            <div className="home-notifications__list">
+              {notificacoesFidelidade.length > 0 && (
+                <button
+                  type="button"
+                  className={`home-notification home-notification--summary ${proximaFidelidade?.lida ? '' : 'is-unread'} ${proximaFidelidade?.nivel || 'info'}`}
+                  onClick={() => handleReadNotification(proximaFidelidade)}
+                >
+                  <span className="home-notification__icon">
+                    <I.Bell size={16} />
+                  </span>
+                  <span className="home-notification__content">
+                    <strong>
+                      {notificacoesFidelidade.length} cliente{notificacoesFidelidade.length === 1 ? '' : 's'} com fidelidade perto do fim
+                    </strong>
+                    <span>
+                      Maior urgencia: {proximaFidelidade?.dados?.cliente_nome || 'cliente'} - {fidelidadeTextoPrazo}.
+                    </span>
+                  </span>
+                  {proximaFidelidade?.dados?.dias_restantes !== undefined && (
+                    <span className="home-notification__days">
+                      {proximaFidelidade.dados.dias_restantes === 0
+                        ? 'Hoje'
+                        : proximaFidelidade.dados.dias_restantes < 0
+                          ? 'Vencida'
+                        : `${proximaFidelidade.dados.dias_restantes} dias`}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {outrasNotificacoes.map(notificacao => (
+                <button
+                  key={notificacao.destinatario_id || notificacao.id}
+                  type="button"
+                  className={`home-notification ${notificacao.lida ? '' : 'is-unread'} ${notificacao.nivel || 'info'}`}
+                  onClick={() => handleReadNotification(notificacao)}
+                >
+                  <span className="home-notification__icon">
+                    <I.Bell size={16} />
+                  </span>
+                  <span className="home-notification__content">
+                    <strong>{notificacao.titulo}</strong>
+                    <span>{notificacao.mensagem}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* KPIs do DIA */}
