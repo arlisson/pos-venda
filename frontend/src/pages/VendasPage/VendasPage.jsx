@@ -747,7 +747,7 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
   );
 }
 
-function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, tiposVenda, servicos, planos, onClose, onSave, onCreateClient }) {
+function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave, onCreateClient }) {
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -759,10 +759,6 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
   const cepPreenchidoPorCnpjRef = useRef('');
   const tipoVendaSelecionado = tiposVenda.find(tipo => String(tipo.id) === String(form.tipo_venda_id));
   const vendaPortabilidade = isTipoPortabilidade(tipoVendaSelecionado);
-  const planosFiltrados = planos.filter(plano => (
-    !form.operadora_id || String(plano.operadora_id) === String(form.operadora_id)
-  ));
-
   function atualizarCampo(campo, valor) {
     setForm(prev => ({
       ...prev,
@@ -1063,7 +1059,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                         </button>
                       </div>
                     </>
-                  ) : ['seller', 'operator', 'saleType', 'service', 'plan'].includes(campo.type) ? (
+                  ) : ['seller', 'operator', 'saleType', 'service'].includes(campo.type) ? (
                     <select
                       value={form[campo.name] ?? ''}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
@@ -1077,9 +1073,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                             ? operadoras
                             : campo.type === 'saleType'
                               ? tiposVenda
-                              : campo.type === 'service'
-                                ? servicos
-                                : planosFiltrados
+                              : servicos
                       ).map(item => (
                         <option key={item.id} value={item.id}>{item.nome}</option>
                       ))}
@@ -1225,7 +1219,6 @@ function VendasPage() {
   const [operadoras, setOperadoras] = useState([]);
   const [tiposVenda, setTiposVenda] = useState([]);
   const [servicos, setServicos] = useState([]);
-  const [planos, setPlanos] = useState([]);
   const [statusFunilFiltros, setStatusFunilFiltros] = useState(STATUS_FUNIL_FILTROS);
   const [busca, setBusca] = useState('');
   const [vendedoraId, setVendedoraId] = useState('');
@@ -1464,7 +1457,6 @@ function VendasPage() {
           operadoras={operadoras}
           tiposVenda={tiposVenda}
           servicos={servicos}
-          planos={planos}
           onClose={() => {
             setModalAberto(false);
             setVendaInicial(null);

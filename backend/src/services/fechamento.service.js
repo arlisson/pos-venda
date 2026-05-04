@@ -61,6 +61,68 @@ function parseChips(rawChips) {
     .filter(item => item.quantidade > 0);
 }
 
+function normalizarTaxaComissao(valor) {
+  if (valor === undefined || valor === null || valor === '') return null;
+  const taxa = Number(String(valor).replace(',', '.'));
+  return Number.isFinite(taxa) && taxa >= 0 ? Number(taxa.toFixed(2)) : null;
+}
+
+function calcularComissao(valorUnitario, taxaComissao) {
+  if (taxaComissao === null || taxaComissao === undefined) return null;
+  const valor = Number(valorUnitario || 0);
+  const taxa = Number(taxaComissao);
+  if (!Number.isFinite(valor) || !Number.isFinite(taxa)) return null;
+
+  return Math.round(((valor * taxa / 100) + Number.EPSILON) * 100) / 100;
+}
+
+function extrairNumerosGigas(valor) {
+  const texto = String(valor || '');
+  const matches = texto.match(/\d+(?:[.,]\d+)?/g) || [];
+
+  return matches
+    .map(item => Number(String(item).replace(',', '.')))
+    .filter(numero => Number.isFinite(numero) && numero > 0);
+}
+
+function formatarGigas(numero) {
+  const valor = Number(numero || 0);
+  if (!Number.isFinite(valor) || valor <= 0) return null;
+
+  const texto = Number.isInteger(valor)
+    ? String(valor)
+    : valor.toFixed(2).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
+
+  return `${texto}GB`;
+}
+
+function gigasUnitarios(gbPrincipal, quantidade, gbFallback = '') {
+  const totalChips = Math.max(Number(quantidade || 0), 0);
+  if (totalChips === 0) return [];
+
+  const textoPrincipal = String(gbPrincipal || '').trim();
+  const textoFallback = String(gbFallback || '').trim();
+  const texto = textoPrincipal || textoFallback;
+  if (!texto) return Array(totalChips).fill('');
+
+  const numeros = extrairNumerosGigas(texto);
+
+  if (numeros.length === 1) {
+    return Array(totalChips).fill(formatarGigas(numeros[0]) || texto);
+  }
+
+  if (numeros.length >= totalChips) {
+    return numeros.slice(0, totalChips).map(formatarGigas);
+  }
+
+  if (numeros.length > 1) {
+    const totalGigas = numeros.reduce((soma, numero) => soma + numero, 0);
+    return Array(totalChips).fill(formatarGigas(totalGigas / totalChips));
+  }
+
+  return Array(totalChips).fill(texto);
+}
+
 function quantidadeChipsVenda(venda) {
   const chips = parseChips(venda.valores_unitarios_chips);
   const totalChips = chips.reduce((soma, item) => soma + item.quantidade, 0);
@@ -290,25 +352,24 @@ async function obterDetalhesChips(filtros = {}) {
   const filtradas = filtros.operadora_id
     ? vendasAtivas.filter(v => Number(v.operadora_id) === Number(filtros.operadora_id))
     : vendasAtivas;
+  const taxaComissao = normalizarTaxaComissao(filtros.taxa_comissao);
 
   const linhas = [];
 
   filtradas.forEach(venda => {
     const chips = parseChips(venda.valores_unitarios_chips);
-    const taxa = null;
-    const temPlano = false;
 
     if (chips.length === 0) {
       const linhasFallback = Number(venda.quantidade_linhas || 0) || 1;
       const valorFallback = Number(venda.valor_total || 0) / linhasFallback;
+      const gigasFallback = gigasUnitarios(venda.gb, linhasFallback);
+
       for (let i = 0; i < linhasFallback; i++) {
         linhas.push(montarLinhaChip(venda, {
           chip_index: i + 1,
-          gb: venda.gb || '',
+          gb: gigasFallback[i] || '',
           valor_unitario: valorFallback,
-          tem_plano: temPlano,
-          taxa,
-          comissao: temPlano ? Number((valorFallback * taxa / 100).toFixed(2)) : null
+          taxa_comissao: taxaComissao
         }));
       }
       return;
@@ -316,49 +377,52 @@ async function obterDetalhesChips(filtros = {}) {
 
     let chipNumero = 1;
     chips.forEach(item => {
+      const gigas = gigasUnitarios(item.gb, item.quantidade, venda.gb);
+
       for (let i = 0; i < item.quantidade; i++) {
         linhas.push(montarLinhaChip(venda, {
           chip_index: chipNumero,
-          gb: item.gb,
+          gb: gigas[i] || '',
           valor_unitario: item.valor_unitario,
-          tem_plano: temPlano,
-          taxa,
-          comissao: temPlano ? Number((item.valor_unitario * taxa / 100).toFixed(2)) : null
+          taxa_comissao: taxaComissao
         }));
         chipNumero += 1;
       }
     });
   });
 
+  const linhasOrdenadas = linhas.sort((a, b) => {
+    const dataA = a.data_venda || '';
+    const dataB = b.data_venda || '';
+    const cmp = dataB.localeCompare(dataA);
+    if (cmp !== 0) return cmp;
+    return Number(a.venda_id) - Number(b.venda_id);
+  });
   const totaisVendedora = new Map();
-  linhas.forEach(linha => {
+
+  linhasOrdenadas.forEach(linha => {
     if (linha.comissao === null || !linha.vendedora) return;
     const chave = linha.vendedora.id || 'sem_vendedora';
     const atual = totaisVendedora.get(chave) || {
       vendedora_id: linha.vendedora.id || null,
       vendedora_nome: linha.vendedora.nome || 'Sem vendedora',
-      total_chips: 0,
+      total_ugrs: 0,
       total_comissao: 0
     };
-    atual.total_chips += 1;
+    atual.total_ugrs += 1;
     atual.total_comissao += linha.comissao;
     totaisVendedora.set(chave, atual);
   });
 
   return {
-    linhas: linhas.sort((a, b) => {
-      const dataA = a.data_venda || '';
-      const dataB = b.data_venda || '';
-      const cmp = dataB.localeCompare(dataA);
-      if (cmp !== 0) return cmp;
-      return Number(a.venda_id) - Number(b.venda_id);
-    }),
+    linhas: linhasOrdenadas,
     totais_por_vendedora: Array.from(totaisVendedora.values())
       .map(item => ({ ...item, total_comissao: Number(item.total_comissao.toFixed(2)) }))
       .sort((a, b) => b.total_comissao - a.total_comissao),
     total_geral: {
       chips: linhas.length,
-      comissao: Number(linhas.reduce((soma, l) => soma + (l.comissao || 0), 0).toFixed(2))
+      valor: Number(linhas.reduce((soma, l) => soma + Number(l.valor_unitario || 0), 0).toFixed(2)),
+      comissao: Number(linhas.reduce((soma, l) => soma + Number(l.comissao || 0), 0).toFixed(2))
     }
   };
 }
@@ -372,6 +436,8 @@ function montarLinhaChip(venda, chip) {
     ddd: venda.ddd || null,
     gb: chip.gb || null,
     valor_unitario: Number(Number(chip.valor_unitario || 0).toFixed(2)),
+    taxa_comissao: chip.taxa_comissao,
+    comissao: calcularComissao(chip.valor_unitario, chip.taxa_comissao),
     operadora: venda.operadora_id ? { id: venda.operadora_id, nome: venda.operadora_nome } : null,
     vendedora: venda.vendedora_id ? {
       id: venda.vendedora_id,
@@ -386,11 +452,7 @@ function montarLinhaChip(venda, chip) {
       fidelidade_fim: venda.cliente_fidelidade_fim
     } : null,
     tipo_venda: venda.tipo_venda_nome || null,
-    servico: venda.servico_nome || null,
-
-    tem_plano: chip.tem_plano,
-    taxa_comissao: chip.tem_plano ? chip.taxa : null,
-    comissao: chip.comissao
+    servico: venda.servico_nome || null
   };
 }
 

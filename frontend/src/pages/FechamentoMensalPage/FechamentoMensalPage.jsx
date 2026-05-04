@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getResumo } from '../../services/fechamento.service';
 import DetalhesAtivasModal from './DetalhesAtivasModal';
@@ -25,17 +25,18 @@ function periodoMesAtual() {
   };
 }
 
+function dataValida(valor) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(valor || ''));
+}
+
 function FechamentoMensalPage() {
   const [periodo, setPeriodo] = useState(() => periodoMesAtual());
+  const [periodoConsulta, setPeriodoConsulta] = useState(() => periodoMesAtual());
+  const [taxaComissao, setTaxaComissao] = useState('');
   const [resumo, setResumo] = useState({ total: [], tratando: [], ativas: [] });
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [modalDetalhes, setModalDetalhes] = useState(null);
-
-  const periodoConsulta = useMemo(() => ({
-    data_inicio: periodo.data_inicio,
-    data_fim: periodo.data_fim
-  }), [periodo.data_inicio, periodo.data_fim]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -65,6 +66,10 @@ function FechamentoMensalPage() {
 
   function atualizarPeriodo(campo, valor) {
     setPeriodo(prev => ({ ...prev, [campo]: valor }));
+
+    if (dataValida(valor)) {
+      setPeriodoConsulta(prev => ({ ...prev, [campo]: valor }));
+    }
   }
 
   return (
@@ -85,6 +90,17 @@ function FechamentoMensalPage() {
               type="date"
               value={periodo.data_fim}
               onChange={event => atualizarPeriodo('data_fim', event.target.value)}
+            />
+          </div>
+          <div className="form-field">
+            <label>Taxa comissão UGR (%)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={taxaComissao}
+              onChange={event => setTaxaComissao(event.target.value)}
+              placeholder="15"
             />
           </div>
         </div>
@@ -111,7 +127,7 @@ function FechamentoMensalPage() {
 
         <FechamentoSecao
           titulo="Vendas ativas"
-          subtitulo="Contratos concluidos, com UGRs e comissoes por chip"
+          subtitulo="Contratos concluidos, com UGRs por chip"
           linhas={resumo.ativas || []}
           secao="ativas"
           loading={loading}
@@ -128,7 +144,7 @@ function FechamentoMensalPage() {
 
         {modalDetalhes === 'ativas' && (
           <DetalhesAtivasModal
-            periodo={periodoConsulta}
+            periodo={{ ...periodoConsulta, taxa_comissao: taxaComissao }}
             onClose={() => setModalDetalhes(null)}
           />
         )}
