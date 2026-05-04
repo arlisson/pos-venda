@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
+import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -32,27 +33,27 @@ const CAMPOS_VENDA_LEAD = [
   { name: 'nome', label: 'Nome do cliente', required: true, aliases: ['nome', 'cliente', 'razao', 'empresa'] },
   { name: 'telefone', label: 'Telefone/WhatsApp', aliases: ['telefone', 'whatsapp', 'celular', 'contato'] },
   { name: 'email', label: 'E-mail', aliases: ['email', 'e-mail'] },
-  { name: 'razao_social', label: 'Razao social', aliases: ['razao social', 'empresa'] },
+  { name: 'razao_social', label: 'Razão social', aliases: ['razao social', 'empresa'] },
   { name: 'cnpj', label: 'CNPJ', aliases: ['cnpj'] },
   { name: 'nome_representante_legal', label: 'Representante legal', aliases: ['representante', 'responsavel', 'rl'] },
   { name: 'cpf_representante_legal', label: 'CPF representante', aliases: ['cpf representante', 'cpf rl', 'cpf'] },
   { name: 'nome_administrador', label: 'Administrador', aliases: ['administrador', 'adm'] },
   { name: 'cpf_administrador', label: 'CPF administrador', aliases: ['cpf administrador', 'cpf adm'] },
   { name: 'nome_fechou_venda', label: 'Nome com quem fechou', aliases: ['fechou', 'contato', 'responsavel'] },
-  { name: 'setor_funcao', label: 'Setor/Funcao', aliases: ['setor', 'funcao', 'cargo'] },
+  { name: 'setor_funcao', label: 'Setor/Função', aliases: ['setor', 'funcao', 'cargo'] },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas', aliases: ['quantidade', 'linhas', 'chips'] },
   { name: 'ddd', label: 'DDD', aliases: ['ddd'] },
   { name: 'data_venda', label: 'Data da venda', aliases: ['data', 'data venda'] },
   { name: 'dia_vencimento', label: 'Dia de vencimento', aliases: ['vencimento'] },
   { name: 'cep', label: 'CEP', aliases: ['cep'] },
-  { name: 'endereco', label: 'Endereco', aliases: ['endereco', 'logradouro', 'rua'] },
+  { name: 'endereco', label: 'Endereço', aliases: ['endereco', 'logradouro', 'rua'] },
   { name: 'numero_endereco', label: 'Numero endereco', aliases: ['numero', 'num'] },
   { name: 'complemento', label: 'Complemento', aliases: ['complemento'] },
   { name: 'bairro', label: 'Bairro', aliases: ['bairro'] },
   { name: 'municipio', label: 'Municipio', aliases: ['municipio', 'cidade'] },
   { name: 'uf', label: 'UF', aliases: ['uf', 'estado'] },
   { name: 'ponto_referencia', label: 'Ponto de referencia', aliases: ['referencia'] },
-  { name: 'observacoes', label: 'Observacoes', aliases: ['observacao', 'observacoes', 'obs'] }
+  { name: 'observacoes', label: 'Observações', aliases: ['observacao', 'observacoes', 'obs'] }
 ];
 
 function normalizarDataInput(valor) {
@@ -335,7 +336,7 @@ function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }
           <div className="lead-sale-map-head">
             <span>Campo da venda</span>
             <span>Coluna da planilha</span>
-            <span>Valor que sera levado</span>
+            <span>Valor que será levado</span>
           </div>
 
           <div className="lead-sale-map-list">
@@ -347,7 +348,7 @@ function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }
                 <div key={campo.name} className="lead-sale-map-row">
                   <label>{campo.label}</label>
                   <select value={coluna} onChange={event => atualizarMapeamento(campo.name, event.target.value)}>
-                    <option value="">Nao preencher</option>
+                    <option value="">Não preencher</option>
                     {opcoesColunas.map(opcao => (
                       <option key={opcao.nome} value={opcao.nome}>{opcao.label}</option>
                     ))}
@@ -384,7 +385,7 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
         <div className="modal-header">
           <div className="modal-header-row">
             <div>
-              <div className="modal-client">Atualizar informacao</div>
+              <div className="modal-client">Atualizar informação</div>
               <div className="modal-sub">{dados.label}</div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={salvando}>
@@ -395,12 +396,12 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
 
         <div className="modal-body">
           <div className="lead-update-summary">
-            <span>Informacao original</span>
+            <span>Informação original</span>
             <strong>{dados.valorOriginal || '-'}</strong>
           </div>
 
           <div className="form-field">
-            <label>Informacao atualizada</label>
+            <label>Informação atualizada</label>
             <input
               autoFocus
               value={valor}
@@ -539,7 +540,7 @@ function LeadsRecebidosView() {
 
   async function salvarAtualizacao(valor) {
     if (!modalAtualizacao || !valor.trim()) {
-      setErroAtualizacao('Informe a informacao atualizada.');
+      setErroAtualizacao('Informe a informação atualizada.');
       return;
     }
 
@@ -558,7 +559,7 @@ function LeadsRecebidosView() {
         linha.id === resultado.linha?.id ? resultado.linha : linha
       )));
       setModalAtualizacao(null);
-      setSucesso('Informacao atualizada salva.');
+      setSucesso('Informação atualizada salva.');
     } catch (error) {
       setErroAtualizacao(error.message || 'Erro ao atualizar lead recebido.');
     } finally {
@@ -687,7 +688,7 @@ function LeadsRecebidosView() {
                               type="button"
                               className="lead-cell-button"
                               onClick={() => abrirAtualizacao(linha, coluna)}
-                              title="Atualizar informacao"
+                              title="Atualizar informação"
                             >
                               {valor || '-'}
                             </button>
@@ -705,8 +706,8 @@ function LeadsRecebidosView() {
 
       <div className="lead-pagination">
         <button className="btn" type="button" disabled={pagina <= 1} onClick={() => setPagina(prev => Math.max(1, prev - 1))}>Anterior</button>
-        <span>Pagina {pagina} de {totalPaginas}</span>
-        <button className="btn" type="button" disabled={pagina >= totalPaginas} onClick={() => setPagina(prev => Math.min(totalPaginas, prev + 1))}>Proxima</button>
+        <span>Página {pagina} de {totalPaginas}</span>
+        <button className="btn" type="button" disabled={pagina >= totalPaginas} onClick={() => setPagina(prev => Math.min(totalPaginas, prev + 1))}>Próxima</button>
       </div>
     </div>
   );
@@ -718,6 +719,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   const [erro, setErro] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const [abaAtiva, setAbaAtiva] = useState('cliente');
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
   const editando = Boolean(cliente);
 
@@ -752,13 +754,13 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
 
     if (cnpj.length !== 14) {
       if (manual) {
-        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 digitos.' });
+        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 dígitos.' });
       }
       return;
     }
 
     if (isCnpjRepetido(cnpj)) {
-      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
       return;
     }
 
@@ -778,7 +780,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
         mensagem: formatarMensagemCnpj(dados)
       });
     } catch (error) {
-      setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Nao foi possivel consultar o CNPJ.' });
+      setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Não foi possível consultar o CNPJ.' });
     } finally {
       setConsultandoCnpj(false);
     }
@@ -794,7 +796,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
 
     if (cnpj.length === 14) {
       if (isCnpjRepetido(cnpj)) {
-        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
         return;
       }
 
@@ -830,15 +832,36 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
           </div>
         </div>
 
+        <div className="modal-tabs">
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'cliente' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('cliente')}
+          >
+            <I.User size={14} /> Cliente
+          </button>
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('notas')}
+          >
+            <I.Note size={14} /> Notas
+          </button>
+        </div>
+
         <div className="modal-body">
-          <div className="cliente-form-grid">
+          {abaAtiva === 'notas' ? (
+            <NotasEntidadeTab tipo="cliente" entidadeId={cliente?.id} />
+          ) : (
+          <>
+            <div className="cliente-form-grid">
             <div className="form-field">
               <label>Nome</label>
               <input value={form.nome} onChange={event => atualizarCampo('nome', event.target.value)} required />
             </div>
 
             <div className="form-field">
-              <label>Razao social</label>
+              <label>Razão social</label>
               <AutoResizeTextarea
                 value={form.razao_social}
                 onChange={event => atualizarCampo('razao_social', event.target.value)}
@@ -934,13 +957,21 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
           </div>
 
           {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
+          </>
+          )}
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button>
-          <button type="submit" className="btn btn-primary" disabled={salvando}>
-            {salvando ? 'Salvando...' : 'Salvar cliente'}
-          </button>
+          {abaAtiva === 'notas' ? (
+            <button type="button" className="btn" onClick={onClose}>Fechar</button>
+          ) : (
+            <>
+              <button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button>
+              <button type="submit" className="btn btn-primary" disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar cliente'}
+              </button>
+            </>
+          )}
         </div>
       </form>
     </div>
@@ -969,8 +1000,8 @@ function ConfirmarLixeiraModal({ cliente, excluindo, onClose, onConfirm }) {
           <div className="trash-warning">
             <I.AlertTriangle size={20} />
             <div>
-              <strong>Este cliente sera enviado para a lixeira.</strong>
-              <span>Ele ficara disponivel para restauracao e sera permanentemente deletado daqui a 1 mes.</span>
+              <strong>Este cliente será enviado para a lixeira.</strong>
+              <span>Ele ficará disponível para restauração e será permanentemente deletado daqui a 1 mês.</span>
             </div>
           </div>
         </div>
@@ -1339,7 +1370,7 @@ function Clientes() {
                         <td>
                           <div className="cliente-primary">
                             <strong>{cliente.nome}</strong>
-                            <span>{cliente.razao_social || 'Sem razao social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
+                            <span>{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
                           </div>
                         </td>
                         <td>

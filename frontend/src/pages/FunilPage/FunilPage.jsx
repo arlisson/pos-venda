@@ -51,12 +51,12 @@ function montarStageLabels(stages = []) {
 
 const PRIORITIES = {
   alta: { label: 'Prioridade Alta', color: '#ef4444' },
-  media: { label: 'Prioridade Media', color: '#3b82f6' },
+  media: { label: 'Prioridade Média', color: '#3b82f6' },
   baixa: { label: 'Prioridade Baixa', color: '#eab308' },
 };
 
 const RETURN_REASONS = [
-  'Endereco invalido',
+  'Endereço inválido',
   'Cliente recusou',
   'Chip danificado',
   'Reprovado na operadora',
@@ -83,9 +83,9 @@ function timeAgo(d) {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
   if (mins < 1) return 'agora';
-  if (mins < 60) return `${mins}min atras`;
-  if (hours < 24) return `${hours}h atras`;
-  return `${days}d atras`;
+  if (mins < 60) return `${mins}min atrás`;
+  if (hours < 24) return `${hours}h atrás`;
+  return `${days}d atrás`;
 }
 
 function initials(name) {
@@ -119,7 +119,7 @@ function getOperator(venda) {
 }
 
 function getPlan(venda) {
-  return venda.produto_fechado || venda.servico?.nome || venda.tipoVenda?.nome || 'Plano nao informado';
+  return venda.produto_fechado || venda.servico?.nome || venda.tipoVenda?.nome || 'Plano não informado';
 }
 
 function getSellerPhoto(venda) {
@@ -131,7 +131,7 @@ function getSellerPhoto(venda) {
 }
 
 function getHistoryAuthor(item) {
-  return item.usuario?.nome || (item.usuario_id ? `Usuario #${item.usuario_id}` : 'Sistema');
+  return item.usuario?.nome || (item.usuario_id ? `Usuário #${item.usuario_id}` : 'Sistema');
 }
 
 function getHistoryLabel(item, stageLabels = STAGE_LABELS) {
@@ -143,7 +143,7 @@ function getHistoryLabel(item, stageLabels = STAGE_LABELS) {
     return ['Retorno corrigido', item.observacao].filter(Boolean).join(' - ');
   }
   if (item.acao === 'venda.observacao_adicionada') {
-    return ['Observacao adicionada', item.observacao].filter(Boolean).join(' - ');
+    return ['Observação adicionada', item.observacao].filter(Boolean).join(' - ');
   }
   if (item.acao === 'venda.prioridade_atualizada') {
     return ['Prioridade atualizada', item.observacao].filter(Boolean).join(' - ');
@@ -158,7 +158,7 @@ function getHistoryLabel(item, stageLabels = STAGE_LABELS) {
 
   if (item.observacao) return item.observacao;
 
-  return item.acao || 'Atualizacao registrada';
+  return item.acao || 'Atualização registrada';
 }
 
 function getHistoryType(item) {
@@ -208,7 +208,7 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
       venda.bairro,
       venda.municipio,
       venda.uf
-    ].filter(Boolean).join(', ') || 'Endereco nao informado',
+    ].filter(Boolean).join(', ') || 'Endereço não informado',
     stage,
     priority: venda.prioridade_funil || 'media',
     lancadaEm: created,
@@ -411,11 +411,11 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
 
               <div style={{ marginTop: 20 }}>
                 <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 8 }}>
-                  Observacao (opcional)
+                  Observação (opcional)
                 </div>
                 <textarea
                   className="obs-textarea"
-                  placeholder="Adicione um detalhe sobre essa atualizacao..."
+                  placeholder="Adicione um detalhe sobre essa atualização..."
                   value={observacao}
                   onChange={e => setObservacao(e.target.value)}
                   disabled={saving}
@@ -436,7 +436,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
                 </button>
                 {alterou && (
                   <button type="button" className="btn btn-primary btn-sm" onClick={handleAtualizar} disabled={saving}>
-                    {saving ? 'Salvando...' : 'Confirmar mudanca'}
+                    {saving ? 'Salvando...' : 'Confirmar mudança'}
                   </button>
                 )}
               </div>
@@ -507,10 +507,10 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
           </div>
 
           <div className="form-field" style={{ marginTop: 20 }}>
-            <label>Observacao</label>
+            <label>Observação</label>
             <textarea
               className="obs-textarea"
-              placeholder="Ex: cliente recusou por endereco divergente, confirmar novo envio."
+              placeholder="Ex: cliente recusou por endereço divergente, confirmar novo envio."
               value={observacao}
               onChange={event => setObservacao(event.target.value)}
               disabled={saving}

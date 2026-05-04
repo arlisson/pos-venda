@@ -197,13 +197,13 @@ function ClienteFormPage() {
 
     if (cnpj.length !== 14) {
       if (manual) {
-        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 digitos.' });
+        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 dígitos.' });
       }
       return;
     }
 
     if (isCnpjRepetido(cnpj)) {
-      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
       return;
     }
 
@@ -223,7 +223,7 @@ function ClienteFormPage() {
         mensagem: formatarMensagemCnpj(dados)
       });
     } catch (error) {
-      setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Nao foi possivel consultar o CNPJ.' });
+      setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Não foi possível consultar o CNPJ.' });
     } finally {
       setConsultandoCnpj(false);
     }
@@ -239,7 +239,7 @@ function ClienteFormPage() {
 
     if (cnpj.length === 14) {
       if (isCnpjRepetido(cnpj)) {
-        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
         return;
       }
 
@@ -311,7 +311,7 @@ function ClienteFormPage() {
                     </div>
 
                     <div className="form-field">
-                      <label>Razao social</label>
+                      <label>Razão social</label>
                       <AutoResizeTextarea
                         value={form.razao_social}
                         onChange={event => atualizarCampo('razao_social', event.target.value)}

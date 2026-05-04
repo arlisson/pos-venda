@@ -18,13 +18,18 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
     { id: 'clientes', label: 'Clientes', icon: <I.Users />, permission: ['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_editar', 'clientes_excluir'] },
     { id: 'funil', label: 'Funil de vendas', icon: <I.Funnel />, badge: counts?.active, permission: 'funil_vendas' },
     { id: 'retornos', label: 'Retornos', icon: <I.Return />, badge: counts?.returns, permission: 'vendas' },
-    { id: 'relatorios', label: 'Relatorios', icon: <I.Chart />, permission: 'relatorios_visualizar' },
-    { id: 'historico', label: 'Historico', icon: <I.History />, permission: 'historico_visualizar' },
+    { id: 'relatorios', label: 'Relatórios', icon: <I.Chart />, permission: 'relatorios_visualizar' },
+    { id: 'historico', label: 'Histórico', icon: <I.History />, permission: 'historico_visualizar' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   const admin = [
+<<<<<<< HEAD
     { id: 'usuarios', label: 'Usuarios', icon: <I.Users />, permission: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes'] },
     { id: 'config', label: 'Configuracoes', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos'] },
+=======
+    { id: 'usuarios', label: 'Usuários', icon: <I.Users />, permission: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes'] },
+    { id: 'config', label: 'Configurações', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos', 'crud_funil_etapas'] },
+>>>>>>> 45a26730dc2d0bded17e45c1e0a1bf279e958023
     { id: 'metas', label: 'Configurar Metas', icon: <I.Settings />, permission: ['gerenciar_metas'] },
     { id: 'leads', label: 'Planilhas de leads', icon: <I.LayoutList />, permission: 'gerenciar_leads' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
@@ -50,7 +55,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {items.length > 0 && (
           <div className="sidebar-section">
-            <div className="sidebar-section-title">Operacao</div>
+            <div className="sidebar-section-title">Operação</div>
             {items.map(it => (
               <button
                 key={it.id}
@@ -67,7 +72,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
 
         {admin.length > 0 && (
           <div className="sidebar-section">
-            <div className="sidebar-section-title">Administracao</div>
+            <div className="sidebar-section-title">Administração</div>
             {admin.map(it => (
               <button
                 key={it.id}
@@ -100,7 +105,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
               <div
                 key={meta.id}
                 className={`sidebar-goal ${achieved ? 'achieved' : ''} ${claimed ? 'claimed' : ''}`}
-                title={`${claimed ? 'Recompensa resgatada' : 'Recompensa ainda nao resgatada'}${meta.operadora_nome ? ` - ${meta.operadora_nome}` : ''}`}
+                title={`${claimed ? 'Recompensa resgatada' : 'Recompensa ainda não resgatada'}${meta.operadora_nome ? ` - ${meta.operadora_nome}` : ''}`}
               >
                 <div className="top">
                   <span className="g-icon">{claimed ? '✅' : '🎁'}</span>
@@ -136,7 +141,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
               )}
             </div>
             <div className="user-info">
-              <div className="user-name">{usuario?.nome || 'Usuario'}</div>
+              <div className="user-name">{usuario?.nome || 'Usuário'}</div>
               <div className="user-role">{usuario?.role?.nome || 'Perfil'}</div>
             </div>
           </button>

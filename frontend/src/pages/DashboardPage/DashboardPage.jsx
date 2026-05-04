@@ -476,7 +476,7 @@ function DashboardPage() {
           <section className="team-goals">
             <div className="team-goals__header">
               <div>
-                <h2>Metas por usuario</h2>
+                <h2>Metas por usuário</h2>
                 <p>Acompanhe quem ja bateu as metas e quem ainda esta pendente.</p>
               </div>
 
@@ -491,9 +491,9 @@ function DashboardPage() {
                 </label>
 
                 <label className="team-goals__filter">
-                  <span>Usuario</span>
+                  <span>Usuário</span>
                   <select value={usuarioMetaFiltro} onChange={event => setUsuarioMetaFiltro(event.target.value)}>
-                    <option value="">Todos os usuarios</option>
+                    <option value="">Todos os usuários</option>
                     {progressoUsuarios.map(item => (
                       <option key={item.id} value={item.id}>{item.nome}</option>
                     ))}
@@ -513,7 +513,7 @@ function DashboardPage() {
                     <div className="team-goal-card__top">
                       <div className="mini-avatar">
                         {item.foto_perfil ? (
-                          <img src={item.foto_perfil} alt={item.nome || 'Usuario'} />
+                          <img src={item.foto_perfil} alt={item.nome || 'Usuário'} />
                         ) : (
                           getInitials(item.nome)
                         )}

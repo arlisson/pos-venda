@@ -155,6 +155,33 @@ async function registrarHistoricoVenda({
   });
 }
 
+async function copiarNotasClienteParaVenda({ clienteId, vendaId, createdAt, trx }) {
+  if (!clienteId || !vendaId) return 0;
+
+  const notasCliente = await trx('entidade_notas')
+    .where({
+      entidade_tipo: 'cliente',
+      entidade_id: Number(clienteId)
+    })
+    .select('usuario_id', 'titulo', 'conteudo');
+
+  if (notasCliente.length === 0) {
+    return 0;
+  }
+
+  await trx('entidade_notas').insert(notasCliente.map(nota => ({
+    entidade_tipo: 'venda',
+    entidade_id: Number(vendaId),
+    usuario_id: nota.usuario_id,
+    titulo: nota.titulo,
+    conteudo: nota.conteudo,
+    created_at: createdAt,
+    updated_at: createdAt
+  })));
+
+  return notasCliente.length;
+}
+
 function parseValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
 
@@ -916,7 +943,7 @@ async function criarVenda(dados, usuarioId) {
     const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
 
     if (!cliente) {
-      throw new Error('Cliente nao encontrado.');
+      throw new Error('Cliente não encontrado.');
     }
 
     payload = aplicarDadosClienteNaVenda(payload, cliente);
@@ -944,6 +971,15 @@ async function criarVenda(dados, usuarioId) {
       trx
     });
 
+    if (payload.cliente_id) {
+      await copiarNotasClienteParaVenda({
+        clienteId: payload.cliente_id,
+        vendaId: venda.id,
+        createdAt: agora,
+        trx
+      });
+    }
+
     return venda;
   });
 }
@@ -962,7 +998,7 @@ async function atualizarVenda(id, dados, usuarioId) {
     const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
 
     if (!cliente) {
-      throw new Error('Cliente nao encontrado.');
+      throw new Error('Cliente não encontrado.');
     }
 
     payload = aplicarDadosClienteNaVenda(payload, cliente);
@@ -1010,7 +1046,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   const retornoVoltandoParaOrigem = venda.status_funil === 'retorno' && status === (venda.status_anterior_retorno || 'aprovacao');
 
   if (!retornoVoltandoParaOrigem && !await validarStatusFunil(status)) {
-    return { status: 'invalid', message: 'Status do funil invalido.' };
+    return { status: 'invalid', message: 'Status do funil inválido.' };
   }
 
   if (!FUNIL_PRIORIDADES.includes(prioridade)) {

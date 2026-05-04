@@ -213,7 +213,7 @@ function ConfiguracoesPage() {
         {erro && <div className="alert-error alert-timed alert-timed--error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         {abas.length === 0 ? (
-          <div className="empty">Voce nao tem permissao para gerenciar configuracoes.</div>
+          <div className="empty">Você não tem permissão para gerenciar configurações.</div>
         ) : (
           <div className="panel">
             <div className="panel-header" style={{ justifyContent: 'flex-start', gap: 8 }}>

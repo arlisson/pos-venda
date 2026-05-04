@@ -126,7 +126,7 @@ function postProgress(parsedBytes, totalBytes, parsedRows) {
 self.onmessage = async (event) => {
   const { file } = event.data || {};
   if (!file) {
-    self.postMessage({ type: 'error', message: 'Arquivo CSV nao informado.' });
+    self.postMessage({ type: 'error', message: 'Arquivo CSV não informado.' });
     return;
   }
 

@@ -7,11 +7,11 @@ import './PerfilPage.css';
 
 const GRUPOS_PERMISSOES = [
   {
-    titulo: 'Pagina inicial',
+    titulo: 'Página inicial',
     chaves: ['dashboard_resumo_vendas', 'metas_ver_usuarios']
   },
   {
-    titulo: 'Relatorios',
+    titulo: 'Relatórios',
     chaves: ['relatorios_visualizar']
   },
   {
@@ -19,37 +19,37 @@ const GRUPOS_PERMISSOES = [
     chaves: ['vendas', 'funil_vendas', 'crud_funil_etapas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir']
   },
   {
-    titulo: 'Usuarios',
+    titulo: 'Usuários',
     chaves: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes']
   },
   {
-    titulo: 'Configuracoes',
+    titulo: 'Configurações',
     chaves: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos']
   }
 ];
 
 const NOMES_PERMISSOES = {
   dashboard_resumo_vendas: 'Resumo de vendas',
-  metas_ver_usuarios: 'Metas por usuario',
-  relatorios_visualizar: 'Relatorios',
-  vendas: 'Acesso ao modulo',
+  metas_ver_usuarios: 'Metas por usuário',
+  relatorios_visualizar: 'Relatórios',
+  vendas: 'Acesso ao módulo',
   funil_vendas: 'Funil de vendas',
   crud_funil_etapas: 'Gerenciar etapas do funil',
-  vendas_ver_proprias: 'Ver proprias',
+  vendas_ver_proprias: 'Ver próprias',
   vendas_ver_todas: 'Ver todas',
   vendas_criar: 'Criar',
   vendas_editar: 'Editar',
   vendas_excluir: 'Excluir',
-  crud_usuarios: 'Acesso ao modulo',
+  crud_usuarios: 'Acesso ao módulo',
   usuarios_listar: 'Listar',
   usuarios_criar: 'Criar',
   usuarios_editar: 'Editar',
   usuarios_excluir: 'Excluir',
-  gerenciar_permissoes: 'Gerenciar permissoes',
+  gerenciar_permissoes: 'Gerenciar permissões',
   crud_operadoras: 'Operadoras',
   crud_links: 'Links externos',
   crud_tipos_venda: 'Tipos de venda',
-  crud_servicos: 'Servicos'
+  crud_servicos: 'Serviços'
 };
 
 function montarGruposPermissoes(permissoes = {}) {
@@ -166,11 +166,11 @@ function PerfilPage() {
 
         <div className="dash-grid">
           <div className="panel">
-            <div className="panel-header"><h3>Informacoes da Conta</h3></div>
+            <div className="panel-header"><h3>Informações da Conta</h3></div>
             <div className="panel-body">
               <div className="detail-grid" style={{ gridTemplateColumns: '1fr' }}>
                 <div className="detail-item">
-                  <div className="label">Nome de Exibicao</div>
+                  <div className="label">Nome de Exibição</div>
                   <div className="value">{usuario?.nome}</div>
                 </div>
                 <div className="detail-item">

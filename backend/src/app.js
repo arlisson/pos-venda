@@ -14,7 +14,11 @@ const vendaRoutes = require('./routes/venda.routes');
 const clienteRoutes = require('./routes/cliente.routes');
 const leadPlanilhaRoutes = require('./routes/lead-planilha.routes');
 const cnpjRoutes = require('./routes/cnpj.routes');
+<<<<<<< HEAD
 const notificacaoRoutes = require('./routes/notificacao.routes');
+=======
+const notaRoutes = require('./routes/nota.routes');
+>>>>>>> 45a26730dc2d0bded17e45c1e0a1bf279e958023
 
 const app = express();
 
@@ -42,7 +46,11 @@ app.use('/api/vendas', vendaRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/lead-planilhas', leadPlanilhaRoutes);
 app.use('/api/cnpj', cnpjRoutes);
+<<<<<<< HEAD
 app.use('/api/notificacoes', notificacaoRoutes);
+=======
+app.use('/api/notas', notaRoutes);
+>>>>>>> 45a26730dc2d0bded17e45c1e0a1bf279e958023
 
 app.get('/api/health', (req, res) => {
   return res.json({

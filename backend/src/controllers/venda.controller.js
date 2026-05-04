@@ -37,7 +37,7 @@ async function relatorios(req, res) {
     console.error(error);
 
     return res.status(500).json({
-      message: 'Erro ao carregar relatorios de vendas.'
+      message: 'Erro ao carregar relatórios de vendas.'
     });
   }
 }
@@ -48,7 +48,7 @@ async function show(req, res) {
 
     if (!venda) {
       return res.status(404).json({
-        message: 'Venda nao encontrada.'
+        message: 'Venda não encontrada.'
       });
     }
 
@@ -83,7 +83,7 @@ async function update(req, res) {
 
     if (!venda) {
       return res.status(404).json({
-        message: 'Venda nao encontrada.'
+        message: 'Venda não encontrada.'
       });
     }
 
@@ -105,7 +105,7 @@ async function updateStatus(req, res) {
 
     if (resultado.status === 'not_found') {
       return res.status(404).json({
-        message: 'Venda nao encontrada.'
+        message: 'Venda não encontrada.'
       });
     }
 
@@ -133,7 +133,7 @@ async function destroy(req, res) {
 
     if (!totalExcluido) {
       return res.status(404).json({
-        message: 'Venda nao encontrada.'
+        message: 'Venda não encontrada.'
       });
     }
 
@@ -167,7 +167,7 @@ async function restore(req, res) {
 
     if (!venda) {
       return res.status(404).json({
-        message: 'Venda nao encontrada na lixeira.'
+        message: 'Venda não encontrada na lixeira.'
       });
     }
 
@@ -187,7 +187,7 @@ async function destroyDefinitivo(req, res) {
 
     if (!totalExcluido) {
       return res.status(404).json({
-        message: 'Venda nao encontrada na lixeira.'
+        message: 'Venda não encontrada na lixeira.'
       });
     }
 

@@ -73,7 +73,7 @@ function VendasLixeiraPage() {
   }
 
   async function handleExcluirDefinitivo(venda) {
-    const confirmado = window.confirm('Excluir esta venda definitivamente? Essa acao nao pode ser desfeita.');
+    const confirmado = window.confirm('Excluir esta venda definitivamente? Essa ação não pode ser desfeita.');
 
     if (!confirmado) return;
 
@@ -121,7 +121,7 @@ function VendasLixeiraPage() {
                 <tr>
                   <th>Cliente</th>
                   <th>Operadora</th>
-                  <th>Servico</th>
+                  <th>Serviço</th>
                   <th>Valor</th>
                   <th>Enviada em</th>
                   <th>Exclusao definitiva</th>

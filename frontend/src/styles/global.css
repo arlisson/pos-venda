@@ -706,10 +706,147 @@ input, select, textarea { font-family: inherit; }
 }
 .modal-tab:hover { color: var(--text); }
 .modal-tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
+.modal-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .modal-body { flex: 1; overflow-y: auto; padding: 24px; }
 .modal-footer {
   padding: 14px 24px; border-top: 1px solid var(--border);
   display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;
+}
+
+.notes-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.notes-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notes-toolbar > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notes-toolbar strong {
+  font-size: 14px;
+}
+
+.notes-toolbar span,
+.note-card__head span,
+.notes-empty span,
+.notes-loading {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-card,
+.note-editor,
+.notes-empty {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+
+.note-card {
+  padding: 12px;
+}
+
+.note-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.note-card__head > div:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.note-card__head strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-card__actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.note-card p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface);
+}
+
+.note-editor input {
+  height: 34px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  font-size: 13.5px;
+}
+
+.note-editor input:focus {
+  border-color: var(--border-strong);
+}
+
+.note-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.notes-empty {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 7px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-2);
+}
+
+.notes-empty--compact {
+  min-height: 140px;
+}
+
+.notes-loading {
+  padding: 24px;
+  text-align: center;
 }
 
 /* === Sale History Timeline === */

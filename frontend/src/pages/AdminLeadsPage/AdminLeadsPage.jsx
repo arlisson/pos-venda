@@ -55,7 +55,7 @@ function getValorColuna(linha, coluna) {
 function getStatusDistribuicao(linha) {
   return linha.atribuido_para_id || linha.atribuidoPara || linha.envio_id || linha.envio
     ? 'Enviado'
-    : 'Nao enviado';
+    : 'Não enviado';
 }
 
 function formatarNumero(valor) {
@@ -222,7 +222,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
           <div className="leads-divide-help">
             {incluirEnviados
               ? `Este envio pode usar leads novos e transferir ate ${formatarNumero(Math.min(vaiTransferir, jaEnviados))} lead(s) ja enviados.`
-              : 'O envio automatico comeca no proximo lead ainda nao enviado e ignora os leads ja distribuidos.'}
+              : 'O envio automático começa no próximo lead ainda não enviado e ignora os leads já distribuídos.'}
           </div>
 
           <label className="leads-transfer-toggle">
@@ -387,7 +387,7 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
           <div className="modal-header-row">
             <div>
               <div className="modal-client">Excluir planilha?</div>
-              <div className="modal-sub">Essa acao remove a planilha, suas linhas importadas e os leads enviados aos usuarios.</div>
+              <div className="modal-sub">Essa ação remove a planilha, suas linhas importadas e os leads enviados aos usuários.</div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={carregando}>
               <I.Close size={14} />
@@ -1106,8 +1106,8 @@ function AdminLeadsPage() {
 
         <div className="lead-pagination">
           <button className="btn" type="button" disabled={pagina <= 1} onClick={() => setPagina(prev => Math.max(1, prev - 1))}>Anterior</button>
-          <span>Pagina {pagina} de {totalPaginas}</span>
-          <button className="btn" type="button" disabled={pagina >= totalPaginas} onClick={() => setPagina(prev => Math.min(totalPaginas, prev + 1))}>Proxima</button>
+          <span>Página {pagina} de {totalPaginas}</span>
+          <button className="btn" type="button" disabled={pagina >= totalPaginas} onClick={() => setPagina(prev => Math.min(totalPaginas, prev + 1))}>Próxima</button>
         </div>
       </div>
     </LayoutPrivado>

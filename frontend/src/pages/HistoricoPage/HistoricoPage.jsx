@@ -7,9 +7,9 @@ const ACAO_LABELS = {
   'auth.login': 'Login realizado',
   'auth.login_falha': 'Falha no login',
   'auth.perfil_atualizado': 'Perfil atualizado',
-  'usuario.criado': 'Usuario criado',
-  'usuario.atualizado': 'Usuario atualizado',
-  'usuario.excluido': 'Usuario excluido',
+  'usuario.criado': 'Usuário criado',
+  'usuario.atualizado': 'Usuário atualizado',
+  'usuario.excluido': 'Usuário excluído',
   'venda.criada': 'Venda criada',
   'venda.atualizada': 'Venda atualizada',
   'venda.status_atualizado': 'Status da venda atualizado',
@@ -72,7 +72,7 @@ function getTipo(log) {
 
 function HistoricoItem({ log, selecionado, onClick }) {
   const tipo = getTipo(log);
-  const usuario = log.usuario?.nome || (log.usuario_id ? `Usuario #${log.usuario_id}` : 'Sistema');
+  const usuario = log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema');
 
   return (
     <div 
@@ -121,7 +121,7 @@ function DetalheCard({ log, onClose }) {
         <div className="history-detail-row">
           <span className="history-detail-label">Usuário:</span>
           <span className="history-detail-value">
-            {log.usuario?.nome || (log.usuario_id ? `Usuario #${log.usuario_id}` : 'Sistema')}
+            {log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema')}
           </span>
         </div>
         
@@ -216,7 +216,7 @@ function HistoricoPage() {
             <input
               value={busca}
               onChange={event => setBusca(event.target.value)}
-              placeholder="Buscar acao, usuario, rota..."
+              placeholder="Buscar ação, usuário, rota..."
             />
           </div>
 
@@ -224,7 +224,7 @@ function HistoricoPage() {
             {[
               ['todos', 'Todos'],
               ['vendas', 'Vendas'],
-              ['usuarios', 'Usuarios'],
+              ['usuarios', 'Usuários'],
               ['auth', 'Acessos'],
               ['falhas', 'Falhas']
             ].map(([id, label]) => (

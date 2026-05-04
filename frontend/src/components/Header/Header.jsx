@@ -172,6 +172,7 @@ function Header({ title, subtitle, onNew }) {
           </div>
         )}
 
+<<<<<<< HEAD
         <div className="notification-menu" ref={notificationsMenuRef}>
           <button
             type="button"
@@ -224,6 +225,12 @@ function Header({ title, subtitle, onNew }) {
             </div>
           )}
         </div>
+=======
+        <button type="button" className="btn btn-icon btn-ghost btn-notification" title="Notificações">
+          <I.Bell size={16} />
+          <I.ChevronDown size={10} className="chevron" />
+        </button>
+>>>>>>> 45a26730dc2d0bded17e45c1e0a1bf279e958023
 
         {onNew && (
           <button type="button" className="btn btn-primary btn-new-sale" onClick={onNew}>
