@@ -271,13 +271,8 @@ async function excluirFunilEtapa(req, res) {
   try {
     const resultado = await configService.excluirFunilEtapa(req.params.id);
 
-<<<<<<< HEAD
     if (!resultado) {
       return res.status(404).json({ message: 'Etapa do funil nao encontrada.' });
-=======
-    if (!etapa) {
-      return res.status(404).json({ message: 'Etapa do funil não encontrada.' });
->>>>>>> 45a26730dc2d0bded17e45c1e0a1bf279e958023
     }
 
     return res.json(resultado);
