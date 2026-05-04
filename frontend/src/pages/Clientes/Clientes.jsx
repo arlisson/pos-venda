@@ -1119,6 +1119,7 @@ function Clientes() {
   const usuario = getUsuarioLocal();
   const clienteIdParam = searchParams.get('cliente_id') || '';
   const fidelidadeParam = searchParams.get('fidelidade') || '';
+  const retornoParam = searchParams.get('retorno') || '';
   const highlightClienteId = searchParams.get('highlight') || clienteIdParam;
 
   const podeCriar = temPermissao(usuario, 'clientes_criar');
@@ -1131,6 +1132,7 @@ function Clientes() {
   const [operadoraId, setOperadoraId] = useState('');
   const [responsavelTipo, setResponsavelTipo] = useState('');
   const [fidelidade, setFidelidade] = useState(fidelidadeParam);
+  const [retorno, setRetorno] = useState(retornoParam);
   const [chipsMin, setChipsMin] = useState('');
   const [chipsMax, setChipsMax] = useState('');
   const [clienteIdFiltro, setClienteIdFiltro] = useState(clienteIdParam);
@@ -1153,19 +1155,20 @@ function Clientes() {
     operadora_atual_id: operadoraId,
     responsavel_tipo: responsavelTipo,
     fidelidade,
+    retorno,
     chips_min: chipsMin,
     chips_max: chipsMax,
     cliente_id: clienteIdFiltro
-  }), [busca, operadoraId, responsavelTipo, fidelidade, chipsMin, chipsMax, clienteIdFiltro]);
+  }), [busca, operadoraId, responsavelTipo, fidelidade, retorno, chipsMin, chipsMax, clienteIdFiltro]);
 
   const filtrosAtivos = useMemo(() => (
     Object.entries(filtros).filter(([, valor]) => valor !== '').length
   ), [filtros]);
 
   const filtrosPopupAtivos = useMemo(() => (
-    [operadoraId, responsavelTipo, fidelidade, chipsMin, chipsMax]
+    [operadoraId, responsavelTipo, fidelidade, retorno, chipsMin, chipsMax]
       .filter(v => v !== '').length
-  ), [operadoraId, responsavelTipo, fidelidade, chipsMin, chipsMax]);
+  ), [operadoraId, responsavelTipo, fidelidade, retorno, chipsMin, chipsMax]);
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -1213,6 +1216,13 @@ function Clientes() {
   }, [fidelidadeParam]);
 
   useEffect(() => {
+    setRetorno(retornoParam);
+    if (retornoParam) {
+      setAbaAtiva('clientes');
+    }
+  }, [retornoParam]);
+
+  useEffect(() => {
     carregarClientes();
   }, [filtros]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
@@ -1231,6 +1241,7 @@ function Clientes() {
     setOperadoraId('');
     setResponsavelTipo('');
     setFidelidade('');
+    setRetorno('');
     setChipsMin('');
     setChipsMax('');
     setClienteIdFiltro('');
@@ -1484,7 +1495,8 @@ function Clientes() {
                         key={cliente.id}
                         className={[
                           podeEditar ? 'clickable-row' : '',
-                          String(cliente.id) === String(highlightClienteId) ? 'cliente-row-highlight' : ''
+                          String(cliente.id) === String(highlightClienteId) ? 'cliente-row-highlight' : '',
+                          fidelidade === 'vencida' && cliente.aviso_fidelidade?.dias_restantes < 0 ? 'cliente-row-fidelity-expired' : ''
                         ].filter(Boolean).join(' ')}
                         role={podeEditar ? 'button' : undefined}
                         tabIndex={podeEditar ? 0 : undefined}

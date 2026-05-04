@@ -68,6 +68,8 @@
 .home-notification.warn { border-left-color: var(--warn); }
 .home-notification.danger { border-left-color: var(--danger); }
 .home-notification.is-unread { background: #fffdf5; }
+.home-notification--fidelity { background: var(--warn-bg); }
+.home-notification--fidelity.is-unread { background: var(--warn-bg); }
 .home-notification:hover { border-color: var(--border-strong); }
 
 .home-notification__icon {
