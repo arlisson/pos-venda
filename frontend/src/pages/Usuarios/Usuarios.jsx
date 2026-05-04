@@ -62,6 +62,28 @@ const GRUPOS_PERMISSOES = [
     ]
   },
   {
+    id: 'notificacoes',
+    titulo: 'Notificações',
+    descricao: 'Controle o acesso ao sininho e quem recebe avisos gerais do sistema.',
+    secoes: [
+      {
+        titulo: 'Acesso',
+        itens: [
+          {
+            chave: 'notificacoes_visualizar',
+            nome: 'Visualizar notificações',
+            descricao: 'Permite abrir o sininho e ver notificações destinadas ao usuário.'
+          },
+          {
+            chave: 'notificacoes_receber_todas',
+            nome: 'Receber todas',
+            descricao: 'Inclui o usuário como destinatário dos avisos gerais do sistema.'
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'vendas',
     titulo: 'Vendas',
     descricao: 'Controle as telas, a visualização e as ações permitidas no módulo de vendas.',
@@ -275,7 +297,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
         setUsuario(usuarioData);
         setPermissoes(permissoesData);
         setSelecionadas(parsePermissoes(usuarioData.permissoes));
-      } catch (error) {
+      } catch {
         setErro('Erro ao carregar permissões do usuário.');
       } finally {
         setCarregando(false);

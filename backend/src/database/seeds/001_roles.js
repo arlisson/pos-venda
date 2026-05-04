@@ -30,6 +30,7 @@ exports.seed = async function (knex) {
     .orderBy('chave', 'asc');
 
   const todasPermissoes = permissoes.map((permissao) => permissao.chave);
+  const permissoesUsuario = [];
 
   const roles = [
     {
@@ -43,7 +44,7 @@ exports.seed = async function (knex) {
       nome: 'usuario',
       descricao: 'Usuario comum com acesso limitado ao sistema.',
       permissoes: JSON.stringify(
-        montarPermissoes(permissoes, [])
+        montarPermissoes(permissoes, permissoesUsuario)
       )
     }
   ];
