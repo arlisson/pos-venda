@@ -135,6 +135,16 @@ const PERMISSOES = [
     descricao: 'Permite excluir clientes acessíveis pelo usuário.'
   },
   {
+    chave: 'notificacoes_visualizar',
+    nome: 'Notificações: visualizar',
+    descricao: 'Permite visualizar as próprias notificações do sistema.'
+  },
+  {
+    chave: 'notificacoes_receber_todas',
+    nome: 'Notificações: receber todas',
+    descricao: 'Permite receber todas as notificações geradas pelo sistema.'
+  },
+  {
     chave: 'gerenciar_leads',
     nome: 'Gerenciar leads',
     descricao: 'Permite importar planilhas, filtrar e distribuir leads entre vendedores.'

@@ -113,6 +113,7 @@ function DashboardPage() {
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
   const podeVerRetornos = temPermissao(usuario, ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']);
   const podeVerMetasUsuarios = temPermissao(usuario, 'metas_ver_usuarios');
+  const podeVerNotificacoes = temPermissao(usuario, 'notificacoes_visualizar');
 
   useEffect(() => {
     if (!feedback) return undefined;
@@ -144,10 +145,14 @@ function DashboardPage() {
   }, [podeVerMetasUsuarios]);
 
   useEffect(() => {
+    if (!podeVerNotificacoes) {
+      return undefined;
+    }
+
     listarNotificacoes({ limit: 5 })
       .then(data => setNotificacoes(data.notificacoes || []))
       .catch(console.error);
-  }, []);
+  }, [podeVerNotificacoes]);
 
   async function handleReadNotification(notificacao) {
     if (!notificacao.lida) {

@@ -147,7 +147,7 @@ async function sincronizarFidelidadeCliente(clienteId, trx = null) {
 
   const payload = {
     tipo: TIPO_FIDELIDADE_CLIENTE,
-    titulo: 'Fidelidade de cliente perto do fim',
+    titulo: diasRestantes < 0 ? 'Fidelidade de cliente vencida' : 'Fidelidade de cliente perto do fim',
     mensagem: `A fidelidade de ${nomeCliente} ${montarTextoDias(diasRestantes)}.`,
     nivel: montarNivel(diasRestantes),
     entidade: 'clientes',

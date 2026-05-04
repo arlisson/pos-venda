@@ -7,6 +7,7 @@ import {
   marcarNotificacaoLida,
   marcarTodasNotificacoesLidas
 } from '../../services/notificacao.service';
+import { temPermissao } from '../../services/auth.service';
 
 function formatDate(value) {
   if (!value) return '';
@@ -20,7 +21,7 @@ function formatDate(value) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
-function Header({ title, subtitle, onNew }) {
+function Header({ title, subtitle, onNew, usuario }) {
   const navigate = useNavigate();
   const [linksExternos, setLinksExternos] = useState([]);
   const [linksOpen, setLinksOpen] = useState(false);
@@ -29,6 +30,7 @@ function Header({ title, subtitle, onNew }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const linksMenuRef = useRef(null);
   const notificationsMenuRef = useRef(null);
+  const podeVerNotificacoes = temPermissao(usuario, 'notificacoes_visualizar');
 
   useEffect(() => {
     async function carregarLinks() {
@@ -85,18 +87,26 @@ function Header({ title, subtitle, onNew }) {
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    if (!podeVerNotificacoes) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
     carregarNotificacoes();
-  }, []);
+  }, [podeVerNotificacoes]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
+    if (!podeVerNotificacoes) return undefined;
+
     function handleRefreshNotifications() {
       carregarNotificacoes();
     }
 
     window.addEventListener('pos-venda:notificacoes-atualizar', handleRefreshNotifications);
     return () => window.removeEventListener('pos-venda:notificacoes-atualizar', handleRefreshNotifications);
-  }, []);
+  }, [podeVerNotificacoes]);
 
   async function handleOpenNotifications() {
     setNotificationsOpen(open => !open);
@@ -172,6 +182,7 @@ function Header({ title, subtitle, onNew }) {
           </div>
         )}
 
+        {podeVerNotificacoes && (
         <div className="notification-menu" ref={notificationsMenuRef}>
           <button
             type="button"
@@ -224,6 +235,7 @@ function Header({ title, subtitle, onNew }) {
             </div>
           )}
         </div>
+        )}
 
         {onNew && (
           <button type="button" className="btn btn-primary btn-new-sale" onClick={onNew}>

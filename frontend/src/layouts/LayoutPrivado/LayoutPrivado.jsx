@@ -104,6 +104,7 @@ function LayoutPrivado({ children }) {
           title={currentConfig.title}
           subtitle={currentConfig.sub}
           onNew={handleNewSale}
+          usuario={usuario}
         />
         <div className="content">
           {children}

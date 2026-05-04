@@ -104,6 +104,22 @@ exports.up = async function (knex) {
         })
       });
   }
+
+  const roleUsuario = await knex('roles')
+    .where('nome', 'usuario')
+    .first();
+
+  if (roleUsuario) {
+    await knex('roles')
+      .where('id', roleUsuario.id)
+      .update({
+        permissoes: JSON.stringify({
+          ...parsePermissoes(roleUsuario.permissoes),
+          notificacoes_visualizar: false,
+          notificacoes_receber_todas: false
+        })
+      });
+  }
 };
 
 exports.down = async function (knex) {
