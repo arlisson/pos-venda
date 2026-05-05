@@ -38,7 +38,7 @@ function PrivateRoute({ children, permission }) {
   return children;
 }
 
-import AdminMetasPage from '../pages/AdminMetasPage/AdminMetasPage';
+import AdminCampanhasPage from '../pages/AdminCampanhasPage/AdminCampanhasPage';
 
 function AppRoutes() {
   return (
@@ -77,8 +77,8 @@ function AppRoutes() {
       />
 
       <Route
-        path="/admin/metas"
-        element={<PrivateRoute permission="gerenciar_metas"><AdminMetasPage /></PrivateRoute>}
+        path="/admin/campanhas"
+        element={<PrivateRoute permission="gerenciar_campanhas"><AdminCampanhasPage /></PrivateRoute>}
       />
       <Route
         path="/admin/fechamento-mensal"

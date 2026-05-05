@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import * as I from '../Icons';
 import { temPermissao } from '../../services/auth.service';
-import { getMetas, getProgresso } from '../../services/meta.service';
+import { getCampanhas, getProgresso } from '../../services/campanha.service';
 
 function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
-  const [metas, setMetas] = useState([]);
+  const [campanhas, setCampanhas] = useState([]);
   const [progresso, setProgresso] = useState({});
 
   useEffect(() => {
-    getMetas().then(setMetas).catch(console.error);
+    getCampanhas().then(setCampanhas).catch(console.error);
     getProgresso().then(setProgresso).catch(console.error);
   }, []);
 
@@ -23,9 +23,9 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   const admin = [
-    { id: 'usuarios', label: 'Usuarios', icon: <I.Users />, permission: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes'] },
-    { id: 'config', label: 'Configuracoes', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos'] },
-    { id: 'metas', label: 'Configurar Metas', icon: <I.Settings />, permission: ['gerenciar_metas'] },
+    { id: 'usuarios', label: 'Usuários', icon: <I.Users />, permission: ['crud_usuarios', 'usuarios_listar', 'usuarios_criar', 'usuarios_editar', 'usuarios_excluir', 'gerenciar_permissoes'] },
+    { id: 'config', label: 'Configurações', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos'] },
+    { id: 'campanhas', label: 'Configurar Campanhas', icon: <I.Settings />, permission: ['gerenciar_campanhas'] },
     { id: 'fechamento-mensal', label: 'Fechamento Mensal', icon: <I.Chart />, permission: 'vendas_fechamento_mensal' },
     { id: 'leads', label: 'Planilhas de leads', icon: <I.LayoutList />, permission: 'gerenciar_leads' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
@@ -35,11 +35,11 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
   };
 
-  const getMetaKey = (meta) => (
-    meta.tipo || `${meta.periodo || 'diaria'}_${meta.categoria || 'registro_cliente'}`
+  const getCampanhaKey = (campanha) => (
+    campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`
   );
 
-  const giftMetas = metas.filter(m => m.is_gift);
+  const giftCampanhas = campanhas.filter(m => m.is_gift);
   const resgatadas = new Set((progresso.resgatadas || []).map(Number));
 
   return (
@@ -83,29 +83,29 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
         )}
       </div>
 
-      {giftMetas.length > 0 && (
+      {giftCampanhas.length > 0 && (
         <div className="sidebar-goals">
           <div className="header-row">
-            <span className="title">Metas</span>
-            <span className="count">{giftMetas.filter(m => {
+            <span className="title">Campanhas</span>
+            <span className="count">{giftCampanhas.filter(m => {
               return resgatadas.has(Number(m.id));
-            }).length}/{giftMetas.length}</span>
+            }).length}/{giftCampanhas.length}</span>
           </div>
-          {giftMetas.map(meta => {
-            const current = progresso.metas?.[meta.id] ?? progresso[getMetaKey(meta)] ?? 0;
-            const target = Number(meta.target) || 0;
+          {giftCampanhas.map(campanha => {
+            const current = progresso.campanhas?.[campanha.id] ?? progresso[getCampanhaKey(campanha)] ?? 0;
+            const target = Number(campanha.target) || 0;
             const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
             const achieved = pct >= 100;
-            const claimed = resgatadas.has(Number(meta.id));
+            const claimed = resgatadas.has(Number(campanha.id));
             return (
               <div
-                key={meta.id}
+                key={campanha.id}
                 className={`sidebar-goal ${achieved ? 'achieved' : ''} ${claimed ? 'claimed' : ''}`}
-                title={`${claimed ? 'Recompensa resgatada' : 'Recompensa ainda não resgatada'}${meta.operadora_nome ? ` - ${meta.operadora_nome}` : ''}`}
+                title={`${claimed ? 'Recompensa resgatada' : 'Recompensa ainda não resgatada'}${campanha.operadora_nome ? ` - ${campanha.operadora_nome}` : ''}`}
               >
                 <div className="top">
                   <span className="g-icon">{claimed ? '✅' : '🎁'}</span>
-                  <span className="g-name">{meta.desc}</span>
+                  <span className="g-name">{campanha.desc}</span>
                   <span className="g-pct">{pct}%</span>
                 </div>
                 <div className="progress-track">

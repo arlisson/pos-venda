@@ -1,7 +1,7 @@
 const PERMISSAO = {
-  chave: 'gerenciar_metas',
-  nome: 'Gerenciar Metas',
-  descricao: 'Permite configurar as metas globais e de gamificacao',
+  chave: 'gerenciar_campanhas',
+  nome: 'Gerenciar Campanhas',
+  descricao: 'Permite configurar as campanhas globais e de gamificação',
   ativo: true
 };
 

@@ -1,11 +1,11 @@
 exports.seed = async function(knex) {
-  const metas = [
+  const campanhas = [
     {
       tipo: 'diaria',
       periodo: 'diaria',
       categoria: 'registro_cliente',
       target: 15,
-      desc: 'Meta Diaria Global',
+      desc: 'Campanha Diária Global',
       reward: null,
       is_gift: false
     },
@@ -33,7 +33,7 @@ exports.seed = async function(knex) {
       categoria: 'portabilidade',
       target: 3,
       desc: 'Fazer 3 portabilidades',
-      reward: 'Meio periodo de folga',
+      reward: 'Meio período de folga',
       is_gift: true
     },
     {
@@ -47,29 +47,29 @@ exports.seed = async function(knex) {
     }
   ];
 
-  for (const meta of metas) {
-    const existente = await knex('metas')
-      .where('tipo', meta.tipo)
+  for (const campanha of campanhas) {
+    const existente = await knex('campanhas')
+      .where('tipo', campanha.tipo)
       .first();
 
     if (existente) {
-      await knex('metas')
+      await knex('campanhas')
         .where('id', existente.id)
         .update({
-          periodo: meta.periodo,
-          categoria: meta.categoria,
-          target: meta.target,
-          desc: meta.desc,
-          reward: meta.reward,
-          is_gift: meta.is_gift,
+          periodo: campanha.periodo,
+          categoria: campanha.categoria,
+          target: campanha.target,
+          desc: campanha.desc,
+          reward: campanha.reward,
+          is_gift: campanha.is_gift,
           updated_at: knex.fn.now()
         });
 
       continue;
     }
 
-    await knex('metas').insert({
-      ...meta,
+    await knex('campanhas').insert({
+      ...campanha,
       created_at: knex.fn.now(),
       updated_at: knex.fn.now()
     });

@@ -7,29 +7,29 @@ function montarTipo(periodo, categoria) {
   return `${periodo}_${categoria}`;
 }
 
-function isGift(meta) {
-  return meta.is_gift === true || meta.is_gift === 1 || meta.is_gift === '1';
+function isGift(campanha) {
+  return campanha.is_gift === true || campanha.is_gift === 1 || campanha.is_gift === '1';
 }
 
-function normalizarMeta(meta) {
-  const periodo = PERIODOS_VALIDOS.includes(meta.periodo) ? meta.periodo : 'diaria';
-  const categoria = CATEGORIAS_VALIDAS.includes(meta.categoria) ? meta.categoria : 'registro_cliente';
-  const gift = isGift(meta);
+function normalizarCampanha(campanha) {
+  const periodo = PERIODOS_VALIDOS.includes(campanha.periodo) ? campanha.periodo : 'diaria';
+  const categoria = CATEGORIAS_VALIDAS.includes(campanha.categoria) ? campanha.categoria : 'registro_cliente';
+  const gift = isGift(campanha);
 
   return {
-    tipo: gift ? montarTipo(periodo, categoria) : (meta.tipo || 'diaria'),
+    tipo: gift ? montarTipo(periodo, categoria) : (campanha.tipo || 'diaria'),
     periodo,
     categoria,
-    target: Number(meta.target || 0),
-    desc: meta.desc,
-    reward: meta.reward || null,
-    is_gift: meta.is_gift !== undefined ? meta.is_gift : true,
-    operadora_id: meta.operadora_id ? Number(meta.operadora_id) : null
+    target: Number(campanha.target || 0),
+    desc: campanha.desc,
+    reward: campanha.reward || null,
+    is_gift: campanha.is_gift !== undefined ? campanha.is_gift : true,
+    operadora_id: campanha.operadora_id ? Number(campanha.operadora_id) : null
   };
 }
 
-class Meta {
-  static tableName = 'metas';
+class Campanha {
+  static tableName = 'campanhas';
 
   static get periodosValidos() {
     return PERIODOS_VALIDOS;
@@ -40,19 +40,19 @@ class Meta {
   }
 
   static async findAll() {
-    return db(`${this.tableName} as m`)
-      .leftJoin('operadoras as o', 'm.operadora_id', 'o.id')
-      .select('m.*', 'o.nome as operadora_nome')
-      .orderBy('m.id', 'asc');
+    return db(`${this.tableName} as c`)
+      .leftJoin('operadoras as o', 'c.operadora_id', 'o.id')
+      .select('c.*', 'o.nome as operadora_nome')
+      .orderBy('c.id', 'asc');
   }
 
-  static async updateAll(metasArray) {
+  static async updateAll(campanhasArray) {
     return db.transaction(async trx => {
-      const promises = metasArray.map(meta => {
-        const dados = normalizarMeta(meta);
+      const promises = campanhasArray.map(campanha => {
+        const dados = normalizarCampanha(campanha);
 
         return trx(this.tableName)
-          .where({ id: meta.id })
+          .where({ id: campanha.id })
           .update({
             tipo: dados.tipo,
             periodo: dados.periodo,
@@ -70,7 +70,7 @@ class Meta {
   }
 
   static async create(data) {
-    const dados = normalizarMeta(data);
+    const dados = normalizarCampanha(data);
     const [id] = await db(this.tableName).insert({
       ...dados,
       created_at: db.fn.now(),
@@ -88,4 +88,4 @@ class Meta {
   }
 }
 
-module.exports = Meta;
+module.exports = Campanha;

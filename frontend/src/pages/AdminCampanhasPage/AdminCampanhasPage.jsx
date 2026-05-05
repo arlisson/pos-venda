@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { createMeta, deleteMeta, getMetas, updateMetas } from '../../services/meta.service';
+import { createCampanha, deleteCampanha, getCampanhas, updateCampanhas } from '../../services/campanha.service';
 import { listarOperadoras } from '../../services/config.service';
 import * as I from '../../components/Icons';
 
 const PERIODOS = [
-  { value: 'diaria', label: 'Diaria' },
+  { value: 'diaria', label: 'Diária' },
   { value: 'semanal', label: 'Semanal' },
 ];
 
@@ -23,15 +23,15 @@ const inputStyle = {
   borderRadius: '4px'
 };
 
-function AdminMetasPage() {
-  const [metas, setMetas] = useState([]);
+function AdminCampanhasPage() {
+  const [campanhas, setCampanhas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [operadoras, setOperadoras] = useState([]);
 
   useEffect(() => {
-    loadMetas();
+    loadCampanhas();
   }, []);
 
   useEffect(() => {
@@ -40,13 +40,13 @@ function AdminMetasPage() {
     return () => clearTimeout(timer);
   }, [message]);
 
-  async function loadMetas() {
+  async function loadCampanhas() {
     try {
       const [data, operadorasData] = await Promise.all([
-        getMetas(),
+        getCampanhas(),
         listarOperadoras()
       ]);
-      setMetas(data);
+      setCampanhas(data);
       setOperadoras(operadorasData);
     } catch (err) {
       console.error(err);
@@ -55,11 +55,11 @@ function AdminMetasPage() {
     }
   }
 
-  function handleMetasChange(id, field, value) {
-    setMetas(prev => prev.map(meta => {
-      if (meta.id !== id) return meta;
+  function handleCampanhasChange(id, field, value) {
+    setCampanhas(prev => prev.map(campanha => {
+      if (campanha.id !== id) return campanha;
 
-      const updated = { ...meta, [field]: value };
+      const updated = { ...campanha, [field]: value };
       if (field === 'periodo' || field === 'categoria') {
         updated.tipo = `${updated.periodo || 'diaria'}_${updated.categoria || 'registro_cliente'}`;
       }
@@ -68,12 +68,12 @@ function AdminMetasPage() {
     }));
   }
 
-  async function handleAddMeta() {
+  async function handleAddCampanha() {
     setSaving(true);
     setMessage(null);
 
     try {
-      const meta = await createMeta({
+      const campanha = await createCampanha({
         periodo: 'diaria',
         categoria: 'registro_cliente',
         target: 1,
@@ -82,29 +82,29 @@ function AdminMetasPage() {
         operadora_id: null
       });
 
-      setMetas(prev => [...prev, meta]);
-      setMessage({ type: 'success', text: 'Meta adicionada com sucesso!' });
+      setCampanhas(prev => [...prev, campanha]);
+      setMessage({ type: 'success', text: 'Campanha adicionada com sucesso!' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao adicionar meta.' });
+      setMessage({ type: 'error', text: 'Erro ao adicionar campanha.' });
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDeleteMeta(id) {
-    if (!window.confirm('Deseja excluir esta meta?')) return;
+  async function handleDeleteCampanha(id) {
+    if (!window.confirm('Deseja excluir esta campanha?')) return;
 
     setSaving(true);
     setMessage(null);
 
     try {
-      await deleteMeta(id);
-      setMetas(prev => prev.filter(meta => meta.id !== id));
-      setMessage({ type: 'success', text: 'Meta excluida com sucesso!' });
+      await deleteCampanha(id);
+      setCampanhas(prev => prev.filter(campanha => campanha.id !== id));
+      setMessage({ type: 'success', text: 'Campanha excluida com sucesso!' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao excluir meta.' });
+      setMessage({ type: 'error', text: 'Erro ao excluir campanha.' });
     } finally {
       setSaving(false);
     }
@@ -115,12 +115,12 @@ function AdminMetasPage() {
     setMessage(null);
 
     try {
-      await updateMetas(metas);
-      setMessage({ type: 'success', text: 'Metas atualizadas com sucesso!' });
+      await updateCampanhas(campanhas);
+      setMessage({ type: 'success', text: 'Campanhas atualizadas com sucesso!' });
       setTimeout(() => setMessage(null), 3000);
-      await loadMetas();
+      await loadCampanhas();
     } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao salvar as metas.' });
+      setMessage({ type: 'error', text: 'Erro ao salvar as campanhas.' });
     } finally {
       setSaving(false);
     }
@@ -129,13 +129,13 @@ function AdminMetasPage() {
   if (loading) {
     return (
       <LayoutPrivado>
-        <div className="empty">Carregando metas...</div>
+        <div className="empty">Carregando campanhas...</div>
       </LayoutPrivado>
     );
   }
 
-  const diaria = metas.find(meta => !meta.is_gift);
-  const gifts = metas.filter(meta => meta.is_gift);
+  const diaria = campanhas.find(campanha => !campanha.is_gift);
+  const gifts = campanhas.filter(campanha => campanha.is_gift);
 
   return (
     <LayoutPrivado>
@@ -157,7 +157,7 @@ function AdminMetasPage() {
 
         <div className="panel" style={{ marginBottom: 24 }}>
           <div className="panel-header">
-            <h3>Meta Diaria Global</h3>
+            <h3>Campanha Diária Global</h3>
             <span className="muted" style={{ fontSize: 12 }}>Define o alvo total de vendas do dia</span>
           </div>
           <div className="panel-body">
@@ -168,7 +168,7 @@ function AdminMetasPage() {
                   <input
                     type="number"
                     value={diaria.target}
-                    onChange={event => handleMetasChange(diaria.id, 'target', parseInt(event.target.value, 10) || 0)}
+                    onChange={event => handleCampanhasChange(diaria.id, 'target', parseInt(event.target.value, 10) || 0)}
                   />
                 </div>
               </div>
@@ -179,13 +179,13 @@ function AdminMetasPage() {
         <div className="panel">
           <div className="panel-header">
             <div>
-              <h3>Gamificacao: Presentes e Recompensas</h3>
+              <h3>Gamificação: Presentes e Recompensas</h3>
               <span className="muted" style={{ fontSize: 12 }}>
-                Configure metas por periodo e categoria comercial
+                Configure campanhas por período e categoria comercial
               </span>
             </div>
-            <button type="button" className="btn btn-sm" onClick={handleAddMeta} disabled={saving}>
-              <I.Plus size={14} /> Adicionar meta
+            <button type="button" className="btn btn-sm" onClick={handleAddCampanha} disabled={saving}>
+              <I.Plus size={14} /> Adicionar campanha
             </button>
           </div>
           <div className="panel-body" style={{ padding: 0 }}>
@@ -193,11 +193,11 @@ function AdminMetasPage() {
               <table>
                 <thead>
                   <tr>
-                    <th style={{ width: '14%' }}>Periodo</th>
+                    <th style={{ width: '14%' }}>Período</th>
                     <th style={{ width: '20%' }}>Categoria</th>
                     <th style={{ width: '10%' }}>Operadora</th>
                     <th style={{ width: '10%' }}>Alvo</th>
-                    <th style={{ width: '24%' }}>Descricao Exibida</th>
+                    <th style={{ width: '24%' }}>Descrição Exibida</th>
                     <th style={{ width: '18%' }}>Recompensa</th>
                     <th style={{ width: 80 }}></th>
                   </tr>
@@ -209,7 +209,7 @@ function AdminMetasPage() {
                         <select
                           style={inputStyle}
                           value={gift.periodo || 'diaria'}
-                          onChange={event => handleMetasChange(gift.id, 'periodo', event.target.value)}
+                          onChange={event => handleCampanhasChange(gift.id, 'periodo', event.target.value)}
                         >
                           {PERIODOS.map(periodo => (
                             <option key={periodo.value} value={periodo.value}>{periodo.label}</option>
@@ -220,7 +220,7 @@ function AdminMetasPage() {
                         <select
                           style={inputStyle}
                           value={gift.categoria || 'registro_cliente'}
-                          onChange={event => handleMetasChange(gift.id, 'categoria', event.target.value)}
+                          onChange={event => handleCampanhasChange(gift.id, 'categoria', event.target.value)}
                         >
                           {CATEGORIAS.map(categoria => (
                             <option key={categoria.value} value={categoria.value}>{categoria.label}</option>
@@ -231,7 +231,7 @@ function AdminMetasPage() {
                         <select
                           style={inputStyle}
                           value={gift.operadora_id || ''}
-                          onChange={event => handleMetasChange(gift.id, 'operadora_id', event.target.value || null)}
+                          onChange={event => handleCampanhasChange(gift.id, 'operadora_id', event.target.value || null)}
                         >
                           <option value="">Todas</option>
                           {operadoras.map(operadora => (
@@ -244,7 +244,7 @@ function AdminMetasPage() {
                           type="number"
                           style={inputStyle}
                           value={gift.target}
-                          onChange={event => handleMetasChange(gift.id, 'target', parseInt(event.target.value, 10) || 0)}
+                          onChange={event => handleCampanhasChange(gift.id, 'target', parseInt(event.target.value, 10) || 0)}
                         />
                       </td>
                       <td>
@@ -252,7 +252,7 @@ function AdminMetasPage() {
                           type="text"
                           style={inputStyle}
                           value={gift.desc}
-                          onChange={event => handleMetasChange(gift.id, 'desc', event.target.value)}
+                          onChange={event => handleCampanhasChange(gift.id, 'desc', event.target.value)}
                         />
                       </td>
                       <td>
@@ -260,15 +260,15 @@ function AdminMetasPage() {
                           type="text"
                           style={inputStyle}
                           value={gift.reward || ''}
-                          onChange={event => handleMetasChange(gift.id, 'reward', event.target.value)}
+                          onChange={event => handleCampanhasChange(gift.id, 'reward', event.target.value)}
                         />
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <button
                           type="button"
                           className="btn btn-icon btn-ghost"
-                          title="Excluir meta"
-                          onClick={() => handleDeleteMeta(gift.id)}
+                          title="Excluir campanha"
+                          onClick={() => handleDeleteCampanha(gift.id)}
                           disabled={saving}
                         >
                           <I.Trash size={14} />
@@ -280,7 +280,7 @@ function AdminMetasPage() {
                   {gifts.length === 0 && (
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-3)', padding: 24 }}>
-                        Nenhuma meta de recompensa cadastrada.
+                        Nenhuma campanha de recompensa cadastrada.
                       </td>
                     </tr>
                   )}
@@ -292,7 +292,7 @@ function AdminMetasPage() {
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
           <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            <I.Check size={16} /> {saving ? 'Salvando...' : 'Salvar Alteracoes'}
+            <I.Check size={16} /> {saving ? 'Salvando...' : 'Salvar Alterações'}
           </button>
         </div>
       </div>
@@ -300,4 +300,4 @@ function AdminMetasPage() {
   );
 }
 
-export default AdminMetasPage;
+export default AdminCampanhasPage;

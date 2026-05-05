@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { getMetas, getProgresso, getProgressoUsuarios, resgatarMeta } from '../../services/meta.service';
+import { getCampanhas, getProgresso, getProgressoUsuarios, resgatarCampanha } from '../../services/campanha.service';
 import { obterResumoVendas } from '../../services/venda.service';
 import { listarNotificacoes, marcarNotificacaoLida } from '../../services/notificacao.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -10,17 +10,17 @@ import './DashboardPage.css';
 
 const formatBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const isMoneyGoal = (meta) => (
-  /R\$/i.test(meta.desc || '') ||
-  ['valor', 'receita', 'faturamento'].some(key => String(meta.tipo || '').toLowerCase().includes(key))
+const isMoneyGoal = (campanha) => (
+  /R\$/i.test(campanha.desc || '') ||
+  ['valor', 'receita', 'faturamento'].some(key => String(campanha.tipo || '').toLowerCase().includes(key))
 );
 
-const formatGoalValue = (meta, value) => (
-  isMoneyGoal(meta) ? formatBRL(value) : value
+const formatGoalValue = (campanha, value) => (
+  isMoneyGoal(campanha) ? formatBRL(value) : value
 );
 
 const PERIOD_LABELS = {
-  diaria: 'Diaria',
+  diaria: 'Diária',
   semanal: 'Semanal',
 };
 
@@ -33,14 +33,14 @@ const CATEGORY_LABELS = {
 
 const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
 
-function getMetaKey(meta) {
-  return meta.tipo || `${meta.periodo || 'diaria'}_${meta.categoria || 'registro_cliente'}`;
+function getCampanhaKey(campanha) {
+  return campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`;
 }
 
-function getMetaScope(meta) {
-  const periodo = PERIOD_LABELS[meta.periodo] || 'Diaria';
-  const categoria = CATEGORY_LABELS[meta.categoria] || meta.categoria || 'Meta';
-  const operadora = meta.operadora_nome ? ` - ${meta.operadora_nome}` : '';
+function getCampanhaScope(campanha) {
+  const periodo = PERIOD_LABELS[campanha.periodo] || 'Diária';
+  const categoria = CATEGORY_LABELS[campanha.categoria] || campanha.categoria || 'Campanha';
+  const operadora = campanha.operadora_nome ? ` - ${campanha.operadora_nome}` : '';
   return `${periodo} - ${categoria}${operadora}`;
 }
 
@@ -146,7 +146,7 @@ function formatarRetornoResumo(notificacao) {
 function DashboardPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
-  const [metas, setMetas] = useState([]);
+  const [campanhas, setCampanhas] = useState([]);
   const [progresso, setProgresso] = useState({});
   const [stats, setStats] = useState(EMPTY_STATS);
   const [openedGifts, setOpenedGifts] = useState(new Set());
@@ -154,12 +154,12 @@ function DashboardPage() {
   const [selectedReward, setSelectedReward] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [progressoUsuarios, setProgressoUsuarios] = useState([]);
-  const [usuarioMetaFiltro, setUsuarioMetaFiltro] = useState('');
-  const [usuarioMetaBusca, setUsuarioMetaBusca] = useState('');
+  const [usuarioCampanhaFiltro, setUsuarioCampanhaFiltro] = useState('');
+  const [usuarioCampanhaBusca, setUsuarioCampanhaBusca] = useState('');
   const [notificacoes, setNotificacoes] = useState([]);
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
   const podeVerRetornos = temPermissao(usuario, ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']);
-  const podeVerMetasUsuarios = temPermissao(usuario, 'metas_ver_usuarios');
+  const podeVerCampanhasUsuarios = temPermissao(usuario, 'campanhas_ver_usuarios');
   const podeVerNotificacoes = temPermissao(usuario, 'notificacoes_visualizar');
 
   useEffect(() => {
@@ -169,7 +169,7 @@ function DashboardPage() {
   }, [feedback]);
 
   useEffect(() => {
-    getMetas().then(setMetas).catch(console.error);
+    getCampanhas().then(setCampanhas).catch(console.error);
 
     if (podeVerResumoVendas || podeVerRetornos) {
       obterResumoVendas().then(setStats).catch(console.error);
@@ -184,12 +184,12 @@ function DashboardPage() {
   }, [podeVerResumoVendas, podeVerRetornos]);
 
   useEffect(() => {
-    if (!podeVerMetasUsuarios) return undefined;
+    if (!podeVerCampanhasUsuarios) return undefined;
 
     getProgressoUsuarios()
       .then(data => setProgressoUsuarios(data.usuarios || []))
       .catch(console.error);
-  }, [podeVerMetasUsuarios]);
+  }, [podeVerCampanhasUsuarios]);
 
   useEffect(() => {
     if (!podeVerNotificacoes) {
@@ -217,33 +217,31 @@ function DashboardPage() {
     }
   }
 
-  const buscaUsuarioMetaNormalizada = usuarioMetaBusca.trim().toLowerCase();
+  const buscaUsuarioCampanhaNormalizada = usuarioCampanhaBusca.trim().toLowerCase();
   const progressoUsuariosFiltrados = progressoUsuarios.filter(item => {
-    if (usuarioMetaFiltro && String(item.id) !== String(usuarioMetaFiltro)) {
+    if (usuarioCampanhaFiltro && String(item.id) !== String(usuarioCampanhaFiltro)) {
       return false;
     }
 
-    if (!buscaUsuarioMetaNormalizada) {
+    if (!buscaUsuarioCampanhaNormalizada) {
       return true;
     }
 
     return [item.nome, item.email]
       .filter(Boolean)
-      .some(valor => String(valor).toLowerCase().includes(buscaUsuarioMetaNormalizada));
+      .some(valor => String(valor).toLowerCase().includes(buscaUsuarioCampanhaNormalizada));
   });
 
-  const giftMetas = metas.filter(m => m.is_gift);
-  
-  // Calcular metas atingidas
-  const metasComProgresso = giftMetas.map(meta => {
-    const current = progresso.metas?.[meta.id] ?? progresso[getMetaKey(meta)] ?? 0;
-    const target = Number(meta.target) || 0;
+  const giftCampanhas = campanhas.filter(m => m.is_gift);
+  const campanhasComProgresso = giftCampanhas.map(campanha => {
+    const current = progresso.campanhas?.[campanha.id] ?? progresso[getCampanhaKey(campanha)] ?? 0;
+    const target = Number(campanha.target) || 0;
     const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-    return { ...meta, current, pct, achieved: pct >= 100 };
+    return { ...campanha, current, pct, achieved: pct >= 100 };
   });
 
-  const doneCount = metasComProgresso.filter(m => m.achieved).length;
-  const totalCount = metasComProgresso.length;
+  const doneCount = campanhasComProgresso.filter(m => m.achieved).length;
+  const totalCount = campanhasComProgresso.length;
   const overallPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
 
   const firstName = usuario?.nome?.split(' ')[0] || 'você';
@@ -266,21 +264,21 @@ function DashboardPage() {
       ? 'vence hoje'
       : `vence em ${proximaFidelidade?.dados?.dias_restantes} dias`;
 
-  const handleOpenGift = async (meta) => {
-    setClaimingId(meta.id);
+  const handleOpenGift = async (campanha) => {
+    setClaimingId(campanha.id);
     setFeedback(null);
 
     try {
-      const result = await resgatarMeta(meta.id);
-      setOpenedGifts(prev => new Set([...prev, Number(meta.id)]));
+      const result = await resgatarCampanha(campanha.id);
+      setOpenedGifts(prev => new Set([...prev, Number(campanha.id)]));
       setSelectedReward({
-        ...meta,
-        reward: result.reward || meta.reward
+        ...campanha,
+        reward: result.reward || campanha.reward
       });
-      setFeedback({ type: 'success', text: 'Meta resgatada com sucesso.' });
+      setFeedback({ type: 'success', text: 'Campanha resgatada com sucesso.' });
     } catch (error) {
       console.error(error);
-      setFeedback({ type: 'error', text: error.message || 'Erro ao resgatar meta.' });
+      setFeedback({ type: 'error', text: error.message || 'Erro ao resgatar campanha.' });
     } finally {
       setClaimingId(null);
     }
@@ -447,18 +445,18 @@ function DashboardPage() {
         )}
 
         {/* Sistema de recompensas DIÁRIAS */}
-        {metasComProgresso.length > 0 && (
+        {campanhasComProgresso.length > 0 && (
           <>
             <div className="rewards-header">
               <div>
-                <h2>Metas</h2>
+                <h2>Campanhas</h2>
                 <p>
-                  Bata cada meta para liberar uma recompensa surpresa.
+                  Bata cada campanha para liberar uma recompensa surpresa.
                 </p>
               </div>
 
               <div className="rewards-progress-summary">
-                <span>Progresso de metas</span>
+                <span>Progresso de campanhas</span>
                 <div className="progress-track">
                   <div className="progress-fill" style={{ width: `${overallPct}%` }} />
                 </div>
@@ -467,19 +465,19 @@ function DashboardPage() {
             </div>
 
             <div className="rewards-grid">
-              {metasComProgresso.map((meta, i) => {
-                const isClaimed = openedGifts.has(meta.id);
-                const isClaiming = claimingId === meta.id;
-                const remaining = Math.max(0, meta.target - meta.current);
+              {campanhasComProgresso.map((campanha, i) => {
+                const isClaimed = openedGifts.has(campanha.id);
+                const isClaiming = claimingId === campanha.id;
+                const remaining = Math.max(0, campanha.target - campanha.current);
                 return (
-                  <div key={meta.id} className={`reward-card ${meta.achieved ? 'achieved' : ''} ${isClaimed ? 'claimed' : ''}`}>
+                  <div key={campanha.id} className={`reward-card ${campanha.achieved ? 'achieved' : ''} ${isClaimed ? 'claimed' : ''}`}>
                     <div className="reward-top">
-                      <div className="reward-icon">{isClaimed ? '✅' : meta.achieved ? '🎉' : '🎁'}</div>
-                      <div className="reward-step">Meta {i + 1}</div>
+                      <div className="reward-icon">{isClaimed ? '✅' : campanha.achieved ? '🎉' : '🎁'}</div>
+                      <div className="reward-step">Campanha {i + 1}</div>
                       <span className="pill" style={{ marginLeft: 6, fontSize: 10 }}>
-                        {getMetaScope(meta)}
+                        {getCampanhaScope(campanha)}
                       </span>
-                      {meta.achieved && !isClaimed && (
+                      {campanha.achieved && !isClaimed && (
                         <span style={{ 
                           marginLeft: 'auto', 
                           display: 'inline-flex', 
@@ -517,45 +515,45 @@ function DashboardPage() {
                       )}
                     </div>
                     
-                    <div className="reward-name">{meta.desc}</div>
-                    {isClaimed && meta.reward && (
+                    <div className="reward-name">{campanha.desc}</div>
+                    {isClaimed && campanha.reward && (
                       <div className="reward-claimed-prize">
-                        Prêmio ganho: {meta.reward}
+                        Prêmio ganho: {campanha.reward}
                       </div>
                     )}
-                    
+
                     <div className="reward-progress">
                       <div className="progress-track" style={{ height: 8 }}>
-                        <div 
-                          className="progress-fill" 
-                          style={{ 
-                            width: `${meta.pct}%`, 
-                            background: meta.achieved ? 'var(--success)' : 'var(--text)' 
-                          }} 
+                        <div
+                          className="progress-fill"
+                          style={{
+                            width: `${campanha.pct}%`,
+                            background: campanha.achieved ? 'var(--success)' : 'var(--text)'
+                          }}
                         />
                       </div>
                       <div className="reward-numbers">
                         <span>
-                          {formatGoalValue(meta, meta.current)}
-                          <span> / {formatGoalValue(meta, meta.target)}</span>
+                          {formatGoalValue(campanha, campanha.current)}
+                          <span> / {formatGoalValue(campanha, campanha.target)}</span>
                         </span>
-                        <span>{meta.pct}%</span>
+                        <span>{campanha.pct}%</span>
                       </div>
                     </div>
 
                     <button
-                      className={`btn ${meta.achieved && !isClaimed ? 'btn-primary' : ''}`}
+                      className={`btn ${campanha.achieved && !isClaimed ? 'btn-primary' : ''}`}
                       style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
-                      disabled={!meta.achieved || isClaimed || isClaiming}
-                      onClick={() => handleOpenGift(meta)}
+                      disabled={!campanha.achieved || isClaimed || isClaiming}
+                      onClick={() => handleOpenGift(campanha)}
                     >
                       {isClaiming
                         ? 'Resgatando...'
-                        : isClaimed 
-                        ? <><I.Check size={13} /> Resgatada</> 
-                        : meta.achieved 
-                          ? 'Resgatar surpresa 🎁' 
-                          : `Faltam ${formatGoalValue(meta, remaining)}`}
+                        : isClaimed
+                        ? <><I.Check size={13} /> Resgatada</>
+                        : campanha.achieved
+                          ? 'Resgatar surpresa 🎁'
+                          : `Faltam ${formatGoalValue(campanha, remaining)}`}
                     </button>
                   </div>
                 );
@@ -564,27 +562,27 @@ function DashboardPage() {
           </>
         )}
 
-        {podeVerMetasUsuarios && progressoUsuarios.length > 0 && (
+        {podeVerCampanhasUsuarios && progressoUsuarios.length > 0 && (
           <section className="team-goals">
             <div className="team-goals__header">
               <div>
-                <h2>Metas por usuário</h2>
-                <p>Acompanhe quem ja bateu as metas e quem ainda esta pendente.</p>
+                <h2>Campanhas por usuário</h2>
+                <p>Acompanhe quem ja bateu as campanhas e quem ainda esta pendente.</p>
               </div>
 
               <div className="team-goals__filters">
                 <label className="team-goals__filter">
                   <span>Buscar</span>
                   <input
-                    value={usuarioMetaBusca}
-                    onChange={event => setUsuarioMetaBusca(event.target.value)}
+                    value={usuarioCampanhaBusca}
+                    onChange={event => setUsuarioCampanhaBusca(event.target.value)}
                     placeholder="Nome ou e-mail"
                   />
                 </label>
 
                 <label className="team-goals__filter">
                   <span>Usuário</span>
-                  <select value={usuarioMetaFiltro} onChange={event => setUsuarioMetaFiltro(event.target.value)}>
+                  <select value={usuarioCampanhaFiltro} onChange={event => setUsuarioCampanhaFiltro(event.target.value)}>
                     <option value="">Todos os usuários</option>
                     {progressoUsuarios.map(item => (
                       <option key={item.id} value={item.id}>{item.nome}</option>
@@ -612,7 +610,7 @@ function DashboardPage() {
                       </div>
                       <div>
                         <strong>{item.nome}</strong>
-                        <span>{atingidas}/{total} metas atingidas · {item.resumo?.resgatadas || 0} resgatadas</span>
+                        <span>{atingidas}/{total} campanhas atingidas · {item.resumo?.resgatadas || 0} resgatadas</span>
                       </div>
                       <b>{pct}%</b>
                     </div>
@@ -622,19 +620,19 @@ function DashboardPage() {
                     </div>
 
                     <div className="team-goal-list">
-                      {(item.metas || []).map(meta => (
-                        <div key={meta.id} className={`team-goal-item ${meta.achieved ? 'is-achieved' : ''}`}>
+                      {(item.campanhas || []).map(campanha => (
+                        <div key={campanha.id} className={`team-goal-item ${campanha.achieved ? 'is-achieved' : ''}`}>
                           <span className="team-goal-item__status">
-                            {meta.claimed ? <I.Check size={12} /> : meta.achieved ? <I.Check size={12} /> : `${meta.pct}%`}
+                            {campanha.claimed ? <I.Check size={12} /> : campanha.achieved ? <I.Check size={12} /> : `${campanha.pct}%`}
                           </span>
                           <div>
-                            <strong>{meta.desc}</strong>
+                            <strong>{campanha.desc}</strong>
                             <span>
-                              {formatGoalValue(meta, meta.current)} / {formatGoalValue(meta, meta.target)}
-                              {meta.operadora_nome ? ` · ${meta.operadora_nome}` : ''}
+                              {formatGoalValue(campanha, campanha.current)} / {formatGoalValue(campanha, campanha.target)}
+                              {campanha.operadora_nome ? ` · ${campanha.operadora_nome}` : ''}
                             </span>
-                            {meta.claimed && meta.reward && (
-                              <em>Premio ganho: {meta.reward}</em>
+                            {campanha.claimed && campanha.reward && (
+                              <em>Premio ganho: {campanha.reward}</em>
                             )}
                           </div>
                         </div>

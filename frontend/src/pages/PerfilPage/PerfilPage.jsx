@@ -8,7 +8,7 @@ import './PerfilPage.css';
 const GRUPOS_PERMISSOES = [
   {
     titulo: 'Página inicial',
-    chaves: ['dashboard_resumo_vendas', 'metas_ver_usuarios']
+    chaves: ['dashboard_resumo_vendas', 'campanhas_ver_usuarios']
   },
   {
     titulo: 'Relatórios',
@@ -30,7 +30,7 @@ const GRUPOS_PERMISSOES = [
 
 const NOMES_PERMISSOES = {
   dashboard_resumo_vendas: 'Resumo de vendas',
-  metas_ver_usuarios: 'Metas por usuário',
+  campanhas_ver_usuarios: 'Campanhas por usuário',
   relatorios_visualizar: 'Relatórios',
   vendas: 'Acesso ao módulo',
   funil_vendas: 'Funil de vendas',

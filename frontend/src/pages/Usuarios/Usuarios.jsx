@@ -36,9 +36,9 @@ const GRUPOS_PERMISSOES = [
             descricao: 'Mostra os cards Vendas no dia, Valor vendido hoje, Concluídas hoje e Em pipeline.'
           },
           {
-            chave: 'metas_ver_usuarios',
-            nome: 'Metas por usuário',
-            descricao: 'Mostra no dashboard quem bateu ou ainda não bateu cada meta.'
+            chave: 'campanhas_ver_usuarios',
+            nome: 'Campanhas por usuário',
+            descricao: 'Mostra no dashboard quem bateu ou ainda não bateu cada campanha.'
           }
         ]
       }

@@ -1,28 +1,28 @@
-const Meta = require('../models/Meta');
+const Campanha = require('../models/Campanha');
 const knex = require('../database/connection');
 
-function validarMeta(meta) {
-  if (!meta.desc || !Number(meta.target)) {
+function validarCampanha(campanha) {
+  if (!campanha.desc || !Number(campanha.target)) {
     return 'Alvo e descricao sao obrigatorios.';
   }
 
-  if (Number(meta.target) < 1) {
+  if (Number(campanha.target) < 1) {
     return 'Alvo deve ser maior que zero.';
   }
 
-  if (!Meta.periodosValidos.includes(meta.periodo)) {
+  if (!Campanha.periodosValidos.includes(campanha.periodo)) {
     return 'Período inválido.';
   }
 
-  if (!Meta.categoriasValidas.includes(meta.categoria)) {
+  if (!Campanha.categoriasValidas.includes(campanha.categoria)) {
     return 'Categoria inválida.';
   }
 
   return null;
 }
 
-function metaEhGift(meta) {
-  return meta.is_gift === true || meta.is_gift === 1 || meta.is_gift === '1';
+function campanhaEhGift(campanha) {
+  return campanha.is_gift === true || campanha.is_gift === 1 || campanha.is_gift === '1';
 }
 
 function toDateStr(d) {
@@ -159,9 +159,9 @@ function classificarVendas(rows, clientes = []) {
   return totais;
 }
 
-function calcularValorMeta(meta, vendas, clientes) {
-  const categoria = meta.categoria || 'registro_cliente';
-  const operadoraId = meta.operadora_id ? Number(meta.operadora_id) : null;
+function calcularValorCampanha(campanha, vendas, clientes) {
+  const categoria = campanha.categoria || 'registro_cliente';
+  const operadoraId = campanha.operadora_id ? Number(campanha.operadora_id) : null;
 
   if (categoria === 'registro_cliente') {
     return clientes.filter(cliente => clientePertenceOperadora(cliente, operadoraId)).length;
@@ -199,80 +199,80 @@ function calcularValorMeta(meta, vendas, clientes) {
   }, 0);
 }
 
-async function calcularProgresso(usuarioId, ciclo, metas = []) {
+async function calcularProgresso(usuarioId, ciclo, campanhas = []) {
   const [clientes, vendas] = await Promise.all([
     listarClientesDoCiclo(usuarioId, ciclo),
     listarVendasDoCiclo(usuarioId, ciclo)
   ]);
 
   const geral = classificarVendas(vendas, clientes);
-  const metasProgresso = {};
+  const campanhasProgresso = {};
 
-  metas.forEach((meta) => {
-    metasProgresso[meta.id] = calcularValorMeta(meta, vendas, clientes);
+  campanhas.forEach((campanha) => {
+    campanhasProgresso[campanha.id] = calcularValorCampanha(campanha, vendas, clientes);
   });
 
   return {
     geral,
-    metas: metasProgresso
+    campanhas: campanhasProgresso
   };
 }
 
 function agruparResgatesPorUsuario(resgates = []) {
   return resgates.reduce((acc, resgate) => {
     const usuarioId = Number(resgate.usuario_id);
-    const metaId = Number(resgate.meta_id);
+    const campanhaId = Number(resgate.campanha_id);
 
     if (!acc[usuarioId]) {
       acc[usuarioId] = new Set();
     }
 
-    acc[usuarioId].add(metaId);
+    acc[usuarioId].add(campanhaId);
     return acc;
   }, {});
 }
 
-class MetaController {
+class CampanhaController {
   async index(req, res) {
     try {
-      const metas = await Meta.findAll();
-      res.json(metas);
+      const campanhas = await Campanha.findAll();
+      res.json(campanhas);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Erro ao buscar metas.' });
+      res.status(500).json({ error: 'Erro ao buscar campanhas.' });
     }
   }
 
   async updateBulk(req, res) {
     try {
-      const { metas } = req.body;
-      if (!Array.isArray(metas)) {
-        return res.status(400).json({ error: 'Formato inválido. Esperado um array de metas.' });
+      const { campanhas } = req.body;
+      if (!Array.isArray(campanhas)) {
+        return res.status(400).json({ error: 'Formato inválido. Esperado um array de campanhas.' });
       }
 
-      const invalida = metas.find(meta => metaEhGift(meta) && validarMeta(meta));
+      const invalida = campanhas.find(campanha => campanhaEhGift(campanha) && validarCampanha(campanha));
       if (invalida) {
-        return res.status(400).json({ error: validarMeta(invalida) });
+        return res.status(400).json({ error: validarCampanha(invalida) });
       }
 
-      await Meta.updateAll(metas);
-      const updatedMetas = await Meta.findAll();
+      await Campanha.updateAll(campanhas);
+      const updatedCampanhas = await Campanha.findAll();
 
-      res.json({ message: 'Metas atualizadas com sucesso.', metas: updatedMetas });
+      res.json({ message: 'Campanhas atualizadas com sucesso.', campanhas: updatedCampanhas });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Erro ao atualizar metas.' });
+      res.status(500).json({ error: 'Erro ao atualizar campanhas.' });
     }
   }
 
   async store(req, res) {
     try {
-      const erro = validarMeta(req.body);
+      const erro = validarCampanha(req.body);
       if (erro) {
         return res.status(400).json({ error: erro });
       }
 
-      const meta = await Meta.create({
+      const campanha = await Campanha.create({
         periodo: req.body.periodo,
         categoria: req.body.categoria,
         target: Number(req.body.target),
@@ -282,10 +282,10 @@ class MetaController {
         is_gift: true
       });
 
-      res.status(201).json(meta);
+      res.status(201).json(campanha);
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Erro ao criar meta.' });
+      res.status(500).json({ error: 'Erro ao criar campanha.' });
     }
   }
 
@@ -294,18 +294,18 @@ class MetaController {
       const vendedoraId = req.usuario.id;
       const cicloDiario = getCiclo('diaria');
       const cicloSemanal = getCiclo('semanal');
-      const metas = await Meta.findAll();
-      const metasDiarias = metas.filter(meta => (meta.periodo || 'diaria') === 'diaria');
-      const metasSemanais = metas.filter(meta => meta.periodo === 'semanal');
+      const campanhas = await Campanha.findAll();
+      const campanhasDiarias = campanhas.filter(campanha => (campanha.periodo || 'diaria') === 'diaria');
+      const campanhasSemanais = campanhas.filter(campanha => campanha.periodo === 'semanal');
 
       const [progressoDiario, progressoSemanal] = await Promise.all([
-        calcularProgresso(vendedoraId, cicloDiario, metasDiarias),
-        calcularProgresso(vendedoraId, cicloSemanal, metasSemanais),
+        calcularProgresso(vendedoraId, cicloDiario, campanhasDiarias),
+        calcularProgresso(vendedoraId, cicloSemanal, campanhasSemanais),
       ]);
 
       const diaria = progressoDiario.geral;
       const semanal = progressoSemanal.geral;
-      const resgates = await knex('meta_resgates')
+      const resgates = await knex('campanha_resgates')
         .where('usuario_id', vendedoraId)
         .where(builder => {
           builder
@@ -316,7 +316,7 @@ class MetaController {
               query.where('periodo', 'semanal').where('periodo_inicio', cicloSemanal.inicioStr);
             });
         })
-        .pluck('meta_id');
+        .pluck('campanha_id');
 
       res.json({
         diaria_registro_cliente: diaria.registro_cliente,
@@ -327,9 +327,9 @@ class MetaController {
         semanal_chip_novo: semanal.chip_novo,
         semanal_portabilidade: semanal.portabilidade,
         semanal_internet: semanal.internet,
-        metas: {
-          ...progressoDiario.metas,
-          ...progressoSemanal.metas
+        campanhas: {
+          ...progressoDiario.campanhas,
+          ...progressoSemanal.campanhas
         },
         resgatadas: resgates.map(Number),
       });
@@ -343,10 +343,10 @@ class MetaController {
     try {
       const cicloDiario = getCiclo('diaria');
       const cicloSemanal = getCiclo('semanal');
-      const metas = await Meta.findAll();
-      const metasGift = metas.filter(metaEhGift);
-      const metasDiarias = metasGift.filter(meta => (meta.periodo || 'diaria') === 'diaria');
-      const metasSemanais = metasGift.filter(meta => meta.periodo === 'semanal');
+      const campanhas = await Campanha.findAll();
+      const campanhasGift = campanhas.filter(campanhaEhGift);
+      const campanhasDiarias = campanhasGift.filter(campanha => (campanha.periodo || 'diaria') === 'diaria');
+      const campanhasSemanais = campanhasGift.filter(campanha => campanha.periodo === 'semanal');
       const usuarios = await knex('usuarios as u')
         .leftJoin('roles as r', 'u.role_id', 'r.id')
         .select(
@@ -361,7 +361,7 @@ class MetaController {
         .orderBy('u.nome', 'asc');
       const usuarioIds = usuarios.map(usuario => usuario.id);
       const resgates = usuarioIds.length > 0
-        ? await knex('meta_resgates')
+        ? await knex('campanha_resgates')
           .whereIn('usuario_id', usuarioIds)
           .where(builder => {
             builder
@@ -372,43 +372,43 @@ class MetaController {
                 query.where('periodo', 'semanal').where('periodo_inicio', cicloSemanal.inicioStr);
               });
           })
-          .select('usuario_id', 'meta_id')
+          .select('usuario_id', 'campanha_id')
         : [];
       const resgatesPorUsuario = agruparResgatesPorUsuario(resgates);
 
       const usuariosComProgresso = await Promise.all(usuarios.map(async (usuario) => {
         const [progressoDiario, progressoSemanal] = await Promise.all([
-          calcularProgresso(usuario.id, cicloDiario, metasDiarias),
-          calcularProgresso(usuario.id, cicloSemanal, metasSemanais)
+          calcularProgresso(usuario.id, cicloDiario, campanhasDiarias),
+          calcularProgresso(usuario.id, cicloSemanal, campanhasSemanais)
         ]);
-        const progressoMetas = {
-          ...progressoDiario.metas,
-          ...progressoSemanal.metas
+        const progressoCampanhas = {
+          ...progressoDiario.campanhas,
+          ...progressoSemanal.campanhas
         };
-        const metasUsuario = metasGift.map((meta) => {
-          const current = progressoMetas[meta.id] || 0;
-          const target = Number(meta.target || 0);
+        const campanhasUsuario = campanhasGift.map((campanha) => {
+          const current = progressoCampanhas[campanha.id] || 0;
+          const target = Number(campanha.target || 0);
           const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
           const achieved = pct >= 100;
-          const claimed = resgatesPorUsuario[Number(usuario.id)]?.has(Number(meta.id)) || false;
+          const claimed = resgatesPorUsuario[Number(usuario.id)]?.has(Number(campanha.id)) || false;
 
           return {
-            id: meta.id,
-            periodo: meta.periodo,
-            categoria: meta.categoria,
-            desc: meta.desc,
-            reward: meta.reward,
+            id: campanha.id,
+            periodo: campanha.periodo,
+            categoria: campanha.categoria,
+            desc: campanha.desc,
+            reward: campanha.reward,
             target,
             current,
             pct,
             achieved,
             claimed,
-            operadora_id: meta.operadora_id,
-            operadora_nome: meta.operadora_nome
+            operadora_id: campanha.operadora_id,
+            operadora_nome: campanha.operadora_nome
           };
         });
-        const atingidas = metasUsuario.filter(meta => meta.achieved).length;
-        const resgatadas = metasUsuario.filter(meta => meta.claimed).length;
+        const atingidas = campanhasUsuario.filter(campanha => campanha.achieved).length;
+        const resgatadas = campanhasUsuario.filter(campanha => campanha.claimed).length;
 
         return {
           id: usuario.id,
@@ -416,11 +416,11 @@ class MetaController {
           email: usuario.email,
           foto_perfil: usuario.foto_perfil,
           role: { nome: usuario.role_nome },
-          metas: metasUsuario,
+          campanhas: campanhasUsuario,
           resumo: {
-            total: metasUsuario.length,
+            total: campanhasUsuario.length,
             atingidas,
-            pendentes: metasUsuario.length - atingidas,
+            pendentes: campanhasUsuario.length - atingidas,
             resgatadas
           }
         };
@@ -448,43 +448,43 @@ class MetaController {
   async resgatar(req, res) {
     try {
       const usuarioId = req.usuario.id;
-      const meta = await knex('metas').where({ id: req.params.id }).first();
+      const campanha = await knex('campanhas').where({ id: req.params.id }).first();
 
-      if (!meta) {
-        return res.status(404).json({ error: 'Meta não encontrada.' });
+      if (!campanha) {
+        return res.status(404).json({ error: 'Campanha não encontrada.' });
       }
 
-      if (!metaEhGift(meta)) {
-        return res.status(400).json({ error: 'Esta meta não possui recompensa para resgate.' });
+      if (!campanhaEhGift(campanha)) {
+        return res.status(400).json({ error: 'Esta campanha não possui recompensa para resgate.' });
       }
 
-      const ciclo = getCiclo(meta.periodo);
-      const existente = await knex('meta_resgates')
+      const ciclo = getCiclo(campanha.periodo);
+      const existente = await knex('campanha_resgates')
         .where({
           usuario_id: usuarioId,
-          meta_id: meta.id,
+          campanha_id: campanha.id,
           periodo_inicio: ciclo.inicioStr
         })
         .first();
 
       if (existente) {
         return res.json({
-          message: 'Meta ja resgatada neste ciclo.',
+          message: 'Campanha ja resgatada neste ciclo.',
           resgatada: true,
           jaResgatada: true,
-          metaId: meta.id,
-          reward: existente.reward_snapshot || meta.reward,
+          campanhaId: campanha.id,
+          reward: existente.reward_snapshot || campanha.reward,
           resgate: existente
         });
       }
 
-      const progresso = await calcularProgresso(usuarioId, ciclo, [meta]);
-      const current = progresso.metas[meta.id] ?? progresso.geral[meta.categoria] ?? 0;
-      const target = Number(meta.target) || 0;
+      const progresso = await calcularProgresso(usuarioId, ciclo, [campanha]);
+      const current = progresso.campanhas[campanha.id] ?? progresso.geral[campanha.categoria] ?? 0;
+      const target = Number(campanha.target) || 0;
 
       if (current < target) {
         return res.status(400).json({
-          error: 'Meta ainda não atingida.',
+          error: 'Campanha ainda não atingida.',
           current,
           target
         });
@@ -492,11 +492,11 @@ class MetaController {
 
       const dadosResgate = {
         usuario_id: usuarioId,
-        meta_id: meta.id,
+        campanha_id: campanha.id,
         periodo: ciclo.periodo,
         periodo_inicio: ciclo.inicioStr,
         periodo_fim: ciclo.fimStr,
-        reward_snapshot: meta.reward || null,
+        reward_snapshot: campanha.reward || null,
         claimed_at: knex.fn.now(),
         created_at: knex.fn.now(),
         updated_at: knex.fn.now()
@@ -504,23 +504,23 @@ class MetaController {
 
       let id;
       try {
-        [id] = await knex('meta_resgates').insert(dadosResgate);
+        [id] = await knex('campanha_resgates').insert(dadosResgate);
       } catch (insertError) {
         if (insertError && insertError.code === 'ER_DUP_ENTRY') {
-          const resgateExistente = await knex('meta_resgates')
+          const resgateExistente = await knex('campanha_resgates')
             .where({
               usuario_id: usuarioId,
-              meta_id: meta.id,
+              campanha_id: campanha.id,
               periodo_inicio: ciclo.inicioStr
             })
             .first();
 
           return res.json({
-            message: 'Meta ja resgatada neste ciclo.',
+            message: 'Campanha ja resgatada neste ciclo.',
             resgatada: true,
             jaResgatada: true,
-            metaId: meta.id,
-            reward: resgateExistente?.reward_snapshot || meta.reward,
+            campanhaId: campanha.id,
+            reward: resgateExistente?.reward_snapshot || campanha.reward,
             resgate: resgateExistente
           });
         }
@@ -528,36 +528,36 @@ class MetaController {
         throw insertError;
       }
 
-      const resgate = await knex('meta_resgates').where({ id }).first();
+      const resgate = await knex('campanha_resgates').where({ id }).first();
 
       res.status(201).json({
-        message: 'Meta resgatada com sucesso.',
+        message: 'Campanha resgatada com sucesso.',
         resgatada: true,
         jaResgatada: false,
-        metaId: meta.id,
-        reward: resgate.reward_snapshot || meta.reward,
+        campanhaId: campanha.id,
+        reward: resgate.reward_snapshot || campanha.reward,
         resgate
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Erro ao resgatar meta.' });
+      res.status(500).json({ error: 'Erro ao resgatar campanha.' });
     }
   }
 
   async destroy(req, res) {
     try {
-      const deleted = await Meta.deleteById(req.params.id);
+      const deleted = await Campanha.deleteById(req.params.id);
 
       if (!deleted) {
-        return res.status(404).json({ error: 'Meta não encontrada.' });
+        return res.status(404).json({ error: 'Campanha não encontrada.' });
       }
 
       res.status(204).send();
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Erro ao excluir meta.' });
+      res.status(500).json({ error: 'Erro ao excluir campanha.' });
     }
   }
 }
 
-module.exports = new MetaController();
+module.exports = new CampanhaController();

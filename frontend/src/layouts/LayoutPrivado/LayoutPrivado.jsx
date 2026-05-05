@@ -5,7 +5,7 @@ import Header from '../../components/Header/Header';
 import { buscarPerfil, getUsuarioLocal, logout } from '../../services/auth.service';
 
 const routeConfigs = [
-  { path: '/', title: 'Dashboard', sub: 'Indicadores, metas e gamificação', id: 'dashboard', end: true },
+  { path: '/', title: 'Dashboard', sub: 'Indicadores, campanhas e gamificação', id: 'dashboard', end: true },
   { path: '/vendas', title: 'Vendas', sub: 'Cadastro manual das vendas fechadas', id: 'vendas' },
   { path: '/vendas/lixeira', title: 'Lixeira de vendas', sub: 'Vendas removidas e prazo de exclusão definitiva', id: 'vendas' },
   { path: '/clientes', title: 'Clientes', sub: 'Representantes e empresas vinculados as vendas', id: 'clientes', end: true },
@@ -23,7 +23,7 @@ const routeConfigs = [
   { path: '/perfil', title: 'Perfil', sub: 'Suas informações de conta e acesso', id: 'perfil', end: true },
   { path: '/perfil/editar', title: 'Editar perfil', sub: 'Atualize seus dados de acesso', id: 'perfil' },
   { path: '/configuracoes', title: 'Configurações', sub: 'Gerencie operadoras, tipos de venda, serviços e links externos', id: 'config' },
-  { path: '/admin/metas', title: 'Metas', sub: 'Configure desafios e recompensas do time', id: 'metas' },
+  { path: '/admin/campanhas', title: 'Campanhas', sub: 'Configure desafios e recompensas do time', id: 'campanhas' },
   { path: '/admin/fechamento-mensal', title: 'Fechamento Mensal', sub: 'Consolide contratos, UGRs e comissoes do periodo', id: 'fechamento-mensal' },
   { path: '/admin/leads', title: 'Planilhas de leads', sub: 'Importe, filtre e distribua leads para vendedores', id: 'leads' },
 ];
@@ -74,7 +74,7 @@ function LayoutPrivado({ children }) {
       historico: '/historico',
       usuarios: '/usuarios',
       config: '/configuracoes',
-      metas: '/admin/metas',
+      campanhas: '/admin/campanhas',
       'fechamento-mensal': '/admin/fechamento-mensal',
       leads: '/admin/leads',
     };
