@@ -22,6 +22,11 @@
   background-color: var(--color-border-light);
 }
 
+.users-page .list-table tbody tr:hover td {
+  background: var(--surface-2);
+  cursor: default;
+}
+
 .permissions-modal-overlay {
   position: fixed;
   inset: 0;

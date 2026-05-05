@@ -478,10 +478,10 @@
 }
 
 .team-goal-item {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 9px;
-  align-items: flex-start;
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -489,10 +489,11 @@
 }
 
 .team-goal-item__status {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 30px;
+  flex-shrink: 0;
+  width: 38px;
   min-height: 22px;
   padding: 0 6px;
   border-radius: 999px;

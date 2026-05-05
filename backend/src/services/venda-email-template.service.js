@@ -20,6 +20,10 @@ function telefone(numero) {
   return valor.replace(/[()\-\s]/g, '');
 }
 
+function cnpj(valor) {
+  return texto(valor).replace(/\D/g, '');
+}
+
 function formatarMoeda(valor) {
   if (valor === null || valor === undefined || valor === '') return '';
   const numero = parseNumero(valor);
@@ -88,6 +92,7 @@ function parseItensChips(valor, gbPadrao = '') {
       .map(item => ({
         quantidade: Number(item.quantidade || 0),
         gb: texto(item.gb || gbPadrao),
+        tipoLinha: normalizarTipoLinhaChip(item.tipo_linha || item.tipo || item.categoria),
         valorUnitario: parseNumero(item.valor_unitario)
       }))
       .filter(item => item.quantidade > 0);
@@ -107,6 +112,7 @@ function parseItensChips(valor, gbPadrao = '') {
           return {
             quantidade: Number(match[1]),
             gb: texto(gbPadrao),
+            tipoLinha: 'novo',
             valorUnitario: parseNumero(match[2])
           };
         })
@@ -115,6 +121,11 @@ function parseItensChips(valor, gbPadrao = '') {
   }
 
   return [];
+}
+
+function normalizarTipoLinhaChip(valor) {
+  const tipo = normalizarTexto(valor);
+  return tipo.includes('porta') ? 'portabilidade' : 'novo';
 }
 
 function parsePortados(valor) {
@@ -176,13 +187,17 @@ function montarContexto(venda) {
   const itens = parseItensChips(venda.valores_unitarios_chips, venda.gb);
   const portados = parsePortados(venda.numeros_portados);
   const qtd = quantidadeLinhas(venda, itens);
+  const qtdPortabilidadeItens = itens.reduce((total, item) => (
+    item.tipoLinha === 'portabilidade' ? total + Number(item.quantidade || 0) : total
+  ), 0);
+  const qtdPortados = Math.max(portados.length, qtdPortabilidadeItens);
 
   return {
     itens,
     portados,
     qtd,
-    qtdPortados: portados.length,
-    qtdNovas: Math.max(0, qtd - portados.length),
+    qtdPortados,
+    qtdNovas: Math.max(0, qtd - qtdPortados),
     precoUnitario: precoUnitarioPadrao(venda, qtd),
     cliente: nomeCliente(venda),
     vendedora: nomeVendedora(venda)
@@ -222,7 +237,7 @@ function renderClaro(venda) {
     `DATA DA VENDA: ${formatarData(venda.data_venda)}`,
     `Consultor: ${ctx.vendedora}`,
     `CLIENTE: ${ctx.cliente}`,
-    `CNPJ: ${texto(venda.cnpj || venda.cliente?.cnpj)}`,
+    `CNPJ: ${cnpj(venda.cnpj || venda.cliente?.cnpj)}`,
     'ENDEREÇO:',
     `Logradouro: ${texto(venda.endereco)}    Número: ${texto(venda.numero_endereco)}    Complemento: ${texto(venda.complemento)}`,
     `CEP: ${texto(venda.cep)}   Bairro: ${texto(venda.bairro)}   Município: ${texto(venda.municipio)}   UF: ${texto(venda.uf)}`,
@@ -239,7 +254,7 @@ function renderClaro(venda) {
     'Docs ok',
     '',
     `OBS CONSULTOR: ${texto(venda.observacoes)}`,
-    'LOGIN:   SENHA:'
+    `LOGIN: ${texto(venda.login)}   SENHA: ${texto(venda.senha)}   PROTOCOLO: ${texto(venda.protocolo)}`
   ].join('\n');
 }
 
@@ -277,7 +292,7 @@ function renderVivo(venda) {
     'PEDIDO 1 ACEITE MÓVEL',
     '',
     linha('RAZAO SOCIAL', ctx.cliente),
-    linha('CNPJ', venda.cnpj || venda.cliente?.cnpj),
+    linha('CNPJ', cnpj(venda.cnpj || venda.cliente?.cnpj)),
     linha('REPRESENTANTE LEGAL', venda.nome_representante_legal),
     linha('CPF REPRESENTANTE LEGAL', venda.cpf_representante_legal),
     linha('EMAIL PARA ENVIO ACEITE', venda.email),

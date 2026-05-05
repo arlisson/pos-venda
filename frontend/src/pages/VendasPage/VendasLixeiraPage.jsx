@@ -121,7 +121,7 @@ function VendasLixeiraPage() {
                 <tr>
                   <th>Cliente</th>
                   <th>Operadora</th>
-                  <th>Serviço</th>
+                  <th>Produto</th>
                   <th>Valor</th>
                   <th>Enviada em</th>
                   <th>Exclusao definitiva</th>

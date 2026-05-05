@@ -49,3 +49,5 @@ export const Home = mk(<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z
 export const Eye = mk(<><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></>);
 export const EyeOff = mk(<><path d="M17.9 17.4A10 10 0 0 1 2 12s1.5-4 5.1-6.2M9.5 4.3A10 10 0 0 1 22 12s-3 7-10 7a9.9 9.9 0 0 1-4.5-1.1" /><path d="M2 2l20 20" /></>);
 export const ChevronDown = mk(<><path d="m6 9 6 6 6-6" /></>);
+export const Mail = mk(<><rect x="3" y="6" width="18" height="13" rx="2" /><path d="m3 6 9 7 9-7" /></>);
+export const TableSheet = mk(<><rect x="3" y="3" width="18" height="18" rx="1" /><path d="M3 9h18M3 15h18M9 3v18" /></>);

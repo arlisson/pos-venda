@@ -1,12 +1,21 @@
+const path   = require('path');
+const fs     = require('fs');
 const ExcelJS = require('exceljs');
 const { _internals } = require('./venda-email-template.service');
 
 const { parseItensChips, parsePortados } = _internals;
 
-const RED    = 'CC0000';
+const RED    = 'FF0000';
 const WHITE  = 'FFFFFF';
-const YELLOW = 'FFFF99';
+const YELLOW = 'FFE699';
 const LGRAY  = 'F2F2F2';
+const GRAY   = 'BFBFBF';
+
+const LOGO_PATH = (() => {
+  const png = path.join(__dirname, '../assets/claro-logo.png');
+  const jpg = path.join(__dirname, '../assets/claro-logo.jpg');
+  return fs.existsSync(png) ? png : jpg;
+})();
 
 function txt(v) {
   return v === null || v === undefined ? '' : String(v).trim();
@@ -16,6 +25,10 @@ function fone(numero) {
   let v = txt(numero);
   if (v.startsWith('+55')) v = v.slice(3);
   return v.replace(/[()\-\s]/g, '');
+}
+
+function cnpj(v) {
+  return txt(v).replace(/\D/g, '');
 }
 
 function fill(hex) {
@@ -29,8 +42,8 @@ function border() {
 
 function font(opts = {}) {
   return {
-    name: 'Arial',
-    size: opts.size || 9,
+    name: 'Calibri',
+    size: opts.size || 11,
     bold: !!opts.bold,
     italic: !!opts.italic,
     color: { argb: 'FF' + (opts.color || '000000') },
@@ -56,19 +69,19 @@ function merge(ws, r1, c1, r2, c2) {
   ws.mergeCells(r1, c1, r2, c2);
 }
 
-function campoDuplo(ws, row, lbl1, val1, lbl2, val2) {
+function campoDuplo(ws, row, lbl1, val1, lbl2, val2, optsVal1 = {}, optsVal2 = {}) {
   ws.getRow(row).height = 16;
-  w(ws, row, 1, lbl1, { bold: true, bg: YELLOW });
+  w(ws, row, 1, lbl1, { bold: true, bg: GRAY });
   merge(ws, row, 2, row, 3);
-  w(ws, row, 2, val1);
-  w(ws, row, 4, lbl2, { bold: true, bg: YELLOW });
+  w(ws, row, 2, val1, optsVal1);
+  w(ws, row, 4, lbl2, { bold: true, bg: GRAY });
   merge(ws, row, 5, row, 6);
-  w(ws, row, 5, val2);
+  w(ws, row, 5, val2, optsVal2);
 }
 
 function campoSimples(ws, row, lbl, val) {
   ws.getRow(row).height = 16;
-  w(ws, row, 1, lbl, { bg: YELLOW });
+  w(ws, row, 1, lbl, { bg: GRAY });
   merge(ws, row, 2, row, 6);
   w(ws, row, 2, val);
 }
@@ -93,6 +106,56 @@ function expandirPrecos(valoresUnitariosChips, valorTotal, qtd) {
   return Array(qtd).fill(null);
 }
 
+function gbComSufixo(valor) {
+  const gb = txt(valor).replace(/\D/g, '');
+  return gb ? `${gb}GB` : '';
+}
+
+function planoClaro(gb, produto) {
+  const gbTexto = gbComSufixo(gb);
+  return gbTexto ? `CLARO PÓS - ${gbTexto}` : `CLARO PÓS - ${txt(produto)}`;
+}
+
+function expandirPlanos(valoresUnitariosChips, gbPadrao, produto, qtd) {
+  const itens = parseItensChips(valoresUnitariosChips, gbPadrao);
+  if (itens.length > 0) {
+    const planos = [];
+    for (const item of itens) {
+      const plano = planoClaro(item.gb || gbPadrao, produto);
+      for (let i = 0; i < item.quantidade; i++) {
+        planos.push(plano);
+      }
+    }
+    return planos;
+  }
+
+  return Array(qtd).fill(planoClaro(gbPadrao, produto));
+}
+
+function expandirLinhasChips(valoresUnitariosChips, gbPadrao, produto, valorTotal, qtd) {
+  const itens = parseItensChips(valoresUnitariosChips, gbPadrao);
+  if (itens.length > 0) {
+    const linhas = [];
+    for (const item of itens) {
+      for (let i = 0; i < item.quantidade; i++) {
+        linhas.push({
+          plano: planoClaro(item.gb || gbPadrao, produto),
+          preco: item.valorUnitario || null,
+          tipoLinha: item.tipoLinha || 'novo'
+        });
+      }
+    }
+    return linhas;
+  }
+
+  const precos = expandirPrecos(null, valorTotal, qtd);
+  return expandirPlanos(null, gbPadrao, produto, qtd).map((plano, index) => ({
+    plano,
+    preco: precos[index] ?? null,
+    tipoLinha: 'novo'
+  }));
+}
+
 function montarEndereco(venda) {
   const partes = [
     txt(venda.endereco),
@@ -105,22 +168,27 @@ function montarEndereco(venda) {
   return partes.join(', ');
 }
 
+function operadoraPortabilidade(venda) {
+  return txt(
+    venda.cliente?.operadoraAtual?.nome
+    || venda.cliente?.operadora_atual_nome
+    || venda.operadora_atual_nome
+  );
+}
+
 async function gerarXlsxClaro(venda) {
   const portados     = parsePortados(venda.numeros_portados);
   const qtdLinhas    = Number(venda.quantidade_linhas || 0) || portados.length;
-  const qtdPortados  = portados.length;
-  const qtdNovas     = Math.max(0, qtdLinhas - qtdPortados);
   const razaoSocial  = txt(venda.razao_social || venda.cliente?.razao_social || venda.cliente?.nome);
-  const cnpj         = txt(venda.cnpj || venda.cliente?.cnpj);
-  const gb           = txt(venda.gb);
+  const cnpjFormatado = cnpj(venda.cnpj || venda.cliente?.cnpj);
   const produto      = txt(venda.produto_fechado);
-  const planoTxt     = gb ? `CLARO PÓS - ${gb}GB` : `CLARO PÓS - ${produto}`;
-
-  const priceList    = expandirPrecos(venda.valores_unitarios_chips, venda.valor_total, qtdLinhas);
+  const chipRows     = expandirLinhasChips(venda.valores_unitarios_chips, venda.gb, produto, venda.valor_total, qtdLinhas);
+  const qtdPortados  = Math.max(portados.length, chipRows.filter(item => item.tipoLinha === 'portabilidade').length);
+  const operadoraOrigem = operadoraPortabilidade(venda);
   const ddd          = txt(venda.ddd);
 
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Checklist Claro');
+  const ws = wb.addWorksheet(`CHEKLIST PADRÃO - ${razaoSocial}`.slice(0, 31));
 
   // larguras das colunas
   ws.getColumn(1).width = 26;
@@ -136,10 +204,19 @@ async function gerarXlsxClaro(venda) {
   // Linha 2 — cabeçalho
   ws.getRow(2).height = 26;
   merge(ws, 2, 1, 2, 2);
-  const cellLogo = ws.getCell(2, 1);
-  cellLogo.value = 'Claro Brasil';
-  cellLogo.font  = font({ bold: true, color: RED, size: 14 });
-  cellLogo.alignment = align('left');
+  if (fs.existsSync(LOGO_PATH)) {
+    const ext = LOGO_PATH.endsWith('.png') ? 'png' : 'jpeg';
+    const logoId = wb.addImage({ filename: LOGO_PATH, extension: ext });
+    ws.addImage(logoId, {
+      tl: { col: 0, row: 1.12 },
+      ext: { width: 130, height: 26 }
+    });
+  } else {
+    const cellLogo = ws.getCell(2, 1);
+    cellLogo.value = 'Claro Brasil';
+    cellLogo.font  = font({ bold: true, color: RED, size: 14 });
+    cellLogo.alignment = align('left');
+  }
 
   merge(ws, 2, 3, 2, 5);
   const cellTitle = ws.getCell(2, 3);
@@ -152,7 +229,7 @@ async function gerarXlsxClaro(venda) {
   ws.getRow(4).height = 6;
 
   // Linha 5 — Razão social + CNPJ
-  campoDuplo(ws, 5, 'RAZÃO SOCIAL :', razaoSocial, 'CNPJ :', cnpj);
+  campoDuplo(ws, 5, 'RAZÃO SOCIAL :', razaoSocial, 'CNPJ :', cnpjFormatado);
 
   // Linha 6 — Telefone fixo
   campoSimples(ws, 6, 'TEL. FIXO:', fone(venda.fixo_ddd));
@@ -160,20 +237,24 @@ async function gerarXlsxClaro(venda) {
   // Linha 7 — Representante legal + CPF
   campoDuplo(ws, 7,
     'Representante legal:', txt(venda.nome_representante_legal),
-    'CPF :', txt(venda.cpf_representante_legal));
+    'CPF :', txt(venda.cpf_representante_legal),
+    { bold: true, color: RED }, {});
 
   // Linha 8 — E-mail + Celular
   campoDuplo(ws, 8,
-    'E-MAIL (quem assina o contrato)', txt(venda.email),
-    'CEL. ', fone(venda.telefone));
+    'E-MAIL (quem assina o contrato)', txt(venda.email_representante_legal || venda.email),
+    'CEL. ', fone(venda.telefone),
+    { color: RED }, {});
 
   // Linha 9 — Administrador + CPF
   campoDuplo(ws, 9,
     'ADMINISTRADOR:', txt(venda.nome_administrador),
-    'CPF :', txt(venda.cpf_administrador));
+    'CPF :', txt(venda.cpf_administrador),
+    { bold: true, color: RED }, {});
 
-  // Linha 10 — e-mail/cel do administrador (vazios)
-  campoDuplo(ws, 10, 'E-MAIL', '', 'CEL:', '');
+  // Linha 10 — e-mail/cel do administrador
+  campoDuplo(ws, 10, 'E-MAIL', txt(venda.email_administrador), 'CEL:', fone(venda.telefone_administrador),
+    { color: RED }, {});
 
   // Linha 11 — Endereço
   campoSimples(ws, 11, 'ENDEREÇO:', montarEndereco(venda));
@@ -182,7 +263,7 @@ async function gerarXlsxClaro(venda) {
   ws.getRow(12).height = 16;
   w(ws, 12, 1, 'Resp. recebimento 1:', { bg: YELLOW });
   merge(ws, 12, 2, 12, 3);
-  w(ws, 12, 2, txt(venda.responsavel_recebimento));
+  w(ws, 12, 2, txt(venda.responsavel_recebimento), { bold: true, color: RED });
   w(ws, 12, 4, 'RG:', { bg: YELLOW });
   merge(ws, 12, 5, 12, 6);
   w(ws, 12, 5, txt(venda.rg_responsavel_recebimento));
@@ -206,10 +287,10 @@ async function gerarXlsxClaro(venda) {
 
   // Linha 15 — Vencimento + Cliente NET/EBT
   ws.getRow(15).height = 16;
-  w(ws, 15, 1, 'Venc. Fatura:', { bold: true, bg: YELLOW });
+  w(ws, 15, 1, 'Venc. Fatura:', { bold: true, bg: GRAY });
   merge(ws, 15, 2, 15, 3);
   w(ws, 15, 2, txt(venda.dia_vencimento));
-  w(ws, 15, 4, 'Cliente NET/EBT:', { bold: true, bg: YELLOW });
+  w(ws, 15, 4, 'Cliente NET/EBT:', { bold: true, bg: GRAY });
   w(ws, 15, 5, '( )Não / SIM (informar n° cliente):');
   w(ws, 15, 6, '');
 
@@ -255,15 +336,12 @@ async function gerarXlsxClaro(venda) {
 
   // Linhas 20+ — dados dos chips
   const dataRows = [];
-  for (let i = 0; i < qtdNovas; i++) {
-    const p = priceList[i] ?? null;
-    dataRows.push([planoTxt, p, 'Avulso', p, '', '']);
-  }
-  for (let j = 0; j < portados.length; j++) {
-    const idx = qtdNovas + j;
-    const p = priceList[idx] ?? null;
-    dataRows.push([planoTxt, p, 'Avulso', p, 'CLARO', portados[j]]);
-  }
+  let portadoIndex = 0;
+  chipRows.forEach((chip, index) => {
+    const portabilidade = chip.tipoLinha === 'portabilidade' || index >= chipRows.length - qtdPortados;
+    const numeroPortado = portabilidade ? (portados[portadoIndex++] || '') : '';
+    dataRows.push([chip.plano, chip.preco, 'Avulso', chip.preco, portabilidade ? operadoraOrigem : '', numeroPortado]);
+  });
   while (dataRows.length < 10) {
     dataRows.push(['', null, '', null, '', '']);
   }

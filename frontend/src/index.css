@@ -58,8 +58,18 @@ input, select, textarea { font-family: inherit; }
   overflow: hidden;
 }
 .sidebar-logo {
-  padding: 20px 20px 16px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-logo-img {
+  max-width: 70%;
+  max-height: 22px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 .logo-placeholder {
   height: 44px;

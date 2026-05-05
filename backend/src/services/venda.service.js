@@ -218,7 +218,25 @@ function parseValorMonetario(valor) {
 }
 
 function normalizarGigas(valor) {
-  return String(valor || '').trim().slice(0, 40);
+  return String(valor || '').replace(/\D/g, '').slice(0, 4);
+}
+
+function normalizarTipoLinhaChip(valor) {
+  const texto = String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+  return texto.includes('porta') ? 'portabilidade' : 'novo';
+}
+
+function normalizarTextoBusca(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 function normalizarItensChips(valor) {
@@ -229,6 +247,7 @@ function normalizarItensChips(valor) {
       .map(item => ({
         quantidade: Number(item.quantidade || 0),
         gb: normalizarGigas(item.gb),
+        tipo_linha: normalizarTipoLinhaChip(item.tipo_linha || item.tipo || item.categoria),
         valor_unitario: parseValorMonetario(item.valor_unitario)
       }))
       .filter(item => item.quantidade > 0 && item.valor_unitario > 0);
@@ -251,6 +270,7 @@ function normalizarItensChips(valor) {
           return {
             quantidade: Number(match[1]),
             gb: '',
+            tipo_linha: 'novo',
             valor_unitario: parseValorMonetario(match[2])
           };
         })
@@ -267,6 +287,10 @@ function calcularTotalChips(itens) {
   }, 0);
 
   return Number(total.toFixed(2));
+}
+
+function somarQuantidadeItensChips(itens) {
+  return itens.reduce((acc, item) => acc + Number(item.quantidade || 0), 0);
 }
 
 function resumirGigasItensChips(itens) {
@@ -324,6 +348,13 @@ function montarPayload(dados) {
   const itensChips = normalizarItensChips(dados.valores_unitarios_chips);
 
   if (dados.valores_unitarios_chips !== undefined) {
+    const quantidadeItens = somarQuantidadeItensChips(itensChips);
+    const quantidadeLinhas = Number(payload.quantidade_linhas || dados.quantidade_linhas || 0);
+
+    if (quantidadeLinhas > 0 && quantidadeItens > quantidadeLinhas) {
+      throw new Error('A quantidade de chips nao pode ser maior que a quantidade de linhas fechadas.');
+    }
+
     payload.valores_unitarios_chips = itensChips.length > 0 ? JSON.stringify(itensChips) : null;
     payload.valor_total = calcularTotalChips(itensChips);
     payload.gb = resumirGigasItensChips(itensChips) || payload.gb || null;
@@ -641,6 +672,27 @@ async function obterCodigoEtapaFinal() {
   }
 }
 
+async function statusPreencheDataAtivacao(status, etapaFinal) {
+  if (!status) return false;
+  if (status === etapaFinal) return true;
+
+  const statusNormalizado = normalizarTextoBusca(status);
+  if (statusNormalizado.includes('ativacao') || statusNormalizado.includes('ativado')) {
+    return true;
+  }
+
+  try {
+    const etapa = await FunilEtapa.query()
+      .where('codigo', status)
+      .first();
+
+    const nomeNormalizado = normalizarTextoBusca(etapa?.nome);
+    return nomeNormalizado.includes('ativacao') || nomeNormalizado.includes('ativado');
+  } catch {
+    return false;
+  }
+}
+
 async function montarResumoFasesDinamico(vendas = []) {
   const etapas = await listarEtapasFunilOrdenadas();
   const statusBase = [...etapas.map(etapa => etapa.id), 'retorno'];
@@ -720,7 +772,7 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario]')
+    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
@@ -976,7 +1028,7 @@ async function buscarVendaPorId(id, usuarioId) {
   const query = Venda.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[cliente, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario]')
+    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
@@ -1262,7 +1314,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
       updated_at: agora
     };
 
-    if (status === etapaFinal && !venda.data_ativacao) {
+    if (await statusPreencheDataAtivacao(status, etapaFinal) && !venda.data_ativacao) {
       dadosAtualizacao.data_ativacao = normalizarData(dados.data_ativacao) || agora.slice(0, 10);
     }
 
@@ -1336,7 +1388,7 @@ async function listarVendasLixeira(filtros = {}, usuarioId) {
 
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador, excluidoPor]')
+    .withGraphFetched('[cliente.operadoraAtual, vendedora, operadora, tipoVenda, servico, criador, excluidoPor]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .whereNotNull('excluido_em')
     .orderBy('excluido_em', 'desc')

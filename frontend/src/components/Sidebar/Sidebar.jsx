@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as I from '../Icons';
+import logo from '../../assets/LogoClaraSemFundo.png';
 import { temPermissao } from '../../services/auth.service';
 import { getCampanhas, getProgresso } from '../../services/campanha.service';
 
@@ -45,7 +46,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   return (
     <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <div className="sidebar-logo">
-        <div className="logo-placeholder">POS VENDA</div>
+        <img src={logo} alt="Logo" className="sidebar-logo-img" />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>

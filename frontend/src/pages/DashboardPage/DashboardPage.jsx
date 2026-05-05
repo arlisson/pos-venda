@@ -625,7 +625,7 @@ function DashboardPage() {
                           <span className="team-goal-item__status">
                             {campanha.claimed ? <I.Check size={12} /> : campanha.achieved ? <I.Check size={12} /> : `${campanha.pct}%`}
                           </span>
-                          <div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <strong>{campanha.desc}</strong>
                             <span>
                               {formatGoalValue(campanha, campanha.current)} / {formatGoalValue(campanha, campanha.target)}

@@ -95,6 +95,55 @@ function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas, fallback 
   return Number(quantidadeLinhas || 0) || fallback;
 }
 
+function normalizarTipoLinhaChip(valor) {
+  const tipo = normalizarTexto(valor);
+  return tipo.includes('porta') ? 'portabilidade' : 'novo';
+}
+
+function somarQuantidadeChipsPorTipo(valoresUnitariosChips, tipoLinha) {
+  if (!valoresUnitariosChips) return null;
+
+  try {
+    const itens = typeof valoresUnitariosChips === 'string'
+      ? JSON.parse(valoresUnitariosChips)
+      : valoresUnitariosChips;
+
+    if (!Array.isArray(itens)) return null;
+
+    const temTipoPorItem = itens.some(item => item?.tipo_linha || item?.tipo || item?.categoria);
+    if (!temTipoPorItem) return null;
+
+    return itens.reduce((acc, item) => (
+      normalizarTipoLinhaChip(item?.tipo_linha || item?.tipo || item?.categoria) === tipoLinha
+        ? acc + Number(item?.quantidade || 0)
+        : acc
+    ), 0);
+  } catch {
+    return null;
+  }
+}
+
+function quantidadeCategoriaVenda(venda, categoria) {
+  const porTipo = categoria === 'chip_novo'
+    ? somarQuantidadeChipsPorTipo(venda.valores_unitarios_chips, 'novo')
+    : categoria === 'portabilidade'
+      ? somarQuantidadeChipsPorTipo(venda.valores_unitarios_chips, 'portabilidade')
+      : null;
+
+  if (porTipo !== null) return porTipo;
+
+  const tipoVenda = normalizarTexto(venda.tipo_venda);
+  if (categoria === 'chip_novo' && tipoVenda === 'novo') {
+    return somarQuantidadeChips(venda.valores_unitarios_chips, venda.quantidade_linhas);
+  }
+
+  if (categoria === 'portabilidade' && tipoVenda === 'portabilidade') {
+    return somarQuantidadeChips(venda.valores_unitarios_chips, venda.quantidade_linhas);
+  }
+
+  return 0;
+}
+
 async function listarClientesDoCiclo(usuarioId, ciclo) {
   return knex('clientes')
     .select('id', 'operadora_atual_id')
@@ -140,20 +189,15 @@ function classificarVendas(rows, clientes = []) {
   };
 
   for (const row of rows) {
-    const tipoVenda = normalizarTexto(row.tipo_venda);
     const servico = normalizarTexto(row.servico);
 
-    if (tipoVenda === 'portabilidade') {
-      totais.portabilidade += somarQuantidadeChips(row.valores_unitarios_chips, row.quantidade_linhas);
-    }
+    totais.portabilidade += quantidadeCategoriaVenda(row, 'portabilidade');
 
     if (servico === 'internet') {
       totais.internet += somarQuantidadeChips(row.valores_unitarios_chips, row.quantidade_linhas, 1);
     }
 
-    if (tipoVenda === 'novo') {
-      totais.chip_novo += somarQuantidadeChips(row.valores_unitarios_chips, row.quantidade_linhas);
-    }
+    totais.chip_novo += quantidadeCategoriaVenda(row, 'chip_novo');
   }
 
   return totais;
@@ -168,23 +212,22 @@ function calcularValorCampanha(campanha, vendas, clientes) {
   }
 
   return vendas.reduce((acc, venda) => {
-    const tipoVenda = normalizarTexto(venda.tipo_venda);
     const servico = normalizarTexto(venda.servico);
 
-    if (categoria === 'chip_novo' && tipoVenda === 'novo') {
+    if (categoria === 'chip_novo') {
       if (!vendaPertenceOperadora(venda, operadoraId)) {
         return acc;
       }
 
-      return acc + somarQuantidadeChips(venda.valores_unitarios_chips, venda.quantidade_linhas);
+      return acc + quantidadeCategoriaVenda(venda, 'chip_novo');
     }
 
-    if (categoria === 'portabilidade' && tipoVenda === 'portabilidade') {
+    if (categoria === 'portabilidade') {
       if (!vendaPertenceOperadora(venda, operadoraId)) {
         return acc;
       }
 
-      return acc + somarQuantidadeChips(venda.valores_unitarios_chips, venda.quantidade_linhas);
+      return acc + quantidadeCategoriaVenda(venda, 'portabilidade');
     }
 
     if (categoria === 'internet' && servico === 'internet') {

@@ -254,7 +254,7 @@ async function xlsxClaro(req, res) {
     const nomeCliente = String(venda.razao_social || venda.cliente?.razao_social || venda.cliente?.nome || venda.id).replace(/[^\w\s-]/g, '').trim();
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Claro_${nomeCliente}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="CHEKLIST PADRAO - ${nomeCliente}.xlsx"`);
     return res.send(buffer);
   } catch (error) {
     console.error(error);

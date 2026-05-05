@@ -65,6 +65,9 @@ function parseChips(rawChips) {
     .map(item => ({
       quantidade: Number(item.quantidade || 0),
       gb: String(item.gb || '').trim(),
+      tipo_linha: (item.tipo_linha || item.tipo || item.categoria)
+        ? tipoVendaNormalizado(item.tipo_linha || item.tipo || item.categoria) || 'novo'
+        : null,
       valor_unitario: Number(item.valor_unitario || 0)
     }))
     .filter(item => item.quantidade > 0);
@@ -169,6 +172,19 @@ function quantidadeChipsVenda(venda) {
   return linhas > 0 ? linhas : 0;
 }
 
+function quantidadeChipsPorTipo(venda, tipo) {
+  const chips = parseChips(venda.valores_unitarios_chips);
+  const temTipoPorItem = chips.length > 0 && chips.some(chip => chip.tipo_linha);
+
+  if (temTipoPorItem) {
+    return chips.reduce((soma, chip) => (
+      chip.tipo_linha === tipo ? soma + chip.quantidade : soma
+    ), 0);
+  }
+
+  return tipoVendaNormalizado(venda.tipo_venda_nome) === tipo ? quantidadeChipsVenda(venda) : 0;
+}
+
 async function carregarVendasNoPeriodo(filtros, criterioData = 'registro') {
   const inicio = normalizarData(filtros.data_inicio);
   const fim = normalizarData(filtros.data_fim);
@@ -268,7 +284,8 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
     };
 
     const categoria = categoriaServico(venda.servico_nome);
-    const tipoServico = tipoVendaNormalizado(venda.tipo_venda_nome);
+    const chipsNovos = quantidadeChipsPorTipo(venda, 'novo');
+    const chipsPortabilidade = quantidadeChipsPorTipo(venda, 'portabilidade');
     const valor = Number(venda.valor_total || 0);
     const chips = quantidadeChipsVenda(venda);
     const ehContrato = venda.status_funil === statusFinal;
@@ -282,8 +299,8 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
       if (categoria === 'movel') linha.movel += 1;
       if (categoria === 'fixo') linha.fixo += 1;
       if (categoria === 'internet') linha.internet += 1;
-      if (tipoServico === 'novo') linha.novo += 1;
-      if (tipoServico === 'portabilidade') linha.portabilidade += 1;
+      linha.novo += chipsNovos;
+      linha.portabilidade += chipsPortabilidade;
       linha.receita += valor;
     };
 
@@ -342,7 +359,8 @@ function filtrarPorSecao(vendas, secao, statusFinal = STATUS_FINAL_FALLBACK) {
 
 function montarVendaResumo(venda, statusFinal = STATUS_FINAL_FALLBACK) {
   const categoria = categoriaServico(venda.servico_nome);
-  const tipoServico = tipoVendaNormalizado(venda.tipo_venda_nome);
+  const chipsNovos = quantidadeChipsPorTipo(venda, 'novo');
+  const chipsPortabilidade = quantidadeChipsPorTipo(venda, 'portabilidade');
 
   return {
     id: venda.id,
@@ -374,7 +392,11 @@ function montarVendaResumo(venda, statusFinal = STATUS_FINAL_FALLBACK) {
     tipo_venda: venda.tipo_venda_nome || null,
     servico: venda.servico_nome || null,
     categoria,
-    tipo_servico_normalizado: tipoServico,
+    tipo_servico_normalizado: chipsNovos > 0 && chipsPortabilidade > 0
+      ? 'misto'
+      : chipsPortabilidade > 0 ? 'portabilidade' : chipsNovos > 0 ? 'novo' : null,
+    chips_novos: chipsNovos,
+    chips_portabilidade: chipsPortabilidade,
 
   };
 }
@@ -440,6 +462,7 @@ async function obterDetalhesChips(filtros = {}) {
         linhas.push(montarLinhaComRegra(venda, {
           chip_index: i + 1,
           gb: gigasFallback[i] || '',
+          tipo_linha: tipoVendaNormalizado(venda.tipo_venda_nome) || 'novo',
           valor_unitario: valorFallback
         }));
       }
@@ -454,6 +477,7 @@ async function obterDetalhesChips(filtros = {}) {
         linhas.push(montarLinhaComRegra(venda, {
           chip_index: chipNumero,
           gb: gigas[i] || '',
+          tipo_linha: item.tipo_linha,
           valor_unitario: item.valor_unitario
         }));
         chipNumero += 1;
@@ -509,6 +533,7 @@ function montarLinhaChip(venda, chip) {
     status_funil: venda.status_funil,
     ddd: venda.ddd || null,
     gb: chip.gb || null,
+    tipo_linha: chip.tipo_linha || null,
     valor_unitario: Number(Number(chip.valor_unitario || 0).toFixed(2)),
     operadora: venda.operadora_id ? { id: venda.operadora_id, nome: venda.operadora_nome } : null,
     vendedora: venda.vendedora_id ? {
