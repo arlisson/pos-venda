@@ -52,7 +52,14 @@ const VENDA_VAZIA = {
   gb: '',
   valores_unitarios_chips: '',
   valor_total: '',
-  numeros_portados: '',
+  ponto_referencia: '',
+  tipo_local_cpf: '',
+  razao_social: '',
+  cnpj: '',
+  data_venda: '',
+  data_ativacao: '',
+  qc_feito_por: '',
+  observacoes: '',
   dia_vencimento: '',
   // Endereço
   cep: '',
@@ -127,6 +134,7 @@ const CAMPOS = [
 
   { section: 'Dados da venda' },
   { name: 'data_venda', label: 'Data da venda', type: 'date' },
+  { name: 'data_ativacao', label: 'Data da ativacao', type: 'date' },
   { name: 'nome_fechou_venda', label: 'Nome com quem fechou a venda' },
   { name: 'setor_funcao', label: 'Setor/Função' },
   { name: 'produto_fechado', label: 'Produto fechado' },
@@ -490,6 +498,7 @@ function normalizarVenda(venda) {
     ...VENDA_VAZIA,
     ...venda,
     data_venda: toInputDate(venda.data_venda),
+    data_ativacao: toInputDate(venda.data_ativacao),
     valor_total: venda.valor_total ?? '',
     valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips, venda.gb),
     numeros_portados: parseNumerosPortados(venda.numeros_portados),
@@ -1154,6 +1163,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
       const payload = {
         ...form,
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
+        data_ativacao: normalizarDataVendaInput(form.data_ativacao) || null,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
         valores_unitarios_chips: chipsProcessados,
         vendedoras: (form.vendedoras || []).map(Number).filter(Boolean)
@@ -1860,7 +1870,8 @@ function VendasPage() {
                   <th>GB</th>
                   <th>Valor</th>
                   <th>Venc.</th>
-                  <th>Data</th>
+                  <th>Venda</th>
+                  <th>Ativacao</th>
                   <th>Vendedor(a)</th>
                   <th className={`vendas-actions-col vendas-email-actions-col ${podeExcluirVenda ? 'has-delete' : ''}`}>Email</th>
                   {podeExcluirVenda && (
@@ -1871,13 +1882,13 @@ function VendasPage() {
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan={podeExcluirVenda ? 12 : 11} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluirVenda ? 13 : 12} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando vendas...
                     </td>
                   </tr>
                 ) : vendas.length === 0 ? (
                   <tr>
-                    <td colSpan={podeExcluirVenda ? 12 : 11} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluirVenda ? 13 : 12} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhuma venda encontrada.
                     </td>
                   </tr>
@@ -1911,6 +1922,7 @@ function VendasPage() {
                       <td className="vendas-value">{formatarMoeda(venda.valor_total)}</td>
                       <td>{venda.dia_vencimento || '-'}</td>
                       <td>{formatarData(venda.data_venda)}</td>
+                      <td>{formatarData(venda.data_ativacao)}</td>
                       <td><span className="tag">{venda.vendedora?.nome || '-'}</span></td>
                       <td className={`vendas-actions-col vendas-email-actions-col ${podeExcluirVenda ? 'has-delete' : ''}`}>
                         <button

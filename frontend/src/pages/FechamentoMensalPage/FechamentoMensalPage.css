@@ -178,6 +178,21 @@
   white-space: nowrap;
 }
 
+.fechamento-pendencia {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.fechamento-modal-table tr.row-warning td {
+  background: #fff7ed;
+}
+
 .fechamento-totais {
   display: flex;
   flex-direction: column;

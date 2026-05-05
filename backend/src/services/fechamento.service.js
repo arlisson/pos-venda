@@ -1,7 +1,8 @@
 const Venda = require('../models/Venda');
+const FunilEtapa = require('../models/FunilEtapa');
+const RegraComissao = require('../models/RegraComissao');
 
-const STATUS_TRATANDO = ['aprovacao', 'ativacao', 'envio', 'entrega', 'confirmacao'];
-const STATUS_ATIVAS = ['concluido'];
+const STATUS_FINAL_FALLBACK = 'concluido';
 
 const CATEGORIA_POR_SERVICO = {
   'telefonia movel': 'movel',
@@ -38,6 +39,14 @@ function normalizarData(valor) {
   return /^\d{4}-\d{2}-\d{2}$/.test(texto) ? texto : null;
 }
 
+function dataVendaReferenciaSQL(alias = 'v') {
+  return `COALESCE(NULLIF(NULLIF(${alias}.data_venda, '0000-00-00'), '1899-11-30'), DATE(${alias}.created_at))`;
+}
+
+function dataAtivacaoReferenciaSQL(alias = 'v') {
+  return `COALESCE(NULLIF(NULLIF(${alias}.data_ativacao, '0000-00-00'), '1899-11-30'), ${dataVendaReferenciaSQL(alias)})`;
+}
+
 function parseChips(rawChips) {
   if (!rawChips) return [];
 
@@ -59,21 +68,6 @@ function parseChips(rawChips) {
       valor_unitario: Number(item.valor_unitario || 0)
     }))
     .filter(item => item.quantidade > 0);
-}
-
-function normalizarTaxaComissao(valor) {
-  if (valor === undefined || valor === null || valor === '') return null;
-  const taxa = Number(String(valor).replace(',', '.'));
-  return Number.isFinite(taxa) && taxa >= 0 ? Number(taxa.toFixed(2)) : null;
-}
-
-function calcularComissao(valorUnitario, taxaComissao) {
-  if (taxaComissao === null || taxaComissao === undefined) return null;
-  const valor = Number(valorUnitario || 0);
-  const taxa = Number(taxaComissao);
-  if (!Number.isFinite(valor) || !Number.isFinite(taxa)) return null;
-
-  return Math.round(((valor * taxa / 100) + Number.EPSILON) * 100) / 100;
 }
 
 function extrairNumerosGigas(valor) {
@@ -123,6 +117,49 @@ function gigasUnitarios(gbPrincipal, quantidade, gbFallback = '') {
   return Array(totalChips).fill(texto);
 }
 
+async function carregarRegrasComissaoAtivas() {
+  return RegraComissao.query()
+    .where('ativo', true)
+    .orderBy('ordem', 'asc')
+    .orderBy('valor_min', 'asc')
+    .orderBy('valor_max', 'asc');
+}
+
+async function obterCodigoEtapaFinal() {
+  try {
+    const etapa = await FunilEtapa.query()
+      .where('etapa_final', true)
+      .orderBy('ativo', 'desc')
+      .orderBy('ordem', 'asc')
+      .first();
+
+    return etapa?.codigo || STATUS_FINAL_FALLBACK;
+  } catch {
+    return STATUS_FINAL_FALLBACK;
+  }
+}
+
+function encontrarRegraComissao(regras, valorUnitario) {
+  const valor = Number(valorUnitario || 0);
+  if (!Number.isFinite(valor)) return null;
+
+  return regras.find(regra => (
+    valor >= Number(regra.valor_min || 0)
+    && valor <= Number(regra.valor_max || 0)
+  )) || null;
+}
+
+function montarRegraComissaoResumo(regra) {
+  if (!regra) return null;
+
+  return {
+    id: regra.id,
+    valor_min: Number(regra.valor_min || 0),
+    valor_max: Number(regra.valor_max || 0),
+    valor_comissao: Number(regra.valor_comissao || 0)
+  };
+}
+
 function quantidadeChipsVenda(venda) {
   const chips = parseChips(venda.valores_unitarios_chips);
   const totalChips = chips.reduce((soma, item) => soma + item.quantidade, 0);
@@ -132,9 +169,13 @@ function quantidadeChipsVenda(venda) {
   return linhas > 0 ? linhas : 0;
 }
 
-function carregarVendasNoPeriodo(filtros) {
+async function carregarVendasNoPeriodo(filtros, criterioData = 'registro') {
   const inicio = normalizarData(filtros.data_inicio);
   const fim = normalizarData(filtros.data_fim);
+  const statusFinal = await obterCodigoEtapaFinal();
+  const dataReferencia = criterioData === 'ativacao'
+    ? dataAtivacaoReferenciaSQL('v')
+    : dataVendaReferenciaSQL('v');
 
   const query = Venda.query()
     .alias('v')
@@ -153,6 +194,7 @@ function carregarVendasNoPeriodo(filtros) {
       'v.valores_unitarios_chips',
       'v.quantidade_linhas',
       'v.data_venda',
+      'v.data_ativacao',
       'v.criado_em',
       'v.created_at',
       'v.dia_vencimento',
@@ -176,25 +218,22 @@ function carregarVendasNoPeriodo(filtros) {
     );
 
   if (inicio) {
-    query.whereRaw(
-      "COALESCE(NULLIF(NULLIF(v.data_venda, '0000-00-00'), '1899-11-30'), DATE(v.created_at)) >= ?",
-      [inicio]
-    );
+    query.whereRaw(`${dataReferencia} >= ?`, [inicio]);
   }
 
   if (fim) {
-    query.whereRaw(
-      "COALESCE(NULLIF(NULLIF(v.data_venda, '0000-00-00'), '1899-11-30'), DATE(v.created_at)) <= ?",
-      [fim]
-    );
+    query.whereRaw(`${dataReferencia} <= ?`, [fim]);
   }
 
-  return query;
+  return {
+    vendas: await query,
+    statusFinal
+  };
 }
 
-function classificarSecao(statusFunil) {
-  if (statusFunil === 'concluido') return 'ativas';
-  if (STATUS_TRATANDO.includes(statusFunil)) return 'tratando';
+function classificarSecao(statusFunil, statusFinal = STATUS_FINAL_FALLBACK) {
+  if (statusFunil === statusFinal) return 'ativas';
+  if (statusFunil && statusFunil !== 'retorno') return 'tratando';
   return null;
 }
 
@@ -214,7 +253,7 @@ function novaLinhaOperadora(operadoraId, operadoraNome) {
   };
 }
 
-function agregarPorOperadora(vendas) {
+function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
   const total = new Map();
   const tratando = new Map();
   const ativas = new Map();
@@ -232,7 +271,7 @@ function agregarPorOperadora(vendas) {
     const tipoServico = tipoVendaNormalizado(venda.tipo_venda_nome);
     const valor = Number(venda.valor_total || 0);
     const chips = quantidadeChipsVenda(venda);
-    const ehContrato = venda.status_funil === 'concluido';
+    const ehContrato = venda.status_funil === statusFinal;
 
     const aplicar = (linha) => {
       linha.total_vendas += 1;
@@ -250,7 +289,7 @@ function agregarPorOperadora(vendas) {
 
     aplicar(inicializa(total));
 
-    const secao = classificarSecao(venda.status_funil);
+    const secao = classificarSecao(venda.status_funil, statusFinal);
     if (secao === 'tratando') {
       aplicar(inicializa(tratando));
     } else if (secao === 'ativas') {
@@ -273,34 +312,45 @@ function agregarPorOperadora(vendas) {
 }
 
 async function obterResumo(filtros = {}) {
-  const vendas = await carregarVendasNoPeriodo(filtros);
+  const { vendas: vendasRegistro, statusFinal } = await carregarVendasNoPeriodo(filtros, 'registro');
+  const { vendas: vendasAtivacao } = await carregarVendasNoPeriodo(filtros, 'ativacao');
+  const resumoRegistro = agregarPorOperadora(vendasRegistro, statusFinal);
+  const resumoAtivacao = agregarPorOperadora(vendasAtivacao, statusFinal);
 
   return {
     periodo: {
       data_inicio: normalizarData(filtros.data_inicio),
       data_fim: normalizarData(filtros.data_fim)
     },
-    secoes: agregarPorOperadora(vendas)
+    secoes: {
+      total: resumoRegistro.total,
+      tratando: resumoRegistro.tratando,
+      ativas: resumoAtivacao.ativas
+    }
   };
 }
 
-function filtrarPorSecao(vendas, secao) {
+function filtrarPorSecao(vendas, secao, statusFinal = STATUS_FINAL_FALLBACK) {
   if (secao === 'tratando') {
-    return vendas.filter(v => STATUS_TRATANDO.includes(v.status_funil));
+    return vendas.filter(v => v.status_funil && v.status_funil !== statusFinal && v.status_funil !== 'retorno');
   }
   if (secao === 'ativas') {
-    return vendas.filter(v => STATUS_ATIVAS.includes(v.status_funil));
+    return vendas.filter(v => v.status_funil === statusFinal);
   }
   return vendas;
 }
 
-function montarVendaResumo(venda) {
+function montarVendaResumo(venda, statusFinal = STATUS_FINAL_FALLBACK) {
   const categoria = categoriaServico(venda.servico_nome);
   const tipoServico = tipoVendaNormalizado(venda.tipo_venda_nome);
 
   return {
     id: venda.id,
     data_venda: venda.data_venda || venda.created_at || null,
+    data_ativacao: venda.data_ativacao || null,
+    data_fechamento: venda.status_funil === statusFinal
+      ? (venda.data_ativacao || venda.data_venda || venda.created_at || null)
+      : (venda.data_venda || venda.created_at || null),
     status_funil: venda.status_funil,
     valor_total: Number(venda.valor_total || 0),
     quantidade_linhas: Number(venda.quantidade_linhas || 0),
@@ -330,31 +380,53 @@ function montarVendaResumo(venda) {
 }
 
 async function obterDetalhes(filtros = {}) {
-  const todasVendas = await carregarVendasNoPeriodo(filtros);
-  const vendasSecao = filtrarPorSecao(todasVendas, filtros.secao);
+  const criterioData = filtros.secao === 'ativas' ? 'ativacao' : 'registro';
+  const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, criterioData);
+  const vendasSecao = filtrarPorSecao(todasVendas, filtros.secao, statusFinal);
 
   const filtradas = filtros.operadora_id
     ? vendasSecao.filter(v => Number(v.operadora_id) === Number(filtros.operadora_id))
     : vendasSecao;
 
   return filtradas
-    .map(montarVendaResumo)
+    .map(venda => montarVendaResumo(venda, statusFinal))
     .sort((a, b) => {
-      const dataA = a.data_venda || '';
-      const dataB = b.data_venda || '';
+      const dataA = a.data_fechamento || '';
+      const dataB = b.data_fechamento || '';
       return dataB.localeCompare(dataA);
     });
 }
 
 async function obterDetalhesChips(filtros = {}) {
-  const todasVendas = await carregarVendasNoPeriodo(filtros);
-  const vendasAtivas = filtrarPorSecao(todasVendas, 'ativas');
+  const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, 'ativacao');
+  const regrasComissao = await carregarRegrasComissaoAtivas();
+  const vendasAtivas = filtrarPorSecao(todasVendas, 'ativas', statusFinal);
   const filtradas = filtros.operadora_id
     ? vendasAtivas.filter(v => Number(v.operadora_id) === Number(filtros.operadora_id))
     : vendasAtivas;
-  const taxaComissao = normalizarTaxaComissao(filtros.taxa_comissao);
 
   const linhas = [];
+
+  function montarLinhaComRegra(venda, chip) {
+    const linha = montarLinhaChip(venda, chip);
+    const regra = encontrarRegraComissao(regrasComissao, linha.valor_unitario);
+
+    if (!regra) {
+      return {
+        ...linha,
+        regra_comissao: null,
+        comissao: null,
+        sem_regra: true
+      };
+    }
+
+    return {
+      ...linha,
+      regra_comissao: montarRegraComissaoResumo(regra),
+      comissao: Number(Number(regra.valor_comissao || 0).toFixed(2)),
+      sem_regra: false
+    };
+  }
 
   filtradas.forEach(venda => {
     const chips = parseChips(venda.valores_unitarios_chips);
@@ -365,11 +437,10 @@ async function obterDetalhesChips(filtros = {}) {
       const gigasFallback = gigasUnitarios(venda.gb, linhasFallback);
 
       for (let i = 0; i < linhasFallback; i++) {
-        linhas.push(montarLinhaChip(venda, {
+        linhas.push(montarLinhaComRegra(venda, {
           chip_index: i + 1,
           gb: gigasFallback[i] || '',
-          valor_unitario: valorFallback,
-          taxa_comissao: taxaComissao
+          valor_unitario: valorFallback
         }));
       }
       return;
@@ -380,11 +451,10 @@ async function obterDetalhesChips(filtros = {}) {
       const gigas = gigasUnitarios(item.gb, item.quantidade, venda.gb);
 
       for (let i = 0; i < item.quantidade; i++) {
-        linhas.push(montarLinhaChip(venda, {
+        linhas.push(montarLinhaComRegra(venda, {
           chip_index: chipNumero,
           gb: gigas[i] || '',
-          valor_unitario: item.valor_unitario,
-          taxa_comissao: taxaComissao
+          valor_unitario: item.valor_unitario
         }));
         chipNumero += 1;
       }
@@ -392,8 +462,8 @@ async function obterDetalhesChips(filtros = {}) {
   });
 
   const linhasOrdenadas = linhas.sort((a, b) => {
-    const dataA = a.data_venda || '';
-    const dataB = b.data_venda || '';
+    const dataA = a.data_fechamento || '';
+    const dataB = b.data_fechamento || '';
     const cmp = dataB.localeCompare(dataA);
     if (cmp !== 0) return cmp;
     return Number(a.venda_id) - Number(b.venda_id);
@@ -409,6 +479,7 @@ async function obterDetalhesChips(filtros = {}) {
       total_ugrs: 0,
       total_comissao: 0
     };
+
     atual.total_ugrs += 1;
     atual.total_comissao += linha.comissao;
     totaisVendedora.set(chave, atual);
@@ -422,7 +493,8 @@ async function obterDetalhesChips(filtros = {}) {
     total_geral: {
       chips: linhas.length,
       valor: Number(linhas.reduce((soma, l) => soma + Number(l.valor_unitario || 0), 0).toFixed(2)),
-      comissao: Number(linhas.reduce((soma, l) => soma + Number(l.comissao || 0), 0).toFixed(2))
+      comissao: Number(linhas.reduce((soma, l) => soma + Number(l.comissao || 0), 0).toFixed(2)),
+      ugrs_sem_regra: linhas.filter(linha => linha.sem_regra).length
     }
   };
 }
@@ -432,12 +504,12 @@ function montarLinhaChip(venda, chip) {
     venda_id: venda.id,
     chip_index: chip.chip_index,
     data_venda: venda.data_venda || venda.created_at || null,
+    data_ativacao: venda.data_ativacao || null,
+    data_fechamento: venda.data_ativacao || venda.data_venda || venda.created_at || null,
     status_funil: venda.status_funil,
     ddd: venda.ddd || null,
     gb: chip.gb || null,
     valor_unitario: Number(Number(chip.valor_unitario || 0).toFixed(2)),
-    taxa_comissao: chip.taxa_comissao,
-    comissao: calcularComissao(chip.valor_unitario, chip.taxa_comissao),
     operadora: venda.operadora_id ? { id: venda.operadora_id, nome: venda.operadora_nome } : null,
     vendedora: venda.vendedora_id ? {
       id: venda.vendedora_id,

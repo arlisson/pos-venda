@@ -28,6 +28,7 @@ const CAMPOS = [
   'razao_social',
   'cnpj',
   'data_venda',
+  'data_ativacao',
   'qc_feito_por',
   'observacoes',
   'cliente_id',
@@ -332,6 +333,10 @@ function montarPayload(dados) {
     payload.data_venda = normalizarData(payload.data_venda);
   }
 
+  if (payload.data_ativacao !== undefined) {
+    payload.data_ativacao = normalizarData(payload.data_ativacao);
+  }
+
   if (payload.prioridade_funil !== undefined) {
     const prioridadeNormalizada = String(payload.prioridade_funil || '').trim().toLowerCase();
     payload.prioridade_funil = FUNIL_PRIORIDADES.includes(prioridadeNormalizada)
@@ -596,6 +601,7 @@ async function listarEtapasFunilOrdenadas() {
         id: etapa.codigo,
         nome: etapa.nome,
         ordem: etapa.ordem,
+        etapa_final: Boolean(etapa.etapa_final),
         retorno: false
       }));
     }
@@ -615,9 +621,24 @@ async function listarEtapasFunilOrdenadas() {
     .map((status, index) => ({
       id: status,
       nome: FUNIL_STATUS_LABELS[status] || status,
+      etapa_final: status === 'concluido',
       ordem: index + 1,
       retorno: false
     }));
+}
+
+async function obterCodigoEtapaFinal() {
+  try {
+    const etapa = await FunilEtapa.query()
+      .where('etapa_final', true)
+      .orderBy('ativo', 'desc')
+      .orderBy('ordem', 'asc')
+      .first();
+
+    return etapa?.codigo || 'concluido';
+  } catch {
+    return 'concluido';
+  }
 }
 
 async function montarResumoFasesDinamico(vendas = []) {
@@ -767,6 +788,7 @@ async function listarVendas(filtros = {}, usuarioId) {
 async function obterResumoDashboard(usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const dataReferencia = dataReferenciaVendaSQL('v');
+  const etapaFinal = await obterCodigoEtapaFinal();
   const hoje = new Date();
   const inicioHoje = [
     hoje.getFullYear(),
@@ -784,7 +806,7 @@ async function obterResumoDashboard(usuarioId) {
     .select(
       Venda.raw('COUNT(*) as vendas_dia'),
       Venda.raw('COALESCE(SUM(COALESCE(v.valor_total, 0)), 0) as valor_dia'),
-      Venda.raw("SUM(CASE WHEN v.status_funil = 'concluido' THEN 1 ELSE 0 END) as concluidas_dia")
+      Venda.raw('SUM(CASE WHEN v.status_funil = ? THEN 1 ELSE 0 END) as concluidas_dia', [etapaFinal])
     )
     .first();
 
@@ -793,7 +815,7 @@ async function obterResumoDashboard(usuarioId) {
 
   const pipeline = await queryPipeline
     .whereNull('v.excluido_em')
-    .whereNotIn('v.status_funil', ['concluido', 'retorno'])
+    .whereNotIn('v.status_funil', [etapaFinal, 'retorno'])
     .select(
       Venda.raw('COUNT(*) as pipeline_count'),
       Venda.raw('COALESCE(SUM(COALESCE(v.valor_total, 0)), 0) as pipeline')
@@ -830,6 +852,7 @@ async function obterResumoDashboard(usuarioId) {
 async function obterRelatoriosVendas(filtros = {}) {
   const periodo = resolverPeriodoRelatorio(filtros);
   const dataReferencia = dataReferenciaVendaSQL('v');
+  const etapaFinal = await obterCodigoEtapaFinal();
   const vendedoraId = filtros.vendedora_id ? Number(filtros.vendedora_id) : null;
 
   const query = Venda.query()
@@ -857,8 +880,8 @@ async function obterRelatoriosVendas(filtros = {}) {
   }
 
   const vendas = await query;
-  const vendasAndamento = vendas.filter(venda => !['concluido', 'retorno'].includes(venda.status_funil));
-  const vendasConcluidas = vendas.filter(venda => venda.status_funil === 'concluido');
+  const vendasAndamento = vendas.filter(venda => ![etapaFinal, 'retorno'].includes(venda.status_funil));
+  const vendasConcluidas = vendas.filter(venda => venda.status_funil === etapaFinal);
   const vendasRetorno = vendas.filter(venda => venda.status_funil === 'retorno');
   const vendasValidas = vendas.filter(venda => venda.status_funil !== 'retorno');
   const chipsRetornados = vendasRetorno.reduce((total, venda) => total + obterQuantidadeChipsVenda(venda), 0);
@@ -1097,6 +1120,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   }
 
   const agora = formatarDateTimeSQL();
+  const etapaFinal = await obterCodigoEtapaFinal();
   const status = dados.status_funil;
   const observacao = String(dados.observacao || '').trim();
   const prioridadeInformada = dados.prioridade_funil !== undefined
@@ -1231,11 +1255,19 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   }
 
   const vendaAtualizada = await Venda.transaction(async trx => {
-    const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+    const dadosAtualizacao = {
       status_funil: status,
       prioridade_funil: prioridade,
       ultima_atividade_em: agora,
       updated_at: agora
+    };
+
+    if (status === etapaFinal && !venda.data_ativacao) {
+      dadosAtualizacao.data_ativacao = normalizarData(dados.data_ativacao) || agora.slice(0, 10);
+    }
+
+    const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+      ...dadosAtualizacao
     });
 
     await registrarHistoricoVenda({

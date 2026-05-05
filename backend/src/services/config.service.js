@@ -4,6 +4,7 @@ const TipoProduto = require('../models/TipoProduto');
 const TipoVenda = require('../models/TipoVenda');
 const Servico = require('../models/Servico');
 const FunilEtapa = require('../models/FunilEtapa');
+const RegraComissao = require('../models/RegraComissao');
 const Venda = require('../models/Venda');
 
 function orderConfig(query) {
@@ -40,6 +41,13 @@ async function listarFunilEtapas() {
     .orderBy('nome', 'asc');
 }
 
+async function listarRegrasComissao() {
+  return RegraComissao.query()
+    .orderBy('ordem', 'asc')
+    .orderBy('valor_min', 'asc')
+    .orderBy('valor_max', 'asc');
+}
+
 async function listarOperadorasAtivas() {
   return Operadora.query()
     .where('ativo', true)
@@ -71,6 +79,14 @@ async function listarLinksExternosAtivos() {
     .where('ativo', true)
     .orderBy('ordem', 'asc')
     .orderBy('nome', 'asc');
+}
+
+async function listarRegrasComissaoAtivas() {
+  return RegraComissao.query()
+    .where('ativo', true)
+    .orderBy('ordem', 'asc')
+    .orderBy('valor_min', 'asc')
+    .orderBy('valor_max', 'asc');
 }
 
 async function criarOperadora(dados) {
@@ -179,11 +195,15 @@ async function criarFunilEtapa(dados) {
     throw new Error('Informe um nome valido para a etapa.');
   }
 
+  const etapaFinal = Boolean(dados.etapa_final);
+  await validarEtapaFinalUnica(etapaFinal);
+
   return FunilEtapa.query().insert({
     codigo,
     nome: dados.nome,
     ativo: dados.ativo ?? true,
-    ordem: dados.ordem ?? 0
+    ordem: dados.ordem ?? 0,
+    etapa_final: etapaFinal
   });
 }
 
@@ -194,8 +214,26 @@ async function atualizarFunilEtapa(id, dados) {
   if (dados.nome !== undefined) atualizacao.nome = dados.nome;
   if (dados.ativo !== undefined) atualizacao.ativo = dados.ativo;
   if (dados.ordem !== undefined) atualizacao.ordem = dados.ordem;
+  if (dados.etapa_final !== undefined) atualizacao.etapa_final = Boolean(dados.etapa_final);
+
+  await validarEtapaFinalUnica(atualizacao.etapa_final, id);
 
   return FunilEtapa.query().patchAndFetchById(id, atualizacao);
+}
+
+async function validarEtapaFinalUnica(etapaFinal, ignorarId = null) {
+  if (!etapaFinal) return;
+
+  const existente = await FunilEtapa.query()
+    .where('etapa_final', true)
+    .modify(query => {
+      if (ignorarId) query.whereNot('id', Number(ignorarId));
+    })
+    .first();
+
+  if (existente) {
+    throw new Error('Ja existe uma etapa final definida para o funil.');
+  }
 }
 
 async function excluirFunilEtapa(id) {
@@ -226,6 +264,93 @@ async function excluirFunilEtapa(id) {
     vendasCount,
     etapa
   };
+}
+
+function parseValorMonetario(valor) {
+  if (valor === undefined || valor === null || valor === '') return null;
+  const texto = String(valor).trim();
+
+  if (!texto) return null;
+  if (texto.includes(',')) {
+    return Number(texto.replace(/\./g, '').replace(',', '.'));
+  }
+
+  return Number(texto);
+}
+
+function normalizarRegraComissao(dados) {
+  const valorMin = parseValorMonetario(dados.valor_min);
+  const valorMax = parseValorMonetario(dados.valor_max);
+  const valorComissao = parseValorMonetario(dados.valor_comissao);
+
+  if (!Number.isFinite(valorMin) || valorMin < 0) {
+    throw new Error('Informe um valor inicial valido.');
+  }
+
+  if (!Number.isFinite(valorMax) || valorMax < 0) {
+    throw new Error('Informe um valor final valido.');
+  }
+
+  if (valorMax < valorMin) {
+    throw new Error('O valor final deve ser maior ou igual ao valor inicial.');
+  }
+
+  if (!Number.isFinite(valorComissao) || valorComissao < 0) {
+    throw new Error('Informe uma comissao valida.');
+  }
+
+  return {
+    valor_min: Number(valorMin.toFixed(2)),
+    valor_max: Number(valorMax.toFixed(2)),
+    valor_comissao: Number(valorComissao.toFixed(2)),
+    ativo: dados.ativo ?? true,
+    ordem: Number(dados.ordem || 0)
+  };
+}
+
+async function validarSobreposicaoRegraComissao(regra, ignorarId = null) {
+  if (!regra.ativo) return;
+
+  const sobreposta = await RegraComissao.query()
+    .where('ativo', true)
+    .where('valor_min', '<=', regra.valor_max)
+    .where('valor_max', '>=', regra.valor_min)
+    .modify(query => {
+      if (ignorarId) query.whereNot('id', Number(ignorarId));
+    })
+    .first();
+
+  if (sobreposta) {
+    throw new Error('Ja existe uma regra ativa que sobrepoe essa faixa de valor.');
+  }
+}
+
+async function criarRegraComissao(dados) {
+  const regra = normalizarRegraComissao(dados);
+  await validarSobreposicaoRegraComissao(regra);
+
+  return RegraComissao.query().insert(regra);
+}
+
+async function atualizarRegraComissao(id, dados) {
+  const atual = await RegraComissao.query().findById(id);
+
+  if (!atual) return null;
+
+  const regra = normalizarRegraComissao({
+    valor_min: dados.valor_min ?? atual.valor_min,
+    valor_max: dados.valor_max ?? atual.valor_max,
+    valor_comissao: dados.valor_comissao ?? atual.valor_comissao,
+    ativo: dados.ativo ?? atual.ativo,
+    ordem: dados.ordem ?? atual.ordem
+  });
+  await validarSobreposicaoRegraComissao(regra, id);
+
+  return RegraComissao.query().patchAndFetchById(id, regra);
+}
+
+async function excluirRegraComissao(id) {
+  return RegraComissao.query().deleteById(id);
 }
 
 async function criarLinkExterno(dados) {
@@ -282,6 +407,11 @@ module.exports = {
   criarFunilEtapa,
   atualizarFunilEtapa,
   excluirFunilEtapa,
+  listarRegrasComissao,
+  listarRegrasComissaoAtivas,
+  criarRegraComissao,
+  atualizarRegraComissao,
+  excluirRegraComissao,
   listarLinksExternos,
   listarLinksExternosAtivos,
   criarLinkExterno,

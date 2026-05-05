@@ -111,7 +111,7 @@ function AppRoutes() {
       />
       <Route
         path="/configuracoes"
-        element={<PrivateRoute permission={['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos']}><ConfiguracoesPage /></PrivateRoute>}
+        element={<PrivateRoute permission={['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos', 'crud_regras_comissao']}><ConfiguracoesPage /></PrivateRoute>}
       />
 
       <Route path="*" element={<Navigate to="/" replace />} />

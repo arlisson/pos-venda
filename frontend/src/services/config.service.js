@@ -24,6 +24,10 @@ export async function listarEtapasFunil() {
   return apiGet('/config/funil-etapas');
 }
 
+export async function listarRegrasComissao() {
+  return apiGet('/config/regras-comissao');
+}
+
 export async function listarOperadorasAdmin() {
   return apiGet('/config/admin/operadoras');
 }
@@ -102,6 +106,22 @@ export async function atualizarEtapaFunil(id, dados) {
 
 export async function excluirEtapaFunil(id) {
   return apiDelete(`/config/admin/funil-etapas/${id}`);
+}
+
+export async function listarRegrasComissaoAdmin() {
+  return apiGet('/config/admin/regras-comissao');
+}
+
+export async function criarRegraComissao(dados) {
+  return apiPost('/config/admin/regras-comissao', dados);
+}
+
+export async function atualizarRegraComissao(id, dados) {
+  return apiPut(`/config/admin/regras-comissao/${id}`, dados);
+}
+
+export async function excluirRegraComissao(id) {
+  return apiDelete(`/config/admin/regras-comissao/${id}`);
 }
 
 export async function listarLinksExternosAdmin() {

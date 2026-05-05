@@ -72,6 +72,16 @@ async function funilEtapas(req, res) {
   }
 }
 
+async function regrasComissao(req, res) {
+  try {
+    const dados = await configService.listarRegrasComissaoAtivas();
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar regras de comissao.' });
+  }
+}
+
 async function adminOperadoras(req, res) {
   try {
     const dados = await configService.listarOperadoras();
@@ -242,13 +252,63 @@ async function adminFunilEtapas(req, res) {
   }
 }
 
+async function adminRegrasComissao(req, res) {
+  try {
+    const dados = await configService.listarRegrasComissao();
+    return res.json(dados);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar regras de comissao.' });
+  }
+}
+
+async function criarRegraComissao(req, res) {
+  try {
+    const regra = await configService.criarRegraComissao(req.body);
+    return res.status(201).json(regra);
+  } catch (error) {
+    console.error(error);
+    return res.status(400).json({ message: error.message || 'Erro ao criar regra de comissao.' });
+  }
+}
+
+async function atualizarRegraComissao(req, res) {
+  try {
+    const regra = await configService.atualizarRegraComissao(req.params.id, req.body);
+
+    if (!regra) {
+      return res.status(404).json({ message: 'Regra de comissao nao encontrada.' });
+    }
+
+    return res.json(regra);
+  } catch (error) {
+    console.error(error);
+    return res.status(400).json({ message: error.message || 'Erro ao atualizar regra de comissao.' });
+  }
+}
+
+async function excluirRegraComissao(req, res) {
+  try {
+    const totalExcluido = await configService.excluirRegraComissao(req.params.id);
+
+    if (!totalExcluido) {
+      return res.status(404).json({ message: 'Regra de comissao nao encontrada.' });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao excluir regra de comissao.' });
+  }
+}
+
 async function criarFunilEtapa(req, res) {
   try {
     const etapa = await configService.criarFunilEtapa(req.body);
     return res.status(201).json(etapa);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: error.message || 'Erro ao criar etapa do funil.' });
+    return res.status(400).json({ message: error.message || 'Erro ao criar etapa do funil.' });
   }
 }
 
@@ -263,7 +323,7 @@ async function atualizarFunilEtapa(req, res) {
     return res.json(etapa);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: error.message || 'Erro ao atualizar etapa do funil.' });
+    return res.status(400).json({ message: error.message || 'Erro ao atualizar etapa do funil.' });
   }
 }
 
@@ -379,6 +439,7 @@ module.exports = {
   tiposVenda,
   servicos,
   funilEtapas,
+  regrasComissao,
   adminOperadoras,
   criarOperadora,
   atualizarOperadora,
@@ -399,6 +460,10 @@ module.exports = {
   criarFunilEtapa,
   atualizarFunilEtapa,
   excluirFunilEtapa,
+  adminRegrasComissao,
+  criarRegraComissao,
+  atualizarRegraComissao,
+  excluirRegraComissao,
   adminLinksExternos,
   criarLinkExterno,
   atualizarLinkExterno,

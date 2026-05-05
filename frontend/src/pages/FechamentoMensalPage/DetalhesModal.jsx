@@ -29,6 +29,7 @@ function DetalhesModal({ secao, periodo, onClose }) {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     let ativo = true;
     setLoading(true);
@@ -52,6 +53,7 @@ function DetalhesModal({ secao, periodo, onClose }) {
       ativo = false;
     };
   }, [secao, periodo]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const titulosSecao = {
     total: 'Detalhes — Total de vendas',
@@ -90,7 +92,8 @@ function DetalhesModal({ secao, periodo, onClose }) {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Data</th>
+                    <th>Data venda</th>
+                    <th>Data ativacao</th>
                     <th>Vendedora</th>
                     <th>Cliente</th>
                     <th>CNPJ</th>
@@ -110,6 +113,7 @@ function DetalhesModal({ secao, periodo, onClose }) {
                     <tr key={venda.id}>
                       <td>{venda.id}</td>
                       <td>{fmtData(venda.data_venda)}</td>
+                      <td>{fmtData(venda.data_ativacao)}</td>
                       <td>{venda.vendedora?.nome || '—'}</td>
                       <td>{venda.cliente?.nome || venda.cliente?.razao_social || '—'}</td>
                       <td>{venda.cliente?.cnpj || '—'}</td>

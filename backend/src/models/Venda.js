@@ -38,6 +38,7 @@ class Venda extends Model {
         razao_social: { type: ['string', 'null'], maxLength: 240 },
         cnpj: { type: ['string', 'null'], maxLength: 20 },
         data_venda: { type: ['string', 'null'] },
+        data_ativacao: { type: ['string', 'null'] },
         qc_feito_por: { type: ['string', 'null'], maxLength: 120 },
         observacoes: { type: ['string', 'null'] },
         dia_vencimento: { type: ['integer', 'null'] },
