@@ -19,6 +19,11 @@ router.post(
   exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']),
   vendaController.emailTemplate
 );
+router.get(
+  '/:id/xlsx-claro',
+  exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']),
+  vendaController.xlsxClaro
+);
 router.post(
   '/',
   exigirUmaPermissao(['vendas_criar']),

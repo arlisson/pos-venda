@@ -6,6 +6,7 @@ import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import {
   atualizarVenda,
+  baixarXlsxClaro,
   criarVenda,
   deletarVenda,
   gerarEmailVenda,
@@ -24,71 +25,111 @@ const VENDA_VAZIA = {
   telefone: '',
   email: '',
   email_2: '',
-  nome_representante_legal: '',
   fixo_ddd: '',
-  nome_fechou_venda: '',
+  razao_social: '',
+  cnpj: '',
+  // Representante Legal
+  nome_representante_legal: '',
   cpf_representante_legal: '',
+  telefone_representante_legal: '',
+  email_representante_legal: '',
+  // Administrador
+  nome_administrador: '',
+  cpf_administrador: '',
+  telefone_administrador: '',
+  email_administrador: '',
+  // Dados da venda
+  nome_fechou_venda: '',
   setor_funcao: '',
   produto_fechado: '',
+  qc_feito_por: '',
+  data_venda: '',
+  // Produto e valores
   tipo_venda_id: '',
   servico_id: '',
   quantidade_linhas: '',
   ddd: '',
-  numeros_portados: '',
   gb: '',
   valores_unitarios_chips: '',
   valor_total: '',
-  ponto_referencia: '',
-  tipo_local_cpf: '',
-  razao_social: '',
-  cnpj: '',
-  data_venda: '',
-  qc_feito_por: '',
-  observacoes: '',
+  numeros_portados: '',
   dia_vencimento: '',
+  // Endereço
+  cep: '',
   endereco: '',
   numero_endereco: '',
   complemento: '',
   bairro: '',
   municipio: '',
   uf: '',
-  cep: '',
+  ponto_referencia: '',
+  tipo_local_cpf: '',
+  // Aceite e recebimento
   horario_aceite_voz: '',
+  horario_aceite_inicio: '',
+  horario_aceite_fim: '',
+  dia_aceite_inicio: '',
+  dia_aceite_fim: '',
+  protocolo: '',
+  login: '',
+  senha: '',
   responsavel_recebimento: '',
   rg_responsavel_recebimento: '',
-  nome_administrador: '',
-  cpf_administrador: '',
+  responsavel_recebimento_2: '',
+  rg_responsavel_recebimento_2: '',
+  responsavel_recebimento_3: '',
+  rg_responsavel_recebimento_3: '',
+  observacoes: '',
+  // Referências
   operadora_id: '',
-  vendedora_id: ''
+  vendedora_id: '',
+  vendedoras: []
 };
 
-const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '' };
+const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '', vendedora_id: '' };
 const NUMERO_PORTADO_VAZIO = '';
 
-const CAMPOS_CLIENTE_DERIVADOS = [
-  'nome',
-  'telefone',
-  'email',
-  'email_2',
-  'nome_representante_legal',
-  'fixo_ddd',
-  'cpf_representante_legal',
-  'razao_social',
-  'cnpj',
-  'nome_administrador',
-  'cpf_administrador'
+const DIAS_SEMANA = [
+  { value: 'segunda', label: 'Segunda-feira' },
+  { value: 'terca', label: 'Terça-feira' },
+  { value: 'quarta', label: 'Quarta-feira' },
+  { value: 'quinta', label: 'Quinta-feira' },
+  { value: 'sexta', label: 'Sexta-feira' },
+  { value: 'sabado', label: 'Sábado' },
+  { value: 'domingo', label: 'Domingo' },
 ];
 
 const CAMPOS = [
   { section: 'Cliente' },
   { name: 'cliente_id', label: 'Cliente', type: 'client', required: true, span: true },
   { name: 'cnpj', label: 'CNPJ para preencher dados', type: 'cnpj' },
-  { name: 'vendedora_id', label: 'Vendedora', type: 'seller', required: true },
+  { name: 'vendedoras', label: 'Vendedoras', type: 'sellers', span: true },
+
+  { section: 'Dados do cliente' },
+  { name: 'nome', label: 'Nome / Fantasia' },
+  { name: 'razao_social', label: 'Razão Social' },
+  { name: 'telefone', label: 'Celular' },
+  { name: 'fixo_ddd', label: 'Telefone fixo' },
+  { name: 'email', label: 'E-mail' },
+  { name: 'email_2', label: 'E-mail 2' },
+
+  { section: 'Representante Legal (RL)' },
+  { name: 'nome_representante_legal', label: 'Nome RL' },
+  { name: 'cpf_representante_legal', label: 'CPF RL' },
+  { name: 'telefone_representante_legal', label: 'Telefone RL' },
+  { name: 'email_representante_legal', label: 'E-mail RL' },
+
+  { section: 'Administrador (ADM)' },
+  { name: 'nome_administrador', label: 'Nome ADM' },
+  { name: 'cpf_administrador', label: 'CPF ADM' },
+  { name: 'telefone_administrador', label: 'Telefone ADM' },
+  { name: 'email_administrador', label: 'E-mail ADM' },
 
   { section: 'Dados da venda' },
   { name: 'data_venda', label: 'Data da venda', type: 'date' },
   { name: 'nome_fechou_venda', label: 'Nome com quem fechou a venda' },
   { name: 'setor_funcao', label: 'Setor/Função' },
+  { name: 'produto_fechado', label: 'Produto fechado' },
   { name: 'qc_feito_por', label: 'QC feito por' },
 
   { section: 'Produto e valores' },
@@ -104,7 +145,7 @@ const CAMPOS = [
   { section: 'Local de instalação/entrega' },
   { name: 'cep', label: 'CEP' },
   { name: 'endereco', label: 'Endereço', type: 'longText' },
-  { name: 'numero_endereco', label: 'Número de endereço' },
+  { name: 'numero_endereco', label: 'Número' },
   { name: 'complemento', label: 'Complemento', type: 'longText' },
   { name: 'bairro', label: 'Bairro' },
   { name: 'municipio', label: 'Município' },
@@ -113,9 +154,12 @@ const CAMPOS = [
   { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condomínio, shopping...', type: 'longText', span: true },
 
   { section: 'Aceite e recebimento' },
-  { name: 'horario_aceite_voz', label: 'Horário para aceite de voz' },
-  { name: 'responsavel_recebimento', label: 'Responsável pelo recebimento' },
-  { name: 'rg_responsavel_recebimento', label: 'RG do responsável pelo recebimento' },
+  { name: 'horario_aceite_range', label: 'Janela do aceite', type: 'timeRange', nameDe: 'horario_aceite_inicio', nameAte: 'horario_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
+  { name: 'dia_aceite_range', label: 'Dias para aceite', type: 'dayRange', nameDe: 'dia_aceite_inicio', nameAte: 'dia_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
+  { name: 'protocolo', label: 'Protocolo' },
+  { name: 'login', label: 'Login (portal do cliente)' },
+  { name: 'senha', label: 'Senha (portal do cliente)' },
+  { name: 'responsaveis_recebimento', type: 'responsaveis', span: true },
   { name: 'observacoes', label: 'Observações', type: 'longText', span: true, maxRows: 6 },
 ];
 
@@ -292,7 +336,7 @@ function formatarDiaVencimento(valor) {
 }
 
 function formatarCampoVenda(campo, valor) {
-  if (campo === 'telefone') return formatarTelefoneComDdd(valor, true);
+  if (campo === 'telefone' || campo === 'telefone_representante_legal' || campo === 'telefone_administrador') return formatarTelefoneComDdd(valor, true);
   if (campo === 'fixo_ddd') return formatarTelefoneComDdd(valor, false);
   if (campo === 'cpf_representante_legal' || campo === 'cpf_administrador') return formatarCpf(valor);
   if (campo === 'cnpj') return formatarCnpj(valor);
@@ -305,7 +349,10 @@ function formatarCampoVenda(campo, valor) {
 }
 
 function getInputModeCampo(campo) {
-  if (['telefone', 'fixo_ddd', 'cpf_representante_legal', 'cpf_administrador', 'cnpj', 'cep', 'ddd', 'quantidade_linhas', 'dia_vencimento'].includes(campo)) {
+  if ([
+    'telefone', 'fixo_ddd', 'telefone_representante_legal', 'telefone_administrador',
+    'cpf_representante_legal', 'cpf_administrador', 'cnpj', 'cep', 'ddd', 'quantidade_linhas', 'dia_vencimento'
+  ].includes(campo)) {
     return 'numeric';
   }
 
@@ -316,6 +363,8 @@ function getMaxLengthCampo(campo, maxLength) {
   const limites = {
     telefone: 15,
     fixo_ddd: 14,
+    telefone_representante_legal: 15,
+    telefone_administrador: 15,
     cpf_representante_legal: 14,
     cpf_administrador: 14,
     cnpj: 18,
@@ -350,7 +399,8 @@ function parseItensChips(valor, gbPadrao = '') {
     const itens = valor.map(item => ({
       quantidade: item.quantidade ? String(item.quantidade) : '',
       gb: item.gb ? String(item.gb) : (gbPadrao ? String(gbPadrao) : ''),
-      valor_unitario: item.valor_unitario ? String(item.valor_unitario).replace('.', ',') : ''
+      valor_unitario: item.valor_unitario ? String(item.valor_unitario).replace('.', ',') : '',
+      vendedora_id: item.vendedora_id ? String(item.vendedora_id) : ''
     }));
 
     return itens.length > 0 ? itens : [{ ...ITEM_CHIP_VAZIO }];
@@ -431,6 +481,11 @@ function montarNumerosPortados(valor) {
 }
 
 function normalizarVenda(venda) {
+  // Montar array de vendedoras a partir da relação (junction) ou do campo legado
+  const vendedorasIds = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
+    ? venda.vendedoras.map(v => String(v.id || v))
+    : venda.vendedora_id ? [String(venda.vendedora_id)] : [];
+
   return {
     ...VENDA_VAZIA,
     ...venda,
@@ -444,13 +499,15 @@ function normalizarVenda(venda) {
     tipo_venda_id: venda.tipo_venda_id ? String(venda.tipo_venda_id) : '',
     servico_id: venda.servico_id ? String(venda.servico_id) : '',
     vendedora_id: venda.vendedora_id ? String(venda.vendedora_id) : '',
+    vendedoras: vendedorasIds,
     cliente_id: venda.cliente_id ? String(venda.cliente_id) : ''
   };
 }
 
-function ItensChipsInput({ value, onChange }) {
+function ItensChipsInput({ value, onChange, vendedoras = [] }) {
   const itens = Array.isArray(value) && value.length > 0 ? value : [{ ...ITEM_CHIP_VAZIO }];
   const total = calcularTotalItensChips(itens);
+  const mostrarVendedora = vendedoras.length > 1;
 
   function atualizarItem(index, campo, novoValor) {
     onChange(itens.map((item, itemIndex) => (
@@ -468,12 +525,13 @@ function ItensChipsInput({ value, onChange }) {
   }
 
   return (
-    <div className="chip-items">
+    <div className={`chip-items${mostrarVendedora ? ' chip-items--com-vendedora' : ''}`}>
       <div className="chip-items__head">
         <span>Quantidade</span>
         <span>GB</span>
-        <span>Valor unitario</span>
+        <span>Valor unitário</span>
         <span>Subtotal</span>
+        {mostrarVendedora && <span>Vendedora</span>}
         <span></span>
       </div>
 
@@ -503,6 +561,17 @@ function ItensChipsInput({ value, onChange }) {
               placeholder="29,99"
             />
             <div className="chip-item-subtotal">{formatarMoeda(subtotal)}</div>
+            {mostrarVendedora && (
+              <select
+                value={item.vendedora_id || ''}
+                onChange={e => atualizarItem(index, 'vendedora_id', e.target.value)}
+              >
+                <option value="">—</option>
+                {vendedoras.map(v => (
+                  <option key={v.id} value={String(v.id)}>{v.nome}</option>
+                ))}
+              </select>
+            )}
             <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerItem(index)} title="Remover item">
               <I.Trash size={13} />
             </button>
@@ -516,6 +585,66 @@ function ItensChipsInput({ value, onChange }) {
         </button>
         <strong>{formatarMoeda(total)}</strong>
       </div>
+    </div>
+  );
+}
+
+function VendedorasSelect({ value = [], options = [], onChange }) {
+  const [dropdownAberto, setDropdownAberto] = useState(false);
+  const wrapperRef = useRef(null);
+
+  const selecionadas = options.filter(v => value.includes(String(v.id)));
+  const disponiveis = options.filter(v => !value.includes(String(v.id)));
+
+  useEffect(() => {
+    function handleClickFora(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setDropdownAberto(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickFora);
+    return () => document.removeEventListener('mousedown', handleClickFora);
+  }, []);
+
+  function adicionar(vendedora) {
+    onChange([...value, String(vendedora.id)]);
+    setDropdownAberto(false);
+  }
+
+  function remover(id) {
+    onChange(value.filter(v => v !== String(id)));
+  }
+
+  return (
+    <div className="vendedoras-select" ref={wrapperRef}>
+      <div className="vendedoras-chips">
+        {selecionadas.map(v => (
+          <span key={v.id} className="vendedoras-chip">
+            {v.nome}
+            <button type="button" onClick={() => remover(v.id)} title="Remover">
+              <I.Close size={11} />
+            </button>
+          </span>
+        ))}
+        {disponiveis.length > 0 && (
+          <button
+            type="button"
+            className="btn btn-sm vendedoras-add-btn"
+            onClick={() => setDropdownAberto(prev => !prev)}
+          >
+            <I.Plus size={13} /> Adicionar vendedora
+          </button>
+        )}
+      </div>
+      {dropdownAberto && disponiveis.length > 0 && (
+        <div className="vendedoras-dropdown">
+          {disponiveis.map(v => (
+            <button key={v.id} type="button" className="vendedoras-dropdown__item" onClick={() => adicionar(v)}>
+              {v.nome}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -561,6 +690,61 @@ function NumerosPortadosInput({ value, onChange }) {
           <I.Plus size={13} /> Adicionar numero
         </button>
       </div>
+    </div>
+  );
+}
+
+function ResponsaveisRecebimentoInput({ form, onChange }) {
+  const slots = [
+    { nomeKey: 'responsavel_recebimento', rgKey: 'rg_responsavel_recebimento' },
+    { nomeKey: 'responsavel_recebimento_2', rgKey: 'rg_responsavel_recebimento_2' },
+    { nomeKey: 'responsavel_recebimento_3', rgKey: 'rg_responsavel_recebimento_3' },
+  ];
+  const preenchidos = slots.reduce((total, slot, index) => (
+    form[slot.nomeKey] || form[slot.rgKey] ? index + 1 : total
+  ), 1);
+  const [linhasVisiveis, setLinhasVisiveis] = useState(Math.max(1, preenchidos));
+  const visiveis = slots.slice(0, linhasVisiveis);
+
+  function removerLinha(index) {
+    const slot = slots[index];
+    onChange(slot.nomeKey, '');
+    onChange(slot.rgKey, '');
+    setLinhasVisiveis(prev => Math.max(1, prev - 1));
+  }
+
+  return (
+    <div className="responsaveis-list">
+      {visiveis.map((slot, index) => (
+        <div key={slot.nomeKey} className="responsavel-row">
+          <span className="responsavel-row__num">{index + 1}</span>
+          <div className="responsavel-row__campos">
+            <input
+              type="text"
+              placeholder="Nome do responsável"
+              value={form[slot.nomeKey] || ''}
+              onChange={event => onChange(slot.nomeKey, event.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="RG"
+              value={form[slot.rgKey] || ''}
+              onChange={event => onChange(slot.rgKey, event.target.value)}
+            />
+          </div>
+          {linhasVisiveis > 1 && (
+            <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerLinha(index)} title="Remover responsável">
+              <I.Trash size={13} />
+            </button>
+          )}
+        </div>
+      ))}
+
+      {linhasVisiveis < slots.length && (
+        <button type="button" className="btn btn-sm responsaveis-add-btn" onClick={() => setLinhasVisiveis(prev => Math.min(prev + 1, slots.length))}>
+          <I.Plus size={13} /> Adicionar responsável
+        </button>
+      )}
     </div>
   );
 }
@@ -775,16 +959,27 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
   }
 
   function atualizarClienteVenda(valor) {
-    const clienteSelecionado = clientes.find(cliente => String(cliente.id) === String(valor));
+    const c = clientes.find(cliente => String(cliente.id) === String(valor));
 
-    setForm(prev => ({
-      ...prev,
-      cliente_id: valor,
-      nome: prev.nome || clienteSelecionado?.nome || '',
-      razao_social: prev.razao_social || clienteSelecionado?.razao_social || '',
-      cnpj: prev.cnpj || formatarCnpj(clienteSelecionado?.cnpj || ''),
-      email: prev.email || clienteSelecionado?.email || ''
-    }));
+    setForm(prev => {
+      const telefoneWhatsapp = c ? formatarTelefoneComDdd([c.whatsapp_ddd, c.whatsapp_numero].filter(Boolean).join(''), true) : '';
+      const telefoneFixo = c ? formatarTelefoneComDdd([c.fixo_ddd, c.fixo_numero].filter(Boolean).join(''), false) : '';
+      const nomeRl = c?.responsavel_tipo === 'rl' ? (c.responsavel_nome || '') : '';
+      const nomeAdm = c?.responsavel_tipo === 'adm' ? (c.responsavel_nome || '') : '';
+
+      return {
+        ...prev,
+        cliente_id: valor,
+        nome: prev.nome || c?.nome || '',
+        razao_social: prev.razao_social || c?.razao_social || '',
+        cnpj: prev.cnpj || formatarCnpj(c?.cnpj || ''),
+        email: prev.email || c?.email || '',
+        telefone: prev.telefone || telefoneWhatsapp || '',
+        fixo_ddd: prev.fixo_ddd || telefoneFixo || '',
+        nome_representante_legal: prev.nome_representante_legal || nomeRl,
+        nome_administrador: prev.nome_administrador || nomeAdm,
+      };
+    });
   }
 
   function aplicarDadosCnpj(dados, sobrescrever = false) {
@@ -947,24 +1142,22 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
         return;
       }
 
+      const chipsProcessados = (form.valores_unitarios_chips || [])
+        .map(item => ({
+          quantidade: Number(item.quantidade || 0),
+          gb: String(item.gb || '').trim(),
+          valor_unitario: parseValorInput(item.valor_unitario),
+          ...(item.vendedora_id ? { vendedora_id: Number(item.vendedora_id) } : {})
+        }))
+        .filter(item => item.quantidade > 0 && item.valor_unitario > 0);
+
       const payload = {
         ...form,
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
-        valores_unitarios_chips: (form.valores_unitarios_chips || [])
-          .map(item => ({
-            quantidade: Number(item.quantidade || 0),
-            gb: String(item.gb || '').trim(),
-            valor_unitario: parseValorInput(item.valor_unitario)
-          }))
-          .filter(item => item.quantidade > 0 && item.valor_unitario > 0)
+        valores_unitarios_chips: chipsProcessados,
+        vendedoras: (form.vendedoras || []).map(Number).filter(Boolean)
       };
-
-      if (payload.cliente_id) {
-        CAMPOS_CLIENTE_DERIVADOS.forEach((campo) => {
-          payload[campo] = null;
-        });
-      }
 
       payload.valor_total = calcularTotalItensChips(form.valores_unitarios_chips);
       payload.gb = resumirGigasItensChips(payload.valores_unitarios_chips);
@@ -1023,9 +1216,13 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                 return null;
               }
 
+              const labelCampo = campo.type === 'responsaveis'
+                ? 'Responsáveis pelo recebimento'
+                : campo.label;
+
               return (
                 <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''}`}>
-                  <label>{campo.label}</label>
+                  {labelCampo && <label>{labelCampo}</label>}
                   {campo.type === 'client' ? (
                     <ClienteVendaSelect
                       value={form[campo.name] ?? ''}
@@ -1059,7 +1256,45 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                         </button>
                       </div>
                     </>
-                  ) : ['seller', 'operator', 'saleType', 'service'].includes(campo.type) ? (
+                  ) : campo.type === 'sellers' ? (
+                    <VendedorasSelect
+                      value={form.vendedoras || []}
+                      options={vendedoras}
+                      onChange={ids => setForm(prev => ({ ...prev, vendedoras: ids }))}
+                    />
+                  ) : campo.type === 'timeRange' ? (
+                    <div className="range-pair">
+                      <div className="range-pair__item">
+                        <label className="range-pair__label">{campo.labelDe}</label>
+                        <input type="time" value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)} />
+                      </div>
+                      <div className="range-pair__sep">até</div>
+                      <div className="range-pair__item">
+                        <label className="range-pair__label">{campo.labelAte}</label>
+                        <input type="time" value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)} />
+                      </div>
+                    </div>
+                  ) : campo.type === 'dayRange' ? (
+                    <div className="range-pair">
+                      <div className="range-pair__item">
+                        <label className="range-pair__label">{campo.labelDe}</label>
+                        <select value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)}>
+                          <option value="">Selecione</option>
+                          {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                        </select>
+                      </div>
+                      <div className="range-pair__sep">até</div>
+                      <div className="range-pair__item">
+                        <label className="range-pair__label">{campo.labelAte}</label>
+                        <select value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)}>
+                          <option value="">Selecione</option>
+                          {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  ) : campo.type === 'responsaveis' ? (
+                    <ResponsaveisRecebimentoInput form={form} onChange={atualizarCampo} />
+                  ) : ['operator', 'saleType', 'service'].includes(campo.type) ? (
                     <select
                       value={form[campo.name] ?? ''}
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
@@ -1067,13 +1302,11 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                     >
                       <option value="">Selecione</option>
                       {(
-                        campo.type === 'seller'
-                          ? vendedoras
-                          : campo.type === 'operator'
-                            ? operadoras
-                            : campo.type === 'saleType'
-                              ? tiposVenda
-                              : servicos
+                        campo.type === 'operator'
+                          ? operadoras
+                          : campo.type === 'saleType'
+                            ? tiposVenda
+                            : servicos
                       ).map(item => (
                         <option key={item.id} value={item.id}>{item.nome}</option>
                       ))}
@@ -1082,6 +1315,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
                     <ItensChipsInput
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
+                      vendedoras={vendedoras.filter(v => (form.vendedoras || []).includes(String(v.id)))}
                     />
                   ) : campo.type === 'portedNumbers' ? (
                     <NumerosPortadosInput
@@ -1241,6 +1475,7 @@ function VendasPage() {
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [emailTemplate, setEmailTemplate] = useState(null);
   const [gerandoEmailId, setGerandoEmailId] = useState(null);
+  const [baixandoXlsxId, setBaixandoXlsxId] = useState(null);
   const [copiandoEmail, setCopiandoEmail] = useState(false);
   const usuarioLogado = getUsuarioLocal();
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
@@ -1388,6 +1623,19 @@ function VendasPage() {
       setErro(error.message || 'Erro ao excluir venda.');
     } finally {
       setDeletando(false);
+    }
+  }
+
+  async function handleBaixarXlsxClaro(venda) {
+    setErro('');
+    setBaixandoXlsxId(venda.id);
+    try {
+      const nome = venda.razao_social || venda.cliente?.razao_social || venda.cliente?.nome || venda.id;
+      await baixarXlsxClaro(venda.id, nome);
+    } catch (error) {
+      setErro(error.message || 'Erro ao gerar planilha Claro.');
+    } finally {
+      setBaixandoXlsxId(null);
     }
   }
 
@@ -1676,6 +1924,19 @@ function VendasPage() {
                         >
                           <I.Note size={13} />
                         </button>
+                        {/claro/i.test(venda.operadora?.nome) && (
+                          <button
+                            className="btn btn-icon btn-ghost"
+                            title="Baixar planilha Claro"
+                            disabled={baixandoXlsxId === venda.id}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleBaixarXlsxClaro(venda);
+                            }}
+                          >
+                            <I.Download size={13} />
+                          </button>
+                        )}
                       </td>
                       {podeExcluirVenda && (
                         <td className="vendas-actions-col vendas-delete-actions-col">

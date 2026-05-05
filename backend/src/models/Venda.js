@@ -49,10 +49,25 @@ class Venda extends Model {
         uf: { type: ['string', 'null'], maxLength: 2 },
         cep: { type: ['string', 'null'], maxLength: 20 },
         horario_aceite_voz: { type: ['string', 'null'], maxLength: 120 },
+        horario_aceite_inicio: { type: ['string', 'null'], maxLength: 10 },
+        horario_aceite_fim: { type: ['string', 'null'], maxLength: 10 },
+        dia_aceite_inicio: { type: ['string', 'null'], maxLength: 20 },
+        dia_aceite_fim: { type: ['string', 'null'], maxLength: 20 },
         responsavel_recebimento: { type: ['string', 'null'], maxLength: 240 },
         rg_responsavel_recebimento: { type: ['string', 'null'], maxLength: 40 },
+        responsavel_recebimento_2: { type: ['string', 'null'], maxLength: 240 },
+        rg_responsavel_recebimento_2: { type: ['string', 'null'], maxLength: 40 },
+        responsavel_recebimento_3: { type: ['string', 'null'], maxLength: 240 },
+        rg_responsavel_recebimento_3: { type: ['string', 'null'], maxLength: 40 },
         nome_administrador: { type: ['string', 'null'], maxLength: 240 },
         cpf_administrador: { type: ['string', 'null'], maxLength: 40 },
+        email_representante_legal: { type: ['string', 'null'], maxLength: 160 },
+        telefone_representante_legal: { type: ['string', 'null'], maxLength: 40 },
+        email_administrador: { type: ['string', 'null'], maxLength: 160 },
+        telefone_administrador: { type: ['string', 'null'], maxLength: 40 },
+        protocolo: { type: ['string', 'null'], maxLength: 120 },
+        login: { type: ['string', 'null'], maxLength: 120 },
+        senha: { type: ['string', 'null'], maxLength: 255 },
         operadora_id: { type: ['integer', 'null'] },
         cliente_id: { type: ['integer', 'null'] },
         tipo_produto_id: { type: ['integer', 'null'] },
@@ -157,6 +172,19 @@ class Venda extends Model {
         modelClass: Usuario,
         join: {
           from: 'vendas.excluido_por_id',
+          to: 'usuarios.id'
+        }
+      },
+      vendedoras: {
+        relation: Model.ManyToManyRelation,
+        modelClass: Usuario,
+        join: {
+          from: 'vendas.id',
+          through: {
+            from: 'venda_vendedoras.venda_id',
+            to: 'venda_vendedoras.usuario_id',
+            extra: ['ordem']
+          },
           to: 'usuarios.id'
         }
       }

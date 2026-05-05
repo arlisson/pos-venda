@@ -10,7 +10,7 @@ import {
   listarEtapasFunil,
   listarEtapasFunilAdmin
 } from '../../services/config.service';
-import { atualizarStatusVenda, gerarEmailVenda, listarVendas } from '../../services/venda.service';
+import { atualizarStatusVenda, baixarXlsxClaro, gerarEmailVenda, listarVendas } from '../../services/venda.service';
 
 const formatBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -612,7 +612,7 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
   );
 }
 
-function SaleCard({ sale, onClick, onEmail, gerandoEmailId }) {
+function SaleCard({ sale, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId }) {
   const priorityColor = PRIORITIES[sale.priority || 'media']?.color || '#3b82f6';
   return (
     <div className="sale-card" onClick={onClick}>
@@ -654,6 +654,21 @@ function SaleCard({ sale, onClick, onEmail, gerandoEmailId }) {
               <I.Note size={12} />
             )}
           </button>
+          {/claro/i.test(sale.raw?.operadora?.nome) && (
+            <button
+              type="button"
+              className="btn btn-icon btn-ghost"
+              title="Baixar planilha Claro"
+              disabled={baixandoXlsxId === sale.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                onXlsxClaro(sale.raw);
+              }}
+              style={{ padding: 4, height: 24, width: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <I.Download size={12} />
+            </button>
+          )}
           <span style={{ fontSize: '10px' }}>{timeAgo(sale.updated)}</span>
         </div>
       </div>
@@ -690,6 +705,20 @@ function FunilPage() {
   const [emailTemplate, setEmailTemplate] = useState(null);
   const [gerandoEmailId, setGerandoEmailId] = useState(null);
   const [copiandoEmail, setCopiandoEmail] = useState(false);
+  const [baixandoXlsxId, setBaixandoXlsxId] = useState(null);
+
+  async function handleBaixarXlsxClaro(venda) {
+    if (!venda?.id) return;
+    setBaixandoXlsxId(venda.id);
+    try {
+      const nome = venda.razao_social || venda.cliente?.razao_social || venda.cliente?.nome || venda.id;
+      await baixarXlsxClaro(venda.id, nome);
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: err.message || 'Erro ao gerar planilha Claro.' });
+    } finally {
+      setBaixandoXlsxId(null);
+    }
+  }
 
   async function abrirEmailVenda(venda) {
     if (!venda?.id) return;
@@ -1190,6 +1219,8 @@ function FunilPage() {
                         onClick={() => setSelectedSaleId(s.id)}
                         onEmail={abrirEmailVenda}
                         gerandoEmailId={gerandoEmailId}
+                        onXlsxClaro={handleBaixarXlsxClaro}
+                        baixandoXlsxId={baixandoXlsxId}
                       />
                     ))
                   )}

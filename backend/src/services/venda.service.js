@@ -40,10 +40,25 @@ const CAMPOS = [
   'uf',
   'cep',
   'horario_aceite_voz',
+  'horario_aceite_inicio',
+  'horario_aceite_fim',
+  'dia_aceite_inicio',
+  'dia_aceite_fim',
   'responsavel_recebimento',
   'rg_responsavel_recebimento',
+  'responsavel_recebimento_2',
+  'rg_responsavel_recebimento_2',
+  'responsavel_recebimento_3',
+  'rg_responsavel_recebimento_3',
   'nome_administrador',
   'cpf_administrador',
+  'email_representante_legal',
+  'telefone_representante_legal',
+  'email_administrador',
+  'telefone_administrador',
+  'protocolo',
+  'login',
+  'senha',
   'operadora_id',
   'vendedora_id',
   'status_funil',
@@ -684,8 +699,9 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador, historico.usuario]')
+    .withGraphFetched('[cliente, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
+    .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
     .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .whereNull('excluido_em')
@@ -920,13 +936,26 @@ async function obterRelatoriosVendas(filtros = {}) {
   };
 }
 
+async function salvarVendedoras(vendaId, vendedorasIds, trx) {
+  await trx('venda_vendedoras').where('venda_id', vendaId).delete();
+  if (!vendedorasIds || vendedorasIds.length === 0) return null;
+  const rows = vendedorasIds.map((uid, i) => ({
+    venda_id: vendaId,
+    usuario_id: Number(uid),
+    ordem: i + 1
+  }));
+  await trx('venda_vendedoras').insert(rows);
+  return Number(vendedorasIds[0]);
+}
+
 async function buscarVendaPorId(id, usuarioId) {
   const escopo = usuarioId ? await buscarEscopoVendas(usuarioId) : { podeVerTodas: true };
   const query = Venda.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[cliente, vendedora, operadora, tipoVenda, servico, criador, historico.usuario]')
+    .withGraphFetched('[cliente, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
+    .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
     .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'));
 
@@ -949,7 +978,12 @@ async function gerarEmailTemplateVenda(id, usuarioId) {
 
 async function criarVenda(dados, usuarioId) {
   const agora = formatarDateTimeSQL();
+  const vendedorasIds = Array.isArray(dados.vendedoras) ? dados.vendedoras.map(Number).filter(Boolean) : [];
   let payload = montarPayload(dados);
+
+  if (vendedorasIds.length > 0) {
+    payload.vendedora_id = vendedorasIds[0];
+  }
 
   if (payload.cliente_id) {
     const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
@@ -983,6 +1017,10 @@ async function criarVenda(dados, usuarioId) {
       trx
     });
 
+    if (vendedorasIds.length > 0) {
+      await salvarVendedoras(venda.id, vendedorasIds, trx);
+    }
+
     if (payload.cliente_id) {
       await copiarNotasClienteParaVenda({
         clienteId: payload.cliente_id,
@@ -1004,7 +1042,12 @@ async function atualizarVenda(id, dados, usuarioId) {
   }
 
   const agora = formatarDateTimeSQL();
+  const vendedorasIds = Array.isArray(dados.vendedoras) ? dados.vendedoras.map(Number).filter(Boolean) : null;
   let payload = montarPayload(dados);
+
+  if (vendedorasIds && vendedorasIds.length > 0) {
+    payload.vendedora_id = vendedorasIds[0];
+  }
 
   if (payload.cliente_id) {
     const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
@@ -1016,10 +1059,18 @@ async function atualizarVenda(id, dados, usuarioId) {
     payload = aplicarDadosClienteNaVenda(payload, cliente);
   }
 
-  return Venda.query().patchAndFetchById(id, {
-    ...payload,
-    ultima_atividade_em: agora,
-    updated_at: agora
+  return Venda.transaction(async trx => {
+    const venda = await Venda.query(trx).patchAndFetchById(id, {
+      ...payload,
+      ultima_atividade_em: agora,
+      updated_at: agora
+    });
+
+    if (vendedorasIds !== null) {
+      await salvarVendedoras(id, vendedorasIds, trx);
+    }
+
+    return venda;
   });
 }
 

@@ -1,4 +1,6 @@
 const vendaService = require('../services/venda.service');
+const { gerarXlsxClaro } = require('../services/venda-xlsx-claro.service');
+const { _internals } = require('../services/venda-email-template.service');
 
 async function index(req, res) {
   try {
@@ -235,12 +237,38 @@ async function vendedoras(req, res) {
   }
 }
 
+async function xlsxClaro(req, res) {
+  try {
+    const venda = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
+
+    if (!venda) {
+      return res.status(404).json({ message: 'Venda não encontrada.' });
+    }
+
+    const operadora = _internals.resolverOperadora(venda);
+    if (operadora !== 'Claro') {
+      return res.status(400).json({ message: 'Planilha disponível apenas para vendas Claro.' });
+    }
+
+    const buffer = await gerarXlsxClaro(venda);
+    const nomeCliente = String(venda.razao_social || venda.cliente?.razao_social || venda.cliente?.nome || venda.id).replace(/[^\w\s-]/g, '').trim();
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Claro_${nomeCliente}.xlsx"`);
+    return res.send(buffer);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao gerar planilha Claro.' });
+  }
+}
+
 module.exports = {
   index,
   resumo,
   relatorios,
   show,
   emailTemplate,
+  xlsxClaro,
   store,
   update,
   updateStatus,

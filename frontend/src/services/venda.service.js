@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
+import { apiBlob, apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
 
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -35,6 +35,18 @@ export async function buscarVendaPorId(id) {
 
 export async function gerarEmailVenda(id) {
   return apiPost(`/vendas/${id}/email-template`, {});
+}
+
+export async function baixarXlsxClaro(id, nomeCliente) {
+  const blob = await apiBlob(`/vendas/${id}/xlsx-claro`);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Claro_${nomeCliente || id}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export async function criarVenda(dados) {
