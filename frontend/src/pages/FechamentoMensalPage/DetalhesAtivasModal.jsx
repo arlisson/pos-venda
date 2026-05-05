@@ -2,6 +2,17 @@ import { useEffect, useState } from 'react';
 import * as I from '../../components/Icons';
 import { getDetalhesChips } from '../../services/fechamento.service';
 
+const DADOS_VAZIOS = {
+  linhas: [],
+  totais_por_vendedora: [],
+  total_geral: {
+    chips: 0,
+    valor: 0,
+    comissao: 0,
+    ugrs_sem_regra: 0
+  }
+};
+
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -14,13 +25,13 @@ function fmtData(valor) {
   return `${dia}/${mes}/${ano}`;
 }
 
-function fmtTaxa(valor) {
-  if (valor === null || valor === undefined) return '-';
-  return `${Number(valor || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
+function fmtRegra(regra) {
+  if (!regra) return 'Sem regra';
+  return `${fmtMoeda(regra.valor_min)} até ${fmtMoeda(regra.valor_max)}`;
 }
 
 function DetalhesAtivasModal({ periodo, onClose }) {
-  const [dados, setDados] = useState({ linhas: [], totais_por_vendedora: [], total_geral: { chips: 0, valor: 0, comissao: 0 } });
+  const [dados, setDados] = useState(DADOS_VAZIOS);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
 
@@ -33,7 +44,14 @@ function DetalhesAtivasModal({ periodo, onClose }) {
     getDetalhesChips({ ...periodo })
       .then(resp => {
         if (!ativo) return;
-        setDados(resp || { linhas: [], totais_por_vendedora: [], total_geral: { chips: 0, valor: 0, comissao: 0 } });
+        setDados({
+          ...DADOS_VAZIOS,
+          ...(resp || {}),
+          total_geral: {
+            ...DADOS_VAZIOS.total_geral,
+            ...(resp?.total_geral || {})
+          }
+        });
       })
       .catch(err => {
         if (!ativo) return;
@@ -50,15 +68,22 @@ function DetalhesAtivasModal({ periodo, onClose }) {
   }, [periodo]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  const totalGeral = dados.total_geral || DADOS_VAZIOS.total_geral;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal fechamento-modal-large" onClick={event => event.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-header-row">
             <div>
-              <div className="modal-client">Detalhes - Vendas ativas (linha por chip)</div>
+              <div className="modal-client">Detalhes - Vendas ativas (linha por UGR)</div>
               <div className="modal-sub">
-                {dados.linhas.length} UGR(s) ativas - Comissao total: {fmtMoeda(dados.total_geral?.comissao)}
+                {dados.linhas.length} UGR(s) ativas - Comissão total: {fmtMoeda(totalGeral.comissao)}
+                {totalGeral.ugrs_sem_regra > 0 && (
+                  <span className="fechamento-pendencia">
+                    {totalGeral.ugrs_sem_regra} sem regra
+                  </span>
+                )}
               </div>
             </div>
             <button type="button" className="btn-icon btn-ghost" onClick={onClose} aria-label="Fechar">
@@ -72,34 +97,36 @@ function DetalhesAtivasModal({ periodo, onClose }) {
           {loading ? (
             <div className="fechamento-empty">Carregando...</div>
           ) : dados.linhas.length === 0 ? (
-            <div className="fechamento-empty">Nenhum chip ativo no periodo.</div>
+            <div className="fechamento-empty">Nenhum chip ativo no período.</div>
           ) : (
             <>
-              <div style={{ overflow: 'auto', maxHeight: '50vh' }}>
+              <div style={{ overflow: 'auto', maxHeight: '58vh' }}>
                 <table className="fechamento-modal-table">
                   <thead>
                     <tr>
                       <th>Venda</th>
-                      <th>Data</th>
+                      <th>Ativacao</th>
+                      <th>Venda</th>
                       <th>Vendedora</th>
                       <th>Cliente</th>
                       <th>CNPJ</th>
                       <th>Operadora</th>
                       <th>Tipo</th>
-                      <th>Servico</th>
+                      <th>Serviço</th>
                       <th>Chip</th>
                       <th>DDD</th>
                       <th>GB</th>
                       <th>Fidelidade</th>
                       <th className="num">Valor unit.</th>
-                      <th className="num">Taxa</th>
-                      <th className="num">Comissao R$</th>
+                      <th>Regra</th>
+                      <th className="num">Comissão R$</th>
                     </tr>
                   </thead>
                   <tbody>
                     {dados.linhas.map((linha, idx) => (
-                      <tr key={`${linha.venda_id}-${linha.chip_index}-${idx}`}>
+                      <tr key={`${linha.venda_id}-${linha.chip_index}-${idx}`} className={linha.sem_regra ? 'row-warning' : ''}>
                         <td>#{linha.venda_id}</td>
+                        <td>{fmtData(linha.data_ativacao)}</td>
                         <td>{fmtData(linha.data_venda)}</td>
                         <td>{linha.vendedora?.nome || '-'}</td>
                         <td>{linha.cliente?.nome || linha.cliente?.razao_social || '-'}</td>
@@ -112,7 +139,7 @@ function DetalhesAtivasModal({ periodo, onClose }) {
                         <td>{linha.gb || '-'}</td>
                         <td>{fmtData(linha.cliente?.fidelidade_fim)}</td>
                         <td className="num">{fmtMoeda(linha.valor_unitario)}</td>
-                        <td className="num">{fmtTaxa(linha.taxa_comissao)}</td>
+                        <td>{fmtRegra(linha.regra_comissao)}</td>
                         <td className="num">{linha.comissao != null ? fmtMoeda(linha.comissao) : '-'}</td>
                       </tr>
                     ))}
@@ -121,9 +148,9 @@ function DetalhesAtivasModal({ periodo, onClose }) {
               </div>
 
               <div className="fechamento-totais">
-                <div className="fechamento-totais__title">Comissao por vendedora</div>
-                {(dados.totais_por_vendedora || []).length === 0 ? (
-                  <div className="muted">Nenhuma comissao calculada.</div>
+                <div className="fechamento-totais__title">Comissão por vendedora</div>
+                {dados.totais_por_vendedora.length === 0 ? (
+                  <div className="muted">Nenhuma comissão calculada.</div>
                 ) : (
                   dados.totais_por_vendedora.map(item => (
                     <div className="fechamento-totais__row" key={item.vendedora_id ?? item.vendedora_nome}>
@@ -134,8 +161,13 @@ function DetalhesAtivasModal({ periodo, onClose }) {
                 )}
                 <div className="fechamento-totais__geral">
                   <span>Total geral</span>
-                  <span>{fmtMoeda(dados.total_geral?.comissao)}</span>
+                  <span>{fmtMoeda(totalGeral.comissao)}</span>
                 </div>
+                {totalGeral.ugrs_sem_regra > 0 && (
+                  <div className="muted">
+                    {totalGeral.ugrs_sem_regra} UGR(s) sem regra não entram nos totais.
+                  </div>
+                )}
               </div>
             </>
           )}

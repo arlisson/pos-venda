@@ -13,6 +13,7 @@ router.get('/tipos-produto', configController.tiposProduto);
 router.get('/tipos-venda', configController.tiposVenda);
 router.get('/servicos', configController.servicos);
 router.get('/funil-etapas', configController.funilEtapas);
+router.get('/regras-comissao', configController.regrasComissao);
 
 router.get('/admin/operadoras', exigirPermissao('crud_operadoras'), configController.adminOperadoras);
 router.post('/admin/operadoras', exigirPermissao('crud_operadoras'), configController.criarOperadora);
@@ -38,6 +39,11 @@ router.get('/admin/funil-etapas', exigirPermissao('crud_funil_etapas'), configCo
 router.post('/admin/funil-etapas', exigirPermissao('crud_funil_etapas'), configController.criarFunilEtapa);
 router.put('/admin/funil-etapas/:id', exigirPermissao('crud_funil_etapas'), configController.atualizarFunilEtapa);
 router.delete('/admin/funil-etapas/:id', exigirPermissao('crud_funil_etapas'), configController.excluirFunilEtapa);
+
+router.get('/admin/regras-comissao', exigirPermissao('crud_regras_comissao'), configController.adminRegrasComissao);
+router.post('/admin/regras-comissao', exigirPermissao('crud_regras_comissao'), configController.criarRegraComissao);
+router.put('/admin/regras-comissao/:id', exigirPermissao('crud_regras_comissao'), configController.atualizarRegraComissao);
+router.delete('/admin/regras-comissao/:id', exigirPermissao('crud_regras_comissao'), configController.excluirRegraComissao);
 
 router.get('/admin/links-externos', exigirPermissao('crud_links'), configController.adminLinksExternos);
 router.post('/admin/links-externos', exigirPermissao('crud_links'), configController.criarLinkExterno);

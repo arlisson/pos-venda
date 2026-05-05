@@ -68,7 +68,8 @@ function normalizarEtapasFunil(etapas = [], usarFallback = true) {
       name: etapa.nome || etapa.name,
       dot: etapa.codigo || etapa.id || `etapa_${index}`,
       ordem: Number(etapa.ordem ?? index),
-      ativo: normalizarAtivo(etapa.ativo)
+      ativo: normalizarAtivo(etapa.ativo),
+      etapaFinal: Boolean(etapa.etapa_final || etapa.etapaFinal)
     }))
     .filter(etapa => etapa.id && etapa.name);
 
@@ -664,7 +665,8 @@ function SaleCard({ sale, onClick, onEmail, gerandoEmailId }) {
 const NOVA_ETAPA = {
   nome: '',
   ordem: 0,
-  ativo: true
+  ativo: true,
+  etapa_final: false
 };
 
 function FunilPage() {
@@ -722,7 +724,7 @@ function FunilPage() {
       }
       setStageFeedback({ type: 'success', message: 'Corpo do email copiado.' });
       setEmailTemplate(null);
-    } catch (err) {
+    } catch {
       setStageFeedback({ type: 'error', message: 'Erro ao copiar email.' });
     } finally {
       setCopiandoEmail(false);
@@ -839,7 +841,8 @@ function FunilPage() {
       await atualizarEtapaFunil(stage.adminId, {
         nome,
         ordem: Number(stage.ordem || 0),
-        ativo: stage.ativo
+        ativo: stage.ativo,
+        etapa_final: stage.etapaFinal
       });
       setEditingStageId(null);
       await atualizarEtapasAposCrud('Nome da etapa atualizado.');
@@ -861,7 +864,8 @@ function FunilPage() {
       await atualizarEtapaFunil(stage.adminId, {
         nome: editStageNames[stage.adminId]?.trim() || stage.name,
         ordem: Number(stage.ordem || 0),
-        ativo: proximoAtivo
+        ativo: proximoAtivo,
+        etapa_final: stage.etapaFinal
       });
       await atualizarEtapasAposCrud(proximoAtivo ? 'Etapa reativada.' : 'Etapa desativada.');
     } catch (err) {
@@ -892,6 +896,27 @@ function FunilPage() {
       );
     } catch (err) {
       setStageFeedback({ type: 'error', message: err.message || 'Erro ao excluir etapa.' });
+    } finally {
+      setStageSavingId(null);
+    }
+  }
+
+  async function handleToggleFinalStage(stage) {
+    if (!stage.adminId) return;
+
+    setStageSavingId(stage.adminId);
+    setStageFeedback({ type: '', message: '' });
+
+    try {
+      await atualizarEtapaFunil(stage.adminId, {
+        nome: editStageNames[stage.adminId]?.trim() || stage.name,
+        ordem: Number(stage.ordem || 0),
+        ativo: stage.ativo,
+        etapa_final: !stage.etapaFinal
+      });
+      await atualizarEtapasAposCrud(!stage.etapaFinal ? 'Etapa final definida.' : 'Etapa deixou de ser final.');
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: err.message || 'Erro ao definir etapa final.' });
     } finally {
       setStageSavingId(null);
     }
@@ -1037,6 +1062,15 @@ function FunilPage() {
                     disabled={creatingStage}
                     aria-label="Ordem da nova etapa"
                   />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                    <input
+                      type="checkbox"
+                      checked={newStage.etapa_final}
+                      onChange={event => setNewStage({ ...newStage, etapa_final: event.target.checked })}
+                      disabled={creatingStage}
+                    />
+                    Etapa final
+                  </label>
                   <button type="submit" className="btn btn-primary btn-sm" disabled={creatingStage || !newStage.nome.trim()}>
                     {creatingStage ? 'Adicionando...' : 'Adicionar'}
                   </button>
@@ -1109,7 +1143,10 @@ function FunilPage() {
                         aria-label={`Editar nome da etapa ${editableStage.name}`}
                       />
                     ) : (
-                      <span className="column-name">{st.name}</span>
+                      <span className="column-name">
+                        {st.name}
+                        {st.etapaFinal && <span className="tag" style={{ marginLeft: 6 }}>Final</span>}
+                      </span>
                     )}
                     <span className="column-count">{items.length}</span>
                     {canEditStage && !isEditingStage && (
@@ -1148,6 +1185,14 @@ function FunilPage() {
                         title="Cancelar edicao"
                       >
                         <I.Close size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        onClick={() => handleToggleFinalStage(editableStage)}
+                        disabled={stageSaving}
+                      >
+                        {editableStage.etapaFinal ? 'Remover final' : 'Etapa final'}
                       </button>
                       <button
                         type="button"

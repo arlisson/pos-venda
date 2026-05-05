@@ -32,7 +32,6 @@ function dataValida(valor) {
 function FechamentoMensalPage() {
   const [periodo, setPeriodo] = useState(() => periodoMesAtual());
   const [periodoConsulta, setPeriodoConsulta] = useState(() => periodoMesAtual());
-  const [taxaComissao, setTaxaComissao] = useState('');
   const [resumo, setResumo] = useState({ total: [], tratando: [], ativas: [] });
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
@@ -92,17 +91,6 @@ function FechamentoMensalPage() {
               onChange={event => atualizarPeriodo('data_fim', event.target.value)}
             />
           </div>
-          <div className="form-field">
-            <label>Taxa comissão UGR (%)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={taxaComissao}
-              onChange={event => setTaxaComissao(event.target.value)}
-              placeholder="15"
-            />
-          </div>
         </div>
 
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
@@ -127,7 +115,7 @@ function FechamentoMensalPage() {
 
         <FechamentoSecao
           titulo="Vendas ativas"
-          subtitulo="Contratos concluidos, com UGRs por chip"
+          subtitulo="Contratos concluidos pela data de ativacao, com UGRs por chip"
           linhas={resumo.ativas || []}
           secao="ativas"
           loading={loading}
@@ -144,12 +132,10 @@ function FechamentoMensalPage() {
 
         {modalDetalhes === 'ativas' && (
           <DetalhesAtivasModal
-            periodo={{ ...periodoConsulta, taxa_comissao: taxaComissao }}
+            periodo={periodoConsulta}
             onClose={() => setModalDetalhes(null)}
           />
         )}
-
-
       </div>
     </LayoutPrivado>
   );
