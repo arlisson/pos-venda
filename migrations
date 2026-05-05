@@ -4,3 +4,10 @@ npm run rollback -- --all
 npm run migrate
 npm run seed
 npm run dev
+
+package.json
+"scripts": {
+  "build": "cd frontend && npm install && npm run build",
+  "start": "cd backend && npm start",
+  "postinstall": "cd backend && npm install"
+}
