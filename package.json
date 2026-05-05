@@ -6,8 +6,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "npm --prefix backend start",
-    "postinstall": "npm --prefix backend install"
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && npm start",
+    "postinstall": "cd backend && npm install"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
