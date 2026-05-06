@@ -302,6 +302,23 @@ function resumirGigasItensChips(itens) {
   )).join(', ');
 }
 
+function normalizarIdsVendedoras(vendedoras) {
+  if (!Array.isArray(vendedoras)) return [];
+
+  return Array.from(new Set(
+    vendedoras
+      .map(item => {
+        if (item && typeof item === 'object') {
+          return Number(item.id || item.usuario_id || item.vendedora_id);
+        }
+
+        return Number(item);
+      })
+      .filter(Number.isInteger)
+      .filter(id => id > 0)
+  ));
+}
+
 function montarPayload(dados) {
   const payload = {};
 
@@ -1084,11 +1101,15 @@ async function gerarEmailTemplateVenda(id, usuarioId) {
 
 async function criarVenda(dados, usuarioId) {
   const agora = formatarDateTimeSQL();
-  const vendedorasIds = Array.isArray(dados.vendedoras) ? dados.vendedoras.map(Number).filter(Boolean) : [];
+  const vendedorasIds = normalizarIdsVendedoras(dados.vendedoras);
   let payload = montarPayload(dados);
 
   if (vendedorasIds.length > 0) {
     payload.vendedora_id = vendedorasIds[0];
+  }
+
+  if (!Number.isInteger(payload.vendedora_id) || payload.vendedora_id <= 0) {
+    throw new Error('Selecione pelo menos uma vendedora para cadastrar a venda.');
   }
 
   if (payload.cliente_id) {
@@ -1148,11 +1169,15 @@ async function atualizarVenda(id, dados, usuarioId) {
   }
 
   const agora = formatarDateTimeSQL();
-  const vendedorasIds = Array.isArray(dados.vendedoras) ? dados.vendedoras.map(Number).filter(Boolean) : null;
+  const vendedorasIds = Array.isArray(dados.vendedoras) ? normalizarIdsVendedoras(dados.vendedoras) : null;
   let payload = montarPayload(dados);
 
   if (vendedorasIds && vendedorasIds.length > 0) {
     payload.vendedora_id = vendedorasIds[0];
+  }
+
+  if (payload.vendedora_id !== undefined && payload.vendedora_id !== null && (!Number.isInteger(payload.vendedora_id) || payload.vendedora_id <= 0)) {
+    throw new Error('Selecione pelo menos uma vendedora valida para atualizar a venda.');
   }
 
   if (payload.cliente_id) {

@@ -418,6 +418,23 @@ function normalizarItensChipsInput(itens) {
   return Array.isArray(itens) ? itens : parseItensChips(itens);
 }
 
+function normalizarIdsVendedorasInput(vendedoras) {
+  if (!Array.isArray(vendedoras)) return [];
+
+  return Array.from(new Set(
+    vendedoras
+      .map(item => {
+        if (item && typeof item === 'object') {
+          return Number(item.id || item.usuario_id || item.vendedora_id);
+        }
+
+        return Number(item);
+      })
+      .filter(Number.isInteger)
+      .filter(id => id > 0)
+  ));
+}
+
 function calcularTotalItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => (
     acc + (Number(item.quantidade || 0) * parseValorInput(item.valor_unitario))
@@ -1706,6 +1723,14 @@ function VendaModal({
         return;
       }
 
+      const vendedorasIds = normalizarIdsVendedorasInput(form.vendedoras);
+
+      if (vendedorasIds.length === 0) {
+        setErro('Selecione pelo menos uma vendedora para cadastrar a venda.');
+        setSalvando(false);
+        return;
+      }
+
       const numerosPortados = montarNumerosPortados(form.numeros_portados);
       const quantidadeChips = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
 
@@ -1737,7 +1762,7 @@ function VendaModal({
         data_ativacao: normalizarDataVendaInput(form.data_ativacao) || null,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
         valores_unitarios_chips: chipsProcessados,
-        vendedoras: (form.vendedoras || []).map(Number).filter(Boolean)
+        vendedoras: vendedorasIds
       };
 
       payload.valor_total = calcularTotalItensChips(form.valores_unitarios_chips);
