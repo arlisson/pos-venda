@@ -6,12 +6,19 @@ import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import {
   atualizarVenda,
+  baixarArquivoVenda,
+  baixarPacoteArquivosVenda,
   baixarXlsxClaro,
   criarVenda,
   deletarVenda,
+  excluirArquivoVenda,
+  gerarPacoteArquivosVenda,
   gerarEmailVenda,
+  listarArquivosVenda,
   listarVendas,
-  listarVendedoras
+  listarVendedoras,
+  uploadArquivoVenda,
+  visualizarArquivoVenda
 } from '../../services/venda.service';
 import { consultarCnpj, isCnpjRepetido, sanitizarCnpj } from '../../services/cnpj.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
@@ -1025,7 +1032,225 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
   );
 }
 
-function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, tiposVenda, servicos, onClose, onSave, onCreateClient }) {
+function formatarTamanhoArquivo(bytes) {
+  const tamanho = Number(bytes || 0);
+
+  if (tamanho >= 1024 * 1024) {
+    return `${(tamanho / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  if (tamanho >= 1024) {
+    return `${(tamanho / 1024).toFixed(1)} KB`;
+  }
+
+  return `${tamanho} B`;
+}
+
+function labelStatusPacote(status) {
+  const labels = {
+    pendente: 'Pacote pendente',
+    gerando: 'Gerando pacote',
+    pronto: 'Pacote pronto',
+    erro: 'Erro ao gerar pacote',
+    desatualizado: 'Pacote desatualizado',
+    inexistente: 'Sem pacote'
+  };
+
+  return labels[status] || 'Sem pacote';
+}
+
+function ArquivosVendaTab({ venda, podeEditar }) {
+  const inputRef = useRef(null);
+  const [arquivos, setArquivos] = useState([]);
+  const [pacote, setPacote] = useState(null);
+  const [categoria, setCategoria] = useState('documento');
+  const [carregando, setCarregando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [progresso, setProgresso] = useState(null);
+  const [erro, setErro] = useState('');
+
+  async function carregar() {
+    if (!venda?.id) return;
+
+    setCarregando(true);
+    setErro('');
+
+    try {
+      const data = await listarArquivosVenda(venda.id);
+      setArquivos(data.arquivos || []);
+      setPacote(data.pacote || null);
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar arquivos.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venda?.id]);
+
+  useEffect(() => {
+    if (!['pendente', 'gerando'].includes(pacote?.status)) return undefined;
+
+    const timer = setInterval(() => {
+      carregar();
+    }, 2500);
+
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pacote?.status, venda?.id]);
+
+  async function handleUpload(event) {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+
+    if (files.length === 0) return;
+
+    setEnviando(true);
+    setErro('');
+
+    try {
+      for (const file of files) {
+        setProgresso({ nome: file.name, valor: 0 });
+        await uploadArquivoVenda(venda.id, file, { categoria }, valor => {
+          setProgresso({ nome: file.name, valor });
+        });
+      }
+
+      setProgresso(null);
+      await carregar();
+    } catch (error) {
+      setErro(error.message || 'Erro ao enviar arquivo.');
+    } finally {
+      setEnviando(false);
+      setProgresso(null);
+    }
+  }
+
+  async function handleExcluir(arquivo) {
+    if (!window.confirm(`Excluir o arquivo "${arquivo.nome_original}" desta venda?`)) return;
+
+    setErro('');
+
+    try {
+      await excluirArquivoVenda(venda.id, arquivo.id);
+      await carregar();
+    } catch (error) {
+      setErro(error.message || 'Erro ao excluir arquivo.');
+    }
+  }
+
+  async function handleGerarPacote() {
+    setErro('');
+
+    try {
+      const novoPacote = await gerarPacoteArquivosVenda(venda.id);
+      setPacote(novoPacote);
+    } catch (error) {
+      setErro(error.message || 'Erro ao gerar pacote.');
+    }
+  }
+
+  if (!venda?.id) {
+    return (
+      <div className="venda-arquivos-empty">
+        Salve a venda antes de anexar arquivos.
+      </div>
+    );
+  }
+
+  return (
+    <div className="venda-arquivos">
+      <div className="venda-arquivos-toolbar">
+        <div>
+          <div className="venda-arquivos-title">Arquivos da venda</div>
+          <div className={`venda-arquivos-package status-${pacote?.status || 'inexistente'}`}>
+            {labelStatusPacote(pacote?.status || 'inexistente')}
+            {pacote?.total_arquivos ? ` · ${pacote.total_arquivos} arquivo(s)` : ''}
+          </div>
+        </div>
+
+        <div className="venda-arquivos-actions">
+          <select value={categoria} onChange={event => setCategoria(event.target.value)} disabled={!podeEditar || enviando}>
+            <option value="documento">Documento</option>
+            <option value="contrato">Contrato</option>
+            <option value="comprovante">Comprovante</option>
+            <option value="outro">Outro</option>
+          </select>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf,image/jpeg,image/png,image/webp"
+            multiple
+            hidden
+            onChange={handleUpload}
+          />
+          <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={!podeEditar || enviando}>
+            {enviando ? 'Enviando...' : 'Enviar arquivos'}
+          </button>
+          <button type="button" className="btn" onClick={handleGerarPacote} disabled={!podeEditar || arquivos.length === 0 || pacote?.status === 'gerando'}>
+            Gerar ZIP
+          </button>
+          <button type="button" className="btn" onClick={() => baixarPacoteArquivosVenda(venda.id)} disabled={pacote?.status !== 'pronto'}>
+            Baixar ZIP
+          </button>
+        </div>
+      </div>
+
+      {progresso && (
+        <div className="venda-arquivos-progress">
+          <span>{progresso.nome}</span>
+          <strong>{progresso.valor}%</strong>
+        </div>
+      )}
+
+      {erro && <div className="alert-error">{erro}</div>}
+
+      {carregando ? (
+        <div className="venda-arquivos-empty">Carregando arquivos...</div>
+      ) : arquivos.length === 0 ? (
+        <div className="venda-arquivos-empty">Nenhum arquivo anexado.</div>
+      ) : (
+        <div className="venda-arquivos-list">
+          {arquivos.map(arquivo => (
+            <div key={arquivo.id} className="venda-arquivo-item">
+              <div className="venda-arquivo-main">
+                <strong>{arquivo.nome_original}</strong>
+                <span>
+                  {arquivo.categoria} · {formatarTamanhoArquivo(arquivo.arquivo?.tamanho_bytes)} · {arquivo.criado_por?.nome || 'Usuário'}
+                  {arquivo.arquivo?.removido_em ? ' · arquivado no ZIP' : ''}
+                </span>
+              </div>
+              <div className="venda-arquivo-actions">
+                <button type="button" className="btn btn-sm" onClick={() => visualizarArquivoVenda(venda.id, arquivo.id)} disabled={Boolean(arquivo.arquivo?.removido_em)}>
+                  Visualizar
+                </button>
+                <button type="button" className="btn btn-sm" onClick={() => baixarArquivoVenda(venda.id, arquivo.id, arquivo.nome_original)} disabled={Boolean(arquivo.arquivo?.removido_em)}>
+                  Baixar
+                </button>
+                {podeEditar && (
+                  <button type="button" className="btn btn-sm btn-ghost vendas-trash-delete" onClick={() => handleExcluir(arquivo)}>
+                    Excluir
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pacote?.status === 'erro' && (
+        <div className="alert-error">
+          {pacote.erro || 'Nao foi possivel gerar o pacote.'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, tiposVenda, servicos, podeEditarVenda, onClose, onSave, onCreateClient }) {
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -1314,11 +1539,20 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
           >
             <I.Note size={14} /> Notas
           </button>
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'arquivos' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('arquivos')}
+          >
+            <I.Note size={14} /> Arquivos
+          </button>
         </div>
 
         <div className="modal-body">
           {abaAtiva === 'notas' ? (
             <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
+          ) : abaAtiva === 'arquivos' ? (
+            <ArquivosVendaTab venda={venda} podeEditar={podeEditarVenda} />
           ) : (
           <>
             <div className="vendas-form-grid">
@@ -1483,7 +1717,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
         </div>
 
         <div className="modal-footer">
-          {abaAtiva === 'notas' ? (
+          {abaAtiva === 'notas' || abaAtiva === 'arquivos' ? (
             <button type="button" className="btn" onClick={onClose}>Fechar</button>
           ) : (
             <>
@@ -1589,7 +1823,6 @@ function VendasPage() {
   const [servicoId, setServicoId] = useState('');
   const [statusFunil, setStatusFunil] = useState('');
   const [prioridadeFunil, setPrioridadeFunil] = useState('');
-  const [protocolo, setProtocolo] = useState('');
   const [uf, setUf] = useState('');
   const [municipio, setMunicipio] = useState('');
   const [dataInicio, setDataInicio] = useState('');
@@ -1625,14 +1858,13 @@ function VendasPage() {
     servico_id: servicoId,
     status_funil: statusFunil,
     prioridade_funil: prioridadeFunil,
-    protocolo,
     uf,
     municipio,
     data_inicio: dataInicio,
     data_fim: dataFim,
     valor_min: valorMin,
     valor_max: valorMax
-  }), [busca, vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, protocolo, uf, municipio, dataInicio, dataFim, valorMin, valorMax]);
+  }), [busca, vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, uf, municipio, dataInicio, dataFim, valorMin, valorMax]);
 
   const filtrosAtivos = useMemo(() => (
     Object.entries(filtros).filter(([, valor]) => valor !== '').length
@@ -1642,7 +1874,6 @@ function VendasPage() {
     operadoraId,
     tipoVendaId,
     servicoId,
-    protocolo,
     uf,
     municipio,
     dataInicio,
@@ -1828,7 +2059,6 @@ function VendasPage() {
     setServicoId('');
     setStatusFunil('');
     setPrioridadeFunil('');
-    setProtocolo('');
     setUf('');
     setMunicipio('');
     setDataInicio('');
@@ -1848,6 +2078,7 @@ function VendasPage() {
           operadoras={operadoras}
           tiposVenda={tiposVenda}
           servicos={servicos}
+          podeEditarVenda={podeEditarVenda}
           onClose={() => {
             setModalAberto(false);
             setVendaInicial(null);
@@ -1942,10 +2173,6 @@ function VendasPage() {
                 </div>
               )}
               <div className="filter-field">
-                <label>Protocolo</label>
-                <input value={protocolo} onChange={e => setProtocolo(e.target.value)} placeholder="Buscar por protocolo" />
-              </div>
-              <div className="filter-field">
                 <label>UF</label>
                 <select value={uf} onChange={e => setUf(e.target.value)}>
                   <option value="">Todos</option>
@@ -1994,7 +2221,7 @@ function VendasPage() {
             <input
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar por nome, telefone, tipo, produto, CNPJ ou cidade"
+              placeholder="Buscar por protocolo, nome, telefone, tipo, produto, CNPJ ou cidade"
             />
           </div>
 

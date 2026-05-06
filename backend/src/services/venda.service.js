@@ -3,6 +3,7 @@ const VendaHistorico = require('../models/VendaHistorico');
 const Usuario = require('../models/Usuario');
 const FunilEtapa = require('../models/FunilEtapa');
 const clienteService = require('./cliente.service');
+const vendaArquivoService = require('./venda-arquivo.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
 
 const CAMPOS = [
@@ -672,6 +673,19 @@ async function obterCodigoEtapaFinal() {
   }
 }
 
+async function solicitarPacoteSeVendaFinalizada(venda, usuarioId, etapaFinal = null) {
+  const codigoFinal = etapaFinal || await obterCodigoEtapaFinal();
+
+  if (venda?.status_funil !== codigoFinal) {
+    return;
+  }
+
+  vendaArquivoService.solicitarPacoteVenda(venda.id, usuarioId, { validarAcesso: false })
+    .catch(error => {
+      console.error('Erro ao solicitar pacote de arquivos da venda:', error);
+    });
+}
+
 async function statusPreencheDataAtivacao(status, etapaFinal) {
   if (!status) return false;
   if (status === etapaFinal) return true;
@@ -794,6 +808,7 @@ async function listarVendas(filtros = {}, usuarioId) {
         .orWhere('produto_fechado', 'like', busca)
         .orWhere('razao_social', 'like', busca)
         .orWhere('cnpj', 'like', busca)
+        .orWhere('protocolo', 'like', busca)
         .orWhere('municipio', 'like', busca);
     });
   }
@@ -1150,7 +1165,7 @@ async function atualizarVenda(id, dados, usuarioId) {
     payload = aplicarDadosClienteNaVenda(payload, cliente);
   }
 
-  return Venda.transaction(async trx => {
+  const vendaAtualizada = await Venda.transaction(async trx => {
     const venda = await Venda.query(trx).patchAndFetchById(id, {
       ...payload,
       ultima_atividade_em: agora,
@@ -1163,6 +1178,10 @@ async function atualizarVenda(id, dados, usuarioId) {
 
     return venda;
   });
+
+  await solicitarPacoteSeVendaFinalizada(vendaAtualizada, usuarioId);
+
+  return vendaAtualizada;
 }
 
 async function validarStatusFunil(status) {
@@ -1280,6 +1299,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
       return atualizada;
     });
 
+    await solicitarPacoteSeVendaFinalizada(vendaAtualizada, usuarioId, etapaFinal);
     return { status: 'ok', venda: vendaAtualizada };
   }
 
@@ -1363,6 +1383,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
     return atualizada;
   });
 
+  await solicitarPacoteSeVendaFinalizada(vendaAtualizada, usuarioId, etapaFinal);
   return { status: 'ok', venda: vendaAtualizada };
 }
 
