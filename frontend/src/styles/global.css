@@ -656,9 +656,19 @@ input, select, textarea { font-family: inherit; }
 .empty { padding: 48px; text-align: center; color: var(--text-3); }
 .row-actions { display: flex; gap: 4px; }
 .users-page, .dashboard { padding: 24px; overflow-y: auto; }
-.filters { display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.filters { display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
 .filter-chip { padding: 4px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; cursor: pointer; }
 .filter-chip.active { background: var(--accent); color: var(--accent-fg); border: none; }
+.funnel-search-box {
+  width: min(460px, 42vw);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.funnel-search-box .btn {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
 
 .funnel-stage-toolbar {
   display: flex;

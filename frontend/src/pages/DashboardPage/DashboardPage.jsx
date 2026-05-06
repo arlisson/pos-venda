@@ -107,17 +107,23 @@ function getNotificationTarget(notificacao) {
   }
 
   if (notificacao.entidade === 'clientes') {
-    if (notificacao.tipo === 'nota_retorno_due') {
-      return '/clientes?retorno=vencido';
-    }
-
     const clienteId = notificacao.entidade_id || notificacao.dados?.entidade_id;
     return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
   }
 
   if (notificacao.entidade === 'vendas') {
     const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id;
-    return vendaId ? `/vendas?venda_id=${vendaId}&aba=problema` : '/vendas';
+    if (!vendaId) return '/vendas';
+
+    if (TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo)) {
+      return `/vendas?venda_id=${vendaId}&aba=problema`;
+    }
+
+    if (TIPOS_RETORNO_NOTA.includes(notificacao.tipo)) {
+      return `/vendas?venda_id=${vendaId}&aba=notas`;
+    }
+
+    return `/vendas?venda_id=${vendaId}`;
   }
 
   return null;
@@ -379,14 +385,8 @@ function DashboardPage() {
                 disabled={notificacoesRetorno.length === 0}
                 onClick={() => {
                   if (!proximoRetorno) return;
-
-                    if (retornosVencidos > 0) {
-                      navigate('/clientes?retorno=vencido');
-                      return;
-                    }
-
-                    handleReadNotification(proximoRetorno);
-                  }}
+                  handleReadNotification(proximoRetorno);
+                }}
               >
                 <span className="home-notification__icon">
                   <I.AlertTriangle size={16} />

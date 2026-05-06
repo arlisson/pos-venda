@@ -1874,7 +1874,7 @@ function VendaModal({
 
   return (
     <div className="modal-overlay">
-      <form className="modal" onSubmit={handleSubmit}>
+      <form className="modal venda-modal" onSubmit={handleSubmit}>
         <div className="modal-header">
           <div className="modal-header-row">
             <div>
@@ -1921,6 +1921,26 @@ function VendaModal({
             <I.AlertTriangle size={14} /> Problema
           </button>
         </div>
+
+        {erro && abaAtiva === 'venda' && (
+          <div className="venda-modal-alert" role="alert" aria-live="assertive">
+            <div className="venda-modal-alert__icon">
+              <I.AlertTriangle size={16} />
+            </div>
+            <div className="venda-modal-alert__content">
+              <strong>Não foi possível salvar a venda</strong>
+              <span>{erro}</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-icon btn-ghost"
+              onClick={() => setErro('')}
+              title="Fechar aviso"
+            >
+              <I.Close size={13} />
+            </button>
+          </div>
+        )}
 
         <div className="modal-body">
           {abaAtiva === 'notas' ? (
@@ -2099,7 +2119,6 @@ function VendaModal({
           </div>
           </fieldset>
 
-          {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
           </>
           )}
         </div>
@@ -2366,7 +2385,9 @@ function VendasPage() {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const vendaId = searchParams.get('venda_id');
-    const aba = searchParams.get('aba') === 'problema' ? 'problema' : 'venda';
+    const abaParam = searchParams.get('aba');
+    const abasPermitidas = ['venda', 'notas', 'arquivos', 'problema'];
+    const aba = abasPermitidas.includes(abaParam) ? abaParam : 'venda';
 
     if (!vendaId) return;
 
