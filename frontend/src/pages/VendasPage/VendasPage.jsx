@@ -64,7 +64,7 @@ const VENDA_VAZIA = {
   quantidade_linhas: '',
   ddd: '',
   gb: '',
-  valores_unitarios_chips: '',
+  valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' }],
   valor_total: '',
   ponto_referencia: '',
   tipo_local_cpf: '',
@@ -414,14 +414,18 @@ function getMaxLengthCampo(campo, maxLength) {
   return limites[campo] || maxLength;
 }
 
+function normalizarItensChipsInput(itens) {
+  return Array.isArray(itens) ? itens : parseItensChips(itens);
+}
+
 function calcularTotalItensChips(itens = []) {
-  return itens.reduce((acc, item) => (
+  return normalizarItensChipsInput(itens).reduce((acc, item) => (
     acc + (Number(item.quantidade || 0) * parseValorInput(item.valor_unitario))
   ), 0);
 }
 
 function resumirGigasItensChips(itens = []) {
-  const valores = itens
+  const valores = normalizarItensChipsInput(itens)
     .map(item => String(item.gb || '').trim())
     .filter(Boolean);
 
@@ -436,11 +440,11 @@ function normalizarTipoLinhaChip(valor, fallback = 'novo') {
 }
 
 function somarQuantidadeItensChips(itens = []) {
-  return itens.reduce((acc, item) => acc + Number(item.quantidade || 0), 0);
+  return normalizarItensChipsInput(itens).reduce((acc, item) => acc + Number(item.quantidade || 0), 0);
 }
 
 function somarQuantidadePortabilidadeItensChips(itens = []) {
-  return itens.reduce((acc, item) => (
+  return normalizarItensChipsInput(itens).reduce((acc, item) => (
     normalizarTipoLinhaChip(item.tipo_linha) === 'portabilidade'
       ? acc + Number(item.quantidade || 0)
       : acc
