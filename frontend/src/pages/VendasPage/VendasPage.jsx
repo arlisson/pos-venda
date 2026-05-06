@@ -462,6 +462,26 @@ function somarQuantidadeItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => acc + Number(item.quantidade || 0), 0);
 }
 
+function limitarItensChipsPorQuantidadeLinhas(itens = [], limiteQuantidade = 0) {
+  const lista = normalizarItensChipsInput(itens);
+  const limite = Number(limiteQuantidade || 0);
+
+  if (limite <= 0) return lista;
+
+  let restante = limite;
+
+  return lista.map(item => {
+    const quantidadeAtual = Number(item.quantidade || 0);
+    const quantidade = Math.min(quantidadeAtual, restante);
+    restante = Math.max(restante - quantidade, 0);
+
+    return {
+      ...item,
+      quantidade: quantidade > 0 ? String(quantidade) : ''
+    };
+  });
+}
+
 function somarQuantidadePortabilidadeItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => (
     normalizarTipoLinhaChip(item.tipo_linha) === 'portabilidade'
@@ -472,6 +492,25 @@ function somarQuantidadePortabilidadeItensChips(itens = []) {
 
 function temChipPortabilidade(itens = []) {
   return somarQuantidadePortabilidadeItensChips(itens) > 0;
+}
+
+function formatarTipoLinhaChipLabel(tipo) {
+  return normalizarTipoLinhaChip(tipo) === 'portabilidade' ? 'Portabilidade' : 'Novo';
+}
+
+function resumirTiposLinhaItensChips(itens = []) {
+  const tipos = normalizarItensChipsInput(itens)
+    .map(item => formatarTipoLinhaChipLabel(item.tipo_linha || item.tipo || item.categoria))
+    .filter(Boolean);
+
+  return Array.from(new Set(tipos)).join(', ');
+}
+
+function obterTipoVendaTabela(venda = {}) {
+  return venda.tipoVenda?.nome
+    || resumirTiposLinhaItensChips(venda.valores_unitarios_chips)
+    || venda.produto_fechado
+    || '-';
 }
 
 function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
@@ -644,13 +683,17 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
 
       {itens.map((item, index) => {
         const subtotal = Number(item.quantidade || 0) * parseValorInput(item.valor_unitario);
+        const outros = itens.reduce((acc, chip, itemIndex) => (
+          itemIndex === index ? acc : acc + Number(chip.quantidade || 0)
+        ), 0);
+        const maximoQuantidadeLinha = limite > 0 ? Math.max(limite - outros, 0) : undefined;
 
         return (
           <div key={index} className="chip-item-row">
             <input
               type="number"
               min="1"
-              max={limite || undefined}
+              max={maximoQuantidadeLinha}
               value={item.quantidade}
               onChange={e => atualizarItem(index, 'quantidade', e.target.value)}
               placeholder="3"
@@ -1534,10 +1577,30 @@ function VendaModal({
   const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
   const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
   function atualizarCampo(campo, valor) {
-    setForm(prev => ({
-      ...prev,
-      [campo]: formatarCampoVenda(campo, valor)
-    }));
+    const valorFormatado = formatarCampoVenda(campo, valor);
+
+    setForm(prev => {
+      const proximo = {
+        ...prev,
+        [campo]: valorFormatado
+      };
+
+      if (campo === 'quantidade_linhas') {
+        proximo.valores_unitarios_chips = limitarItensChipsPorQuantidadeLinhas(
+          prev.valores_unitarios_chips,
+          valorFormatado
+        );
+      }
+
+      if (campo === 'valores_unitarios_chips') {
+        proximo.valores_unitarios_chips = limitarItensChipsPorQuantidadeLinhas(
+          valorFormatado,
+          prev.quantidade_linhas
+        );
+      }
+
+      return proximo;
+    });
   }
 
   function formatarMensagemCnpj(dados) {
@@ -2311,13 +2374,13 @@ function VendasPage() {
       .then(venda => {
         setModalVenda(venda);
         setModalAbaInicial(aba);
-        setModalModoEdicao(false);
+        setModalModoEdicao(aba === 'venda' && podeEditarVenda);
         setVendaInicial(null);
         setModalAberto(true);
         navigate('/vendas', { replace: true });
       })
       .catch(error => setErro(error.message || 'Erro ao abrir venda.'));
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, podeEditarVenda]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function abrirVisualizacao(venda) {
@@ -2331,7 +2394,7 @@ function VendasPage() {
   function abrirEdicao(venda) {
     setModalVenda(venda);
     setModalAbaInicial('venda');
-    setModalModoEdicao(true);
+    setModalModoEdicao(podeEditarVenda);
     setVendaInicial(null);
     setModalAberto(true);
   }
@@ -2688,11 +2751,15 @@ function VendasPage() {
                       className="clickable-row"
                       role="button"
                       tabIndex={0}
-                      onClick={() => abrirVisualizacao(venda)}
+                      onClick={() => (podeEditarVenda ? abrirEdicao(venda) : abrirVisualizacao(venda))}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          abrirVisualizacao(venda);
+                          if (podeEditarVenda) {
+                            abrirEdicao(venda);
+                          } else {
+                            abrirVisualizacao(venda);
+                          }
                         }
                       }}
                     >
@@ -2703,7 +2770,7 @@ function VendasPage() {
                         </div>
                       </td>
                       <td><span className="tag">{venda.operadora?.nome || '-'}</span></td>
-                      <td>{venda.tipoVenda?.nome || venda.produto_fechado || '-'}</td>
+                      <td>{obterTipoVendaTabela(venda)}</td>
                       <td>{venda.servico?.nome || '-'}</td>
                       <td>{venda.quantidade_linhas || '-'}</td>
                       <td>{venda.gb || '-'}</td>

@@ -65,8 +65,16 @@ input, select, textarea { font-family: inherit; }
   height: 100vh;
   overflow: hidden;
 }
-.sidebar-logo { padding: 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.sidebar-logo-img { max-width: 85%; max-height: 58px; width: auto; height: auto; object-fit: contain; }
+.sidebar-logo {
+  height: 64px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-logo-img { max-width: 85%; max-height: 48px; width: auto; height: auto; object-fit: contain; }
 .logo-placeholder {
   height: 44px; display: flex; align-items: center; justify-content: center;
   border: 1px dashed var(--border-strong); border-radius: var(--radius);
