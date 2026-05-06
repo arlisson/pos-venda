@@ -6,8 +6,11 @@ npm run seed
 npm run dev
 
 package.json
-"scripts": {
-  "build": "cd frontend && npm install && npm run build",
-  "start": "cd backend && npm start",
-  "postinstall": "cd backend && npm install"
-}
+ "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && npm start",
+    "postinstall": "cd backend && npm install",
+    "migrate": "cd backend && npm run migrate",
+    "seed": "cd backend && npm run seed"
+  }
+
