@@ -834,6 +834,22 @@ async function listarVendas(filtros = {}, usuarioId) {
     query.where('valor_total', '<=', parseValorMonetario(filtros.valor_max));
   }
 
+  if (filtros.protocolo) {
+    query.where('protocolo', 'like', `%${filtros.protocolo}%`);
+  }
+
+  if (filtros.uf) {
+    query.where('uf', filtros.uf);
+  }
+
+  if (filtros.municipio) {
+    query.where('municipio', 'like', `%${filtros.municipio}%`);
+  }
+
+  if (filtros.prioridade_funil) {
+    query.where('prioridade_funil', filtros.prioridade_funil);
+  }
+
   return query;
 }
 

@@ -1588,6 +1588,10 @@ function VendasPage() {
   const [tipoVendaId, setTipoVendaId] = useState('');
   const [servicoId, setServicoId] = useState('');
   const [statusFunil, setStatusFunil] = useState('');
+  const [prioridadeFunil, setPrioridadeFunil] = useState('');
+  const [protocolo, setProtocolo] = useState('');
+  const [uf, setUf] = useState('');
+  const [municipio, setMunicipio] = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [valorMin, setValorMin] = useState('');
@@ -1620,11 +1624,15 @@ function VendasPage() {
     tipo_venda_id: tipoVendaId,
     servico_id: servicoId,
     status_funil: statusFunil,
+    prioridade_funil: prioridadeFunil,
+    protocolo,
+    uf,
+    municipio,
     data_inicio: dataInicio,
     data_fim: dataFim,
     valor_min: valorMin,
     valor_max: valorMax
-  }), [busca, vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, dataInicio, dataFim, valorMin, valorMax]);
+  }), [busca, vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, protocolo, uf, municipio, dataInicio, dataFim, valorMin, valorMax]);
 
   const filtrosAtivos = useMemo(() => (
     Object.entries(filtros).filter(([, valor]) => valor !== '').length
@@ -1634,12 +1642,15 @@ function VendasPage() {
     operadoraId,
     tipoVendaId,
     servicoId,
+    protocolo,
+    uf,
+    municipio,
     dataInicio,
     dataFim,
     valorMin,
     valorMax,
     ...(podeVerTodasVendas ? [vendedoraId] : []),
-    ...(podeFunil ? [statusFunil] : [])
+    ...(podeFunil ? [statusFunil, prioridadeFunil] : [])
   ].filter(v => v !== '').length;
 
   useEffect(() => {
@@ -1816,6 +1827,10 @@ function VendasPage() {
     setTipoVendaId('');
     setServicoId('');
     setStatusFunil('');
+    setPrioridadeFunil('');
+    setProtocolo('');
+    setUf('');
+    setMunicipio('');
     setDataInicio('');
     setDataFim('');
     setValorMin('');
@@ -1915,6 +1930,34 @@ function VendasPage() {
                   </select>
                 </div>
               )}
+              {podeFunil && (
+                <div className="filter-field">
+                  <label>Prioridade</label>
+                  <select value={prioridadeFunil} onChange={e => setPrioridadeFunil(e.target.value)}>
+                    <option value="">Todas</option>
+                    <option value="alta">Alta</option>
+                    <option value="media">Média</option>
+                    <option value="baixa">Baixa</option>
+                  </select>
+                </div>
+              )}
+              <div className="filter-field">
+                <label>Protocolo</label>
+                <input value={protocolo} onChange={e => setProtocolo(e.target.value)} placeholder="Buscar por protocolo" />
+              </div>
+              <div className="filter-field">
+                <label>UF</label>
+                <select value={uf} onChange={e => setUf(e.target.value)}>
+                  <option value="">Todos</option>
+                  {['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map(estado => (
+                    <option key={estado} value={estado}>{estado}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Município</label>
+                <input value={municipio} onChange={e => setMunicipio(e.target.value)} placeholder="Buscar por município" />
+              </div>
               <div className="filter-field">
                 <label>Data inicial</label>
                 <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
