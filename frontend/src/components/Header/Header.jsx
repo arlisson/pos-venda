@@ -38,7 +38,8 @@ function getNotificationTarget(notification) {
   }
 
   if (notification.entidade === 'vendas') {
-    return '/vendas';
+    const vendaId = notification.entidade_id || notification.dados?.venda_id;
+    return vendaId ? `/vendas?venda_id=${vendaId}` : '/vendas';
   }
 
   return null;
@@ -53,7 +54,7 @@ function Header({ title, subtitle, onNew, usuario }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const linksMenuRef = useRef(null);
   const notificationsMenuRef = useRef(null);
-  const podeVerNotificacoes = temPermissao(usuario, 'notificacoes_visualizar');
+  const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
 
   useEffect(() => {
     async function carregarLinks() {

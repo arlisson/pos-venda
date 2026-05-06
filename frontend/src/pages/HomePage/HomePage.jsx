@@ -50,7 +50,6 @@ const INITIAL_SALES = [
     cpfCnpj: '12.345.678/0001-90',
     seller: { name: 'Camila Souza', initials: 'CS' },
     linha: '(11) 912345678',
-    iccid: '89550102082068484460',
     endereco: 'Rua das Flores, 100 - São Paulo/SP',
     stage: 'aprovacao',
     priority: 'alta',
@@ -70,7 +69,6 @@ const INITIAL_SALES = [
     cpfCnpj: '128.554.881-22',
     seller: { name: 'Camila Souza', initials: 'CS' },
     linha: '(11) 983375752',
-    iccid: '89550102082068484460',
     endereco: 'Av. Brasil, 4500 - Rio de Janeiro/RJ',
     stage: 'aprovacao',
     priority: 'media',
@@ -90,7 +88,6 @@ const INITIAL_SALES = [
     cpfCnpj: '98.765.432/0001-55',
     seller: { name: 'João Pedro', initials: 'JP' },
     linha: '(21) 998765432',
-    iccid: '89550102082068484461',
     endereco: 'Av. Paulista, 1000 - São Paulo/SP',
     stage: 'envio',
     priority: 'baixa',
@@ -111,7 +108,6 @@ const INITIAL_SALES = [
     cpfCnpj: '11.222.333/0001-44',
     seller: { name: 'Camila Souza', initials: 'CS' },
     linha: '(11) 912341234',
-    iccid: '89550102082068484462',
     endereco: 'Rua do Comércio, 50 - Campinas/SP',
     stage: 'concluido',
     priority: 'media',
@@ -223,10 +219,6 @@ function SaleModal({ sale, onClose, onUpdateSale }) {
               <div className="detail-item">
                 <div className="label">LINHA</div>
                 <div className="value mono">{sale.linha}</div>
-              </div>
-              <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
-                <div className="label">ICCID</div>
-                <div className="value mono">{sale.iccid}</div>
               </div>
               <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
                 <div className="label">ENDEREÇO DE ENTREGA</div>

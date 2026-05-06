@@ -235,7 +235,6 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
     cpfCnpj: venda.cnpj || venda.cpf || '-',
     seller: { name: sellerName, initials: initials(sellerName), photo: getSellerPhoto(venda) },
     linha: venda.telefone || venda.quantidade_linhas || '-',
-    iccid: venda.iccid || '-',
     endereco: [
       venda.endereco,
       venda.numero_endereco,
@@ -364,10 +363,6 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
               <div className="detail-item">
                 <div className="label">LINHA</div>
                 <div className="value mono">{sale.linha}</div>
-              </div>
-              <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
-                <div className="label">ICCID</div>
-                <div className="value mono">{sale.iccid}</div>
               </div>
               <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
                 <div className="label">ENDERECO DE ENTREGA</div>

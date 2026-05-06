@@ -146,6 +146,11 @@ const GRUPOS_PERMISSOES = [
             chave: 'vendas_excluir',
             nome: 'Excluir',
             descricao: 'Permite excluir vendas acessíveis.'
+          },
+          {
+            chave: 'vendas_marcar_problema',
+            nome: 'Marcar problema',
+            descricao: 'Permite abrir solicitacoes urgentes de problema em vendas.'
           }
         ]
       }

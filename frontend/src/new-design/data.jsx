@@ -56,17 +56,6 @@ function relTime(d) {
   const dd = Math.floor(h / 24);
   return `${dd}d atrás`;
 }
-function genICCID(seed) {
-  // 19-digit ICCID-ish
-  let s = '8955010';
-  let n = seed * 7919 + 13;
-  for (let i = 0; i < 12; i++) {
-    n = (n * 1103515245 + 12345) & 0x7fffffff;
-    s += (n % 10).toString();
-  }
-  return s;
-}
-
 // Pseudo-random but deterministic dataset
 function buildSales() {
   const sales = [];
@@ -103,7 +92,6 @@ function buildSales() {
         operator: op,
         plan,
         value,
-        iccid: genICCID(id),
         line: `(11) 9${String(Math.floor(seedRand(id + 6) * 99999999)).padStart(8, '0')}`,
         address: ['Av. Paulista, 1000 - São Paulo/SP', 'Rua das Flores, 234 - Curitiba/PR', 'Av. Brasil, 4500 - Rio de Janeiro/RJ', 'Rua XV de Novembro, 78 - Porto Alegre/RS'][Math.floor(seedRand(id + 7) * 4)],
         seller,

@@ -70,7 +70,7 @@ function Header({ title, subtitle, onNew }) {
       <div className="header-actions">
         <div className="search-box">
           <I.Search size={14} />
-          <input placeholder="Buscar venda, cliente, ICCID…" />
+          <input placeholder="Buscar venda ou cliente…" />
         </div>
         <button className="btn btn-icon btn-ghost" title="Notificações">
           <I.Bell size={15} />

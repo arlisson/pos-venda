@@ -160,6 +160,30 @@ export async function deletarVenda(id) {
   return apiDelete(`/vendas/${id}`);
 }
 
+export async function buscarProblemaAtivoVenda(id) {
+  return apiGet(`/vendas/${id}/problemas/ativo`);
+}
+
+export async function listarDestinatariosProblemaVenda() {
+  return apiGet('/vendas/problemas/destinatarios');
+}
+
+export async function marcarProblemaVenda(id, dados) {
+  return apiPost(`/vendas/${id}/problemas`, dados);
+}
+
+export async function resolverProblemaVenda(problemaId, dados) {
+  return apiPost(`/vendas/problemas/${problemaId}/resolver`, dados);
+}
+
+export async function solicitarCorrecaoProblemaVenda(problemaId, dados) {
+  return apiPost(`/vendas/problemas/${problemaId}/correcao`, dados);
+}
+
+export async function verificarProblemaVenda(problemaId) {
+  return apiPost(`/vendas/problemas/${problemaId}/verificar`, {});
+}
+
 export async function restaurarVenda(id) {
   return apiPost(`/vendas/${id}/restaurar`, {});
 }

@@ -472,11 +472,6 @@ input, select, textarea { font-family: inherit; }
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.sale-card-meta .iccid {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--text-3);
-}
 .sale-card-bottom {
   display: flex;
   align-items: center;

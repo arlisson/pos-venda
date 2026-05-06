@@ -47,7 +47,6 @@ function SaleDetail({ sale, onClose, onUpdate }) {
                 <div className="detail-item"><div className="label">Operadora</div><div className="value">{sale.operator}</div></div>
                 <div className="detail-item"><div className="label">Plano</div><div className="value">{sale.plan}</div></div>
                 <div className="detail-item"><div className="label">Linha</div><div className="value mono">{sale.line}</div></div>
-                <div className="detail-item" style={{ gridColumn: '1 / -1' }}><div className="label">ICCID</div><div className="value mono">{sale.iccid}</div></div>
                 <div className="detail-item" style={{ gridColumn: '1 / -1' }}><div className="label">Endereço de entrega</div><div className="value">{sale.address}</div></div>
                 <div className="detail-item"><div className="label">Lançada em</div><div className="value">{formatDateBR(sale.created)}</div></div>
                 <div className="detail-item"><div className="label">Atualizada</div><div className="value">{relTime(sale.updated)}</div></div>
@@ -159,10 +158,10 @@ function SaleDetail({ sale, onClose, onUpdate }) {
 function NewSaleDrawer({ onClose, onCreate }) {
   const [f, setF] = React.useState({
     client: '', doc: '', operator: 'Vivo', plan: PLANS[0], value: '',
-    iccid: '', line: '', address: '', seller: SELLERS[0].id, notes: '',
+    line: '', address: '', seller: SELLERS[0].id, notes: '',
   });
   const u = (k, v) => setF(p => ({ ...p, [k]: v }));
-  const valid = f.client && f.doc && f.value && f.iccid;
+  const valid = f.client && f.doc && f.value;
 
   return (
     <>
@@ -210,10 +209,6 @@ function NewSaleDrawer({ onClose, onCreate }) {
               <input value={f.line} onChange={e => u('line', e.target.value)} placeholder="(11) 90000-0000" />
             </div>
             <div className="form-field full">
-              <label>ICCID *</label>
-              <input value={f.iccid} onChange={e => u('iccid', e.target.value)} placeholder="89550100000000000000" style={{ fontFamily: 'var(--font-mono)' }} />
-            </div>
-            <div className="form-field full">
               <label>Endereço de entrega</label>
               <input value={f.address} onChange={e => u('address', e.target.value)} placeholder="Rua, número, cidade/UF" />
             </div>
@@ -237,7 +232,7 @@ function NewSaleDrawer({ onClose, onCreate }) {
               id: `VND-${1100 + Math.floor(Math.random() * 900)}`,
               client: f.client, doc: f.doc, operator: f.operator, plan: f.plan,
               value: parseFloat(f.value) || 0,
-              iccid: f.iccid, line: f.line, address: f.address,
+              line: f.line, address: f.address,
               seller, stage: 'aprovacao',
               created: new Date(), updated: new Date(),
               notes: f.notes,

@@ -9,15 +9,22 @@ import {
   baixarArquivoVenda,
   baixarPacoteArquivosVenda,
   baixarXlsxClaro,
+  buscarProblemaAtivoVenda,
+  buscarVendaPorId,
   criarVenda,
   deletarVenda,
   excluirArquivoVenda,
   gerarPacoteArquivosVenda,
   gerarEmailVenda,
   listarArquivosVenda,
+  listarDestinatariosProblemaVenda,
   listarVendas,
   listarVendedoras,
+  marcarProblemaVenda,
+  resolverProblemaVenda,
+  solicitarCorrecaoProblemaVenda,
   uploadArquivoVenda,
+  verificarProblemaVenda,
   visualizarArquivoVenda
 } from '../../services/venda.service';
 import { consultarCnpj, isCnpjRepetido, sanitizarCnpj } from '../../services/cnpj.service';
@@ -1250,14 +1257,239 @@ function ArquivosVendaTab({ venda, podeEditar }) {
   );
 }
 
-function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, tiposVenda, servicos, podeEditarVenda, onClose, onSave, onCreateClient }) {
+function VendaProblemaPanel({ venda, usuario }) {
+  const [problema, setProblema] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+  const [mensagemResolucao, setMensagemResolucao] = useState('');
+  const [mensagemCorrecao, setMensagemCorrecao] = useState('');
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  async function carregar() {
+    if (!venda?.id) return;
+
+    setCarregando(true);
+    setErro('');
+
+    try {
+      setProblema(await buscarProblemaAtivoVenda(venda.id));
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar problema da venda.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venda?.id]);
+
+  if (!venda?.id) {
+    return <div className="venda-problema-empty">Salve a venda antes de acompanhar problemas.</div>;
+  }
+
+  if (carregando) {
+    return <div className="venda-problema-empty">Carregando problema da venda...</div>;
+  }
+
+  if (!problema) {
+    return <div className="venda-problema-empty">Nenhum problema ativo para esta venda.</div>;
+  }
+
+  const usuarioId = Number(usuario?.id);
+  const solicitanteId = Number(problema.solicitante_id);
+  const responsavel = (problema.destinatarios || []).some(item => Number(item.usuario_id) === usuarioId);
+  const solicitante = solicitanteId === usuarioId;
+  const podeResolver = responsavel && problema.status !== 'resolvido';
+  const podeRevisar = solicitante && problema.status === 'resolvido';
+
+  async function executar(acao) {
+    setErro('');
+    setSalvando(true);
+
+    try {
+      let atualizado;
+
+      if (acao === 'resolver') {
+        atualizado = await resolverProblemaVenda(problema.id, { mensagem: mensagemResolucao });
+        setMensagemResolucao('');
+      } else if (acao === 'correcao') {
+        atualizado = await solicitarCorrecaoProblemaVenda(problema.id, { mensagem: mensagemCorrecao });
+        setMensagemCorrecao('');
+      } else {
+        atualizado = await verificarProblemaVenda(problema.id);
+      }
+
+      setProblema(atualizado?.status === 'verificado' ? null : atualizado);
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    } catch (error) {
+      setErro(error.message || 'Erro ao atualizar problema da venda.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="venda-problema-panel">
+      <div className={`venda-problema-status status-${problema.status}`}>
+        <strong>{problema.status === 'resolvido' ? 'Aguardando verificação' : problema.status === 'correcao_solicitada' ? 'Correção solicitada' : 'Problema aberto'}</strong>
+        <span>Solicitado por {problema.solicitante?.nome || 'usuário'}.</span>
+      </div>
+
+      <div className="venda-problema-responsaveis">
+        <strong>Responsáveis</strong>
+        <span>{(problema.destinatarios || []).map(item => item.usuario?.nome).filter(Boolean).join(', ') || '-'}</span>
+      </div>
+
+      <div className="venda-problema-eventos">
+        {(problema.eventos || []).map(evento => (
+          <div key={evento.id} className="venda-problema-evento">
+            <strong>{evento.usuario?.nome || 'Sistema'} - {evento.tipo}</strong>
+            <span>{evento.mensagem}</span>
+            <em>{formatarData(evento.created_at)}</em>
+          </div>
+        ))}
+      </div>
+
+      {erro && <div className="alert-error">{erro}</div>}
+
+      {podeResolver && (
+        <div className="venda-problema-action">
+          <label>Mensagem de resolução</label>
+          <AutoResizeTextarea value={mensagemResolucao} onChange={event => setMensagemResolucao(event.target.value)} placeholder="Explique o que foi corrigido" />
+          <button type="button" className="btn btn-primary" disabled={salvando || !mensagemResolucao.trim()} onClick={() => executar('resolver')}>
+            Marcar resolvido
+          </button>
+        </div>
+      )}
+
+      {podeRevisar && (
+        <div className="venda-problema-action">
+          <div className="venda-problema-review-actions">
+            <button type="button" className="btn btn-primary" disabled={salvando} onClick={() => executar('verificar')}>
+              Verificado
+            </button>
+          </div>
+          <label>Solicitar nova correção</label>
+          <AutoResizeTextarea value={mensagemCorrecao} onChange={event => setMensagemCorrecao(event.target.value)} placeholder="Descreva o que ainda precisa ser ajustado" />
+          <button type="button" className="btn" disabled={salvando || !mensagemCorrecao.trim()} onClick={() => executar('correcao')}>
+            Enviar correção
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
+  const [motivo, setMotivo] = useState('');
+  const [modo, setModo] = useState('responsaveis');
+  const [destinatarios, setDestinatarios] = useState([]);
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar() {
+    setErro('');
+    setSalvando(true);
+
+    try {
+      await onSave(venda, {
+        motivo,
+        modo_destinatario: modo === 'manual' ? 'manual' : 'responsaveis',
+        destinatarios
+      });
+    } catch (error) {
+      setErro(error.message || 'Erro ao marcar problema.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  function toggleUsuario(id) {
+    setDestinatarios(prev => (
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    ));
+  }
+
+  return (
+    <div className="modal-overlay venda-problema-modal-overlay" onClick={onClose}>
+      <div className="modal venda-problema-modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Marcar venda com problema</div>
+              <div className="modal-sub">{venda?.cliente?.nome || venda?.nome || `Venda #${venda?.id}`}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+        <div className="modal-body">
+          {erro && <div className="alert-error">{erro}</div>}
+          <div className="form-field">
+            <label>Motivo do problema</label>
+            <AutoResizeTextarea value={motivo} onChange={event => setMotivo(event.target.value)} placeholder="Explique por que esta venda está com problema" />
+          </div>
+          <div className="venda-problema-recipient-mode">
+            <label>
+              <input type="radio" checked={modo === 'responsaveis'} onChange={() => setModo('responsaveis')} />
+              Enviar aos responsáveis da venda
+            </label>
+            <label>
+              <input type="radio" checked={modo === 'manual'} onChange={() => setModo('manual')} />
+              Escolher manualmente
+            </label>
+          </div>
+          {modo === 'manual' && (
+            <div className="venda-problema-user-list">
+              {usuarios.map(usuario => (
+                <label key={usuario.id}>
+                  <input type="checkbox" checked={destinatarios.includes(usuario.id)} onChange={() => toggleUsuario(usuario.id)} />
+                  <span>{usuario.nome}</span>
+                  <em>{usuario.email}</em>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+          <button type="button" className="btn btn-danger" disabled={salvando || !motivo.trim() || (modo === 'manual' && destinatarios.length === 0)} onClick={salvar}>
+            {salvando ? 'Enviando...' : 'Marcar problema'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VendaModal({
+  venda,
+  initialValues,
+  clientes,
+  vendedoras,
+  operadoras,
+  tiposVenda,
+  servicos,
+  podeEditarVenda,
+  usuarioLogado,
+  initialTab = 'venda',
+  modoEdicao = true,
+  onStartEdit,
+  onClose,
+  onSave,
+  onCreateClient
+}) {
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [cepStatus, setCepStatus] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
-  const [abaAtiva, setAbaAtiva] = useState('venda');
+  const [abaAtiva, setAbaAtiva] = useState(initialTab);
+  const somenteVisualizacao = Boolean(venda) && !modoEdicao;
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
   const cepPreenchidoPorCnpjRef = useRef('');
   const vendaPortabilidade = temChipPortabilidade(form.valores_unitarios_chips);
@@ -1455,6 +1687,11 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (somenteVisualizacao) {
+      return;
+    }
+
     setErro('');
     setSalvando(true);
 
@@ -1515,8 +1752,12 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
         <div className="modal-header">
           <div className="modal-header-row">
             <div>
-              <div className="modal-client">{venda ? 'Editar venda' : 'Nova venda'}</div>
-              <div className="modal-sub">Selecione o cliente e preencha apenas os dados especificos da venda.</div>
+              <div className="modal-client">{venda ? (somenteVisualizacao ? 'Visualizar venda' : 'Editar venda') : 'Nova venda'}</div>
+              <div className="modal-sub">
+                {somenteVisualizacao
+                  ? 'Revise os dados cadastrados antes de editar.'
+                  : 'Selecione o cliente e preencha apenas os dados especificos da venda.'}
+              </div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
               <I.Close size={14} />
@@ -1546,6 +1787,13 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
           >
             <I.Note size={14} /> Arquivos
           </button>
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'problema' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('problema')}
+          >
+            <I.AlertTriangle size={14} /> Problema
+          </button>
         </div>
 
         <div className="modal-body">
@@ -1553,8 +1801,11 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
             <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
           ) : abaAtiva === 'arquivos' ? (
             <ArquivosVendaTab venda={venda} podeEditar={podeEditarVenda} />
+          ) : abaAtiva === 'problema' ? (
+            <VendaProblemaPanel venda={venda} usuario={usuarioLogado} />
           ) : (
           <>
+            <fieldset className="venda-readonly-fieldset" disabled={somenteVisualizacao}>
             <div className="vendas-form-grid">
             {CAMPOS.map(campo => {
               if (campo.section) {
@@ -1710,6 +1961,7 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
               );
             })}
           </div>
+          </fieldset>
 
           {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
           </>
@@ -1717,8 +1969,17 @@ function VendaModal({ venda, initialValues, clientes, vendedoras, operadoras, ti
         </div>
 
         <div className="modal-footer">
-          {abaAtiva === 'notas' || abaAtiva === 'arquivos' ? (
+          {abaAtiva === 'notas' || abaAtiva === 'arquivos' || abaAtiva === 'problema' ? (
             <button type="button" className="btn" onClick={onClose}>Fechar</button>
+          ) : somenteVisualizacao ? (
+            <>
+              <button type="button" className="btn" onClick={onClose}>Fechar</button>
+              {podeEditarVenda && (
+                <button type="button" className="btn btn-primary" onClick={onStartEdit}>
+                  <I.Edit size={14} /> Editar venda
+                </button>
+              )}
+            </>
           ) : (
             <>
               <button type="button" className="btn" onClick={onClose}>Cancelar</button>
@@ -1812,6 +2073,7 @@ function VendasPage() {
   const [vendas, setVendas] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
+  const [usuariosProblema, setUsuariosProblema] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
   const [tiposVenda, setTiposVenda] = useState([]);
   const [servicos, setServicos] = useState([]);
@@ -1834,8 +2096,11 @@ function VendasPage() {
   const [sucesso, setSucesso] = useState('');
   const [modalVenda, setModalVenda] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [modalAbaInicial, setModalAbaInicial] = useState('venda');
+  const [modalModoEdicao, setModalModoEdicao] = useState(true);
   const [vendaInicial, setVendaInicial] = useState(null);
   const [vendaParaLixeira, setVendaParaLixeira] = useState(null);
+  const [vendaProblema, setVendaProblema] = useState(null);
   const [deletando, setDeletando] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [emailTemplate, setEmailTemplate] = useState(null);
@@ -1846,6 +2111,7 @@ function VendasPage() {
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, 'vendas_editar');
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
+  const podeMarcarProblema = temPermissao(usuarioLogado, 'vendas_marcar_problema');
   const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const podeVerTodasVendas = temPermissao(usuarioLogado, 'vendas_ver_todas');
   const podeFunil = temPermissao(usuarioLogado, 'vendas');
@@ -1901,14 +2167,15 @@ function VendasPage() {
     setCarregando(true);
 
     try {
-      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData] = await Promise.all([
+      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData, usuariosProblemaData] = await Promise.all([
         listarVendas(filtros),
         podeListarClientes ? listarClientes() : Promise.resolve([]),
         listarVendedoras(),
         listarOperadoras(),
         listarTiposVenda(),
         listarServicos(),
-        listarEtapasFunil()
+        listarEtapasFunil(),
+        podeMarcarProblema ? listarDestinatariosProblemaVenda() : Promise.resolve([])
       ]);
 
       setVendas(vendasData);
@@ -1918,6 +2185,7 @@ function VendasPage() {
       setTiposVenda(tiposVendaData);
       setServicos(servicosData);
       setStatusFunilFiltros(normalizarStatusFunilFiltros(etapasFunilData));
+      setUsuariosProblema(usuariosProblemaData || []);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar vendas.');
     } finally {
@@ -1933,6 +2201,8 @@ function VendasPage() {
 
   function abrirNovaVenda(initialValues = null) {
     setModalVenda(null);
+    setModalAbaInicial('venda');
+    setModalModoEdicao(true);
     setVendaInicial(initialValues);
     setModalAberto(true);
   }
@@ -1957,8 +2227,37 @@ function VendasPage() {
   }, [searchParams, podeCriarVenda, location.state, navigate]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const vendaId = searchParams.get('venda_id');
+
+    if (!vendaId) return;
+
+    buscarVendaPorId(vendaId)
+      .then(venda => {
+        setModalVenda(venda);
+        setModalAbaInicial('problema');
+        setModalModoEdicao(false);
+        setVendaInicial(null);
+        setModalAberto(true);
+        navigate('/vendas', { replace: true });
+      })
+      .catch(error => setErro(error.message || 'Erro ao abrir venda.'));
+  }, [searchParams, navigate]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  function abrirVisualizacao(venda) {
+    setModalVenda(venda);
+    setModalAbaInicial('venda');
+    setModalModoEdicao(false);
+    setVendaInicial(null);
+    setModalAberto(true);
+  }
+
   function abrirEdicao(venda) {
     setModalVenda(venda);
+    setModalAbaInicial('venda');
+    setModalModoEdicao(true);
     setVendaInicial(null);
     setModalAberto(true);
   }
@@ -1975,6 +2274,8 @@ function VendasPage() {
 
     setModalAberto(false);
     setModalVenda(null);
+    setModalAbaInicial('venda');
+    setModalModoEdicao(true);
     setVendaInicial(null);
     await carregarDados();
     setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
@@ -2067,6 +2368,8 @@ function VendasPage() {
     setValorMax('');
   }
 
+  const totalColunasVendas = 12 + (podeMarcarProblema ? 1 : 0) + (podeExcluirVenda ? 1 : 0);
+
   return (
     <LayoutPrivado>
       {modalAberto && (
@@ -2079,12 +2382,33 @@ function VendasPage() {
           tiposVenda={tiposVenda}
           servicos={servicos}
           podeEditarVenda={podeEditarVenda}
+          usuarioLogado={usuarioLogado}
+          initialTab={modalAbaInicial}
+          modoEdicao={modalModoEdicao}
+          onStartEdit={() => setModalModoEdicao(true)}
           onClose={() => {
             setModalAberto(false);
+            setModalAbaInicial('venda');
+            setModalModoEdicao(true);
             setVendaInicial(null);
           }}
           onSave={salvarVenda}
           onCreateClient={() => navigate('/clientes/novo')}
+        />
+      )}
+
+      {vendaProblema && (
+        <MarcarProblemaModal
+          venda={vendaProblema}
+          usuarios={usuariosProblema}
+          onClose={() => setVendaProblema(null)}
+          onSave={async (venda, dados) => {
+            await marcarProblemaVenda(venda.id, dados);
+            setVendaProblema(null);
+            setSucesso('Problema da venda enviado aos responsaveis.');
+            window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+            await carregarDados();
+          }}
         />
       )}
 
@@ -2262,6 +2586,9 @@ function VendasPage() {
                   <th>Ativacao</th>
                   <th>Vendedor(a)</th>
                   <th className={`vendas-actions-col vendas-email-actions-col ${podeExcluirVenda ? 'has-delete' : ''}`}>Email</th>
+                  {podeMarcarProblema && (
+                    <th className="vendas-actions-col vendas-delete-actions-col">Problema</th>
+                  )}
                   {podeExcluirVenda && (
                     <th className="vendas-actions-col vendas-delete-actions-col">Excluir</th>
                   )}  
@@ -2270,13 +2597,13 @@ function VendasPage() {
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan={podeExcluirVenda ? 13 : 12} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={totalColunasVendas} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando vendas...
                     </td>
                   </tr>
                 ) : vendas.length === 0 ? (
                   <tr>
-                    <td colSpan={podeExcluirVenda ? 13 : 12} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={totalColunasVendas} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhuma venda encontrada.
                     </td>
                   </tr>
@@ -2284,15 +2611,14 @@ function VendasPage() {
                   vendas.map(venda => (
                     <tr
                       key={venda.id}
-                      className={podeEditarVenda ? 'clickable-row' : ''}
-                      role={podeEditarVenda ? 'button' : undefined}
-                      tabIndex={podeEditarVenda ? 0 : undefined}
-                      onClick={() => podeEditarVenda && abrirEdicao(venda)}
+                      className="clickable-row"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => abrirVisualizacao(venda)}
                       onKeyDown={(event) => {
-                        if (!podeEditarVenda) return;
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          abrirEdicao(venda);
+                          abrirVisualizacao(venda);
                         }
                       }}
                     >
@@ -2338,6 +2664,20 @@ function VendasPage() {
                           </button>
                         )}
                       </td>
+                      {podeMarcarProblema && (
+                        <td className="vendas-actions-col vendas-delete-actions-col">
+                          <button
+                            className="btn btn-icon btn-ghost btn-danger-icon"
+                            title="Marcar problema"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setVendaProblema(venda);
+                            }}
+                          >
+                            <I.AlertTriangle size={13} />
+                          </button>
+                        </td>
+                      )}
                       {podeExcluirVenda && (
                         <td className="vendas-actions-col vendas-delete-actions-col">
                           <button

@@ -3,6 +3,7 @@ const router = express.Router();
 
 const vendaController = require('../controllers/venda.controller');
 const vendaArquivoController = require('../controllers/venda-arquivo.controller');
+const vendaProblemaController = require('../controllers/venda-problema.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { auditar } = require('../middlewares/audit.middleware');
 const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
@@ -14,6 +15,12 @@ router.get('/resumo', exigirUmaPermissao(['dashboard_resumo_vendas', 'vendas', '
 router.get('/relatorios', exigirUmaPermissao(['relatorios_visualizar']), vendaController.relatorios);
 router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.lixeira);
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.index);
+router.get('/problemas/destinatarios', exigirUmaPermissao(['vendas_marcar_problema']), vendaProblemaController.destinatarios);
+router.post('/problemas/:problemaId/resolver', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.resolver);
+router.post('/problemas/:problemaId/correcao', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.correcao);
+router.post('/problemas/:problemaId/verificar', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.verificar);
+router.get('/:id/problemas/ativo', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.ativo);
+router.post('/:id/problemas', exigirUmaPermissao(['vendas_marcar_problema']), vendaProblemaController.store);
 router.get('/:id/arquivos', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.index);
 router.post('/:id/arquivos', exigirUmaPermissao(['vendas_editar']), vendaArquivoController.store);
 router.get('/:id/arquivos/pacote', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.pacoteShow);

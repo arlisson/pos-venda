@@ -32,6 +32,7 @@ const CATEGORY_LABELS = {
 };
 
 const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
+const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 
 function getCampanhaKey(campanha) {
   return campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`;
@@ -115,7 +116,8 @@ function getNotificationTarget(notificacao) {
   }
 
   if (notificacao.entidade === 'vendas') {
-    return '/vendas';
+    const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id;
+    return vendaId ? `/vendas?venda_id=${vendaId}` : '/vendas';
   }
 
   return null;
@@ -160,7 +162,7 @@ function DashboardPage() {
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
   const podeVerRetornos = temPermissao(usuario, ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']);
   const podeVerCampanhasUsuarios = temPermissao(usuario, 'campanhas_ver_usuarios');
-  const podeVerNotificacoes = temPermissao(usuario, 'notificacoes_visualizar');
+  const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
 
   useEffect(() => {
     if (!feedback) return undefined;
@@ -251,13 +253,15 @@ function DashboardPage() {
   const notificacoesRetorno = notificacoes
     .filter(notificacao => TIPOS_RETORNO_NOTA.includes(notificacao.tipo))
     .sort((a, b) => getRetornoTimestamp(a) - getRetornoTimestamp(b));
-  const outrasNotificacoes = notificacoes.filter(notificacao => (
-    notificacao.tipo !== 'cliente_fidelidade' && !TIPOS_RETORNO_NOTA.includes(notificacao.tipo)
-  ));
+  const notificacoesProblema = notificacoes
+    .filter(notificacao => TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo))
+    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
   const proximaFidelidade = notificacoesFidelidade[0];
   const proximoRetorno = notificacoesRetorno[0];
+  const proximoProblema = notificacoesProblema[0];
   const retornosNaoLidos = notificacoesRetorno.some(notificacao => !notificacao.lida);
   const retornosVencidos = notificacoesRetorno.filter(notificacao => notificacao.tipo === 'nota_retorno_due').length;
+  const problemasNaoLidos = notificacoesProblema.some(notificacao => !notificacao.lida);
   const fidelidadeTextoPrazo = proximaFidelidade?.dados?.dias_restantes < 0
     ? `vencida ha ${Math.abs(proximaFidelidade.dados.dias_restantes)} dia${Math.abs(proximaFidelidade.dados.dias_restantes) === 1 ? '' : 's'}`
     : proximaFidelidade?.dados?.dias_restantes === 0
@@ -326,50 +330,56 @@ function DashboardPage() {
           </div>
         )}
 
-        {(notificacoesFidelidade.length > 0 || notificacoesRetorno.length > 0 || outrasNotificacoes.length > 0) && (
+        {(notificacoesFidelidade.length > 0 || notificacoesRetorno.length > 0 || notificacoesProblema.length > 0) && (
           <section className="home-notifications">
             <div className="home-notifications__header">
               <div>
                 <h2>Notificacoes</h2>
-                <p>Avisos importantes para acompanhar hoje.</p>
+                <p>Acompanhe os tres pontos que exigem atencao imediata.</p>
               </div>
             </div>
 
             <div className="home-notifications__list">
-              {notificacoesFidelidade.length > 0 && (
-                <button
-                  type="button"
-                  className={`home-notification home-notification--summary home-notification--fidelity ${proximaFidelidade?.lida ? '' : 'is-unread'} ${proximaFidelidade?.nivel || 'info'}`}
-                  onClick={() => handleReadNotification(proximaFidelidade)}
-                >
-                  <span className="home-notification__icon">
-                    <I.Bell size={16} />
+              <button
+                type="button"
+                className={`home-notification home-notification--fixed home-notification--fidelity ${proximaFidelidade?.lida ? '' : 'is-unread'} ${proximaFidelidade?.nivel || 'warn'} ${notificacoesFidelidade.length === 0 ? 'is-empty' : ''}`}
+                disabled={notificacoesFidelidade.length === 0}
+                onClick={() => proximaFidelidade && handleReadNotification(proximaFidelidade)}
+              >
+                <span className="home-notification__icon">
+                  <I.AlertTriangle size={16} />
+                </span>
+                <span className="home-notification__content">
+                  <em>Fidelidade</em>
+                  <strong>
+                    {notificacoesFidelidade.length > 0
+                      ? `${notificacoesFidelidade.length} cliente${notificacoesFidelidade.length === 1 ? '' : 's'} em alerta`
+                      : 'Sem fidelidades em alerta'}
+                  </strong>
+                  <span>
+                    {proximaFidelidade
+                      ? `Mais urgente: ${proximaFidelidade.dados?.cliente_nome || 'cliente'} - ${fidelidadeTextoPrazo}.`
+                      : 'Nenhum cliente perto do vencimento agora.'}
                   </span>
-                  <span className="home-notification__content">
-                    <strong>
-                      {notificacoesFidelidade.length} cliente{notificacoesFidelidade.length === 1 ? '' : 's'} com fidelidade perto do fim
-                    </strong>
-                    <span>
-                      Maior urgencia: {proximaFidelidade?.dados?.cliente_nome || 'cliente'} - {fidelidadeTextoPrazo}.
-                    </span>
-                  </span>
-                  {proximaFidelidade?.dados?.dias_restantes !== undefined && (
-                    <span className="home-notification__days">
-                      {proximaFidelidade.dados.dias_restantes === 0
-                        ? 'Hoje'
-                        : proximaFidelidade.dados.dias_restantes < 0
-                          ? 'Vencida'
-                        : `${proximaFidelidade.dados.dias_restantes} dias`}
-                    </span>
-                  )}
-                </button>
-              )}
+                </span>
+                <span className="home-notification__days">
+                  {proximaFidelidade?.dados?.dias_restantes === 0
+                    ? 'Hoje'
+                    : proximaFidelidade?.dados?.dias_restantes < 0
+                      ? 'Vencida'
+                      : proximaFidelidade?.dados?.dias_restantes !== undefined
+                        ? `${proximaFidelidade.dados.dias_restantes} dias`
+                        : 'Ok'}
+                </span>
+              </button>
 
-              {notificacoesRetorno.length > 0 && (
-                <button
-                  type="button"
-                  className={`home-notification home-notification--summary ${retornosNaoLidos ? 'is-unread' : ''} ${proximoRetorno?.nivel || 'warn'}`}
-                  onClick={() => {
+              <button
+                type="button"
+                className={`home-notification home-notification--fixed ${retornosNaoLidos ? 'is-unread' : ''} ${proximoRetorno?.nivel || 'warn'} ${notificacoesRetorno.length === 0 ? 'is-empty' : ''}`}
+                disabled={notificacoesRetorno.length === 0}
+                onClick={() => {
+                  if (!proximoRetorno) return;
+
                     if (retornosVencidos > 0) {
                       navigate('/clientes?retorno=vencido');
                       return;
@@ -377,40 +387,54 @@ function DashboardPage() {
 
                     handleReadNotification(proximoRetorno);
                   }}
-                >
-                  <span className="home-notification__icon">
-                    <I.Bell size={16} />
+              >
+                <span className="home-notification__icon">
+                  <I.AlertTriangle size={16} />
+                </span>
+                <span className="home-notification__content">
+                  <em>Retornos</em>
+                  <strong>
+                    {notificacoesRetorno.length > 0
+                      ? `${notificacoesRetorno.length} retorno${notificacoesRetorno.length === 1 ? '' : 's'} de ligacao`
+                      : 'Sem retornos pendentes'}
+                  </strong>
+                  <span>
+                    {proximoRetorno
+                      ? `Mais urgente: ${proximoRetorno.dados?.titulo_nota || 'nota'} - ${formatarRetornoResumo(proximoRetorno)}.`
+                      : 'Nenhuma ligacao pendente para acompanhar.'}
                   </span>
-                  <span className="home-notification__content">
-                    <strong>
-                      {notificacoesRetorno.length} retorno{notificacoesRetorno.length === 1 ? '' : 's'} de ligacao
-                    </strong>
-                    <span>
-                      Maior urgencia: {proximoRetorno?.dados?.titulo_nota || 'nota'} - {formatarRetornoResumo(proximoRetorno)}.
-                    </span>
-                  </span>
-                  <span className="home-notification__days">
-                    {retornosVencidos > 0 ? `${retornosVencidos} vencido${retornosVencidos === 1 ? '' : 's'}` : 'Em breve'}
-                  </span>
-                </button>
-              )}
+                </span>
+                <span className="home-notification__days">
+                  {retornosVencidos > 0 ? `${retornosVencidos} vencido${retornosVencidos === 1 ? '' : 's'}` : notificacoesRetorno.length > 0 ? 'Em breve' : 'Ok'}
+                </span>
+              </button>
 
-              {outrasNotificacoes.map(notificacao => (
-                <button
-                  key={notificacao.destinatario_id || notificacao.id}
-                  type="button"
-                  className={`home-notification ${notificacao.lida ? '' : 'is-unread'} ${notificacao.nivel || 'info'}`}
-                  onClick={() => handleReadNotification(notificacao)}
-                >
-                  <span className="home-notification__icon">
-                    <I.Bell size={16} />
+              <button
+                type="button"
+                className={`home-notification home-notification--fixed home-notification--problem ${problemasNaoLidos ? 'is-unread' : ''} ${proximoProblema?.nivel || 'danger'} ${notificacoesProblema.length === 0 ? 'is-empty' : ''}`}
+                disabled={notificacoesProblema.length === 0}
+                onClick={() => proximoProblema && handleReadNotification(proximoProblema)}
+              >
+                <span className="home-notification__icon">
+                  <I.AlertTriangle size={16} />
+                </span>
+                <span className="home-notification__content">
+                  <em>Vendas com problema</em>
+                  <strong>
+                    {notificacoesProblema.length > 0
+                      ? `${notificacoesProblema.length} venda${notificacoesProblema.length === 1 ? '' : 's'} exigindo acao`
+                      : 'Nenhuma venda problemática'}
+                  </strong>
+                  <span>
+                    {proximoProblema
+                      ? proximoProblema.mensagem
+                      : 'Tudo certo com as vendas acompanhadas.'}
                   </span>
-                  <span className="home-notification__content">
-                    <strong>{notificacao.titulo}</strong>
-                    <span>{notificacao.mensagem}</span>
-                  </span>
-                </button>
-              ))}
+                </span>
+                <span className="home-notification__days">
+                  {notificacoesProblema.length > 0 ? 'Urgente' : 'Ok'}
+                </span>
+              </button>
             </div>
           </section>
         )}

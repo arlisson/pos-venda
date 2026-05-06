@@ -10,6 +10,16 @@ async function index(req, res) {
   }
 }
 
+async function urgentes(req, res) {
+  try {
+    const notificacoes = await notificacaoService.listarUrgentes(req.usuario.id);
+    return res.json({ notificacoes });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar notificacoes urgentes.' });
+  }
+}
+
 async function marcarLida(req, res) {
   try {
     await notificacaoService.marcarComoLida(req.params.id, req.usuario.id);
@@ -17,6 +27,16 @@ async function marcarLida(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Erro ao marcar notificacao como lida.' });
+  }
+}
+
+async function marcarPopupVisto(req, res) {
+  try {
+    await notificacaoService.marcarPopupVisto(req.params.id, req.usuario.id);
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao marcar popup como visto.' });
   }
 }
 
@@ -32,6 +52,8 @@ async function marcarTodasLidas(req, res) {
 
 module.exports = {
   index,
+  urgentes,
   marcarLida,
+  marcarPopupVisto,
   marcarTodasLidas
 };

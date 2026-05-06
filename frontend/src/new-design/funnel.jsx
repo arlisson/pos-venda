@@ -25,7 +25,6 @@ function SaleCard({ sale, variant, onOpen, isReturn }) {
         </div>
         <div className="sale-card-meta">
           <span className="operator">{sale.operator}</span>
-          <span className="iccid">ICCID …{sale.iccid.slice(-6)}</span>
         </div>
         <div className="detail-row">
           <span className="label">Plano</span>

@@ -289,6 +289,75 @@ input, select, textarea { font-family: inherit; }
   font-style: normal;
 }
 
+.urgent-alert-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 260;
+  width: min(440px, calc(100vw - 32px));
+  display: grid;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.urgent-alert-card {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--danger);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+}
+
+.urgent-alert-card.warn {
+  border-color: #fde68a;
+  border-left-color: var(--warn);
+}
+
+.urgent-alert-card__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--danger);
+  background: #fef2f2;
+}
+
+.urgent-alert-card.warn .urgent-alert-card__icon {
+  color: var(--warn);
+  background: #fffbeb;
+}
+
+.urgent-alert-card__body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.urgent-alert-card__body strong {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.urgent-alert-card__body span {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.urgent-alert-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .btn-new-sale {
   height: 38px;
   padding: 0 18px;

@@ -9,6 +9,11 @@ const PERMISSAO_RECEBER_TODAS = 'notificacoes_receber_todas';
 const TIPO_FIDELIDADE_CLIENTE = 'cliente_fidelidade';
 const TIPO_NOTA_RETORNO_PRE = 'nota_retorno_pre';
 const TIPO_NOTA_RETORNO_DUE = 'nota_retorno_due';
+const TIPOS_PROBLEMA_VENDA = [
+  'venda_problema_aberto',
+  'venda_problema_resolvido',
+  'venda_problema_correcao'
+];
 const RETORNO_PRE_AVISO_MINUTOS = 15;
 
 function parsePermissoes(permissoes) {
@@ -361,6 +366,11 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
 
+  const usuario = await Usuario.query()
+    .findById(usuarioId)
+    .withGraphFetched('role');
+  const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
+
   const limit = Math.min(Number(filtros.limit || 20), 50);
   const query = NotificacaoDestinatario.query()
     .alias('nd')
@@ -385,20 +395,30 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
       'n.updated_at'
     );
 
+  if (!podeVerTudo) {
+    query.whereIn('n.tipo', TIPOS_PROBLEMA_VENDA);
+  }
+
   if (filtros.nao_lidas) {
     query.whereNull('nd.lida_em');
   }
 
+  const contadorQuery = NotificacaoDestinatario.query()
+    .alias('nd')
+    .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
+    .where('nd.usuario_id', usuarioId)
+    .where('n.ativa', true)
+    .whereNull('nd.lida_em')
+    .count('nd.id as total')
+    .first();
+
+  if (!podeVerTudo) {
+    contadorQuery.whereIn('n.tipo', TIPOS_PROBLEMA_VENDA);
+  }
+
   const [notificacoes, contador] = await Promise.all([
     query,
-    NotificacaoDestinatario.query()
-      .alias('nd')
-      .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
-      .where('nd.usuario_id', usuarioId)
-      .where('n.ativa', true)
-      .whereNull('nd.lida_em')
-      .count('nd.id as total')
-      .first()
+    contadorQuery
   ]);
 
   return {
@@ -411,15 +431,57 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
   };
 }
 
+async function listarUrgentes(usuarioId) {
+  const notificacoes = await NotificacaoDestinatario.query()
+    .alias('nd')
+    .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
+    .where('nd.usuario_id', usuarioId)
+    .where('n.ativa', true)
+    .whereIn('n.tipo', TIPOS_PROBLEMA_VENDA)
+    .whereNull('nd.popup_visto_em')
+    .orderBy('n.updated_at', 'asc')
+    .limit(5)
+    .select(
+      'nd.id as destinatario_id',
+      'nd.lida_em',
+      'nd.popup_visto_em',
+      'n.id',
+      'n.tipo',
+      'n.titulo',
+      'n.mensagem',
+      'n.nivel',
+      'n.entidade',
+      'n.entidade_id',
+      'n.dados',
+      'n.created_at',
+      'n.updated_at'
+    );
+
+  return notificacoes.map(notificacao => ({
+    ...notificacao,
+    dados: parseDados(notificacao.dados),
+    lida: Boolean(notificacao.lida_em)
+  }));
+}
+
 async function marcarComoLida(notificacaoId, usuarioId) {
-  const destinatario = await NotificacaoDestinatario.query()
+  const usuario = await Usuario.query()
+    .findById(usuarioId)
+    .withGraphFetched('role');
+  const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
+  const query = NotificacaoDestinatario.query()
     .alias('nd')
     .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
     .where('n.id', notificacaoId)
     .where('nd.usuario_id', usuarioId)
     .whereNull('nd.lida_em')
-    .select('nd.id')
-    .first();
+    .select('nd.id');
+
+  if (!podeVerTudo) {
+    query.whereIn('n.tipo', TIPOS_PROBLEMA_VENDA);
+  }
+
+  const destinatario = await query.first();
 
   if (!destinatario) {
     return false;
@@ -432,13 +494,23 @@ async function marcarComoLida(notificacaoId, usuarioId) {
 }
 
 async function marcarTodasComoLidas(usuarioId) {
-  const destinatarios = await NotificacaoDestinatario.query()
+  const usuario = await Usuario.query()
+    .findById(usuarioId)
+    .withGraphFetched('role');
+  const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
+  const query = NotificacaoDestinatario.query()
     .alias('nd')
     .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
     .where('nd.usuario_id', usuarioId)
     .where('n.ativa', true)
     .whereNull('nd.lida_em')
     .select('nd.id');
+
+  if (!podeVerTudo) {
+    query.whereIn('n.tipo', TIPOS_PROBLEMA_VENDA);
+  }
+
+  const destinatarios = await query;
 
   if (destinatarios.length === 0) {
     return 0;
@@ -449,11 +521,35 @@ async function marcarTodasComoLidas(usuarioId) {
     .patch({ lida_em: new Date() });
 }
 
+async function marcarPopupVisto(notificacaoId, usuarioId) {
+  const destinatario = await NotificacaoDestinatario.query()
+    .alias('nd')
+    .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
+    .where('n.id', notificacaoId)
+    .where('nd.usuario_id', usuarioId)
+    .whereIn('n.tipo', TIPOS_PROBLEMA_VENDA)
+    .whereNull('nd.popup_visto_em')
+    .select('nd.id')
+    .first();
+
+  if (!destinatario) {
+    return false;
+  }
+
+  await NotificacaoDestinatario.query()
+    .patchAndFetchById(destinatario.id, { popup_visto_em: new Date() });
+
+  return true;
+}
+
 module.exports = {
   PERMISSAO_VISUALIZAR,
   PERMISSAO_RECEBER_TODAS,
+  TIPOS_PROBLEMA_VENDA,
   listarNotificacoes,
+  listarUrgentes,
   marcarComoLida,
+  marcarPopupVisto,
   marcarTodasComoLidas,
   sincronizarFidelidadeCliente,
   sincronizarNotificacoesFidelidade,

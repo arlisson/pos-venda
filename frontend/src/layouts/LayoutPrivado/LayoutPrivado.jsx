@@ -2,7 +2,12 @@ import { matchPath, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import Header from '../../components/Header/Header';
+import * as I from '../../components/Icons';
 import { buscarPerfil, getUsuarioLocal, logout } from '../../services/auth.service';
+import {
+  listarNotificacoesUrgentes,
+  marcarPopupNotificacaoVisto
+} from '../../services/notificacao.service';
 
 const routeConfigs = [
   { path: '/', title: 'Dashboard', sub: 'Indicadores, campanhas e gamificação', id: 'dashboard', end: true },
@@ -91,6 +96,37 @@ function LayoutPrivado({ children }) {
     navigate('/vendas?nova=1');
   }
 
+  const [alertasUrgentes, setAlertasUrgentes] = useState([]);
+
+  async function carregarAlertasUrgentes() {
+    try {
+      const dados = await listarNotificacoesUrgentes();
+      setAlertasUrgentes(dados.notificacoes || []);
+    } catch {
+      setAlertasUrgentes([]);
+    }
+  }
+
+  useEffect(() => {
+    if (!usuario) return undefined;
+
+    carregarAlertasUrgentes();
+    const timer = setInterval(carregarAlertasUrgentes, 5000);
+
+    return () => clearInterval(timer);
+  }, [usuario?.id]);
+
+  async function fecharAlertaUrgente(notificacao) {
+    await marcarPopupNotificacaoVisto(notificacao.id);
+    setAlertasUrgentes(prev => prev.filter(item => item.id !== notificacao.id));
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+  }
+
+  async function abrirVendaAlerta(notificacao) {
+    await fecharAlertaUrgente(notificacao);
+    navigate(`/vendas?venda_id=${notificacao.entidade_id || notificacao.dados?.venda_id || ''}`);
+  }
+
   return (
     <div className="app">
       <Sidebar
@@ -112,6 +148,30 @@ function LayoutPrivado({ children }) {
           {children}
         </div>
       </div>
+
+      {alertasUrgentes.length > 0 && (
+        <div className="urgent-alert-stack" aria-live="assertive">
+          {alertasUrgentes.map(alerta => (
+            <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card ${alerta.nivel || 'danger'}`}>
+              <div className="urgent-alert-card__icon">
+                <I.AlertTriangle size={18} />
+              </div>
+              <div className="urgent-alert-card__body">
+                <strong>{alerta.titulo}</strong>
+                <span>{alerta.mensagem}</span>
+              </div>
+              <div className="urgent-alert-card__actions">
+                <button type="button" className="btn btn-sm" onClick={() => abrirVendaAlerta(alerta)}>
+                  Abrir venda
+                </button>
+                <button type="button" className="btn btn-icon btn-ghost" onClick={() => fecharAlertaUrgente(alerta)} title="Fechar aviso">
+                  <I.Close size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
