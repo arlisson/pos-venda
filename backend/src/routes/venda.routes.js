@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const vendaController = require('../controllers/venda.controller');
+const vendaArquivoController = require('../controllers/venda-arquivo.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { auditar } = require('../middlewares/audit.middleware');
 const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
@@ -13,6 +14,14 @@ router.get('/resumo', exigirUmaPermissao(['dashboard_resumo_vendas', 'vendas', '
 router.get('/relatorios', exigirUmaPermissao(['relatorios_visualizar']), vendaController.relatorios);
 router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.lixeira);
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.index);
+router.get('/:id/arquivos', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.index);
+router.post('/:id/arquivos', exigirUmaPermissao(['vendas_editar']), vendaArquivoController.store);
+router.get('/:id/arquivos/pacote', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.pacoteShow);
+router.post('/:id/arquivos/pacote', exigirUmaPermissao(['vendas_editar']), vendaArquivoController.pacoteStore);
+router.get('/:id/arquivos/pacote/download', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.pacoteDownload);
+router.get('/:id/arquivos/:arquivoVendaId/download', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.download);
+router.get('/:id/arquivos/:arquivoVendaId/view', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.view);
+router.delete('/:id/arquivos/:arquivoVendaId', exigirUmaPermissao(['vendas_editar']), vendaArquivoController.destroy);
 router.get('/:id', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.show);
 router.post(
   '/:id/email-template',
