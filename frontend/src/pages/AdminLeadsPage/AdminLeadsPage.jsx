@@ -408,6 +408,9 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
                 <small>A planilha ainda esta processando e o backend vai bloquear a exclusao.</small>
               )}
             </div>
+            <button type="button" className="leads-delete-trash-icon" disabled={carregando} onClick={onConfirm} title="Excluir planilha">
+              <I.Trash size={18} />
+            </button>
           </div>
 
           {erro && <div className="alert-error">{erro}</div>}
@@ -416,7 +419,7 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
         <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose} disabled={carregando}>Cancelar</button>
           <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={carregando}>
-            {carregando ? 'Excluindo...' : 'Excluir planilha'}
+            <I.Trash size={13} /> {carregando ? 'Excluindo...' : 'Excluir planilha'}
           </button>
         </div>
       </div>
@@ -937,9 +940,7 @@ function AdminLeadsPage() {
                     setErroExclusao('');
                     setModalExcluir(planilha);
                   }}
-                >
-                  <I.Trash size={13} />
-                </button>
+                />
                 <div className="lead-doc-preview">
                   <span></span><span></span><span></span><span></span>
                 </div>
