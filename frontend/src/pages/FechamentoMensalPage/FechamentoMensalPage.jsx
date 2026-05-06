@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getResumo } from '../../services/fechamento.service';
 import DetalhesAtivasModal from './DetalhesAtivasModal';
-import DetalhesModal from './DetalhesModal';
 import FechamentoSecao from './FechamentoSecao';
 import './FechamentoMensalPage.css';
 
@@ -122,16 +121,9 @@ function FechamentoMensalPage() {
           onDetalhes={setModalDetalhes}
         />
 
-        {modalDetalhes && modalDetalhes !== 'ativas' && (
-          <DetalhesModal
-            secao={modalDetalhes}
-            periodo={periodoConsulta}
-            onClose={() => setModalDetalhes(null)}
-          />
-        )}
-
-        {modalDetalhes === 'ativas' && (
+        {modalDetalhes && (
           <DetalhesAtivasModal
+            secao={modalDetalhes}
             periodo={periodoConsulta}
             onClose={() => setModalDetalhes(null)}
           />

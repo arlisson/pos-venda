@@ -117,7 +117,7 @@ function getNotificationTarget(notificacao) {
 
   if (notificacao.entidade === 'vendas') {
     const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id;
-    return vendaId ? `/vendas?venda_id=${vendaId}` : '/vendas';
+    return vendaId ? `/vendas?venda_id=${vendaId}&aba=problema` : '/vendas';
   }
 
   return null;

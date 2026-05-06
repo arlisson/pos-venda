@@ -39,7 +39,7 @@ function getNotificationTarget(notification) {
 
   if (notification.entidade === 'vendas') {
     const vendaId = notification.entidade_id || notification.dados?.venda_id;
-    return vendaId ? `/vendas?venda_id=${vendaId}` : '/vendas';
+    return vendaId ? `/vendas?venda_id=${vendaId}&aba=problema` : '/vendas';
   }
 
   return null;

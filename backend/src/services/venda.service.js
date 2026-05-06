@@ -22,6 +22,7 @@ const CAMPOS = [
   'quantidade_linhas',
   'ddd',
   'numeros_portados',
+  'numeros_ativados',
   'gb',
   'valores_unitarios_chips',
   'ponto_referencia',
@@ -384,6 +385,10 @@ function montarPayload(dados) {
 
   if (payload.data_ativacao !== undefined) {
     payload.data_ativacao = normalizarData(payload.data_ativacao);
+  }
+
+  if (payload.numeros_ativados !== undefined && !payload.data_ativacao) {
+    payload.numeros_ativados = null;
   }
 
   if (payload.prioridade_funil !== undefined) {

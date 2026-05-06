@@ -43,6 +43,7 @@ const REGRA_COMISSAO_VAZIA = {
   valor_min: '',
   valor_max: '',
   valor_comissao: '',
+  valor_comissao_base: '',
   ordem: 0,
   ativo: true
 };
@@ -167,6 +168,7 @@ function ConfiguracoesPage() {
         valor_min: valorForm(item.valor_min),
         valor_max: valorForm(item.valor_max),
         valor_comissao: valorForm(item.valor_comissao),
+        valor_comissao_base: valorForm(item.valor_comissao_base ?? item.valor_comissao),
         ordem: item.ordem || 0,
         ativo: Boolean(item.ativo)
       });
@@ -355,13 +357,24 @@ function ConfiguracoesPage() {
             />
           </div>
           <div className="form-field">
-            <label>Comissão</label>
+            <label>Comissao integral</label>
             <input
               type="text"
               inputMode="decimal"
               value={regraComissaoForm.valor_comissao}
               onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_comissao: e.target.value })}
               placeholder="10,00"
+              required
+            />
+          </div>
+          <div className="form-field">
+            <label>Comissao cliente da base</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={regraComissaoForm.valor_comissao_base}
+              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_comissao_base: e.target.value })}
+              placeholder="5,00"
               required
             />
           </div>
@@ -381,12 +394,13 @@ function ConfiguracoesPage() {
 
         <div className="list-table">
           <table>
-            <thead><tr><th>Faixa</th><th>Comissão</th><th>Ordem</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Faixa</th><th>Integral</th><th>Cliente da base</th><th>Ordem</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {listaAtual.map(item => (
                 <tr key={item.id}>
                   <td>{fmtMoeda(item.valor_min)} ate {fmtMoeda(item.valor_max)}</td>
                   <td>{fmtMoeda(item.valor_comissao)}</td>
+                  <td>{fmtMoeda(item.valor_comissao_base ?? item.valor_comissao)}</td>
                   <td>{item.ordem}</td>
                   <td>{item.ativo ? 'Ativo' : 'Inativo'}</td>
                   <td className="row-actions">

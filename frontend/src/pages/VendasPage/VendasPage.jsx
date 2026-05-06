@@ -63,6 +63,7 @@ const VENDA_VAZIA = {
   servico_id: '',
   quantidade_linhas: '',
   ddd: '',
+  numeros_ativados: [],
   gb: '',
   valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' }],
   valor_total: '',
@@ -161,6 +162,7 @@ const CAMPOS = [
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
   { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitários', type: 'chips', span: true },
+  { name: 'numeros_ativados', label: 'Números ativados', type: 'activatedNumbers', span: true },
   { name: 'numeros_portados', label: 'Números a serem portados', type: 'portedNumbers', span: true },
 
   { section: 'Local de instalação/entrega' },
@@ -562,6 +564,9 @@ function montarNumerosPortados(valor) {
     .join('\n');
 }
 
+const parseNumerosAtivados = parseNumerosPortados;
+const montarNumerosAtivados = montarNumerosPortados;
+
 function normalizarVenda(venda) {
   // Montar array de vendedoras a partir da relação (junction) ou do campo legado
   const vendedorasIds = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
@@ -577,6 +582,7 @@ function normalizarVenda(venda) {
     valor_total: venda.valor_total ?? '',
     valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips, venda.gb, tipoLinhaPadrao),
     numeros_portados: parseNumerosPortados(venda.numeros_portados),
+    numeros_ativados: parseNumerosAtivados(venda.numeros_ativados),
     quantidade_linhas: venda.quantidade_linhas ?? '',
     dia_vencimento: venda.dia_vencimento ?? '',
     operadora_id: venda.operadora_id ? String(venda.operadora_id) : '',
@@ -774,7 +780,7 @@ function ajustarQuantidadeNumerosPortados(value, quantidade) {
   return Array.from({ length: total }, (_, index) => preenchidos[index] || NUMERO_PORTADO_VAZIO);
 }
 
-function NumerosPortadosInput({ value, onChange, quantidadeEsperada = 0 }) {
+function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, labelAdicionar = 'Adicionar numero' }) {
   const numeros = Array.isArray(value) && value.length > 0 ? value : [NUMERO_PORTADO_VAZIO];
   const limite = Math.max(Number(quantidadeEsperada || 0), 0);
   const limiteAtingido = limite > 0 && numeros.length >= limite;
@@ -815,12 +821,20 @@ function NumerosPortadosInput({ value, onChange, quantidadeEsperada = 0 }) {
 
       <div className="ported-numbers__footer">
         <button type="button" className="btn btn-sm" onClick={adicionarNumero} disabled={limiteAtingido}>
-          <I.Plus size={13} /> Adicionar numero
+          <I.Plus size={13} /> {labelAdicionar}
         </button>
         {limite > 0 && <span>{numeros.length}/{limite} números</span>}
       </div>
     </div>
   );
+}
+
+function NumerosPortadosInput(props) {
+  return <NumerosLinhaInput {...props} labelAdicionar="Adicionar numero" />;
+}
+
+function NumerosAtivadosInput(props) {
+  return <NumerosLinhaInput {...props} labelAdicionar="Adicionar numero ativado" />;
 }
 
 function ResponsaveisRecebimentoInput({ form, onChange }) {
@@ -1515,7 +1529,10 @@ function VendaModal({
   const cepPreenchidoPorCnpjRef = useRef('');
   const vendaPortabilidade = temChipPortabilidade(form.valores_unitarios_chips);
   const quantidadePortabilidade = somarQuantidadePortabilidadeItensChips(form.valores_unitarios_chips || []);
+  const vendaAtivada = Boolean(normalizarDataVendaInput(form.data_ativacao));
   const quantidadeLinhasFechadas = Number(form.quantidade_linhas || 0);
+  const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
+  const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
   function atualizarCampo(campo, valor) {
     setForm(prev => ({
       ...prev,
@@ -1706,6 +1723,21 @@ function VendaModal({
   }, [vendaPortabilidade, quantidadePortabilidade]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!vendaAtivada) {
+      if (Array.isArray(form.numeros_ativados) && form.numeros_ativados.length === 0) return;
+      setForm(prev => ({ ...prev, numeros_ativados: [] }));
+      return;
+    }
+
+    setForm(prev => ({
+      ...prev,
+      numeros_ativados: ajustarQuantidadeNumerosPortados(prev.numeros_ativados, quantidadeNumerosAtivados)
+    }));
+  }, [vendaAtivada, quantidadeNumerosAtivados]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -1732,6 +1764,7 @@ function VendaModal({
       }
 
       const numerosPortados = montarNumerosPortados(form.numeros_portados);
+      const numerosAtivados = montarNumerosAtivados(form.numeros_ativados);
       const quantidadeChips = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
 
       if (quantidadeLinhasFechadas > 0 && quantidadeChips > quantidadeLinhasFechadas) {
@@ -1761,6 +1794,7 @@ function VendaModal({
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
         data_ativacao: normalizarDataVendaInput(form.data_ativacao) || null,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
+        numeros_ativados: form.data_ativacao ? numerosAtivados : null,
         valores_unitarios_chips: chipsProcessados,
         vendedoras: vendedorasIds
       };
@@ -1842,6 +1876,10 @@ function VendaModal({
               }
 
               if (campo.name === 'numeros_portados' && !vendaPortabilidade) {
+                return null;
+              }
+
+              if (campo.name === 'numeros_ativados' && !vendaAtivada) {
                 return null;
               }
 
@@ -1952,6 +1990,12 @@ function VendaModal({
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
                       quantidadeEsperada={quantidadePortabilidade}
+                    />
+                  ) : campo.type === 'activatedNumbers' ? (
+                    <NumerosAtivadosInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      quantidadeEsperada={quantidadeNumerosAtivados}
                     />
                   ) : campo.name === 'protocolo' ? (
                     <div className="protocolo-input-row">
@@ -2259,13 +2303,14 @@ function VendasPage() {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const vendaId = searchParams.get('venda_id');
+    const aba = searchParams.get('aba') === 'problema' ? 'problema' : 'venda';
 
     if (!vendaId) return;
 
     buscarVendaPorId(vendaId)
       .then(venda => {
         setModalVenda(venda);
-        setModalAbaInicial('problema');
+        setModalAbaInicial(aba);
         setModalModoEdicao(false);
         setVendaInicial(null);
         setModalAberto(true);
