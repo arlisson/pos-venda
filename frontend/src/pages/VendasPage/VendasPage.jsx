@@ -599,7 +599,7 @@ function parseNumerosPortados(valor) {
 function montarNumerosPortados(valor) {
   return (Array.isArray(valor) ? valor : parseNumerosPortados(valor))
     .map(item => String(item || '').trim())
-    .filter(Boolean)
+    .filter(item => apenasDigitos(item).length > 2)
     .join('\n');
 }
 
@@ -813,20 +813,34 @@ function VendedorasSelect({ value = [], options = [], onChange }) {
   );
 }
 
-function ajustarQuantidadeNumerosPortados(value, quantidade) {
+function montarPrefixoDdd(ddd) {
+  const digitos = apenasDigitos(ddd, 2);
+  return digitos.length === 2 ? `(${digitos}) ` : '';
+}
+
+function numeroLinhaTemApenasDddOuVazio(valor) {
+  return apenasDigitos(valor).length <= 2;
+}
+
+function ajustarQuantidadeNumerosPortados(value, quantidade, dddPadrao = '') {
   const total = Math.max(Number(quantidade || 0), 0);
-  if (total === 0) return [NUMERO_PORTADO_VAZIO];
+  const prefixoDdd = montarPrefixoDdd(dddPadrao);
+  if (total === 0) return [prefixoDdd || NUMERO_PORTADO_VAZIO];
 
   const atuais = Array.isArray(value) ? value : parseNumerosPortados(value);
   const preenchidos = atuais.length > 0 ? atuais : [NUMERO_PORTADO_VAZIO];
 
-  return Array.from({ length: total }, (_, index) => preenchidos[index] || NUMERO_PORTADO_VAZIO);
+  return Array.from({ length: total }, (_, index) => {
+    const atual = preenchidos[index] || NUMERO_PORTADO_VAZIO;
+    return numeroLinhaTemApenasDddOuVazio(atual) ? (prefixoDdd || NUMERO_PORTADO_VAZIO) : atual;
+  });
 }
 
-function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, labelAdicionar = 'Adicionar numero' }) {
+function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao = '', labelAdicionar = 'Adicionar numero' }) {
   const numeros = Array.isArray(value) && value.length > 0 ? value : [NUMERO_PORTADO_VAZIO];
   const limite = Math.max(Number(quantidadeEsperada || 0), 0);
   const limiteAtingido = limite > 0 && numeros.length >= limite;
+  const numeroVazio = montarPrefixoDdd(dddPadrao) || NUMERO_PORTADO_VAZIO;
 
   function atualizarNumero(index, novoValor) {
     onChange(numeros.map((numero, numeroIndex) => (
@@ -836,7 +850,7 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, labelAdici
 
   function adicionarNumero() {
     if (limiteAtingido) return;
-    onChange([...numeros, NUMERO_PORTADO_VAZIO]);
+    onChange([...numeros, numeroVazio]);
   }
 
   function removerNumero(index) {
@@ -1781,9 +1795,9 @@ function VendaModal({
 
     setForm(prev => ({
       ...prev,
-      numeros_portados: ajustarQuantidadeNumerosPortados(prev.numeros_portados, quantidadePortabilidade)
+      numeros_portados: ajustarQuantidadeNumerosPortados(prev.numeros_portados, quantidadePortabilidade, prev.ddd)
     }));
-  }, [vendaPortabilidade, quantidadePortabilidade]);
+  }, [vendaPortabilidade, quantidadePortabilidade, form.ddd]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -1796,9 +1810,9 @@ function VendaModal({
 
     setForm(prev => ({
       ...prev,
-      numeros_ativados: ajustarQuantidadeNumerosPortados(prev.numeros_ativados, quantidadeNumerosAtivados)
+      numeros_ativados: ajustarQuantidadeNumerosPortados(prev.numeros_ativados, quantidadeNumerosAtivados, prev.ddd)
     }));
-  }, [vendaAtivada, quantidadeNumerosAtivados]);
+  }, [vendaAtivada, quantidadeNumerosAtivados, form.ddd]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleSubmit(event) {
@@ -2073,12 +2087,14 @@ function VendaModal({
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
                       quantidadeEsperada={quantidadePortabilidade}
+                      dddPadrao={form.ddd}
                     />
                   ) : campo.type === 'activatedNumbers' ? (
                     <NumerosAtivadosInput
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
                       quantidadeEsperada={quantidadeNumerosAtivados}
+                      dddPadrao={form.ddd}
                     />
                   ) : campo.name === 'protocolo' ? (
                     <div className="protocolo-input-row">
