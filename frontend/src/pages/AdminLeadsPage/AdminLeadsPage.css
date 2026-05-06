@@ -91,8 +91,9 @@
 
 .lead-doc-delete {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 8px;
+  right: 0;
+  z-index: 3;
   width: 28px;
   height: 28px;
   border: 1px solid var(--border);
@@ -103,7 +104,7 @@
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transform: scale(0.92);
+  transform: translateX(10px) scale(0.92);
   box-shadow: var(--shadow-sm);
   transition:
     opacity 0.15s ease,
@@ -115,7 +116,7 @@
 .lead-doc-card:hover .lead-doc-delete,
 .lead-doc-card:focus-within .lead-doc-delete {
   opacity: 1;
-  transform: scale(1);
+  transform: translateX(10px) scale(1);
 }
 
 .lead-doc-delete:hover {
@@ -457,13 +458,37 @@
 
 .leads-delete-summary {
   display: grid;
-  grid-template-columns: 86px 1fr;
+  grid-template-columns: 86px 1fr auto;
   gap: 14px;
   align-items: center;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface-2);
+}
+
+.leads-delete-trash-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.leads-delete-trash-icon:hover:not(:disabled) {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.leads-delete-trash-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .leads-delete-summary strong,
