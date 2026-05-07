@@ -21,14 +21,14 @@ router.post('/problemas/:problemaId/correcao', exigirUmaPermissao(['vendas_ver_p
 router.post('/problemas/:problemaId/verificar', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.verificar);
 router.get('/:id/problemas/ativo', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.ativo);
 router.post('/:id/problemas', exigirUmaPermissao(['vendas_marcar_problema']), vendaProblemaController.store);
-router.get('/:id/arquivos', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.index);
-router.post('/:id/arquivos', exigirUmaPermissao(['vendas_editar']), vendaArquivoController.store);
-router.get('/:id/arquivos/pacote', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.pacoteShow);
-router.post('/:id/arquivos/pacote', exigirUmaPermissao(['vendas_editar']), vendaArquivoController.pacoteStore);
-router.get('/:id/arquivos/pacote/download', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.pacoteDownload);
-router.get('/:id/arquivos/:arquivoVendaId/download', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.download);
-router.get('/:id/arquivos/:arquivoVendaId/view', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.view);
-router.delete('/:id/arquivos/:arquivoVendaId', exigirUmaPermissao(['vendas_editar']), vendaArquivoController.destroy);
+router.get('/:id/arquivos', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.index);
+router.post('/:id/arquivos', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_editar']), vendaArquivoController.store);
+router.get('/:id/arquivos/pacote', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.pacoteShow);
+router.post('/:id/arquivos/pacote', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_editar']), vendaArquivoController.pacoteStore);
+router.get('/:id/arquivos/pacote/download', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.pacoteDownload);
+router.get('/:id/arquivos/:arquivoVendaId/download', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.download);
+router.get('/:id/arquivos/:arquivoVendaId/view', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.view);
+router.delete('/:id/arquivos/:arquivoVendaId', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_editar']), vendaArquivoController.destroy);
 router.get('/:id', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.show);
 router.post(
   '/:id/email-template',

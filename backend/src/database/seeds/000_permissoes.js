@@ -30,6 +30,11 @@ const PERMISSOES = [
     descricao: 'Permite excluir vendas que o usuário pode acessar.'
   },
   {
+    chave: 'vendas_documentos',
+    nome: 'Vendas: documentos',
+    descricao: 'Permite visualizar a aba de documentos da venda.'
+  },
+  {
     chave: 'funil_vendas',
     nome: 'Funil de vendas',
     descricao: 'Permite acessar a página do funil de vendas.'
