@@ -505,6 +505,58 @@ async function usuarioTemPermissao(usuarioId, permissao) {
   return dados.admin || dados.permissoes.includes(permissao);
 }
 
+function protocoloPreenchido(valor) {
+  return String(valor || '').trim();
+}
+
+async function validarProtocoloCliente(payload, usuarioId, vendaAtual = null) {
+  const protocoloFoiEnviado = Object.prototype.hasOwnProperty.call(payload, 'protocolo');
+  const clienteFoiEnviado = Object.prototype.hasOwnProperty.call(payload, 'cliente_id');
+
+  if (!protocoloFoiEnviado && !clienteFoiEnviado) {
+    return;
+  }
+
+  const protocoloAnterior = protocoloPreenchido(vendaAtual?.protocolo);
+  const protocoloAtual = protocoloFoiEnviado
+    ? protocoloPreenchido(payload.protocolo)
+    : protocoloAnterior;
+
+  if (vendaAtual && protocoloAnterior && protocoloAtual !== protocoloAnterior) {
+    const permissoes = await buscarPermissoesUsuario(usuarioId);
+
+    if (!permissoes.admin) {
+      const error = new Error('Apenas ADM pode alterar ou apagar o protocolo do cliente.');
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+
+  const clienteId = payload.cliente_id || vendaAtual?.cliente_id;
+
+  if (!clienteId || !protocoloAtual) {
+    return;
+  }
+
+  const vendaComProtocolo = await Venda.query()
+    .where('cliente_id', clienteId)
+    .whereNotNull('protocolo')
+    .whereNot('protocolo', '')
+    .whereNull('excluido_em')
+    .modify(query => {
+      if (vendaAtual?.id) {
+        query.whereNot('id', vendaAtual.id);
+      }
+    })
+    .first();
+
+  if (vendaComProtocolo) {
+    const error = new Error('Este cliente ja possui um protocolo cadastrado em outra venda.');
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
 function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
   const campo = (nome) => alias ? `${alias}.${nome}` : nome;
 
@@ -1164,6 +1216,8 @@ async function criarVenda(dados, usuarioId) {
     payload = aplicarDadosClienteNaVenda(payload, cliente);
   }
 
+  await validarProtocoloCliente(payload, usuarioId);
+
   return Venda.transaction(async trx => {
     const venda = await Venda.query(trx).insertAndFetch({
       ...payload,
@@ -1213,7 +1267,7 @@ async function atualizarVenda(id, dados, usuarioId) {
 
   const vendaAtual = await Venda.query()
     .findById(id)
-    .select('id', 'enviada_pos_venda_em', 'excluido_em');
+    .select('id', 'cliente_id', 'protocolo', 'enviada_pos_venda_em', 'excluido_em');
 
   if (!vendaAtual || vendaAtual.excluido_em) {
     return null;
@@ -1251,6 +1305,8 @@ async function atualizarVenda(id, dados, usuarioId) {
 
     payload = aplicarDadosClienteNaVenda(payload, cliente);
   }
+
+  await validarProtocoloCliente(payload, usuarioId, vendaAtual);
 
   const vendaAtualizada = await Venda.transaction(async trx => {
     const venda = await Venda.query(trx).patchAndFetchById(id, {

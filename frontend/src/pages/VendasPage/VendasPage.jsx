@@ -204,7 +204,7 @@ const CAMPOS = [
   { section: 'Aceite e recebimento' },
   { name: 'horario_aceite_range', label: 'Janela do aceite', type: 'timeRange', nameDe: 'horario_aceite_inicio', nameAte: 'horario_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
   { name: 'dia_aceite_range', label: 'Dias para aceite', type: 'dayRange', nameDe: 'dia_aceite_inicio', nameAte: 'dia_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
-  { name: 'protocolo', label: 'Protocolo' },
+  { name: 'protocolo', label: 'Protocolo do cliente' },
   { name: 'login', label: 'Login (portal do cliente)' },
   { name: 'senha', label: 'Senha (portal do cliente)' },
   { name: 'responsaveis_recebimento', type: 'responsaveis', span: true },
@@ -1667,6 +1667,7 @@ function VendaModal({
   venda,
   initialValues,
   clientes,
+  vendas = [],
   vendedoras,
   operadoras,
   tiposVenda,
@@ -1695,6 +1696,7 @@ function VendaModal({
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
   const enviadaPosVenda = Boolean(venda?.enviada_pos_venda_em || form.enviada_pos_venda_em);
   const usuarioPosVenda = temPermissao(usuarioLogado, 'pos_venda');
+  const usuarioAdmin = usuarioLogado?.role?.nome === 'admin';
   const vendaBloqueadaParaUsuario = enviadaPosVenda && !usuarioPosVenda;
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
   const cepPreenchidoPorCnpjRef = useRef('');
@@ -1704,6 +1706,33 @@ function VendaModal({
   const quantidadeLinhasFechadas = Number(form.quantidade_linhas || 0);
   const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
   const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
+  const clienteIdProtocolo = String(form.cliente_id || '');
+  const vendaIdAtual = venda?.id ? String(venda.id) : '';
+  const protocoloOriginal = String(venda?.protocolo || '').trim();
+  const protocoloAtual = String(form.protocolo || '').trim();
+  const vendaComProtocoloDoCliente = clienteIdProtocolo
+    ? vendas.find(item => (
+        String(item.id) !== vendaIdAtual
+        && String(item.cliente_id || item.cliente?.id || '') === clienteIdProtocolo
+        && String(item.protocolo || '').trim()
+      ))
+    : null;
+  const clienteJaTemOutroProtocolo = Boolean(vendaComProtocoloDoCliente);
+  const protocoloProtegido = Boolean(protocoloOriginal) && !usuarioAdmin;
+  const protocoloBloqueado = somenteVisualizacao
+    || vendaBloqueadaParaUsuario
+    || clienteJaTemOutroProtocolo
+    || protocoloProtegido;
+  const podeGerarProtocolo = !somenteVisualizacao
+    && !vendaBloqueadaParaUsuario
+    && !clienteJaTemOutroProtocolo
+    && !protocoloAtual;
+  const dicaProtocolo = clienteJaTemOutroProtocolo
+    ? `Este cliente já possui protocolo: ${vendaComProtocoloDoCliente.protocolo}.`
+    : protocoloProtegido
+      ? 'Protocolo já gerado. Apenas ADM pode alterar ou apagar.'
+      : '';
+
   function atualizarCampo(campo, valor) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
@@ -2021,6 +2050,18 @@ function VendaModal({
         return;
       }
 
+      if (protocoloProtegido && protocoloAtual !== protocoloOriginal) {
+        setErro('Apenas ADM pode alterar ou apagar o protocolo do cliente.');
+        setSalvando(false);
+        return;
+      }
+
+      if (clienteJaTemOutroProtocolo && protocoloAtual) {
+        setErro('Este cliente já possui um protocolo cadastrado em outra venda.');
+        setSalvando(false);
+        return;
+      }
+
       const numerosPortados = montarNumerosPortados(form.numeros_portados);
       const numerosAtivados = montarNumerosAtivados(form.numeros_ativados);
       const quantidadeChips = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
@@ -2319,16 +2360,25 @@ function VendaModal({
                       dddPadrao={form.ddd}
                     />
                   ) : campo.name === 'protocolo' ? (
-                    <div className="protocolo-input-row">
-                      <input
-                        type="text"
-                        value={form[campo.name] ?? ''}
-                        onChange={e => atualizarCampo(campo.name, e.target.value)}
-                      />
-                      <button type="button" className="btn btn-sm" onClick={() => atualizarCampo('protocolo', gerarProtocoloDataHora())}>
-                        Gerar
-                      </button>
-                    </div>
+                    <>
+                      <div className="protocolo-input-row">
+                        <input
+                          type="text"
+                          value={form[campo.name] ?? ''}
+                          onChange={e => atualizarCampo(campo.name, e.target.value)}
+                          readOnly={protocoloBloqueado}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => atualizarCampo('protocolo', gerarProtocoloDataHora())}
+                          disabled={!podeGerarProtocolo}
+                        >
+                          Gerar
+                        </button>
+                      </div>
+                      {dicaProtocolo && <span className="field-hint">{dicaProtocolo}</span>}
+                    </>
                   ) : campo.type === 'longText' ? (
                     <AutoResizeTextarea
                       value={form[campo.name] ?? ''}
@@ -2783,6 +2833,7 @@ function VendasPage() {
           venda={modalVenda}
           initialValues={vendaInicial}
           clientes={clientes}
+          vendas={vendas}
           vendedoras={vendedoras}
           operadoras={operadoras}
           tiposVenda={tiposVenda}
