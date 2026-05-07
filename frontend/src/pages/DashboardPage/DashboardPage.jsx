@@ -161,7 +161,7 @@ function formatarPrazoRelativo(valor) {
   const diffDias = Math.round((agora.setHours(0, 0, 0, 0) - data.setHours(0, 0, 0, 0)) / 86400000);
 
   if (diffDias <= 0) return 'Pendente hoje';
-  return `Pendencia ha ${diffDias} dia${diffDias === 1 ? '' : 's'}`;
+  return `Pendência há ${diffDias} dia${diffDias === 1 ? '' : 's'}`;
 }
 
 function getNotificacaoTitulo(notificacao) {
@@ -180,7 +180,9 @@ function getNotificacaoDescricao(notificacao) {
   }
 
   if (TIPOS_RETORNO_NOTA.includes(notificacao.tipo)) {
-    return notificacao.mensagem.replace(/^Retorne a ligacao de\s*/i, '').replace(/^Retorno de\s*/i, '');
+    return notificacao.mensagem
+      .replace(/^Retorne a liga(?:ção|cao) de\s*/i, '')
+      .replace(/^Retorno de\s*/i, '');
   }
 
   if (TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo)) {
@@ -193,7 +195,7 @@ function getNotificacaoDescricao(notificacao) {
 function getFidelidadePrazo(notificacao) {
   const dias = Number(notificacao?.dados?.dias_restantes);
   if (!Number.isFinite(dias)) return 'Sem data';
-  if (dias < 0) return `Vencida ha ${Math.abs(dias)} dia${Math.abs(dias) === 1 ? '' : 's'}`;
+  if (dias < 0) return `Vencida há ${Math.abs(dias)} dia${Math.abs(dias) === 1 ? '' : 's'}`;
   if (dias === 0) return 'Vence hoje';
   return `Vence em ${dias} dias`;
 }
@@ -330,25 +332,25 @@ function DashboardPage() {
     {
       key: 'fidelidade',
       title: 'Fim de fidelidade',
-      subtitle: 'Proximos 30 dias',
+      subtitle: 'Próximos 30 dias',
       count: notificacoesFidelidade.length,
       variant: 'warn',
       icon: <I.History size={15} />,
       items: notificacoesFidelidade.slice(0, 3),
       metric: getFidelidadePrazo,
-      actionLabel: 'Iniciar abordagem de renovacao',
+      actionLabel: 'Iniciar abordagem de renovação',
       onAction: () => navigate('/clientes?fidelidade=alerta')
     },
     {
       key: 'problemas',
       title: 'Vendas com problema',
-      subtitle: 'Precisam de acao',
+      subtitle: 'Precisam de ação',
       count: notificacoesProblema.length,
       variant: 'info',
       icon: <I.AlertTriangle size={15} />,
       items: notificacoesProblema.slice(0, 3),
       metric: notificacao => formatarPrazoRelativo(notificacao.updated_at),
-      actionLabel: 'Resolver pendencias',
+      actionLabel: 'Resolver pendências',
       onAction: () => {
         if (notificacoesProblema[0]) {
           handleReadNotification(notificacoesProblema[0]);
@@ -365,7 +367,7 @@ function DashboardPage() {
   const retornosVencidos = notificacoesRetorno.filter(notificacao => notificacao.tipo === 'nota_retorno_due').length;
   const problemasNaoLidos = notificacoesProblema.some(notificacao => !notificacao.lida);
   const fidelidadeTextoPrazo = proximaFidelidade?.dados?.dias_restantes < 0
-    ? `vencida ha ${Math.abs(proximaFidelidade.dados.dias_restantes)} dia${Math.abs(proximaFidelidade.dados.dias_restantes) === 1 ? '' : 's'}`
+    ? `vencida há ${Math.abs(proximaFidelidade.dados.dias_restantes)} dia${Math.abs(proximaFidelidade.dados.dias_restantes) === 1 ? '' : 's'}`
     : proximaFidelidade?.dados?.dias_restantes === 0
       ? 'vence hoje'
       : `vence em ${proximaFidelidade?.dados?.dias_restantes} dias`;
@@ -436,8 +438,8 @@ function DashboardPage() {
           <section className="home-notifications">
             <div className="home-notifications__header">
               <div>
-                <h2>Notificacoes</h2>
-                <p>Acompanhe os pontos que exigem atencao imediata.</p>
+                <h2>Notificações</h2>
+                <p>Acompanhe os pontos que exigem atenção imediata.</p>
               </div>
             </div>
 
@@ -455,7 +457,7 @@ function DashboardPage() {
 
                   <div className="home-notification-card__items">
                     {card.items.length === 0 ? (
-                      <div className="home-notification-card__empty">Nenhuma notificacao ativa.</div>
+                      <div className="home-notification-card__empty">Nenhuma notificação ativa.</div>
                     ) : card.items.map(notificacao => (
                       <button
                         type="button"
@@ -483,8 +485,8 @@ function DashboardPage() {
           <section className="home-notifications">
             <div className="home-notifications__header">
               <div>
-                <h2>Notificacoes</h2>
-                <p>Acompanhe os tres pontos que exigem atencao imediata.</p>
+                <h2>Notificações</h2>
+                <p>Acompanhe os três pontos que exigem atenção imediata.</p>
               </div>
             </div>
 
@@ -538,13 +540,13 @@ function DashboardPage() {
                   <em>Retornos</em>
                   <strong>
                     {notificacoesRetorno.length > 0
-                      ? `${notificacoesRetorno.length} retorno${notificacoesRetorno.length === 1 ? '' : 's'} de ligacao`
+                      ? `${notificacoesRetorno.length} retorno${notificacoesRetorno.length === 1 ? '' : 's'} de ligação`
                       : 'Sem retornos pendentes'}
                   </strong>
                   <span>
                     {proximoRetorno
                       ? `Mais urgente: ${proximoRetorno.dados?.titulo_nota || 'nota'} - ${formatarRetornoResumo(proximoRetorno)}.`
-                      : 'Nenhuma ligacao pendente para acompanhar.'}
+                      : 'Nenhuma ligação pendente para acompanhar.'}
                   </span>
                 </span>
                 <span className="home-notification__days">
@@ -565,7 +567,7 @@ function DashboardPage() {
                   <em>Vendas com problema</em>
                   <strong>
                     {notificacoesProblema.length > 0
-                      ? `${notificacoesProblema.length} venda${notificacoesProblema.length === 1 ? '' : 's'} exigindo acao`
+                      ? `${notificacoesProblema.length} venda${notificacoesProblema.length === 1 ? '' : 's'} exigindo ação`
                       : 'Nenhuma venda problemática'}
                   </strong>
                   <span>

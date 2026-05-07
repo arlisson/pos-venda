@@ -4,6 +4,19 @@ const db = require('../database/connection');
 const CNPJ_TIMEOUT_MS = 5000;
 const CACHE_DIAS = 30;
 const FONTES = ['BrasilAPI', 'CNPJa', 'CNPJws'];
+const CAMPOS_CRITICOS = [
+  'razaoSocial',
+  'nomeFantasia',
+  'situacaoCadastral',
+  'cep',
+  'endereco',
+  'numero',
+  'bairro',
+  'municipio',
+  'uf'
+];
+const LIMITE_CONFIANCA_ALTA_DIAS = 90;
+const LIMITE_CONFIANCA_MEDIA_DIAS = 180;
 
 class CnpjConsultaError extends Error {
   constructor(message, code = 'erro') {
@@ -21,6 +34,21 @@ function isCnpjRepetido(cnpj) {
   return /^(\d)\1{13}$/.test(cnpj);
 }
 
+function validarDigitosCnpj(cnpj) {
+  if (!/^\d{14}$/.test(cnpj) || isCnpjRepetido(cnpj)) return false;
+
+  const calcularDigito = (base) => {
+    const pesos = base === 12
+      ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+      : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const soma = pesos.reduce((total, peso, index) => total + Number(cnpj[index]) * peso, 0);
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+
+  return calcularDigito(12) === Number(cnpj[12]) && calcularDigito(13) === Number(cnpj[13]);
+}
+
 function validarCnpj(valor) {
   const cnpj = sanitizarCnpj(valor);
 
@@ -28,7 +56,7 @@ function validarCnpj(valor) {
     throw new CnpjConsultaError('Informe um CNPJ com 14 digitos.', 'cnpj_incompleto');
   }
 
-  if (isCnpjRepetido(cnpj)) {
+  if (!validarDigitosCnpj(cnpj)) {
     throw new CnpjConsultaError('CNPJ inválido.', 'cnpj_invalido');
   }
 
@@ -82,6 +110,7 @@ function criarPayloadVazio() {
   return {
     razaoSocial: '',
     nomeFantasia: '',
+    situacaoCadastral: '',
     email: '',
     telefone: '',
     cep: '',
@@ -105,6 +134,7 @@ function normalizarBrasilApi(data) {
   return {
     razaoSocial: normalizarTexto(data.razao_social),
     nomeFantasia: normalizarTexto(data.nome_fantasia),
+    situacaoCadastral: normalizarTexto(data.descricao_situacao_cadastral || data.situacao_cadastral),
     email: normalizarTexto(data.email),
     telefone: normalizarTelefone(data.ddd_telefone_1),
     cep: normalizarTexto(data.cep),
@@ -114,7 +144,8 @@ function normalizarBrasilApi(data) {
     bairro: normalizarTexto(data.bairro),
     municipio: normalizarTexto(data.municipio),
     uf: normalizarTexto(data.uf).toUpperCase(),
-    fonte: 'BrasilAPI'
+    fonte: 'BrasilAPI',
+    atualizadoEm: null
   };
 }
 
@@ -126,6 +157,7 @@ function normalizarCnpja(data) {
   return {
     razaoSocial: normalizarTexto(data.company?.name),
     nomeFantasia: normalizarTexto(data.alias),
+    situacaoCadastral: normalizarTexto(data.status?.text || data.status?.description || data.status),
     email: normalizarTexto(email?.address),
     telefone: normalizarTelefone(primeiroValor(
       telefone?.number && telefone?.area ? `${telefone.area}${telefone.number}` : '',
@@ -138,7 +170,8 @@ function normalizarCnpja(data) {
     bairro: normalizarTexto(address.district),
     municipio: normalizarTexto(typeof address.city === 'string' ? address.city : address.city?.name),
     uf: normalizarTexto(address.state).toUpperCase(),
-    fonte: 'CNPJa'
+    fonte: 'CNPJa',
+    atualizadoEm: normalizarTexto(data.updated)
   };
 }
 
@@ -150,6 +183,7 @@ function normalizarCnpjws(data) {
   return {
     razaoSocial: normalizarTexto(data.razao_social),
     nomeFantasia: normalizarTexto(estabelecimento.nome_fantasia),
+    situacaoCadastral: normalizarTexto(estabelecimento.situacao_cadastral),
     email: normalizarTexto(estabelecimento.email),
     telefone: normalizarTelefone(primeiroValor(
       estabelecimento.ddd1 && estabelecimento.telefone1 ? `${estabelecimento.ddd1}${estabelecimento.telefone1}` : '',
@@ -165,7 +199,8 @@ function normalizarCnpjws(data) {
     bairro: normalizarTexto(estabelecimento.bairro),
     municipio: normalizarTexto(cidade.nome),
     uf: normalizarTexto(estado.sigla).toUpperCase(),
-    fonte: 'CNPJws'
+    fonte: 'CNPJws',
+    atualizadoEm: normalizarTexto(data.atualizado_em || estabelecimento.atualizado_em)
   };
 }
 
@@ -210,6 +245,7 @@ function resumirPayloadBruto(fonte, data) {
       cnpj: data.cnpj,
       razao_social: data.razao_social,
       nome_fantasia: data.nome_fantasia,
+      situacao_cadastral: data.descricao_situacao_cadastral || data.situacao_cadastral,
       cep: data.cep,
       municipio: data.municipio,
       uf: data.uf
@@ -220,6 +256,7 @@ function resumirPayloadBruto(fonte, data) {
     return {
       taxId: data.taxId,
       alias: data.alias,
+      updated: data.updated,
       company: data.company?.name,
       address: data.address
     };
@@ -228,9 +265,12 @@ function resumirPayloadBruto(fonte, data) {
   return {
     cnpj_raiz: data.cnpj_raiz,
     razao_social: data.razao_social,
+    atualizado_em: data.atualizado_em,
     estabelecimento: {
       cnpj: data.estabelecimento?.cnpj,
       nome_fantasia: data.estabelecimento?.nome_fantasia,
+      atualizado_em: data.estabelecimento?.atualizado_em,
+      situacao_cadastral: data.estabelecimento?.situacao_cadastral,
       cep: data.estabelecimento?.cep,
       cidade: data.estabelecimento?.cidade?.nome,
       estado: data.estabelecimento?.estado?.sigla
@@ -238,10 +278,53 @@ function resumirPayloadBruto(fonte, data) {
   };
 }
 
+function dataParaIso(valor) {
+  if (!valor) return null;
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return null;
+  return data.toISOString();
+}
+
+function diasDesde(valor, referencia = new Date()) {
+  const iso = dataParaIso(valor);
+  if (!iso) return null;
+  return Math.floor((referencia.getTime() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function normalizarParaComparacao(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+function calcularConfianca(atualizadoEm, divergente, referencia = new Date()) {
+  if (divergente) return 'baixa';
+
+  const idade = diasDesde(atualizadoEm, referencia);
+  if (idade === null) return 'media';
+  if (idade <= LIMITE_CONFIANCA_ALTA_DIAS) return 'alta';
+  if (idade <= LIMITE_CONFIANCA_MEDIA_DIAS) return 'media';
+  return 'baixa';
+}
+
 function combinarResultados(resultados) {
   const combinado = criarPayloadVazio();
   const fontesComSucesso = [];
+  const fontesComErro = resultados
+    .filter(resultado => !resultado.ok)
+    .map(resultado => ({
+      fonte: resultado.fonte,
+      code: resultado.code || 'erro',
+      status: resultado.status || null,
+      message: resultado.message || ''
+    }));
   const fontesPorCampo = {};
+  const alternativasPorCampo = {};
+  const alertas = [];
+  const referencia = new Date();
 
   resultados
     .filter(resultado => resultado.ok)
@@ -249,22 +332,69 @@ function combinarResultados(resultados) {
       fontesComSucesso.push(resultado.fonte);
 
       Object.entries(resultado.normalizado || {}).forEach(([campo, valor]) => {
-        if (campo === 'fonte') return;
-        if (!String(valor || '').trim() || String(combinado[campo] || '').trim()) return;
+        if (campo === 'fonte' || campo === 'atualizadoEm') return;
+        if (!String(valor || '').trim()) return;
+
+        alternativasPorCampo[campo] = alternativasPorCampo[campo] || [];
+        alternativasPorCampo[campo].push({
+          fonte: resultado.fonte,
+          valor,
+          atualizadoEm: dataParaIso(resultado.normalizado.atualizadoEm)
+        });
+
+        if (String(combinado[campo] || '').trim()) return;
 
         combinado[campo] = valor;
-        fontesPorCampo[campo] = resultado.fonte;
+        fontesPorCampo[campo] = {
+          fonte: resultado.fonte,
+          atualizadoEm: dataParaIso(resultado.normalizado.atualizadoEm),
+          confianca: 'media',
+          divergente: false
+        };
       });
     });
+
+  Object.entries(alternativasPorCampo).forEach(([campo, alternativas]) => {
+    const valoresDistintos = new Set(alternativas.map(item => normalizarParaComparacao(item.valor)).filter(Boolean));
+    const divergente = CAMPOS_CRITICOS.includes(campo) && valoresDistintos.size > 1;
+
+    if (fontesPorCampo[campo]) {
+      fontesPorCampo[campo].divergente = divergente;
+      fontesPorCampo[campo].confianca = calcularConfianca(fontesPorCampo[campo].atualizadoEm, divergente, referencia);
+    }
+
+    if (divergente) {
+      alertas.push({
+        tipo: 'divergencia',
+        campo,
+        mensagem: `${campo} diverge entre fontes.`
+      });
+    }
+  });
+
+  Object.entries(fontesPorCampo).forEach(([campo, meta]) => {
+    const idade = diasDesde(meta.atualizadoEm, referencia);
+    if (idade !== null && idade > LIMITE_CONFIANCA_ALTA_DIAS) {
+      alertas.push({
+        tipo: 'antiguidade',
+        campo,
+        mensagem: `${campo} foi atualizado na fonte ha ${idade} dias.`
+      });
+    }
+  });
 
   combinado.fonte = fontesComSucesso.join(' + ');
 
   return {
     ...combinado,
+    consultadoEm: referencia.toISOString(),
     fontesConsultadas: FONTES,
     fontesComSucesso,
+    fontesComErro,
     fontesPorCampo,
     camposPreenchidos: contarCamposPreenchidos(combinado),
+    alternativasPorCampo,
+    alertas,
     cache: false
   };
 }
@@ -278,8 +408,34 @@ async function buscarCache(cnpj) {
 
   if (!registro) return null;
 
+  return montarPayloadCache(registro);
+}
+
+function montarPayloadCache(registro) {
+  const payload = parseJsonSeguro(registro.payload_normalizado, {});
+  const fontesPorCampo = Object.fromEntries(
+    Object.entries(payload.fontesPorCampo || {}).map(([campo, meta]) => [
+      campo,
+      typeof meta === 'string'
+        ? { fonte: meta, atualizadoEm: null, confianca: 'media', divergente: false }
+        : {
+            fonte: meta?.fonte || '',
+            atualizadoEm: meta?.atualizadoEm || null,
+            confianca: meta?.confianca || 'media',
+            divergente: Boolean(meta?.divergente)
+          }
+    ])
+  );
+
   return {
-    ...parseJsonSeguro(registro.payload_normalizado, {}),
+    ...payload,
+    consultadoEm: payload.consultadoEm || registro.updated_at || registro.created_at,
+    fontesConsultadas: payload.fontesConsultadas || FONTES,
+    fontesComSucesso: payload.fontesComSucesso || parseJsonSeguro(registro.fontes, []),
+    fontesComErro: payload.fontesComErro || [],
+    fontesPorCampo,
+    alternativasPorCampo: payload.alternativasPorCampo || {},
+    alertas: payload.alertas || [],
     cache: true,
     cacheCriadoEm: registro.created_at,
     cacheExpiraEm: registro.expira_em
@@ -347,7 +503,14 @@ async function consultarCnpj(valor) {
 
 module.exports = {
   CnpjConsultaError,
+  calcularConfianca,
+  combinarResultados,
   consultarCnpj,
+  montarPayloadCache,
+  normalizarBrasilApi,
+  normalizarCnpja,
+  normalizarCnpjws,
   sanitizarCnpj,
-  validarCnpj
+  validarCnpj,
+  validarDigitosCnpj
 };
