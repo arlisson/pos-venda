@@ -1191,6 +1191,12 @@ function labelStatusPacote(status) {
   return labels[status] || 'Sem pacote';
 }
 
+function getIconStatusPacote(status) {
+  if (status === 'pronto') return <I.Check size={12} />;
+  if (status === 'erro' || status === 'desatualizado') return <I.AlertTriangle size={12} />;
+  return <I.Note size={12} />;
+}
+
 function ArquivosVendaTab({ venda, podeEditar }) {
   const inputRef = useRef(null);
   const [arquivos, setArquivos] = useState([]);
@@ -1287,25 +1293,38 @@ function ArquivosVendaTab({ venda, podeEditar }) {
 
   if (!venda?.id) {
     return (
-      <div className="venda-arquivos-empty">
-        Salve a venda antes de anexar arquivos.
+      <div className="venda-arquivos-empty venda-arquivos-empty--blocked">
+        <span className="venda-arquivos-empty__icon">
+          <I.Note size={20} />
+        </span>
+        <strong>Venda ainda nao salva</strong>
+        <span>Salve a venda antes de anexar arquivos.</span>
       </div>
     );
   }
 
+  const statusPacote = pacote?.status || 'inexistente';
+  const totalArquivos = arquivos.length;
+
   return (
     <div className="venda-arquivos">
       <div className="venda-arquivos-toolbar">
-        <div>
-          <div className="venda-arquivos-title">Arquivos da venda</div>
-          <div className={`venda-arquivos-package status-${pacote?.status || 'inexistente'}`}>
-            {labelStatusPacote(pacote?.status || 'inexistente')}
-            {pacote?.total_arquivos ? ` · ${pacote.total_arquivos} arquivo(s)` : ''}
+        <div className="venda-arquivos-heading">
+          <div className="venda-arquivos-title-row">
+            <div className="venda-arquivos-title">Arquivos da venda</div>
+            <span className="venda-arquivos-count">
+              {totalArquivos} {totalArquivos === 1 ? 'arquivo' : 'arquivos'}
+            </span>
+          </div>
+          <div className={`venda-arquivos-package status-${statusPacote}`}>
+            {getIconStatusPacote(statusPacote)}
+            <span>{labelStatusPacote(statusPacote)}</span>
+            {pacote?.total_arquivos ? <span>{pacote.total_arquivos} no ZIP</span> : null}
           </div>
         </div>
 
         <div className="venda-arquivos-actions">
-          <select value={categoria} onChange={event => setCategoria(event.target.value)} disabled={!podeEditar || enviando}>
+          <select aria-label="Categoria do arquivo" value={categoria} onChange={event => setCategoria(event.target.value)} disabled={!podeEditar || enviando}>
             <option value="documento">Documento</option>
             <option value="contrato">Contrato</option>
             <option value="comprovante">Comprovante</option>
@@ -1320,12 +1339,15 @@ function ArquivosVendaTab({ venda, podeEditar }) {
             onChange={handleUpload}
           />
           <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={!podeEditar || enviando}>
+            <I.Plus size={13} />
             {enviando ? 'Enviando...' : 'Enviar arquivos'}
           </button>
           <button type="button" className="btn" onClick={handleGerarPacote} disabled={!podeEditar || arquivos.length === 0 || pacote?.status === 'gerando'}>
+            <I.Note size={13} />
             Gerar ZIP
           </button>
           <button type="button" className="btn" onClick={() => baixarPacoteArquivosVenda(venda.id)} disabled={pacote?.status !== 'pronto'}>
+            <I.Download size={13} />
             Baixar ZIP
           </button>
         </div>
@@ -1341,29 +1363,53 @@ function ArquivosVendaTab({ venda, podeEditar }) {
       {erro && <div className="alert-error">{erro}</div>}
 
       {carregando ? (
-        <div className="venda-arquivos-empty">Carregando arquivos...</div>
+        <div className="venda-arquivos-empty">
+          <span className="venda-arquivos-empty__icon">
+            <I.Note size={20} />
+          </span>
+          <strong>Carregando arquivos...</strong>
+        </div>
       ) : arquivos.length === 0 ? (
-        <div className="venda-arquivos-empty">Nenhum arquivo anexado.</div>
+        <div className="venda-arquivos-empty venda-arquivos-empty--upload" role={podeEditar ? 'button' : undefined} tabIndex={podeEditar ? 0 : undefined} onClick={() => podeEditar && inputRef.current?.click()} onKeyDown={event => {
+          if (!podeEditar) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            inputRef.current?.click();
+          }
+        }}>
+          <span className="venda-arquivos-empty__icon">
+            <I.Plus size={20} />
+          </span>
+          <strong>Nenhum arquivo anexado</strong>
+          <span>{podeEditar ? 'Clique para selecionar documentos, contratos ou comprovantes.' : 'Sem arquivos para exibir.'}</span>
+          <em>PDF, JPG, PNG ou WEBP</em>
+        </div>
       ) : (
         <div className="venda-arquivos-list">
           {arquivos.map(arquivo => (
             <div key={arquivo.id} className="venda-arquivo-item">
+              <div className="venda-arquivo-icon">
+                <I.Note size={16} />
+              </div>
               <div className="venda-arquivo-main">
                 <strong>{arquivo.nome_original}</strong>
-                <span>
+                <div className="venda-arquivo-meta">
                   {arquivo.categoria} · {formatarTamanhoArquivo(arquivo.arquivo?.tamanho_bytes)} · {arquivo.criado_por?.nome || 'Usuário'}
                   {arquivo.arquivo?.removido_em ? ' · arquivado no ZIP' : ''}
-                </span>
+                </div>
               </div>
               <div className="venda-arquivo-actions">
                 <button type="button" className="btn btn-sm" onClick={() => visualizarArquivoVenda(venda.id, arquivo.id)} disabled={Boolean(arquivo.arquivo?.removido_em)}>
+                  <I.Eye size={12} />
                   Visualizar
                 </button>
                 <button type="button" className="btn btn-sm" onClick={() => baixarArquivoVenda(venda.id, arquivo.id, arquivo.nome_original)} disabled={Boolean(arquivo.arquivo?.removido_em)}>
+                  <I.Download size={12} />
                   Baixar
                 </button>
                 {podeEditar && (
                   <button type="button" className="btn btn-sm btn-ghost vendas-trash-delete" onClick={() => handleExcluir(arquivo)}>
+                    <I.Trash size={12} />
                     Excluir
                   </button>
                 )}

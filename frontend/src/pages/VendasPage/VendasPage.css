@@ -266,36 +266,104 @@
 .venda-arquivos {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .venda-arquivos-toolbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.venda-arquivos-heading {
+  display: grid;
+  gap: 7px;
+  min-width: 180px;
+}
+
+.venda-arquivos-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.venda-arquivos-count {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.venda-arquivos-toolbar + .venda-arquivos-progress,
+.venda-arquivos-toolbar + .alert-error {
+  margin-top: -2px;
+}
+
+.venda-arquivos-toolbar::after {
+  content: none;
+}
+
+.venda-arquivos .alert-error {
+  margin: 0;
+}
+
+.venda-arquivos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .venda-arquivos-title {
+  font-size: 14px;
   font-weight: 700;
   color: var(--text);
 }
 
 .venda-arquivos-package {
-  margin-top: 4px;
-  color: var(--text-3);
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: fit-content;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 600;
 }
 
 .venda-arquivos-package.status-pronto {
   color: var(--success);
+  border-color: #bbf7d0;
+  background: #f0fdf4;
 }
 
 .venda-arquivos-package.status-erro,
 .venda-arquivos-package.status-desatualizado {
   color: var(--danger);
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.venda-arquivos-package.status-gerando,
+.venda-arquivos-package.status-pendente {
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 
 .venda-arquivos-actions {
@@ -307,34 +375,112 @@
 }
 
 .venda-arquivos-actions select {
-  height: 34px;
+  height: 36px;
   min-width: 140px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.venda-arquivos-actions .btn {
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.venda-arquivos-actions .btn:disabled,
+.venda-arquivo-actions .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .venda-arquivos-empty {
-  padding: 18px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  color: var(--text-3);
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 26px 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-2);
   text-align: center;
+}
+
+.venda-arquivos-empty strong {
+  color: var(--text);
+  font-size: 13.5px;
+}
+
+.venda-arquivos-empty span,
+.venda-arquivos-empty em {
+  max-width: 360px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-style: normal;
+}
+
+.venda-arquivos-empty em {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.venda-arquivos-empty .venda-arquivos-empty__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: inherit;
+}
+
+.venda-arquivos-empty--upload {
+  cursor: pointer;
+  transition: 120ms;
+}
+
+.venda-arquivos-empty--upload:hover,
+.venda-arquivos-empty--upload:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+  outline: none;
+}
+
+.venda-arquivos-empty--blocked {
+  background: var(--surface-2);
 }
 
 .venda-arquivos-progress {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 9px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 8px;
   background: var(--surface-2);
   color: var(--text-2);
   font-size: 12px;
 }
 
-.venda-arquivos-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.venda-arquivos-progress span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .venda-problema-modal {
@@ -454,18 +600,37 @@
 .venda-arquivo-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 11px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 8px;
   background: var(--surface);
+  transition: 120ms;
+}
+
+.venda-arquivo-item:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.venda-arquivo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-2);
 }
 
 .venda-arquivo-main {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  flex: 1 1 auto;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -473,9 +638,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.2;
 }
 
-.venda-arquivo-main span {
+.venda-arquivo-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-3);
   font-size: 12px;
 }
@@ -486,6 +658,55 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 6px;
+  flex: 0 0 auto;
+}
+
+.venda-arquivo-actions .btn {
+  min-height: 30px;
+}
+
+@media (max-width: 720px) {
+  .venda-arquivos-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .venda-arquivos-actions {
+    justify-content: stretch;
+  }
+
+  .venda-arquivos-actions select,
+  .venda-arquivos-actions .btn {
+    flex: 1 1 150px;
+  }
+
+  .venda-arquivo-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .venda-arquivo-main {
+    flex-basis: calc(100% - 44px);
+  }
+
+  .venda-arquivo-actions {
+    width: 100%;
+    padding-left: 44px;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .venda-arquivos-actions select,
+  .venda-arquivos-actions .btn,
+  .venda-arquivo-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .venda-arquivo-actions {
+    padding-left: 0;
+  }
 }
 
 .vendas-form-grid .auto-resize-textarea {
