@@ -1681,6 +1681,8 @@ function VendaModal({
   const [cepStatus, setCepStatus] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const [cnpjDados, setCnpjDados] = useState(null);
+  const [cnpjSugestoes, setCnpjSugestoes] = useState({});
   const abaInicial = initialTab === 'arquivos' && !podeVerDocumentosVenda ? 'venda' : initialTab;
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
