@@ -276,8 +276,29 @@ function mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabe
     acao: getHistoryLabel(item, stageLabels),
     autor: getHistoryAuthor(item),
     data: parseDate(item.created_at),
-    tipo: getHistoryType(item)
+    tipo: getHistoryType(item),
+    statusAnterior: item.status_anterior || null,
+    statusNovo: item.status_novo || null
   }));
+}
+
+function getEtapasPuladas(item, stages) {
+  if (item.tipo !== 'move' || !item.statusAnterior || !item.statusNovo) {
+    return [];
+  }
+
+  if (item.statusAnterior === 'retorno' || item.statusNovo === 'retorno') {
+    return [];
+  }
+
+  const origem = stages.findIndex(stage => stage.id === item.statusAnterior);
+  const destino = stages.findIndex(stage => stage.id === item.statusNovo);
+
+  if (origem < 0 || destino < 0 || destino <= origem + 1) {
+    return [];
+  }
+
+  return stages.slice(origem + 1, destino);
 }
 
 function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
@@ -442,8 +463,11 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
 
           {tab === 'historico' && (
             <div className="sale-timeline">
-              {sale.historico.map((item, i) => (
-                <div key={i} className="sale-tl-item">
+              {sale.historico.map((item, i) => {
+                const etapasPuladas = getEtapasPuladas(item, stages);
+
+                return (
+                <div key={i} className={`sale-tl-item ${etapasPuladas.length > 0 ? 'sale-tl-item--skipped' : ''}`}>
                   <div className={`sale-tl-dot ${item.tipo} ${i === 0 ? 'current' : ''}`}>
                     {i === 0 ? (
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
@@ -452,11 +476,20 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
                     )}
                   </div>
                   <div className="sale-tl-content">
-                    <div className="sale-tl-title">{item.acao}</div>
+                    <div className="sale-tl-title">
+                      {item.acao}
+                      {etapasPuladas.length > 0 && (
+                        <span className="sale-tl-skip-badge">
+                          <I.AlertTriangle size={11} />
+                          Etapa pulada: {etapasPuladas.map(stage => stage.name).join(', ')}
+                        </span>
+                      )}
+                    </div>
                     <div className="sale-tl-meta">{item.autor} · {formatDateTime(item.data)}</div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
 

@@ -70,13 +70,13 @@ function getTipo(log) {
   return 'success';
 }
 
-function HistoricoItem({ log, selecionado, onClick }) {
+function HistoricoItem({ log, selecionado, compacto, onClick }) {
   const tipo = getTipo(log);
   const usuario = log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema');
 
   return (
     <div 
-      className={`history-item ${tipo} ${selecionado ? 'selected' : ''}`}
+      className={`history-item ${compacto ? 'history-item--compact' : ''} ${tipo} ${selecionado ? 'selected' : ''}`}
       onClick={() => onClick(log)}
       style={{ cursor: 'pointer' }}
     >
@@ -84,6 +84,22 @@ function HistoricoItem({ log, selecionado, onClick }) {
         {tipo === 'danger' ? <I.AlertTriangle size={12} /> : <I.Check size={12} />}
       </div>
       <div className="history-content">
+        {compacto ? (
+          <div className="history-main-line">
+            <div className="history-title">
+              <strong>{formatarAcao(log.acao)}</strong>
+              <span>{montarDetalhe(log)}</span>
+            </div>
+            <div className="history-meta">
+              <span>{usuario}</span>
+              <span>Â·</span>
+              <span>{log.metodo || 'API'} {log.rota || ''}</span>
+              <span>Â·</span>
+              <span>{formatarData(log.created_at)}</span>
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="history-title">
           <strong>{formatarAcao(log.acao)}</strong>
           <span>{montarDetalhe(log)}</span>
@@ -95,6 +111,76 @@ function HistoricoItem({ log, selecionado, onClick }) {
           <span>·</span>
           <span>{formatarData(log.created_at)}</span>
         </div>
+        </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getGrupoVendaId(log) {
+  if (log.entidade_id) return String(log.entidade_id);
+
+  const dados = parseDados(log.dados);
+  return String(dados?.venda?.id || dados?.venda_id || log.id);
+}
+
+function agruparLogsVenda(logs = []) {
+  const grupos = new Map();
+
+  logs.forEach(log => {
+    const vendaId = getGrupoVendaId(log);
+    const grupoAtual = grupos.get(vendaId) || {
+      vendaId,
+      logs: []
+    };
+
+    grupoAtual.logs.push(log);
+    grupos.set(vendaId, grupoAtual);
+  });
+
+  return Array.from(grupos.values()).map(grupo => ({
+    ...grupo,
+    logs: grupo.logs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+    maisRecente: grupo.logs.reduce((recente, log) => (
+      !recente || new Date(log.created_at) > new Date(recente.created_at) ? log : recente
+    ), null)
+  })).sort((a, b) => new Date(b.maisRecente?.created_at || 0) - new Date(a.maisRecente?.created_at || 0));
+}
+
+function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
+  return (
+    <div className="history-sale-row">
+      <div className="history-sale-row__head">
+        <strong>Venda #{grupo.vendaId}</strong>
+        <span>{grupo.logs.length} ações</span>
+      </div>
+
+      <div className="history-sale-row__scroll" role="list" aria-label={`Histórico da venda ${grupo.vendaId}`}>
+        {grupo.logs.map((log, index) => {
+          const tipo = getTipo(log);
+          const usuario = log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema');
+          const selecionado = logSelecionado?.id === log.id;
+
+          return (
+            <button
+              key={log.id}
+              type="button"
+              className={`history-sale-step ${tipo} ${selecionado ? 'selected' : ''}`}
+              onClick={() => onClick(log)}
+              role="listitem"
+            >
+              <span className="history-sale-step__marker">
+                {tipo === 'danger' ? <I.AlertTriangle size={11} /> : <I.Check size={11} />}
+              </span>
+              <span className="history-sale-step__body">
+                <strong>{formatarAcao(log.acao)}</strong>
+                <small>{usuario} · {formatarData(log.created_at)}</small>
+              </span>
+              {index < grupo.logs.length - 1 && <span className="history-sale-step__line" aria-hidden="true" />}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -207,6 +293,11 @@ function HistoricoPage() {
     });
   }, [logs, filtro]);
 
+  const modoVendasCompacto = filtro === 'vendas';
+  const gruposVenda = useMemo(() => (
+    modoVendasCompacto ? agruparLogsVenda(logsFiltrados) : []
+  ), [modoVendasCompacto, logsFiltrados]);
+
   return (
     <LayoutPrivado>
       <div className="history-page">
@@ -241,7 +332,9 @@ function HistoricoPage() {
 
         <div className="history-shell">
           <div className="history-summary">
-            Linha do tempo de todas as movimentacoes ({logsFiltrados.length} eventos)
+            {modoVendasCompacto
+              ? `Registros de vendas (${logsFiltrados.length} eventos em ${gruposVenda.length} vendas)`
+              : `Linha do tempo de todas as movimentacoes (${logsFiltrados.length} eventos)`}
           </div>
 
           <div className="history-panel">
@@ -251,12 +344,24 @@ function HistoricoPage() {
               <div className="history-empty error">{erro}</div>
             ) : logsFiltrados.length === 0 ? (
               <div className="history-empty">Nenhuma movimentacao encontrada.</div>
+            ) : modoVendasCompacto ? (
+              <div className="history-sale-groups">
+                {gruposVenda.map(grupo => (
+                  <VendaHistoricoGrupo
+                    key={grupo.vendaId}
+                    grupo={grupo}
+                    logSelecionado={logSelecionado}
+                    onClick={setLogSelecionado}
+                  />
+                ))}
+              </div>
             ) : (
-              <div className="history-list">
+              <div className={`history-list ${modoVendasCompacto ? 'history-list--compact' : ''}`}>
                 {logsFiltrados.map(log => (
                   <HistoricoItem 
                     key={log.id} 
                     log={log} 
+                    compacto={modoVendasCompacto}
                     selecionado={logSelecionado?.id === log.id}
                     onClick={setLogSelecionado}
                   />
