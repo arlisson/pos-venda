@@ -1095,25 +1095,27 @@ function ClienteSolicitouInput({ form, onToggle, onOpenQuantidades }) {
   );
 }
 
-function ClienteSolicitouDrawer({ servicos, quantidades, onChange, onClose, onConfirm }) {
+function ClienteSolicitouQuantidadeModal({ servicos, quantidades, onChange, onClose, onConfirm }) {
   const bloqueioSelecionado = servicos.includes('bloqueio');
   const cancelamentoSelecionado = servicos.includes('cancelamento');
 
   return (
-    <div className="cliente-solicitou-drawer-layer">
-      <div className="cliente-solicitou-drawer-backdrop" onClick={onClose}></div>
-      <aside className="cliente-solicitou-drawer" role="dialog" aria-modal="true" aria-labelledby="cliente-solicitou-drawer-title">
-        <div className="cliente-solicitou-drawer__header">
-          <div>
-            <div id="cliente-solicitou-drawer-title" className="cliente-solicitou-drawer__title">Quantificar chips</div>
-            <div className="cliente-solicitou-drawer__sub">Informe quantos chips entram em cada operação.</div>
+    <div className="modal-overlay cliente-solicitou-quantidade-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <div className="modal cliente-solicitou-quantidade-modal" role="dialog" aria-modal="true" aria-labelledby="cliente-solicitou-quantidade-title">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div id="cliente-solicitou-quantidade-title" className="modal-client">Quantificar chips</div>
+              <div className="modal-sub">Informe quantos chips entram em cada operação.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} title="Fechar">
+              <I.Close size={14} />
+            </button>
           </div>
-          <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} title="Fechar">
-            <I.Close size={14} />
-          </button>
         </div>
 
-        <div className="cliente-solicitou-drawer__body">
+        <div className="modal-body">
+          <div className="cliente-solicitou-quantidade-fields">
           {bloqueioSelecionado && (
             <label className="form-field">
               <span>Chips para bloqueio</span>
@@ -1127,13 +1129,14 @@ function ClienteSolicitouDrawer({ servicos, quantidades, onChange, onClose, onCo
               <input type="number" min="1" inputMode="numeric" value={quantidades.cancelamento} onChange={event => onChange('cancelamento', apenasDigitos(event.target.value, 4))} placeholder="0" />
             </label>
           )}
+          </div>
         </div>
 
-        <div className="cliente-solicitou-drawer__footer">
+        <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose}>Cancelar</button>
           <button type="button" className="btn btn-primary" onClick={onConfirm}>Informar números</button>
         </div>
-      </aside>
+      </div>
     </div>
   );
 }
@@ -2011,7 +2014,7 @@ function VendaModal({
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
-  const [clienteSolicitouDrawerAberta, setClienteSolicitouDrawerAberta] = useState(false);
+  const [clienteSolicitouQuantidadeAberta, setClienteSolicitouQuantidadeAberta] = useState(false);
   const [clienteSolicitouNumerosAberto, setClienteSolicitouNumerosAberto] = useState(false);
   const [clienteSolicitouServicosDraft, setClienteSolicitouServicosDraft] = useState([]);
   const [clienteSolicitouQuantidadesDraft, setClienteSolicitouQuantidadesDraft] = useState({ bloqueio: '', cancelamento: '' });
@@ -2152,7 +2155,7 @@ function VendaModal({
       bloqueio: selecionados.includes('bloqueio') ? String(form.cliente_solicitou_bloqueio_qtd || '') : '',
       cancelamento: selecionados.includes('cancelamento') ? String(form.cliente_solicitou_cancelamento_qtd || '') : ''
     });
-    setClienteSolicitouDrawerAberta(true);
+    setClienteSolicitouQuantidadeAberta(true);
   }
 
   function alternarClienteSolicitouServico(servico) {
@@ -2177,12 +2180,6 @@ function VendaModal({
         ? semNenhum.filter(item => item !== servico)
         : [...semNenhum, servico];
       const numerosAtuais = parseClienteSolicitouNumeros(prev.cliente_solicitou_numeros);
-
-      window.requestAnimationFrame(() => {
-        if (!semNenhum.includes(servico) && proximos.length > 0) {
-          abrirClienteSolicitouQuantidades(proximos);
-        }
-      });
 
       return {
         ...prev,
@@ -2229,7 +2226,7 @@ function VendaModal({
       cliente_solicitou_numeros: numerosAjustados
     }));
     setClienteSolicitouNumerosDraft(numerosAjustados);
-    setClienteSolicitouDrawerAberta(false);
+    setClienteSolicitouQuantidadeAberta(false);
     setClienteSolicitouNumerosAberto(true);
   }
 
@@ -2895,12 +2892,12 @@ function VendaModal({
           )}
         </div>
 
-        {clienteSolicitouDrawerAberta && (
-          <ClienteSolicitouDrawer
+        {clienteSolicitouQuantidadeAberta && (
+          <ClienteSolicitouQuantidadeModal
             servicos={clienteSolicitouServicosDraft}
             quantidades={clienteSolicitouQuantidadesDraft}
             onChange={(tipo, valor) => setClienteSolicitouQuantidadesDraft(prev => ({ ...prev, [tipo]: valor }))}
-            onClose={() => setClienteSolicitouDrawerAberta(false)}
+            onClose={() => setClienteSolicitouQuantidadeAberta(false)}
             onConfirm={confirmarClienteSolicitouQuantidades}
           />
         )}
@@ -2916,7 +2913,7 @@ function VendaModal({
             onChange={setClienteSolicitouNumerosDraft}
             onClose={() => {
               setClienteSolicitouNumerosAberto(false);
-              setClienteSolicitouDrawerAberta(true);
+              setClienteSolicitouQuantidadeAberta(true);
             }}
             onConfirm={confirmarClienteSolicitouNumeros}
           />
