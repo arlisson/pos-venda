@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { criarUsuario, listarPermissoes } from '../../services/usuario.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import * as I from '../../components/Icons';
+import '../Usuarios/Usuarios.css';
 
 const PERMISSAO_POS_VENDA = {
   chave: 'pos_venda',
@@ -17,6 +18,326 @@ function garantirPermissaoPosVenda(permissoes = []) {
   }
 
   return [...permissoes, PERMISSAO_POS_VENDA];
+}
+
+const GRUPOS_PERMISSOES = [
+  {
+    id: 'inicio',
+    titulo: 'Página inicial',
+    descricao: 'Controle os indicadores exibidos no início do sistema.',
+    secoes: [
+      {
+        titulo: 'Cards liberados',
+        itens: [
+          {
+            chave: 'dashboard_resumo_vendas',
+            nome: 'Resumo de vendas',
+            descricao: 'Mostra os cards Vendas no dia, Valor vendido hoje, Concluídas hoje e Em pipeline.'
+          },
+          {
+            chave: 'campanhas_ver_usuarios',
+            nome: 'Campanhas por usuário',
+            descricao: 'Mostra no dashboard quem bateu ou ainda não bateu cada campanha.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'relatorios',
+    titulo: 'Relatórios',
+    descricao: 'Controle o acesso à página de relatórios comerciais.',
+    secoes: [
+      {
+        titulo: 'Acesso à página',
+        itens: [
+          {
+            chave: 'relatorios_visualizar',
+            nome: 'Visualizar relatórios',
+            descricao: 'Permite acessar a página Relatórios pela barra lateral.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'notificacoes',
+    titulo: 'Notificações',
+    descricao: 'Controle o acesso ao sininho e quem recebe avisos gerais do sistema.',
+    secoes: [
+      {
+        titulo: 'Acesso',
+        itens: [
+          {
+            chave: 'notificacoes_visualizar',
+            nome: 'Visualizar notificações',
+            descricao: 'Permite abrir o sininho e ver notificações destinadas ao usuário.'
+          },
+          {
+            chave: 'notificacoes_receber_todas',
+            nome: 'Receber todas',
+            descricao: 'Inclui o usuário como destinatário dos avisos gerais do sistema.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'vendas',
+    titulo: 'Vendas',
+    descricao: 'Controle as telas, a visualização e as ações permitidas no módulo de vendas.',
+    secoes: [
+      {
+        titulo: 'Acesso ao módulo',
+        itens: [
+          {
+            chave: 'vendas',
+            nome: 'Cadastro de vendas',
+            descricao: 'Permite acessar a tela de cadastro e listagem de vendas.'
+          }
+        ]
+      },
+      {
+        titulo: 'Telas liberadas',
+        itens: [
+          {
+            chave: 'funil_vendas',
+            nome: 'Funil de vendas',
+            descricao: 'Permite acessar a página do funil de vendas.'
+          },
+          {
+            chave: 'crud_funil_etapas',
+            nome: 'Gerenciar etapas do funil',
+            descricao: 'Permite criar, editar e desativar colunas do funil de vendas.'
+          },
+          {
+            chave: 'pos_venda',
+            nome: 'Pós-venda',
+            descricao: 'Permite editar vendas enviadas ao pós-venda e movimentar vendas no funil.'
+          }
+        ]
+      },
+      {
+        titulo: 'Visualização',
+        exclusivo: true,
+        itens: [
+          {
+            chave: 'vendas_ver_proprias',
+            nome: 'Ver próprias',
+            descricao: 'Mostra vendas criadas pelo usuário ou vinculadas a ele.'
+          },
+          {
+            chave: 'vendas_ver_todas',
+            nome: 'Ver todas',
+            descricao: 'Mostra todas as vendas cadastradas.'
+          }
+        ]
+      },
+      {
+        titulo: 'Ações',
+        itens: [
+          {
+            chave: 'vendas_criar',
+            nome: 'Criar',
+            descricao: 'Permite registrar novas vendas.'
+          },
+          {
+            chave: 'vendas_editar',
+            nome: 'Editar',
+            descricao: 'Permite editar vendas acessíveis.'
+          },
+          {
+            chave: 'vendas_documentos',
+            nome: 'Documentos',
+            descricao: 'Libera a aba de documentos na visualização da venda.'
+          },
+          {
+            chave: 'vendas_excluir',
+            nome: 'Excluir',
+            descricao: 'Permite excluir vendas acessíveis.'
+          },
+          {
+            chave: 'vendas_marcar_problema',
+            nome: 'Marcar problema',
+            descricao: 'Permite abrir solicitações urgentes de problema em vendas.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'usuarios',
+    titulo: 'Usuários',
+    descricao: 'Controle o acesso ao cadastro de usuários e a administração de permissões.',
+    secoes: [
+      {
+        titulo: 'Acesso ao módulo',
+        itens: [
+          {
+            chave: 'crud_usuarios',
+            nome: 'Acesso ao módulo',
+            descricao: 'Permite acessar a área de cadastro de usuários.'
+          }
+        ]
+      },
+      {
+        titulo: 'Ações',
+        itens: [
+          {
+            chave: 'usuarios_listar',
+            nome: 'Listar',
+            descricao: 'Permite visualizar usuários cadastrados.'
+          },
+          {
+            chave: 'usuarios_criar',
+            nome: 'Criar',
+            descricao: 'Permite criar novos usuários.'
+          },
+          {
+            chave: 'usuarios_editar',
+            nome: 'Editar',
+            descricao: 'Permite editar dados de usuários.'
+          },
+          {
+            chave: 'usuarios_excluir',
+            nome: 'Excluir',
+            descricao: 'Permite excluir usuários comuns.'
+          },
+          {
+            chave: 'gerenciar_permissoes',
+            nome: 'Gerenciar permissões',
+            descricao: 'Permite atribuir ou remover permissões.'
+          }
+        ]
+      }
+    ]
+  }
+];
+
+function getChavesGrupo(grupo) {
+  return Array.from(new Set(grupo.secoes.flatMap(secao => secao.itens.map(item => item.chave))));
+}
+
+function getPermissoesDeclaradas() {
+  return GRUPOS_PERMISSOES.flatMap(grupo => (
+    grupo.secoes.flatMap(secao => (
+      secao.itens.map(item => ({
+        chave: item.chave,
+        nome: item.nome,
+        descricao: item.descricao
+      }))
+    ))
+  ));
+}
+
+function montarGruposPermissoes(permissoes = []) {
+  const permissoesPorChave = [...permissoes, ...getPermissoesDeclaradas()].reduce((acc, permissao) => {
+    acc[permissao.chave] = permissao;
+    return acc;
+  }, {});
+
+  const gruposSemanticos = GRUPOS_PERMISSOES.map(grupo => ({
+    ...grupo,
+    secoes: grupo.secoes
+      .map(secao => ({
+        ...secao,
+        itens: secao.itens
+          .filter(item => permissoesPorChave[item.chave])
+          .map(item => ({
+            ...item,
+            descricao: item.descricao || permissoesPorChave[item.chave]?.descricao
+          }))
+      }))
+      .filter(secao => secao.itens.length > 0)
+  })).filter(grupo => grupo.secoes.length > 0);
+
+  const permissoesAgrupadas = new Set(gruposSemanticos.flatMap(getChavesGrupo));
+  const permissoesRestantes = permissoes
+    .filter(permissao => !permissoesAgrupadas.has(permissao.chave))
+    .map(permissao => ({
+      chave: permissao.chave,
+      nome: permissao.nome,
+      descricao: permissao.descricao
+    }));
+
+  return permissoesRestantes.length > 0
+    ? [
+        ...gruposSemanticos,
+        {
+          id: 'outras',
+          titulo: 'Outras permissões',
+          descricao: 'Permissões adicionais do sistema que não fazem parte dos grupos principais.',
+          secoes: [
+            {
+              titulo: 'Permissões',
+              itens: permissoesRestantes
+            }
+          ]
+        }
+      ]
+    : gruposSemanticos;
+}
+
+function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle }) {
+  return (
+    <label className={`permissions-option ${selecionado ? 'is-active' : ''} ${exclusivo ? 'permissions-option--exclusive' : ''}`}>
+      <input
+        type="checkbox"
+        checked={selecionado}
+        onChange={() => onToggle(item.chave, exclusivo ? { grupoExclusivo } : undefined)}
+      />
+      <span>
+        <strong>{item.nome}</strong>
+        <small>{item.descricao || 'Permissão do sistema.'}</small>
+      </span>
+    </label>
+  );
+}
+
+function PermissaoGrupo({ grupo, selecionadas, onToggle }) {
+  const chaves = getChavesGrupo(grupo);
+  const selecionadasNoGrupo = chaves.filter(chave => selecionadas.includes(chave)).length;
+  const ativo = selecionadasNoGrupo > 0;
+
+  return (
+    <section className={`permissions-group permissions-group--semantic ${ativo ? 'is-active' : ''}`}>
+      <div className="permissions-group__header">
+        <div>
+          <h4>{grupo.titulo}</h4>
+          <p>{grupo.descricao}</p>
+        </div>
+
+        <span className={`pill ${ativo ? 'success' : 'danger'}`}>
+          <span className="pill-dot"></span>
+          {selecionadasNoGrupo}/{chaves.length}
+        </span>
+      </div>
+
+      <div className="permissions-sections">
+        {grupo.secoes.map(secao => {
+          const grupoExclusivo = secao.itens.map(item => item.chave);
+
+          return (
+            <div key={secao.titulo} className="permissions-section">
+              <div className="permissions-section__title">{secao.titulo}</div>
+              <div className={`permissions-options ${secao.exclusivo ? 'permissions-options--exclusive' : ''}`}>
+                {secao.itens.map(item => (
+                  <PermissaoCard
+                    key={item.chave}
+                    item={item}
+                    selecionado={selecionadas.includes(item.chave)}
+                    exclusivo={secao.exclusivo}
+                    grupoExclusivo={grupoExclusivo}
+                    onToggle={onToggle}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function CadastroUsuario() {
@@ -67,11 +388,20 @@ function CadastroUsuario() {
     carregarPermissoes();
   }, [podeGerenciarPermissoes]);
 
-  function togglePermissao(chave) {
-    setPermissoesSelecionadas(prev =>
-      prev.includes(chave) ? prev.filter(c => c !== chave) : [...prev, chave]
-    );
+  function togglePermissao(chave, opcoes = {}) {
+    setPermissoesSelecionadas(prev => {
+      const selecionada = prev.includes(chave);
+
+      if (opcoes.grupoExclusivo) {
+        const semGrupo = prev.filter(item => !opcoes.grupoExclusivo.includes(item));
+        return selecionada ? semGrupo : [...semGrupo, chave];
+      }
+
+      return selecionada ? prev.filter(c => c !== chave) : [...prev, chave];
+    });
   }
+
+  const gruposPermissoes = useMemo(() => montarGruposPermissoes(permissoes), [permissoes]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -103,7 +433,7 @@ function CadastroUsuario() {
 
   return (
     <LayoutPrivado>
-      <div className="users-page" style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <div className="users-page" style={{ maxWidth: '820px', margin: '0 auto' }}>
         <div className="panel">
           <div className="panel-header">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -173,7 +503,7 @@ function CadastroUsuario() {
                     <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-2)', marginBottom: 8 }}>
                       Permissoes de acesso
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="permissions-grid">
                       {Number(roleId) === 1 ? (
                         <div style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-2)' }}>
                           Administradores possuem todas as permissões automaticamente.
@@ -183,24 +513,13 @@ function CadastroUsuario() {
                           Nenhuma permissão disponível.
                         </div>
                       ) : (
-                        permissoes.map(p => (
-                          <label
-                            key={p.chave}
-                            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', userSelect: 'none' }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={permissoesSelecionadas.includes(p.chave)}
-                              onChange={() => togglePermissao(p.chave)}
-                              style={{ marginTop: 3, flexShrink: 0 }}
-                            />
-                            <div>
-                              <div style={{ fontSize: 13, fontWeight: 500 }}>{p.nome}</div>
-                              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                                {p.descricao || 'Permissao do sistema.'}
-                              </div>
-                            </div>
-                          </label>
+                        gruposPermissoes.map(grupo => (
+                          <PermissaoGrupo
+                            key={grupo.id}
+                            grupo={grupo}
+                            selecionadas={permissoesSelecionadas}
+                            onToggle={togglePermissao}
+                          />
                         ))
                       )}
                     </div>
