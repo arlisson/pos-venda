@@ -62,6 +62,7 @@ const CAMPOS = [
   'protocolo',
   'login',
   'senha',
+  'numero_cliente_contrato',
   'operadora_id',
   'vendedora_id',
   'status_funil',
