@@ -346,6 +346,39 @@ function formatarCpf(valor) {
   return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9)}`;
 }
 
+function validarCpf(valor) {
+  const cpf = apenasDigitos(valor, 11);
+
+  if (!cpf) return true;
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  const calcularDigito = tamanho => {
+    let soma = 0;
+
+    for (let i = 0; i < tamanho; i += 1) {
+      soma += Number(cpf[i]) * (tamanho + 1 - i);
+    }
+
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+
+  return calcularDigito(9) === Number(cpf[9]) && calcularDigito(10) === Number(cpf[10]);
+}
+
+function obterErroCpfVenda(form) {
+  if (!validarCpf(form.cpf_representante_legal)) {
+    return 'CPF RL inválido. Confira os 11 dígitos antes de salvar.';
+  }
+
+  if (!validarCpf(form.cpf_administrador)) {
+    return 'CPF ADM inválido. Confira os 11 dígitos antes de salvar.';
+  }
+
+  return '';
+}
+
 function formatarCnpj(valor) {
   const digitos = apenasDigitos(valor, 14);
 
@@ -1863,6 +1896,14 @@ function VendaModal({
 
       if (vendedorasIds.length === 0) {
         setErro('Selecione pelo menos uma vendedora para cadastrar a venda.');
+        setSalvando(false);
+        return;
+      }
+
+      const erroCpf = obterErroCpfVenda(form);
+
+      if (erroCpf) {
+        setErro(erroCpf);
         setSalvando(false);
         return;
       }
