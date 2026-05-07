@@ -35,6 +35,19 @@ router.post(
   exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']),
   vendaController.emailTemplate
 );
+router.post(
+  '/:id/enviar-pos-venda',
+  exigirUmaPermissao(['vendas_editar']),
+  auditar({
+    acao: 'venda.enviada_pos_venda',
+    entidade: 'vendas',
+    entidade_id: req => req.params.id,
+    dados: req => ({
+      id: req.params.id
+    })
+  }),
+  vendaController.enviarPosVenda
+);
 router.get(
   '/:id/xlsx-claro',
   exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']),
@@ -56,7 +69,7 @@ router.post(
 );
 router.put(
   '/:id',
-  exigirUmaPermissao(['vendas_editar']),
+  exigirUmaPermissao(['vendas_editar', 'pos_venda']),
   auditar({
     acao: 'venda.atualizada',
     entidade: 'vendas',
@@ -70,7 +83,7 @@ router.put(
 );
 router.patch(
   '/:id/status',
-  exigirUmaPermissao(['vendas_editar']),
+  exigirUmaPermissao(['vendas_editar', 'pos_venda']),
   auditar({
     acao: 'venda.status_atualizado',
     entidade: 'vendas',

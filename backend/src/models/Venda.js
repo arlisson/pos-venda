@@ -76,7 +76,7 @@ class Venda extends Model {
         tipo_venda_id: { type: ['integer', 'null'] },
         servico_id: { type: ['integer', 'null'] },
 
-        status_funil: { type: 'string', maxLength: 40 },
+        status_funil: { type: ['string', 'null'], maxLength: 40 },
         prioridade_funil: { type: 'string', maxLength: 20 },
         status_anterior_retorno: { type: ['string', 'null'], maxLength: 40 },
         motivo_retorno: { type: ['string', 'null'], maxLength: 255 },
@@ -84,6 +84,8 @@ class Venda extends Model {
         retornou_em: { type: ['string', 'null'] },
         corrigido_em: { type: ['string', 'null'] },
         criado_por_id: { type: ['integer', 'null'] },
+        enviada_pos_venda_em: { type: ['string', 'null'] },
+        enviada_pos_venda_por_id: { type: ['integer', 'null'] },
         vendedora_id: { type: 'integer' },
         excluido_em: { type: ['string', 'null'] },
         excluir_definitivo_em: { type: ['string', 'null'] },

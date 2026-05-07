@@ -149,6 +149,10 @@ export async function atualizarVenda(id, dados) {
   return apiPut(`/vendas/${id}`, dados);
 }
 
+export async function enviarVendaParaPosVenda(id) {
+  return apiPost(`/vendas/${id}/enviar-pos-venda`, {});
+}
+
 export async function atualizarStatusVenda(id, dados) {
   return apiRequest(`/vendas/${id}/status`, {
     method: 'PATCH',

@@ -16,6 +16,20 @@ import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 
 import './EditarUsuarioPage.css';
 
+const PERMISSAO_POS_VENDA = {
+  chave: 'pos_venda',
+  nome: 'Pós-venda',
+  descricao: 'Permite editar vendas enviadas ao pós-venda e movimentar vendas no funil.'
+};
+
+function garantirPermissaoPosVenda(permissoes = []) {
+  if (permissoes.some(permissao => permissao.chave === PERMISSAO_POS_VENDA.chave)) {
+    return permissoes;
+  }
+
+  return [...permissoes, PERMISSAO_POS_VENDA];
+}
+
 function parsePermissoes(permissoes) {
   if (!permissoes) return [];
   if (Array.isArray(permissoes)) return permissoes;
@@ -88,7 +102,7 @@ function EditarUsuarioPage() {
         setRoleId(roleAtual);
         setRoleIdOriginal(roleAtual);
         setAtivo(ativoVal);
-        setPermissoes(permissoesData);
+        setPermissoes(garantirPermissaoPosVenda(permissoesData));
         setPermissoesSelecionadas(permissoesSelecionadasParsed);
         setDadosOriginais(originais);
       } catch (error) {

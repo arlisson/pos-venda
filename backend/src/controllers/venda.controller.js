@@ -115,7 +115,7 @@ async function update(req, res) {
   } catch (error) {
     console.error(error);
 
-    return res.status(400).json({
+    return res.status(error.statusCode || 400).json({
       message: error.message || 'Erro ao atualizar venda.'
     });
   }
@@ -137,6 +137,12 @@ async function updateStatus(req, res) {
       });
     }
 
+    if (resultado.status === 'forbidden') {
+      return res.status(403).json({
+        message: resultado.message
+      });
+    }
+
     const vendaCompleta = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
 
     return res.json(vendaCompleta);
@@ -145,6 +151,28 @@ async function updateStatus(req, res) {
 
     return res.status(500).json({
       message: 'Erro ao atualizar status da venda.'
+    });
+  }
+}
+
+async function enviarPosVenda(req, res) {
+  try {
+    const resultado = await vendaService.enviarVendaParaPosVenda(req.params.id, req.usuario.id);
+
+    if (resultado.status === 'not_found') {
+      return res.status(404).json({
+        message: 'Venda não encontrada.'
+      });
+    }
+
+    const vendaCompleta = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
+
+    return res.json(vendaCompleta);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao enviar venda para o pós-venda.'
     });
   }
 }
@@ -272,6 +300,7 @@ module.exports = {
   store,
   update,
   updateStatus,
+  enviarPosVenda,
   destroy,
   lixeira,
   restore,

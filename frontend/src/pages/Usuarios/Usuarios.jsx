@@ -110,6 +110,11 @@ const GRUPOS_PERMISSOES = [
             chave: 'crud_funil_etapas',
             nome: 'Gerenciar etapas do funil',
             descricao: 'Permite criar, editar e desativar colunas do funil de vendas.'
+          },
+          {
+            chave: 'pos_venda',
+            nome: 'Pós-venda',
+            descricao: 'Permite editar vendas enviadas ao pós-venda e movimentar vendas no funil.'
           }
         ]
       },
