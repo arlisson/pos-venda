@@ -145,6 +145,11 @@ const DIAS_SEMANA = [
   { value: 'domingo', label: 'Domingo' },
 ];
 
+const FECHOU_VENDA_OPCOES = [
+  { value: 'RL', label: 'RL' },
+  { value: 'ADM', label: 'ADM' }
+];
+
 const CAMPOS = [
   { section: 'Cliente' },
   { name: 'cliente_id', label: 'Cliente', type: 'client', required: true, span: true },
@@ -171,7 +176,7 @@ const CAMPOS = [
   { section: 'Dados da venda' },
   { name: 'data_venda', label: 'Data da venda', type: 'date' },
   { name: 'data_ativacao', label: 'Data da ativação', type: 'date' },
-  { name: 'nome_fechou_venda', label: 'Nome com quem fechou a venda' },
+  { name: 'nome_fechou_venda', label: 'Venda fechada com', type: 'closedWith' },
   { name: 'setor_funcao', label: 'Setor/Função' },
   { name: 'qc_feito_por', label: 'QC feito por' },
 
@@ -1750,6 +1755,7 @@ function VendaModal({
       const telefoneFixo = c ? formatarTelefoneComDdd([c.fixo_ddd, c.fixo_numero].filter(Boolean).join(''), false) : '';
       const nomeRl = c?.responsavel_tipo === 'rl' ? (c.responsavel_nome || '') : '';
       const nomeAdm = c?.responsavel_tipo === 'adm' ? (c.responsavel_nome || '') : '';
+      const fechouVenda = c?.responsavel_tipo === 'rl' ? 'RL' : c?.responsavel_tipo === 'adm' ? 'ADM' : '';
 
       return {
         ...prev,
@@ -1762,6 +1768,7 @@ function VendaModal({
         fixo_ddd: prev.fixo_ddd || telefoneFixo || '',
         nome_representante_legal: prev.nome_representante_legal || nomeRl,
         nome_administrador: prev.nome_administrador || nomeAdm,
+        nome_fechou_venda: prev.nome_fechou_venda || fechouVenda,
       };
     });
   }
@@ -1794,6 +1801,14 @@ function VendaModal({
       };
     });
 
+    setCnpjSugestoes(prev => {
+      const proximo = { ...prev };
+      delete proximo[campoApi];
+      return proximo;
+    });
+  }
+
+  function recusarSugestaoCnpj(campoApi) {
     setCnpjSugestoes(prev => {
       const proximo = { ...prev };
       delete proximo[campoApi];
@@ -2214,6 +2229,7 @@ function VendaModal({
                         sugestoes={cnpjSugestoes}
                         labels={CNPJ_LABELS_VENDA}
                         onAceitar={aceitarSugestaoCnpj}
+                        onRecusar={recusarSugestaoCnpj}
                       />
                     </>
                   ) : campo.type === 'sellers' ? (
@@ -2254,6 +2270,16 @@ function VendaModal({
                     </div>
                   ) : campo.type === 'responsaveis' ? (
                     <ResponsaveisRecebimentoInput form={form} onChange={atualizarCampo} />
+                  ) : campo.type === 'closedWith' ? (
+                    <select
+                      value={FECHOU_VENDA_OPCOES.some(opcao => opcao.value === form[campo.name]) ? form[campo.name] : ''}
+                      onChange={e => atualizarCampo(campo.name, e.target.value)}
+                    >
+                      <option value="">Selecione</option>
+                      {FECHOU_VENDA_OPCOES.map(opcao => (
+                        <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                      ))}
+                    </select>
                   ) : ['operator', 'saleType', 'service'].includes(campo.type) ? (
                     <select
                       value={form[campo.name] ?? ''}
