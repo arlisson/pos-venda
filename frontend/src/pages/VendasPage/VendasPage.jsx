@@ -1591,6 +1591,8 @@ function VendaModal({
   const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
   const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
   function atualizarCampo(campo, valor) {
+    if (somenteVisualizacao) return;
+
     const valorFormatado = formatarCampoVenda(campo, valor);
 
     setForm(prev => {
@@ -1817,6 +1819,8 @@ function VendaModal({
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    if (somenteVisualizacao) return;
+
     if (!vendaAtivada) {
       if (Array.isArray(form.numeros_ativados) && form.numeros_ativados.length === 0) return;
       setForm(prev => ({ ...prev, numeros_ativados: [] }));
@@ -1827,8 +1831,16 @@ function VendaModal({
       ...prev,
       numeros_ativados: ajustarQuantidadeNumerosPortados(prev.numeros_ativados, quantidadeNumerosAtivados, prev.ddd)
     }));
-  }, [vendaAtivada, quantidadeNumerosAtivados, form.ddd]);
+  }, [somenteVisualizacao, vendaAtivada, quantidadeNumerosAtivados, form.ddd]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  function handleStartEdit(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setErro('');
+    setSalvando(false);
+    onStartEdit();
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -2161,7 +2173,7 @@ function VendaModal({
             <>
               <button type="button" className="btn" onClick={onClose}>Fechar</button>
               {podeEditarVenda && (
-                <button type="button" className="btn btn-primary" onClick={onStartEdit}>
+                <button type="button" className="btn btn-primary" onClick={handleStartEdit}>
                   <I.Edit size={14} /> Editar venda
                 </button>
               )}
