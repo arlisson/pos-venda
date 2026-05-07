@@ -34,6 +34,15 @@ async function ativo(req, res) {
   }
 }
 
+async function index(req, res) {
+  try {
+    const problemas = await vendaProblemaService.listarAtivos(req.params.id, req.usuario.id);
+    return res.json(problemas);
+  } catch (error) {
+    return responderErro(res, error, 'Erro ao listar problemas ativos da venda.');
+  }
+}
+
 async function resolver(req, res) {
   try {
     const problema = await vendaProblemaService.resolverProblema(req.params.problemaId, req.body, req.usuario.id);
@@ -65,6 +74,7 @@ module.exports = {
   destinatarios,
   store,
   ativo,
+  index,
   resolver,
   correcao,
   verificar

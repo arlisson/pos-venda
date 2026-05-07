@@ -19,6 +19,7 @@ router.get('/problemas/destinatarios', exigirUmaPermissao(['vendas_marcar_proble
 router.post('/problemas/:problemaId/resolver', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.resolver);
 router.post('/problemas/:problemaId/correcao', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.correcao);
 router.post('/problemas/:problemaId/verificar', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.verificar);
+router.get('/:id/problemas', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.index);
 router.get('/:id/problemas/ativo', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.ativo);
 router.post('/:id/problemas', exigirUmaPermissao(['vendas_marcar_problema']), vendaProblemaController.store);
 router.get('/:id/arquivos', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaArquivoController.index);

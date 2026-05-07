@@ -168,6 +168,10 @@ export async function buscarProblemaAtivoVenda(id) {
   return apiGet(`/vendas/${id}/problemas/ativo`);
 }
 
+export async function listarProblemasVenda(id) {
+  return apiGet(`/vendas/${id}/problemas`);
+}
+
 export async function listarDestinatariosProblemaVenda() {
   return apiGet('/vendas/problemas/destinatarios');
 }

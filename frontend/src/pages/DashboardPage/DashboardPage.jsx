@@ -116,7 +116,8 @@ function getNotificationTarget(notificacao) {
     if (!vendaId) return '/vendas';
 
     if (TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo)) {
-      return `/vendas?venda_id=${vendaId}&aba=problema`;
+      const problemaId = notificacao.dados?.problema_id;
+      return `/vendas?venda_id=${vendaId}&aba=problema${problemaId ? `&problema_id=${problemaId}` : ''}`;
     }
 
     if (TIPOS_RETORNO_NOTA.includes(notificacao.tipo)) {

@@ -103,6 +103,16 @@ async function buscarProblemaAtivo(vendaId, trx = null) {
   return problema ? buscarProblemaCompleto(problema.id, trx) : null;
 }
 
+async function listarProblemasAtivos(vendaId, trx = null) {
+  return VendaProblema.query(trx)
+    .where('venda_id', vendaId)
+    .whereIn('status', STATUS_ATIVOS)
+    .withGraphFetched('[venda.[cliente, vendedora, vendedoras], solicitante, destinatarios.usuario, eventos.usuario]')
+    .modifyGraph('eventos', builder => builder.orderBy('created_at', 'asc').orderBy('id', 'asc'))
+    .orderBy('updated_at', 'desc')
+    .orderBy('id', 'desc');
+}
+
 async function registrarEvento({ problemaId, usuarioId, tipo, mensagem, dados = {}, trx }) {
   return VendaProblemaEvento.query(trx).insertAndFetch({
     problema_id: Number(problemaId),
@@ -202,12 +212,6 @@ async function abrirProblema(vendaId, dados, usuarioId) {
       throw erro(404, 'Venda nao encontrada.');
     }
 
-    const ativo = await buscarProblemaAtivo(venda.id, trx);
-
-    if (ativo) {
-      throw erro(409, 'Esta venda ja possui um problema ativo.');
-    }
-
     const destinatariosIds = await resolverDestinatarios(venda, dados, trx);
     const problema = await VendaProblema.query(trx).insertAndFetch({
       venda_id: venda.id,
@@ -265,6 +269,16 @@ async function obterAtivo(vendaId, usuarioId) {
   }
 
   return buscarProblemaAtivo(venda.id);
+}
+
+async function listarAtivos(vendaId, usuarioId) {
+  const venda = await buscarVendaAcessivel(vendaId, usuarioId);
+
+  if (!venda) {
+    return [];
+  }
+
+  return listarProblemasAtivos(venda.id);
 }
 
 function usuarioEhResponsavel(problema, usuarioId) {
@@ -464,6 +478,7 @@ module.exports = {
   TIPOS_NOTIFICACAO_PROBLEMA,
   abrirProblema,
   obterAtivo,
+  listarAtivos,
   resolverProblema,
   solicitarCorrecao,
   verificarProblema,

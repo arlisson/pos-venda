@@ -661,6 +661,36 @@
   gap: 14px;
 }
 
+.venda-problema-card,
+.venda-problema-summary {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.venda-problema-card.is-highlighted {
+  border-color: var(--info);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.venda-problema-summary {
+  gap: 4px;
+  background: var(--surface-2);
+}
+
+.venda-problema-summary strong {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.venda-problema-summary span {
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
 .venda-problema-empty {
   padding: 24px;
   border: 1px dashed var(--border);
@@ -686,6 +716,12 @@
   background: #fffbeb;
 }
 
+.venda-problema-status.status-correcao_solicitada {
+  border-color: #fed7aa;
+  border-left-color: var(--warn);
+  background: #fff7ed;
+}
+
 .venda-problema-responsaveis {
   border-color: var(--border);
   border-left-color: var(--info);
@@ -700,11 +736,17 @@
 }
 
 .venda-problema-status span,
+.venda-problema-status em,
 .venda-problema-responsaveis span,
 .venda-problema-evento span {
   font-size: 12.5px;
   color: var(--text-2);
   line-height: 1.4;
+}
+
+.venda-problema-status em {
+  font-style: normal;
+  color: var(--text-3);
 }
 
 .venda-problema-eventos {
