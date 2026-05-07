@@ -3,6 +3,8 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getResumo } from '../../services/fechamento.service';
 import DetalhesAtivasModal from './DetalhesAtivasModal';
 import FechamentoSecao from './FechamentoSecao';
+import PainelGerencial from './PainelGerencial';
+import VendaDossieModal from './VendaDossieModal';
 import './FechamentoMensalPage.css';
 
 function dataISO(data) {
@@ -32,9 +34,11 @@ function FechamentoMensalPage() {
   const [periodo, setPeriodo] = useState(() => periodoMesAtual());
   const [periodoConsulta, setPeriodoConsulta] = useState(() => periodoMesAtual());
   const [resumo, setResumo] = useState({ total: [], tratando: [], ativas: [] });
+  const [painel, setPainel] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [modalDetalhes, setModalDetalhes] = useState(null);
+  const [dossieVendaId, setDossieVendaId] = useState(null);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -46,6 +50,7 @@ function FechamentoMensalPage() {
       .then(dados => {
         if (!ativo) return;
         setResumo(dados?.secoes || { total: [], tratando: [], ativas: [] });
+        setPainel(dados?.painel || []);
       })
       .catch(error => {
         if (!ativo) return;
@@ -94,6 +99,8 @@ function FechamentoMensalPage() {
 
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
 
+        <PainelGerencial linhas={painel} loading={loading} />
+
         <FechamentoSecao
           titulo="Total de vendas"
           subtitulo="Todos os status do funil, exceto retornos"
@@ -126,6 +133,15 @@ function FechamentoMensalPage() {
             secao={modalDetalhes}
             periodo={periodoConsulta}
             onClose={() => setModalDetalhes(null)}
+            onOpenDossie={setDossieVendaId}
+          />
+        )}
+
+        {dossieVendaId && (
+          <VendaDossieModal
+            vendaId={dossieVendaId}
+            periodo={periodoConsulta}
+            onClose={() => setDossieVendaId(null)}
           />
         )}
       </div>
