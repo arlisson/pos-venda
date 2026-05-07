@@ -205,7 +205,7 @@ const CAMPOS = [
   { section: 'Aceite e recebimento' },
   { name: 'horario_aceite_range', label: 'Janela do aceite', type: 'timeRange', nameDe: 'horario_aceite_inicio', nameAte: 'horario_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
   { name: 'dia_aceite_range', label: 'Dias para aceite', type: 'dayRange', nameDe: 'dia_aceite_inicio', nameAte: 'dia_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
-  { name: 'protocolo', label: 'Protocolo do Cliente' },
+  { name: 'protocolo', label: 'Protocolo do Cliente', span: true },
   { name: 'login', label: 'Login (portal do cliente)' },
   { name: 'senha', label: 'Senha (portal do cliente)' },
   { name: 'numero_cliente_contrato', label: 'Número do cliente no contrato', placeholder: 'Caso não tenha Login e Senha', span: true },
