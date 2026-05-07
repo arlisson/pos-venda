@@ -1071,6 +1071,53 @@ input, select, textarea { font-family: inherit; }
   color: var(--text-2);
 }
 
+.cnpj-suggestions {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cnpj-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-1);
+}
+
+.cnpj-suggestion--alta {
+  border-color: rgba(22, 163, 74, 0.35);
+}
+
+.cnpj-suggestion--baixa {
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.cnpj-suggestion__content {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cnpj-suggestion__content strong {
+  color: var(--text-1);
+  font-size: 12px;
+}
+
+.cnpj-suggestion__content span {
+  overflow-wrap: anywhere;
+  color: var(--text-1);
+  font-size: 13px;
+}
+
+.cnpj-suggestion__content small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
 .alert-timed {
   position: relative;
   overflow: hidden;

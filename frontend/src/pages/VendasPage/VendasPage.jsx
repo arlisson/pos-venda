@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
+import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/CnpjSugestoes';
 import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -27,7 +28,7 @@ import {
   verificarProblemaVenda,
   visualizarArquivoVenda
 } from '../../services/venda.service';
-import { consultarCnpj, isCnpjRepetido, sanitizarCnpj } from '../../services/cnpj.service';
+import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -108,6 +109,24 @@ const VENDA_VAZIA = {
   vendedoras: []
 };
 
+const CNPJ_SUGESTOES_VENDA = {
+  nomeFantasia: { campo: 'nome', label: 'Nome fantasia' },
+  razaoSocial: { campo: 'razao_social', label: 'Razao social' },
+  email: { campo: 'email', label: 'Email' },
+  telefone: { campo: 'telefone', label: 'Telefone' },
+  cep: { campo: 'cep', label: 'CEP' },
+  endereco: { campo: 'endereco', label: 'Endereco' },
+  numero: { campo: 'numero_endereco', label: 'Numero' },
+  complemento: { campo: 'complemento', label: 'Complemento' },
+  bairro: { campo: 'bairro', label: 'Bairro' },
+  municipio: { campo: 'municipio', label: 'Municipio' },
+  uf: { campo: 'uf', label: 'UF' }
+};
+
+const CNPJ_LABELS_VENDA = Object.fromEntries(
+  Object.entries(CNPJ_SUGESTOES_VENDA).map(([campo, config]) => [campo, config.label])
+);
+
 const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' };
 const NUMERO_PORTADO_VAZIO = '';
 const TIPOS_LINHA_CHIP = [
@@ -150,7 +169,7 @@ const CAMPOS = [
 
   { section: 'Dados da venda' },
   { name: 'data_venda', label: 'Data da venda', type: 'date' },
-  { name: 'data_ativacao', label: 'Data da ativacao', type: 'date' },
+  { name: 'data_ativacao', label: 'Data da ativação', type: 'date' },
   { name: 'nome_fechou_venda', label: 'Nome com quem fechou a venda' },
   { name: 'setor_funcao', label: 'Setor/Função' },
   { name: 'qc_feito_por', label: 'QC feito por' },
@@ -869,7 +888,7 @@ function ajustarQuantidadeNumerosPortados(value, quantidade, dddPadrao = '') {
   });
 }
 
-function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao = '', labelAdicionar = 'Adicionar numero' }) {
+function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao = '', labelAdicionar = 'Adicionar número' }) {
   const numeros = Array.isArray(value) && value.length > 0 ? value : [NUMERO_PORTADO_VAZIO];
   const limite = Math.max(Number(quantidadeEsperada || 0), 0);
   const limiteAtingido = limite > 0 && numeros.length >= limite;
@@ -920,11 +939,11 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao 
 }
 
 function NumerosPortadosInput(props) {
-  return <NumerosLinhaInput {...props} labelAdicionar="Adicionar numero" />;
+  return <NumerosLinhaInput {...props} labelAdicionar="Adicionar número" />;
 }
 
 function NumerosAtivadosInput(props) {
-  return <NumerosLinhaInput {...props} labelAdicionar="Adicionar numero ativado" />;
+  return <NumerosLinhaInput {...props} labelAdicionar="Adicionar número ativado" />;
 }
 
 function ResponsaveisRecebimentoInput({ form, onChange }) {
@@ -1318,8 +1337,10 @@ function ArquivosVendaTab({ venda, podeEditar }) {
           </div>
           <div className={`venda-arquivos-package status-${statusPacote}`}>
             {getIconStatusPacote(statusPacote)}
-            <span>{labelStatusPacote(statusPacote)}</span>
-            {pacote?.total_arquivos ? <span>{pacote.total_arquivos} no ZIP</span> : null}
+            <span className="venda-arquivos-package__text">
+              <span>{labelStatusPacote(statusPacote)}</span>
+              {pacote?.total_arquivos ? <span>{pacote.total_arquivos} no ZIP</span> : null}
+            </span>
           </div>
         </div>
 
@@ -1421,7 +1442,7 @@ function ArquivosVendaTab({ venda, podeEditar }) {
 
       {pacote?.status === 'erro' && (
         <div className="alert-error">
-          {pacote.erro || 'Nao foi possivel gerar o pacote.'}
+          {pacote.erro || 'Não foi possível gerar o pacote.'}
         </div>
       )}
     </div>
@@ -1659,6 +1680,8 @@ function VendaModal({
   const [cepStatus, setCepStatus] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const [cnpjDados, setCnpjDados] = useState(null);
+  const [cnpjSugestoes, setCnpjSugestoes] = useState({});
   const [abaAtiva, setAbaAtiva] = useState(initialTab);
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
@@ -1699,11 +1722,15 @@ function VendaModal({
   }
 
   function formatarMensagemCnpj(dados) {
-    const totalFontes = dados.fontesComSucesso?.length || (dados.fonte ? 1 : 0);
-    const origem = totalFontes > 1 ? `${totalFontes} fontes` : (dados.fonte || 'fonte publica');
-    const cache = dados.cache ? ' Dados recentes do cache.' : '';
+    return formatarMensagemResumoCnpj(dados);
+  }
 
-    return `Dados combinados de ${origem}. Confira antes de salvar.${cache}`;
+  function montarSugestoesCnpj(dados) {
+    return Object.entries(CNPJ_SUGESTOES_VENDA).reduce((acc, [campoApi]) => {
+      const valor = dados[campoApi];
+      if (String(valor || '').trim()) acc[campoApi] = valor;
+      return acc;
+    }, {});
   }
 
   function atualizarClienteVenda(valor) {
@@ -1738,31 +1765,32 @@ function VendaModal({
     setForm(prev => ({ ...prev, vendedoras: ids }));
   }
 
-  function aplicarDadosCnpj(dados, sobrescrever = false) {
+  function aceitarSugestaoCnpj(campoApi) {
+    const valor = cnpjSugestoes[campoApi];
+    const config = CNPJ_SUGESTOES_VENDA[campoApi];
+    if (!config || !String(valor || '').trim()) return;
+
     setForm(prev => {
-      const cepFormatado = formatarCep(dados.cep);
-      if (cepFormatado) {
-        cepPreenchidoPorCnpjRef.current = apenasDigitos(cepFormatado, 8);
+      let valorFormatado = valor;
+      if (campoApi === 'cep') {
+        valorFormatado = formatarCep(valor);
+        cepPreenchidoPorCnpjRef.current = apenasDigitos(valorFormatado, 8);
+      } else if (campoApi === 'telefone') {
+        valorFormatado = formatarTelefoneComDdd(valor, true);
+      } else if (campoApi === 'uf') {
+        valorFormatado = formatarCampoVenda('uf', valor);
       }
 
       return {
         ...prev,
-        nome: sobrescrever
-          ? (dados.nomeFantasia || dados.razaoSocial || prev.nome || '')
-          : (prev.nome || dados.nomeFantasia || dados.razaoSocial || ''),
-        razao_social: sobrescrever ? (dados.razaoSocial || prev.razao_social || '') : (prev.razao_social || dados.razaoSocial || ''),
-        email: sobrescrever ? (dados.email || prev.email || '') : (prev.email || dados.email || ''),
-        telefone: sobrescrever
-          ? (formatarTelefoneComDdd(dados.telefone, true) || prev.telefone || '')
-          : (prev.telefone || formatarTelefoneComDdd(dados.telefone, true)),
-        cep: sobrescrever ? (cepFormatado || prev.cep || '') : (prev.cep || cepFormatado),
-        endereco: sobrescrever ? (dados.endereco || prev.endereco || '') : (prev.endereco || dados.endereco || ''),
-        numero_endereco: sobrescrever ? (dados.numero || prev.numero_endereco || '') : (prev.numero_endereco || dados.numero || ''),
-        complemento: sobrescrever ? (dados.complemento || prev.complemento || '') : (prev.complemento || dados.complemento || ''),
-        bairro: sobrescrever ? (dados.bairro || prev.bairro || '') : (prev.bairro || dados.bairro || ''),
-        municipio: sobrescrever ? (dados.municipio || prev.municipio || '') : (prev.municipio || dados.municipio || ''),
-        uf: sobrescrever ? (formatarCampoVenda('uf', dados.uf) || prev.uf || '') : (prev.uf || formatarCampoVenda('uf', dados.uf))
+        [config.campo]: valorFormatado
       };
+    });
+
+    setCnpjSugestoes(prev => {
+      const proximo = { ...prev };
+      delete proximo[campoApi];
+      return proximo;
     });
   }
 
@@ -1778,8 +1806,10 @@ function VendaModal({
       return;
     }
 
-    if (isCnpjRepetido(cnpj)) {
+    if (!validarDigitosCnpj(cnpj)) {
       setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
+      setCnpjDados(null);
+      setCnpjSugestoes({});
       return;
     }
 
@@ -1793,12 +1823,15 @@ function VendaModal({
 
     try {
       const dados = await consultarCnpj(cnpj);
-      aplicarDadosCnpj(dados, manual);
+      setCnpjDados(dados);
+      setCnpjSugestoes(montarSugestoesCnpj(dados));
       setCnpjStatus({
         tipo: 'sucesso',
         mensagem: formatarMensagemCnpj(dados)
       });
     } catch (error) {
+      setCnpjDados(null);
+      setCnpjSugestoes({});
       setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Não foi possível consultar o CNPJ.' });
     } finally {
       setConsultandoCnpj(false);
@@ -1813,12 +1846,16 @@ function VendaModal({
 
     if (cnpj.length === 0) {
       setCnpjStatus({ tipo: '', mensagem: '' });
+      setCnpjDados(null);
+      setCnpjSugestoes({});
       return;
     }
 
     if (cnpj.length === 14) {
-      if (isCnpjRepetido(cnpj)) {
+      if (!validarDigitosCnpj(cnpj)) {
         setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
+        setCnpjDados(null);
+        setCnpjSugestoes({});
         return;
       }
 
@@ -1965,7 +2002,7 @@ function VendaModal({
       }
 
       if (vendaPortabilidade && !numerosPortados) {
-        setErro('Informe pelo menos um numero a ser portado.');
+        setErro('Informe pelo menos um número a ser portado.');
         setSalvando(false);
         return;
       }
@@ -2010,7 +2047,7 @@ function VendaModal({
               <div className="modal-sub">
                 {somenteVisualizacao
                   ? 'Revise os dados cadastrados antes de editar.'
-                  : 'Selecione o cliente e preencha apenas os dados especificos da venda.'}
+                  : 'Selecione o cliente e preencha apenas os dados específicos da venda.'}
               </div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
@@ -2133,6 +2170,12 @@ function VendaModal({
                           {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
                         </button>
                       </div>
+                      <CnpjSugestoes
+                        dados={cnpjDados}
+                        sugestoes={cnpjSugestoes}
+                        labels={CNPJ_LABELS_VENDA}
+                        onAceitar={aceitarSugestaoCnpj}
+                      />
                     </>
                   ) : campo.type === 'sellers' ? (
                     <VendedorasSelect
@@ -2686,7 +2729,7 @@ function VendasPage() {
           onSave={async (venda, dados) => {
             await marcarProblemaVenda(venda.id, dados);
             setVendaProblema(null);
-            setSucesso('Problema da venda enviado aos responsaveis.');
+            setSucesso('Problema da venda enviado aos responsáveis.');
             window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
             await carregarDados();
           }}
@@ -2864,7 +2907,7 @@ function VendasPage() {
                   <th>Valor</th>
                   <th>Venc.</th>
                   <th>Venda</th>
-                  <th>Ativacao</th>
+                  <th>Ativação</th>
                   <th>Vendedor(a)</th>
                   <th className={`vendas-actions-col vendas-email-actions-col ${podeExcluirVenda ? 'has-delete' : ''}`}>Email</th>
                   {podeMarcarProblema && (

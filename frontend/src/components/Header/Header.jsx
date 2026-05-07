@@ -222,7 +222,7 @@ function Header({ title, subtitle, onNew, usuario }) {
           <button
             type="button"
             className="btn btn-icon btn-ghost btn-notification"
-            title="Notificacoes"
+            title="Notificações"
             onClick={handleOpenNotifications}
             aria-expanded={notificationsOpen}
             aria-haspopup="menu"
@@ -239,7 +239,7 @@ function Header({ title, subtitle, onNew, usuario }) {
           {notificationsOpen && (
             <div className="notification-popover" role="menu">
               <div className="notification-popover__header">
-                <strong>Notificacoes</strong>
+                <strong>Notificações</strong>
                 {unreadCount > 0 && (
                   <button type="button" className="btn btn-sm btn-ghost" onClick={handleMarkAllRead}>
                     Marcar lidas
@@ -248,7 +248,7 @@ function Header({ title, subtitle, onNew, usuario }) {
               </div>
 
               {notifications.length === 0 ? (
-                <div className="notification-empty">Nenhuma notificacao ativa.</div>
+                <div className="notification-empty">Nenhuma notificação ativa.</div>
               ) : (
                 notifications.map(notification => (
                   <button

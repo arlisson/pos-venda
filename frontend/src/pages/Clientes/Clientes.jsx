@@ -4,10 +4,11 @@ import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
+import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/CnpjSugestoes';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { atualizarCliente, criarCliente, excluirCliente, listarClientes } from '../../services/cliente.service';
 import { listarNotasEntidade } from '../../services/nota.service';
-import { consultarCnpj, isCnpjRepetido, sanitizarCnpj } from '../../services/cnpj.service';
+import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
 import { listarOperadoras } from '../../services/config.service';
 import {
   atualizarCampoLeadRecebido,
@@ -29,6 +30,17 @@ const FORM_INICIAL = {
   operadora_atual_id: '',
   quantidade_chips: ''
 };
+
+const CNPJ_SUGESTOES_CLIENTE = {
+  nomeFantasia: { campo: 'nome', label: 'Nome fantasia' },
+  razaoSocial: { campo: 'razao_social', label: 'Razao social' },
+  email: { campo: 'email', label: 'Email' },
+  telefone: { campo: 'whatsapp', label: 'Whatsapp' }
+};
+
+const CNPJ_LABELS_CLIENTE = Object.fromEntries(
+  Object.entries(CNPJ_SUGESTOES_CLIENTE).map(([campo, config]) => [campo, config.label])
+);
 
 const CAMPOS_VENDA_LEAD = [
   { name: 'nome', label: 'Nome do cliente', required: true, aliases: ['nome', 'cliente', 'razao', 'empresa'] },
@@ -758,6 +770,8 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   const [erro, setErro] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const [cnpjDados, setCnpjDados] = useState(null);
+  const [cnpjSugestoes, setCnpjSugestoes] = useState({});
   const [abaAtiva, setAbaAtiva] = useState('cliente');
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
   const editando = Boolean(cliente);
@@ -767,25 +781,32 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   }
 
   function formatarMensagemCnpj(dados) {
-    const totalFontes = dados.fontesComSucesso?.length || (dados.fonte ? 1 : 0);
-    const origem = totalFontes > 1 ? `${totalFontes} fontes` : (dados.fonte || 'fonte publica');
-    const cache = dados.cache ? ' Dados recentes do cache.' : '';
-
-    return `Dados combinados de ${origem}. Confira antes de salvar.${cache}`;
+    return formatarMensagemResumoCnpj(dados);
   }
 
-  function aplicarDadosCnpj(dados, sobrescrever = false) {
+  function montarSugestoesCnpj(dados) {
+    return Object.entries(CNPJ_SUGESTOES_CLIENTE).reduce((acc, [campoApi]) => {
+      const valor = dados[campoApi];
+      if (String(valor || '').trim()) acc[campoApi] = valor;
+      return acc;
+    }, {});
+  }
+
+  function aceitarSugestaoCnpj(campoApi) {
+    const valor = cnpjSugestoes[campoApi];
+    const config = CNPJ_SUGESTOES_CLIENTE[campoApi];
+    if (!config || !String(valor || '').trim()) return;
+
     setForm(prev => ({
       ...prev,
-      nome: sobrescrever
-        ? (dados.nomeFantasia || dados.razaoSocial || prev.nome || '')
-        : (prev.nome || dados.nomeFantasia || dados.razaoSocial || ''),
-      razao_social: sobrescrever ? (dados.razaoSocial || prev.razao_social || '') : (prev.razao_social || dados.razaoSocial || ''),
-      email: sobrescrever ? (dados.email || prev.email || '') : (prev.email || dados.email || ''),
-      whatsapp: sobrescrever
-        ? (formatarTelefoneComDdd(dados.telefone, true) || prev.whatsapp || '')
-        : (prev.whatsapp || formatarTelefoneComDdd(dados.telefone, true))
+      [config.campo]: campoApi === 'telefone' ? formatarTelefoneComDdd(valor, true) : valor
     }));
+
+    setCnpjSugestoes(prev => {
+      const proximo = { ...prev };
+      delete proximo[campoApi];
+      return proximo;
+    });
   }
 
   async function buscarDadosCnpj(manual = false) {
@@ -798,8 +819,10 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
       return;
     }
 
-    if (isCnpjRepetido(cnpj)) {
+    if (!validarDigitosCnpj(cnpj)) {
       setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
+      setCnpjDados(null);
+      setCnpjSugestoes({});
       return;
     }
 
@@ -813,12 +836,15 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
 
     try {
       const dados = await consultarCnpj(cnpj);
-      aplicarDadosCnpj(dados, manual);
+      setCnpjDados(dados);
+      setCnpjSugestoes(montarSugestoesCnpj(dados));
       setCnpjStatus({
         tipo: 'sucesso',
         mensagem: formatarMensagemCnpj(dados)
       });
     } catch (error) {
+      setCnpjDados(null);
+      setCnpjSugestoes({});
       setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Não foi possível consultar o CNPJ.' });
     } finally {
       setConsultandoCnpj(false);
@@ -830,12 +856,16 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
 
     if (cnpj.length === 0) {
       setCnpjStatus({ tipo: '', mensagem: '' });
+      setCnpjDados(null);
+      setCnpjSugestoes({});
       return;
     }
 
     if (cnpj.length === 14) {
-      if (isCnpjRepetido(cnpj)) {
+      if (!validarDigitosCnpj(cnpj)) {
         setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
+        setCnpjDados(null);
+        setCnpjSugestoes({});
         return;
       }
 
@@ -932,6 +962,12 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
                   {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
                 </button>
               </div>
+              <CnpjSugestoes
+                dados={cnpjDados}
+                sugestoes={cnpjSugestoes}
+                labels={CNPJ_LABELS_CLIENTE}
+                onAceitar={aceitarSugestaoCnpj}
+              />
             </div>
 
             <div className="form-field">
