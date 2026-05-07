@@ -1726,7 +1726,7 @@ function VendaModal({
   const podeGerarProtocolo = !somenteVisualizacao
     && !vendaBloqueadaParaUsuario
     && !clienteJaTemOutroProtocolo
-    && !protocoloAtual;
+    && (!protocoloAtual || usuarioAdmin);
   const dicaProtocolo = clienteJaTemOutroProtocolo
     ? `Este cliente já possui protocolo: ${vendaComProtocoloDoCliente.protocolo}.`
     : protocoloProtegido
