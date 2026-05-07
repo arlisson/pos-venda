@@ -9,6 +9,9 @@ import {
 } from '../../services/notificacao.service';
 import { temPermissao } from '../../services/auth.service';
 
+const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
+const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
+
 function formatDate(value) {
   if (!value) return '';
 
@@ -29,17 +32,23 @@ function getNotificationTarget(notification) {
   }
 
   if (notification.entidade === 'clientes') {
-    if (notification.tipo === 'nota_retorno_due') {
-      return '/clientes?retorno=vencido';
-    }
-
     const clienteId = notification.entidade_id || notification.dados?.entidade_id;
     return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
   }
 
   if (notification.entidade === 'vendas') {
     const vendaId = notification.entidade_id || notification.dados?.venda_id;
-    return vendaId ? `/vendas?venda_id=${vendaId}` : '/vendas';
+    if (!vendaId) return '/vendas';
+
+    if (TIPOS_PROBLEMA_VENDA.includes(notification.tipo)) {
+      return `/vendas?venda_id=${vendaId}&aba=problema`;
+    }
+
+    if (TIPOS_RETORNO_NOTA.includes(notification.tipo)) {
+      return `/vendas?venda_id=${vendaId}&aba=notas`;
+    }
+
+    return `/vendas?venda_id=${vendaId}`;
   }
 
   return null;

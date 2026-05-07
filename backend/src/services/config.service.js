@@ -282,6 +282,7 @@ function normalizarRegraComissao(dados) {
   const valorMin = parseValorMonetario(dados.valor_min);
   const valorMax = parseValorMonetario(dados.valor_max);
   const valorComissao = parseValorMonetario(dados.valor_comissao);
+  const valorComissaoBase = parseValorMonetario(dados.valor_comissao_base ?? dados.valor_comissao);
 
   if (!Number.isFinite(valorMin) || valorMin < 0) {
     throw new Error('Informe um valor inicial valido.');
@@ -299,10 +300,15 @@ function normalizarRegraComissao(dados) {
     throw new Error('Informe uma comissao valida.');
   }
 
+  if (!Number.isFinite(valorComissaoBase) || valorComissaoBase < 0) {
+    throw new Error('Informe uma comissao de cliente da base valida.');
+  }
+
   return {
     valor_min: Number(valorMin.toFixed(2)),
     valor_max: Number(valorMax.toFixed(2)),
     valor_comissao: Number(valorComissao.toFixed(2)),
+    valor_comissao_base: Number(valorComissaoBase.toFixed(2)),
     ativo: dados.ativo ?? true,
     ordem: Number(dados.ordem || 0)
   };
@@ -341,6 +347,7 @@ async function atualizarRegraComissao(id, dados) {
     valor_min: dados.valor_min ?? atual.valor_min,
     valor_max: dados.valor_max ?? atual.valor_max,
     valor_comissao: dados.valor_comissao ?? atual.valor_comissao,
+    valor_comissao_base: dados.valor_comissao_base ?? atual.valor_comissao_base ?? atual.valor_comissao,
     ativo: dados.ativo ?? atual.ativo,
     ordem: dados.ordem ?? atual.ordem
   });

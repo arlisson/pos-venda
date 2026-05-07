@@ -73,6 +73,27 @@ function parseChips(rawChips) {
     .filter(item => item.quantidade > 0);
 }
 
+function parseNumerosLinha(valor) {
+  if (!valor) return [];
+
+  if (Array.isArray(valor)) {
+    return valor.map(item => String(item || '').trim()).filter(Boolean);
+  }
+
+  if (typeof valor === 'string') {
+    try {
+      return parseNumerosLinha(JSON.parse(valor));
+    } catch {
+      return valor
+        .split(/\r?\n|[,;]/)
+        .map(item => item.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+}
+
 function extrairNumerosGigas(valor) {
   const texto = String(valor || '');
   const matches = texto.match(/\d+(?:[.,]\d+)?/g) || [];
@@ -159,7 +180,8 @@ function montarRegraComissaoResumo(regra) {
     id: regra.id,
     valor_min: Number(regra.valor_min || 0),
     valor_max: Number(regra.valor_max || 0),
-    valor_comissao: Number(regra.valor_comissao || 0)
+    valor_comissao: Number(regra.valor_comissao || 0),
+    valor_comissao_base: Number(regra.valor_comissao_base ?? regra.valor_comissao ?? 0)
   };
 }
 
@@ -200,6 +222,7 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro') {
     .leftJoin('servicos as s', 'v.servico_id', 's.id')
     .leftJoin('usuarios as u', 'v.vendedora_id', 'u.id')
     .leftJoin('clientes as c', 'v.cliente_id', 'c.id')
+    .leftJoin('operadoras as oc', 'c.operadora_atual_id', 'oc.id')
     
     .whereNull('v.excluido_em')
     .whereNot('v.status_funil', 'retorno')
@@ -208,6 +231,7 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro') {
       'v.status_funil',
       'v.valor_total',
       'v.valores_unitarios_chips',
+      'v.numeros_ativados',
       'v.quantidade_linhas',
       'v.data_venda',
       'v.data_ativacao',
@@ -230,6 +254,8 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro') {
       'c.razao_social as cliente_razao_social',
       'c.cnpj as cliente_cnpj',
       'c.fidelidade_fim as cliente_fidelidade_fim',
+      'c.operadora_atual_id as cliente_operadora_atual_id',
+      'oc.nome as cliente_operadora_atual_nome',
 
     );
 
@@ -420,12 +446,13 @@ async function obterDetalhes(filtros = {}) {
 }
 
 async function obterDetalhesChips(filtros = {}) {
-  const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, 'ativacao');
+  const criterioData = filtros.secao === 'ativas' ? 'ativacao' : 'registro';
+  const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, criterioData);
   const regrasComissao = await carregarRegrasComissaoAtivas();
-  const vendasAtivas = filtrarPorSecao(todasVendas, 'ativas', statusFinal);
+  const vendasSecao = filtrarPorSecao(todasVendas, filtros.secao, statusFinal);
   const filtradas = filtros.operadora_id
-    ? vendasAtivas.filter(v => Number(v.operadora_id) === Number(filtros.operadora_id))
-    : vendasAtivas;
+    ? vendasSecao.filter(v => Number(v.operadora_id) === Number(filtros.operadora_id))
+    : vendasSecao;
 
   const linhas = [];
 
@@ -437,21 +464,30 @@ async function obterDetalhesChips(filtros = {}) {
       return {
         ...linha,
         regra_comissao: null,
+        comissao_integral: null,
+        comissao_base: null,
         comissao: null,
         sem_regra: true
       };
     }
 
+    const comissaoIntegral = Number(regra.valor_comissao || 0);
+    const comissaoBase = Number(regra.valor_comissao_base ?? regra.valor_comissao ?? 0);
+    const comissaoAplicada = linha.cliente_base_operadora ? comissaoBase : comissaoIntegral;
+
     return {
       ...linha,
       regra_comissao: montarRegraComissaoResumo(regra),
-      comissao: Number(Number(regra.valor_comissao || 0).toFixed(2)),
+      comissao_integral: Number(comissaoIntegral.toFixed(2)),
+      comissao_base: Number(comissaoBase.toFixed(2)),
+      comissao: Number(comissaoAplicada.toFixed(2)),
       sem_regra: false
     };
   }
 
   filtradas.forEach(venda => {
     const chips = parseChips(venda.valores_unitarios_chips);
+    const numerosAtivados = parseNumerosLinha(venda.numeros_ativados);
 
     if (chips.length === 0) {
       const linhasFallback = Number(venda.quantidade_linhas || 0) || 1;
@@ -461,6 +497,7 @@ async function obterDetalhesChips(filtros = {}) {
       for (let i = 0; i < linhasFallback; i++) {
         linhas.push(montarLinhaComRegra(venda, {
           chip_index: i + 1,
+          numero_ativado: numerosAtivados[i] || null,
           gb: gigasFallback[i] || '',
           tipo_linha: tipoVendaNormalizado(venda.tipo_venda_nome) || 'novo',
           valor_unitario: valorFallback
@@ -476,6 +513,7 @@ async function obterDetalhesChips(filtros = {}) {
       for (let i = 0; i < item.quantidade; i++) {
         linhas.push(montarLinhaComRegra(venda, {
           chip_index: chipNumero,
+          numero_ativado: numerosAtivados[chipNumero - 1] || null,
           gb: gigas[i] || '',
           tipo_linha: item.tipo_linha,
           valor_unitario: item.valor_unitario
@@ -524,9 +562,14 @@ async function obterDetalhesChips(filtros = {}) {
 }
 
 function montarLinhaChip(venda, chip) {
+  const operadoraVendaId = venda.operadora_id ? Number(venda.operadora_id) : null;
+  const operadoraAtualClienteId = venda.cliente_operadora_atual_id ? Number(venda.cliente_operadora_atual_id) : null;
+  const clienteBaseOperadora = Boolean(operadoraVendaId && operadoraAtualClienteId && operadoraVendaId === operadoraAtualClienteId);
+
   return {
     venda_id: venda.id,
     chip_index: chip.chip_index,
+    numero_ativado: chip.numero_ativado || null,
     data_venda: venda.data_venda || venda.created_at || null,
     data_ativacao: venda.data_ativacao || null,
     data_fechamento: venda.data_ativacao || venda.data_venda || venda.created_at || null,
@@ -546,8 +589,14 @@ function montarLinhaChip(venda, chip) {
       nome: venda.cliente_nome,
       razao_social: venda.cliente_razao_social,
       cnpj: venda.cliente_cnpj,
-      fidelidade_fim: venda.cliente_fidelidade_fim
+      fidelidade_fim: venda.cliente_fidelidade_fim,
+      operadora_atual: operadoraAtualClienteId ? {
+        id: operadoraAtualClienteId,
+        nome: venda.cliente_operadora_atual_nome
+      } : null
     } : null,
+    cliente_base_operadora: clienteBaseOperadora,
+    tipo_repasse: clienteBaseOperadora ? 'base_operadora' : 'cliente_novo_portabilidade',
     tipo_venda: venda.tipo_venda_nome || null,
     servico: venda.servico_nome || null
   };

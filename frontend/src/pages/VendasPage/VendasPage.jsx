@@ -63,6 +63,7 @@ const VENDA_VAZIA = {
   servico_id: '',
   quantidade_linhas: '',
   ddd: '',
+  numeros_ativados: [],
   gb: '',
   valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' }],
   valor_total: '',
@@ -161,6 +162,7 @@ const CAMPOS = [
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
   { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitários', type: 'chips', span: true },
+  { name: 'numeros_ativados', label: 'Números ativados', type: 'activatedNumbers', span: true },
   { name: 'numeros_portados', label: 'Números a serem portados', type: 'portedNumbers', span: true },
 
   { section: 'Local de instalação/entrega' },
@@ -418,6 +420,23 @@ function normalizarItensChipsInput(itens) {
   return Array.isArray(itens) ? itens : parseItensChips(itens);
 }
 
+function normalizarIdsVendedorasInput(vendedoras) {
+  if (!Array.isArray(vendedoras)) return [];
+
+  return Array.from(new Set(
+    vendedoras
+      .map(item => {
+        if (item && typeof item === 'object') {
+          return Number(item.id || item.usuario_id || item.vendedora_id);
+        }
+
+        return Number(item);
+      })
+      .filter(Number.isInteger)
+      .filter(id => id > 0)
+  ));
+}
+
 function calcularTotalItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => (
     acc + (Number(item.quantidade || 0) * parseValorInput(item.valor_unitario))
@@ -443,6 +462,26 @@ function somarQuantidadeItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => acc + Number(item.quantidade || 0), 0);
 }
 
+function limitarItensChipsPorQuantidadeLinhas(itens = [], limiteQuantidade = 0) {
+  const lista = normalizarItensChipsInput(itens);
+  const limite = Number(limiteQuantidade || 0);
+
+  if (limite <= 0) return lista;
+
+  let restante = limite;
+
+  return lista.map(item => {
+    const quantidadeAtual = Number(item.quantidade || 0);
+    const quantidade = Math.min(quantidadeAtual, restante);
+    restante = Math.max(restante - quantidade, 0);
+
+    return {
+      ...item,
+      quantidade: quantidade > 0 ? String(quantidade) : ''
+    };
+  });
+}
+
 function somarQuantidadePortabilidadeItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => (
     normalizarTipoLinhaChip(item.tipo_linha) === 'portabilidade'
@@ -453,6 +492,25 @@ function somarQuantidadePortabilidadeItensChips(itens = []) {
 
 function temChipPortabilidade(itens = []) {
   return somarQuantidadePortabilidadeItensChips(itens) > 0;
+}
+
+function formatarTipoLinhaChipLabel(tipo) {
+  return normalizarTipoLinhaChip(tipo) === 'portabilidade' ? 'Portabilidade' : 'Novo';
+}
+
+function resumirTiposLinhaItensChips(itens = []) {
+  const tipos = normalizarItensChipsInput(itens)
+    .map(item => formatarTipoLinhaChipLabel(item.tipo_linha || item.tipo || item.categoria))
+    .filter(Boolean);
+
+  return Array.from(new Set(tipos)).join(', ');
+}
+
+function obterTipoVendaTabela(venda = {}) {
+  return venda.tipoVenda?.nome
+    || resumirTiposLinhaItensChips(venda.valores_unitarios_chips)
+    || venda.produto_fechado
+    || '-';
 }
 
 function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
@@ -541,9 +599,12 @@ function parseNumerosPortados(valor) {
 function montarNumerosPortados(valor) {
   return (Array.isArray(valor) ? valor : parseNumerosPortados(valor))
     .map(item => String(item || '').trim())
-    .filter(Boolean)
+    .filter(item => apenasDigitos(item).length > 2)
     .join('\n');
 }
+
+const parseNumerosAtivados = parseNumerosPortados;
+const montarNumerosAtivados = montarNumerosPortados;
 
 function normalizarVenda(venda) {
   // Montar array de vendedoras a partir da relação (junction) ou do campo legado
@@ -560,6 +621,7 @@ function normalizarVenda(venda) {
     valor_total: venda.valor_total ?? '',
     valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips, venda.gb, tipoLinhaPadrao),
     numeros_portados: parseNumerosPortados(venda.numeros_portados),
+    numeros_ativados: parseNumerosAtivados(venda.numeros_ativados),
     quantidade_linhas: venda.quantidade_linhas ?? '',
     dia_vencimento: venda.dia_vencimento ?? '',
     operadora_id: venda.operadora_id ? String(venda.operadora_id) : '',
@@ -621,13 +683,17 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
 
       {itens.map((item, index) => {
         const subtotal = Number(item.quantidade || 0) * parseValorInput(item.valor_unitario);
+        const outros = itens.reduce((acc, chip, itemIndex) => (
+          itemIndex === index ? acc : acc + Number(chip.quantidade || 0)
+        ), 0);
+        const maximoQuantidadeLinha = limite > 0 ? Math.max(limite - outros, 0) : undefined;
 
         return (
           <div key={index} className="chip-item-row">
             <input
               type="number"
               min="1"
-              max={limite || undefined}
+              max={maximoQuantidadeLinha}
               value={item.quantidade}
               onChange={e => atualizarItem(index, 'quantidade', e.target.value)}
               placeholder="3"
@@ -747,20 +813,34 @@ function VendedorasSelect({ value = [], options = [], onChange }) {
   );
 }
 
-function ajustarQuantidadeNumerosPortados(value, quantidade) {
+function montarPrefixoDdd(ddd) {
+  const digitos = apenasDigitos(ddd, 2);
+  return digitos.length === 2 ? `(${digitos}) ` : '';
+}
+
+function numeroLinhaTemApenasDddOuVazio(valor) {
+  return apenasDigitos(valor).length <= 2;
+}
+
+function ajustarQuantidadeNumerosPortados(value, quantidade, dddPadrao = '') {
   const total = Math.max(Number(quantidade || 0), 0);
-  if (total === 0) return [NUMERO_PORTADO_VAZIO];
+  const prefixoDdd = montarPrefixoDdd(dddPadrao);
+  if (total === 0) return [prefixoDdd || NUMERO_PORTADO_VAZIO];
 
   const atuais = Array.isArray(value) ? value : parseNumerosPortados(value);
   const preenchidos = atuais.length > 0 ? atuais : [NUMERO_PORTADO_VAZIO];
 
-  return Array.from({ length: total }, (_, index) => preenchidos[index] || NUMERO_PORTADO_VAZIO);
+  return Array.from({ length: total }, (_, index) => {
+    const atual = preenchidos[index] || NUMERO_PORTADO_VAZIO;
+    return numeroLinhaTemApenasDddOuVazio(atual) ? (prefixoDdd || NUMERO_PORTADO_VAZIO) : atual;
+  });
 }
 
-function NumerosPortadosInput({ value, onChange, quantidadeEsperada = 0 }) {
+function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao = '', labelAdicionar = 'Adicionar numero' }) {
   const numeros = Array.isArray(value) && value.length > 0 ? value : [NUMERO_PORTADO_VAZIO];
   const limite = Math.max(Number(quantidadeEsperada || 0), 0);
   const limiteAtingido = limite > 0 && numeros.length >= limite;
+  const numeroVazio = montarPrefixoDdd(dddPadrao) || NUMERO_PORTADO_VAZIO;
 
   function atualizarNumero(index, novoValor) {
     onChange(numeros.map((numero, numeroIndex) => (
@@ -770,7 +850,7 @@ function NumerosPortadosInput({ value, onChange, quantidadeEsperada = 0 }) {
 
   function adicionarNumero() {
     if (limiteAtingido) return;
-    onChange([...numeros, NUMERO_PORTADO_VAZIO]);
+    onChange([...numeros, numeroVazio]);
   }
 
   function removerNumero(index) {
@@ -798,12 +878,20 @@ function NumerosPortadosInput({ value, onChange, quantidadeEsperada = 0 }) {
 
       <div className="ported-numbers__footer">
         <button type="button" className="btn btn-sm" onClick={adicionarNumero} disabled={limiteAtingido}>
-          <I.Plus size={13} /> Adicionar numero
+          <I.Plus size={13} /> {labelAdicionar}
         </button>
         {limite > 0 && <span>{numeros.length}/{limite} números</span>}
       </div>
     </div>
   );
+}
+
+function NumerosPortadosInput(props) {
+  return <NumerosLinhaInput {...props} labelAdicionar="Adicionar numero" />;
+}
+
+function NumerosAtivadosInput(props) {
+  return <NumerosLinhaInput {...props} labelAdicionar="Adicionar numero ativado" />;
 }
 
 function ResponsaveisRecebimentoInput({ form, onChange }) {
@@ -1498,14 +1586,35 @@ function VendaModal({
   const cepPreenchidoPorCnpjRef = useRef('');
   const vendaPortabilidade = temChipPortabilidade(form.valores_unitarios_chips);
   const quantidadePortabilidade = somarQuantidadePortabilidadeItensChips(form.valores_unitarios_chips || []);
+  const vendaAtivada = Boolean(normalizarDataVendaInput(form.data_ativacao));
   const quantidadeLinhasFechadas = Number(form.quantidade_linhas || 0);
+  const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
+  const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
   function atualizarCampo(campo, valor) {
-    if (somenteVisualizacao) return;
+    const valorFormatado = formatarCampoVenda(campo, valor);
 
-    setForm(prev => ({
-      ...prev,
-      [campo]: formatarCampoVenda(campo, valor)
-    }));
+    setForm(prev => {
+      const proximo = {
+        ...prev,
+        [campo]: valorFormatado
+      };
+
+      if (campo === 'quantidade_linhas') {
+        proximo.valores_unitarios_chips = limitarItensChipsPorQuantidadeLinhas(
+          prev.valores_unitarios_chips,
+          valorFormatado
+        );
+      }
+
+      if (campo === 'valores_unitarios_chips') {
+        proximo.valores_unitarios_chips = limitarItensChipsPorQuantidadeLinhas(
+          valorFormatado,
+          prev.quantidade_linhas
+        );
+      }
+
+      return proximo;
+    });
   }
 
   function formatarMensagemCnpj(dados) {
@@ -1701,9 +1810,24 @@ function VendaModal({
 
     setForm(prev => ({
       ...prev,
-      numeros_portados: ajustarQuantidadeNumerosPortados(prev.numeros_portados, quantidadePortabilidade)
+      numeros_portados: ajustarQuantidadeNumerosPortados(prev.numeros_portados, quantidadePortabilidade, prev.ddd)
     }));
-  }, [somenteVisualizacao, vendaPortabilidade, quantidadePortabilidade]);
+  }, [vendaPortabilidade, quantidadePortabilidade, form.ddd]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!vendaAtivada) {
+      if (Array.isArray(form.numeros_ativados) && form.numeros_ativados.length === 0) return;
+      setForm(prev => ({ ...prev, numeros_ativados: [] }));
+      return;
+    }
+
+    setForm(prev => ({
+      ...prev,
+      numeros_ativados: ajustarQuantidadeNumerosPortados(prev.numeros_ativados, quantidadeNumerosAtivados, prev.ddd)
+    }));
+  }, [vendaAtivada, quantidadeNumerosAtivados, form.ddd]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleSubmit(event) {
@@ -1723,7 +1847,16 @@ function VendaModal({
         return;
       }
 
+      const vendedorasIds = normalizarIdsVendedorasInput(form.vendedoras);
+
+      if (vendedorasIds.length === 0) {
+        setErro('Selecione pelo menos uma vendedora para cadastrar a venda.');
+        setSalvando(false);
+        return;
+      }
+
       const numerosPortados = montarNumerosPortados(form.numeros_portados);
+      const numerosAtivados = montarNumerosAtivados(form.numeros_ativados);
       const quantidadeChips = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
 
       if (quantidadeLinhasFechadas > 0 && quantidadeChips > quantidadeLinhasFechadas) {
@@ -1753,8 +1886,9 @@ function VendaModal({
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
         data_ativacao: normalizarDataVendaInput(form.data_ativacao) || null,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
+        numeros_ativados: form.data_ativacao ? numerosAtivados : null,
         valores_unitarios_chips: chipsProcessados,
-        vendedoras: (form.vendedoras || []).map(Number).filter(Boolean)
+        vendedoras: vendedorasIds
       };
 
       payload.valor_total = calcularTotalItensChips(form.valores_unitarios_chips);
@@ -1769,7 +1903,7 @@ function VendaModal({
 
   return (
     <div className="modal-overlay">
-      <form className="modal" onSubmit={handleSubmit}>
+      <form className="modal venda-modal" onSubmit={handleSubmit}>
         <div className="modal-header">
           <div className="modal-header-row">
             <div>
@@ -1817,6 +1951,26 @@ function VendaModal({
           </button>
         </div>
 
+        {erro && abaAtiva === 'venda' && (
+          <div className="venda-modal-alert" role="alert" aria-live="assertive">
+            <div className="venda-modal-alert__icon">
+              <I.AlertTriangle size={16} />
+            </div>
+            <div className="venda-modal-alert__content">
+              <strong>Não foi possível salvar a venda</strong>
+              <span>{erro}</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-icon btn-ghost"
+              onClick={() => setErro('')}
+              title="Fechar aviso"
+            >
+              <I.Close size={13} />
+            </button>
+          </div>
+        )}
+
         <div className="modal-body">
           {abaAtiva === 'notas' ? (
             <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
@@ -1834,6 +1988,10 @@ function VendaModal({
               }
 
               if (campo.name === 'numeros_portados' && !vendaPortabilidade) {
+                return null;
+              }
+
+              if (campo.name === 'numeros_ativados' && !vendaAtivada) {
                 return null;
               }
 
@@ -1944,6 +2102,14 @@ function VendaModal({
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
                       quantidadeEsperada={quantidadePortabilidade}
+                      dddPadrao={form.ddd}
+                    />
+                  ) : campo.type === 'activatedNumbers' ? (
+                    <NumerosAtivadosInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      quantidadeEsperada={quantidadeNumerosAtivados}
+                      dddPadrao={form.ddd}
                     />
                   ) : campo.name === 'protocolo' ? (
                     <div className="protocolo-input-row">
@@ -1984,7 +2150,6 @@ function VendaModal({
           </div>
           </fieldset>
 
-          {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
           </>
           )}
         </div>
@@ -2251,26 +2416,37 @@ function VendasPage() {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const vendaId = searchParams.get('venda_id');
+    const abaParam = searchParams.get('aba');
+    const abasPermitidas = ['venda', 'notas', 'arquivos', 'problema'];
+    const aba = abasPermitidas.includes(abaParam) ? abaParam : 'venda';
 
     if (!vendaId) return;
 
     buscarVendaPorId(vendaId)
       .then(venda => {
         setModalVenda(venda);
-        setModalAbaInicial('problema');
-        setModalModoEdicao(false);
+        setModalAbaInicial(aba);
+        setModalModoEdicao(aba === 'venda' && podeEditarVenda);
         setVendaInicial(null);
         setModalAberto(true);
         navigate('/vendas', { replace: true });
       })
       .catch(error => setErro(error.message || 'Erro ao abrir venda.'));
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, podeEditarVenda]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function abrirVisualizacao(venda) {
     setModalVenda(venda);
     setModalAbaInicial('venda');
     setModalModoEdicao(false);
+    setVendaInicial(null);
+    setModalAberto(true);
+  }
+
+  function abrirEdicao(venda) {
+    setModalVenda(venda);
+    setModalAbaInicial('venda');
+    setModalModoEdicao(podeEditarVenda);
     setVendaInicial(null);
     setModalAberto(true);
   }
@@ -2628,11 +2804,15 @@ function VendasPage() {
                       className="clickable-row"
                       role="button"
                       tabIndex={0}
-                      onClick={() => abrirVisualizacao(venda)}
+                      onClick={() => (podeEditarVenda ? abrirEdicao(venda) : abrirVisualizacao(venda))}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          abrirVisualizacao(venda);
+                          if (podeEditarVenda) {
+                            abrirEdicao(venda);
+                          } else {
+                            abrirVisualizacao(venda);
+                          }
                         }
                       }}
                     >
@@ -2643,7 +2823,7 @@ function VendasPage() {
                         </div>
                       </td>
                       <td><span className="tag">{venda.operadora?.nome || '-'}</span></td>
-                      <td>{venda.tipoVenda?.nome || venda.produto_fechado || '-'}</td>
+                      <td>{obterTipoVendaTabela(venda)}</td>
                       <td>{venda.servico?.nome || '-'}</td>
                       <td>{venda.quantidade_linhas || '-'}</td>
                       <td>{venda.gb || '-'}</td>

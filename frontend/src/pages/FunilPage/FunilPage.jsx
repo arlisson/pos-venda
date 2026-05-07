@@ -132,6 +132,67 @@ function initials(name) {
     .toUpperCase() || 'SV';
 }
 
+function normalizarBusca(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function montarTextoBuscaVenda(sale) {
+  const raw = sale.raw || {};
+  const campos = [
+    sale.id,
+    sale.client,
+    sale.operator,
+    sale.plan,
+    sale.cpfCnpj,
+    sale.seller?.name,
+    sale.linha,
+    sale.endereco,
+    sale.stage,
+    sale.priority,
+    formatBRL(sale.value),
+    raw.nome,
+    raw.razao_social,
+    raw.email,
+    raw.email_2,
+    raw.telefone,
+    raw.fixo_ddd,
+    raw.cnpj,
+    raw.protocolo,
+    raw.login,
+    raw.municipio,
+    raw.uf,
+    raw.bairro,
+    raw.cep,
+    raw.produto_fechado,
+    raw.gb,
+    raw.ddd,
+    raw.quantidade_linhas,
+    raw.dia_vencimento,
+    raw.observacoes,
+    raw.operadora?.nome,
+    raw.tipoVenda?.nome,
+    raw.servico?.nome,
+    raw.vendedora?.nome,
+    raw.cliente?.nome,
+    raw.cliente?.razao_social,
+    raw.cliente?.email
+  ];
+
+  return normalizarBusca(campos.filter(Boolean).join(' '));
+}
+
+function vendaCorrespondeBusca(sale, busca) {
+  const termos = normalizarBusca(busca).split(/\s+/).filter(Boolean);
+  if (termos.length === 0) return true;
+
+  const texto = montarTextoBuscaVenda(sale);
+  return termos.every(termo => texto.includes(termo));
+}
+
 function SellerAvatar({ seller, className = 'mini-avatar' }) {
   return (
     <span className={className}>
@@ -686,6 +747,7 @@ function FunilPage() {
   const [stages, setStages] = useState(FALLBACK_STAGES);
   const [adminStages, setAdminStages] = useState([]);
   const [filter, setFilter] = useState('todas');
+  const [busca, setBusca] = useState('');
   const [selectedSaleId, setSelectedSaleId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stagesLoading, setStagesLoading] = useState(false);
@@ -975,7 +1037,9 @@ function FunilPage() {
   }
 
   const filtradas = sales.filter(
-    s => s.stage !== 'retorno' && (filter === 'todas' || s.operator === filter)
+    s => s.stage !== 'retorno'
+      && (filter === 'todas' || s.operator === filter)
+      && vendaCorrespondeBusca(s, busca)
   );
   const total = filtradas.reduce((sum, s) => sum + s.value, 0);
   const selectedSale = selectedSaleId ? sales.find(s => s.id === selectedSaleId) : null;
@@ -1032,6 +1096,24 @@ function FunilPage() {
 
       <div className="page">
         <div className="filters">
+          <div className="search-box funnel-search-box">
+            <I.Search size={14} />
+            <input
+              value={busca}
+              onChange={event => setBusca(event.target.value)}
+              placeholder="Buscar venda, cliente, CNPJ, telefone, plano..."
+            />
+            {busca && (
+              <button
+                type="button"
+                className="btn btn-icon btn-ghost"
+                onClick={() => setBusca('')}
+                title="Limpar busca"
+              >
+                <I.Close size={12} />
+              </button>
+            )}
+          </div>
           <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 4 }}>Operadora:</span>
           {['todas', ...operators].map(op => (
             <button

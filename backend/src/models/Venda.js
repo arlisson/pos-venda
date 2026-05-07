@@ -30,6 +30,7 @@ class Venda extends Model {
         quantidade_linhas: { type: ['integer', 'null'] },
         ddd: { type: ['string', 'null'], maxLength: 10 },
         numeros_portados: { type: ['string', 'null'] },
+        numeros_ativados: { type: ['string', 'null'] },
         gb: { type: ['string', 'null'], maxLength: 40 },
         valores_unitarios_chips: { type: ['string', 'null'] },
         valor_total: { type: ['number', 'string', 'null'] },

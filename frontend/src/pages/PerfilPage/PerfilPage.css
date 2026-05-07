@@ -105,6 +105,24 @@
   font-size: 14px;
 }
 
+.perfil-page-clean {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.perfil-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 30px;
+}
+
+.perfil-account-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
 .perfil-avatar {
   width: 80px;
   height: 80px;
@@ -118,43 +136,13 @@
   object-fit: cover;
 }
 
-.perfil-permissoes-resumo {
-  margin-top: 2px;
-  color: var(--text-3);
-  font-size: 12px;
-}
+@media (max-width: 640px) {
+  .perfil-summary-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 
-.perfil-permissoes {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.perfil-permissao-grupo {
-  padding: 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.perfil-permissao-grupo__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.perfil-permissao-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.perfil-permissao-vazio {
-  margin-top: 7px;
-  color: var(--text-3);
-  font-size: 12px;
+  .perfil-summary-card .btn {
+    margin-left: 0 !important;
+  }
 }

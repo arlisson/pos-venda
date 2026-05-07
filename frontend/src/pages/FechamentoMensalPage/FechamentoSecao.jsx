@@ -51,18 +51,18 @@ function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, secao, lo
               <tr>
                 <th rowSpan={2}>Operadora</th>
                 <th rowSpan={2}>Total de vendas</th>
-                <th rowSpan={2}>Contratos</th>
+                <th rowSpan={2}>Contratos Finalizados</th>
                 <th rowSpan={2}>UGRs</th>
                 <th colSpan={3} className="group-product">Produto</th>
                 <th colSpan={2} className="group-service">Servico</th>
                 <th rowSpan={2}>Receita</th>
               </tr>
               <tr>
-                <th className="group-product">Movel</th>
+                <th className="group-start">Movel</th>
                 <th>Fixo</th>
-                <th className="group-product">Internet</th>
-                <th className="group-service">Novo</th>
-                <th className="group-service">Portab.</th>
+                <th>Internet</th>
+                <th className="group-start">Novo</th>
+                <th>Portab.</th>
               </tr>
             </thead>
             <tbody>
@@ -72,11 +72,11 @@ function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, secao, lo
                   <td>{linha.total_vendas}</td>
                   <td>{linha.contratos}</td>
                   <td>{linha.ugrs}</td>
-                  <td className="group-product">{linha.movel}</td>
+                  <td>{linha.movel}</td>
                   <td>{linha.fixo}</td>
-                  <td className="group-product">{linha.internet}</td>
-                  <td className="group-service">{linha.novo}</td>
-                  <td className="group-service">{linha.portabilidade}</td>
+                  <td>{linha.internet}</td>
+                  <td>{linha.novo}</td>
+                  <td>{linha.portabilidade}</td>
                   <td>{fmtMoeda(linha.receita)}</td>
                 </tr>
               ))}
@@ -87,11 +87,11 @@ function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, secao, lo
                 <td>{totais.total_vendas}</td>
                 <td>{totais.contratos}</td>
                 <td>{totais.ugrs}</td>
-                <td className="group-product">{totais.movel}</td>
+                <td>{totais.movel}</td>
                 <td>{totais.fixo}</td>
-                <td className="group-product">{totais.internet}</td>
-                <td className="group-service">{totais.novo}</td>
-                <td className="group-service">{totais.portabilidade}</td>
+                <td>{totais.internet}</td>
+                <td>{totais.novo}</td>
+                <td>{totais.portabilidade}</td>
                 <td>{fmtMoeda(totais.receita)}</td>
               </tr>
             </tfoot>

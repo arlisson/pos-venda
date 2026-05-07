@@ -124,7 +124,7 @@ function LayoutPrivado({ children }) {
 
   async function abrirVendaAlerta(notificacao) {
     await fecharAlertaUrgente(notificacao);
-    navigate(`/vendas?venda_id=${notificacao.entidade_id || notificacao.dados?.venda_id || ''}`);
+    navigate(`/vendas?venda_id=${notificacao.entidade_id || notificacao.dados?.venda_id || ''}&aba=problema`);
   }
 
   return (
