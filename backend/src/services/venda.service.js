@@ -541,7 +541,7 @@ async function validarProtocoloCliente(payload, usuarioId, vendaAtual = null) {
   const vendaComProtocolo = await Venda.query()
     .where('cliente_id', clienteId)
     .whereNotNull('protocolo')
-    .whereNot('protocolo', '')
+    .whereRaw("TRIM(protocolo) <> ''")
     .whereNull('excluido_em')
     .modify(query => {
       if (vendaAtual?.id) {

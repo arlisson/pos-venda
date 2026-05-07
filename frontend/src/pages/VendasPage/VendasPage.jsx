@@ -1722,7 +1722,7 @@ function VendaModal({
   const protocoloBloqueado = somenteVisualizacao
     || vendaBloqueadaParaUsuario
     || clienteJaTemOutroProtocolo
-    || protocoloProtegido;
+    || !usuarioAdmin;
   const podeGerarProtocolo = !somenteVisualizacao
     && !vendaBloqueadaParaUsuario
     && !clienteJaTemOutroProtocolo
@@ -1731,7 +1731,9 @@ function VendaModal({
     ? `Este cliente já possui protocolo: ${vendaComProtocoloDoCliente.protocolo}.`
     : protocoloProtegido
       ? 'Protocolo já gerado. Apenas ADM pode alterar ou apagar.'
-      : '';
+      : !usuarioAdmin && protocoloAtual
+        ? 'Protocolo gerado. Apenas ADM pode alterar ou apagar.'
+        : '';
 
   function atualizarCampo(campo, valor) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
