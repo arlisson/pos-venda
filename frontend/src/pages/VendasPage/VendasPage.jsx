@@ -571,6 +571,26 @@ function obterTipoVendaTabela(venda = {}) {
     || '-';
 }
 
+function getChaveClienteVenda(venda = {}) {
+  if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
+  if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
+
+  const cnpj = sanitizarCnpj(venda.cnpj || venda.cliente?.cnpj || '');
+  if (cnpj) return `cnpj:${cnpj}`;
+
+  const nome = normalizarTextoBusca(venda.nome || venda.cliente?.nome || venda.razao_social || venda.cliente?.razao_social || '');
+  return nome ? `nome:${nome}` : '';
+}
+
+function contarVendasPorCliente(vendas = []) {
+  return vendas.reduce((acc, venda) => {
+    const chave = getChaveClienteVenda(venda);
+    if (!chave) return acc;
+    acc.set(chave, (acc.get(chave) || 0) + 1);
+    return acc;
+  }, new Map());
+}
+
 function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
   if (!valor) return [{ ...ITEM_CHIP_VAZIO }];
 
@@ -1007,7 +1027,7 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
   );
 }
 
-function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
+function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, onCreateClient }) {
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
   const [busca, setBusca] = useState('');
@@ -1171,6 +1191,7 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
       )}
 
       {clienteSelecionado && (
+        <>
         <div className="venda-cliente-card">
           <div>
             <strong>{clienteSelecionado.nome}</strong>
@@ -1184,6 +1205,15 @@ function ClienteVendaSelect({ value, clientes, onChange, onCreateClient }) {
             <I.Close size={13} />
           </button>
         </div>
+        {vendasRegistradas > 0 && (
+          <div className="venda-cliente-repeat-alert">
+            <I.AlertTriangle size={13} />
+            <span>
+              Este cliente já possui {vendasRegistradas} {vendasRegistradas === 1 ? 'venda registrada' : 'vendas registradas'}.
+            </span>
+          </div>
+        )}
+        </>
       )}
     </div>
   );
@@ -1671,6 +1701,7 @@ function VendaModal({
   operadoras,
   tiposVenda,
   servicos,
+  vendasPorCliente,
   podeEditarVenda,
   podeVerDocumentosVenda,
   usuarioLogado,
@@ -1701,6 +1732,11 @@ function VendaModal({
   const vendaPortabilidade = temChipPortabilidade(form.valores_unitarios_chips);
   const quantidadePortabilidade = somarQuantidadePortabilidadeItensChips(form.valores_unitarios_chips || []);
   const vendaAtivada = Boolean(normalizarDataVendaInput(form.data_ativacao));
+  const chaveClienteSelecionado = form.cliente_id ? `cliente:${form.cliente_id}` : '';
+  const totalVendasClienteSelecionado = chaveClienteSelecionado ? (vendasPorCliente.get(chaveClienteSelecionado) || 0) : 0;
+  const vendasRegistradasClienteSelecionado = venda?.id
+    ? Math.max(totalVendasClienteSelecionado - 1, 0)
+    : totalVendasClienteSelecionado;
   const quantidadeLinhasFechadas = Number(form.quantidade_linhas || 0);
   const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
   const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
@@ -2196,6 +2232,7 @@ function VendaModal({
                     <ClienteVendaSelect
                       value={form[campo.name] ?? ''}
                       clientes={clientes}
+                      vendasRegistradas={vendasRegistradasClienteSelecionado}
                       onChange={atualizarClienteVenda}
                       onCreateClient={onCreateClient}
                     />
@@ -2469,6 +2506,7 @@ function VendasPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [vendas, setVendas] = useState([]);
+  const [vendasReferencia, setVendasReferencia] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
   const [usuariosProblema, setUsuariosProblema] = useState([]);
@@ -2549,6 +2587,8 @@ function VendasPage() {
     ...(podeFunil ? [statusFunil, prioridadeFunil] : [])
   ].filter(v => v !== '').length;
 
+  const vendasPorCliente = useMemo(() => contarVendasPorCliente(vendasReferencia), [vendasReferencia]);
+
   useEffect(() => {
     if (!sucesso) return undefined;
     const timer = setTimeout(() => setSucesso(''), 4000);
@@ -2566,8 +2606,11 @@ function VendasPage() {
     setCarregando(true);
 
     try {
-      const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData, usuariosProblemaData] = await Promise.all([
-        listarVendas(filtros),
+      const vendasPromise = listarVendas(filtros);
+      const vendasReferenciaPromise = filtrosAtivos > 0 ? listarVendas() : vendasPromise;
+      const [vendasData, vendasReferenciaData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData, usuariosProblemaData] = await Promise.all([
+        vendasPromise,
+        vendasReferenciaPromise,
         podeListarClientes ? listarClientes() : Promise.resolve([]),
         listarVendedoras(),
         listarOperadoras(),
@@ -2578,6 +2621,7 @@ function VendasPage() {
       ]);
 
       setVendas(vendasData);
+      setVendasReferencia(vendasReferenciaData);
       setClientes(clientesData);
       setVendedoras(vendedorasData);
       setOperadoras(operadorasData);
@@ -2694,6 +2738,7 @@ function VendasPage() {
     try {
       await deletarVenda(vendaParaLixeira.id);
       setVendas(prev => prev.filter(item => item.id !== vendaParaLixeira.id));
+      setVendasReferencia(prev => prev.filter(item => item.id !== vendaParaLixeira.id));
       setVendaParaLixeira(null);
       setSucesso('Venda enviada para a lixeira.');
     } catch (error) {
@@ -2787,6 +2832,7 @@ function VendasPage() {
           operadoras={operadoras}
           tiposVenda={tiposVenda}
           servicos={servicos}
+          vendasPorCliente={vendasPorCliente}
           podeEditarVenda={podeEditarVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
           usuarioLogado={usuarioLogado}
@@ -3017,7 +3063,10 @@ function VendasPage() {
                     </td>
                   </tr>
                 ) : (
-                  vendas.map(venda => (
+                  vendas.map(venda => {
+                    const totalVendasCliente = vendasPorCliente.get(getChaveClienteVenda(venda)) || 0;
+
+                    return (
                     <tr
                       key={venda.id}
                       className="clickable-row"
@@ -3039,6 +3088,12 @@ function VendasPage() {
                               <span className="vendas-pos-venda-pending">
                                 <I.AlertTriangle size={11} />
                                 Falta enviar ao pós-venda
+                              </span>
+                            )}
+                            {totalVendasCliente > 1 && (
+                              <span className="vendas-cliente-repeat-badge">
+                                <I.Check size={11} />
+                                Cliente com {totalVendasCliente} vendas
                               </span>
                             )}
                           </div>
@@ -3110,7 +3165,8 @@ function VendasPage() {
                         </td>
                       )}
                     </tr>
-                  ))
+                  );
+                  })
                 )}
               </tbody>
             </table>
