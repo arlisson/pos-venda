@@ -2426,27 +2426,19 @@ function VendasPage() {
       .then(venda => {
         setModalVenda(venda);
         setModalAbaInicial(aba);
-        setModalModoEdicao(aba === 'venda' && podeEditarVenda);
+        setModalModoEdicao(false);
         setVendaInicial(null);
         setModalAberto(true);
         navigate('/vendas', { replace: true });
       })
       .catch(error => setErro(error.message || 'Erro ao abrir venda.'));
-  }, [searchParams, navigate, podeEditarVenda]);
+  }, [searchParams, navigate]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function abrirVisualizacao(venda) {
     setModalVenda(venda);
     setModalAbaInicial('venda');
     setModalModoEdicao(false);
-    setVendaInicial(null);
-    setModalAberto(true);
-  }
-
-  function abrirEdicao(venda) {
-    setModalVenda(venda);
-    setModalAbaInicial('venda');
-    setModalModoEdicao(podeEditarVenda);
     setVendaInicial(null);
     setModalAberto(true);
   }
@@ -2804,15 +2796,11 @@ function VendasPage() {
                       className="clickable-row"
                       role="button"
                       tabIndex={0}
-                      onClick={() => (podeEditarVenda ? abrirEdicao(venda) : abrirVisualizacao(venda))}
+                      onClick={() => abrirVisualizacao(venda)}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          if (podeEditarVenda) {
-                            abrirEdicao(venda);
-                          } else {
-                            abrirVisualizacao(venda);
-                          }
+                          abrirVisualizacao(venda);
                         }
                       }}
                     >
