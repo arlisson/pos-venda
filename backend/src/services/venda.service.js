@@ -4,6 +4,7 @@ const Usuario = require('../models/Usuario');
 const FunilEtapa = require('../models/FunilEtapa');
 const clienteService = require('./cliente.service');
 const vendaArquivoService = require('./venda-arquivo.service');
+const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
 
 const CAMPOS = [
@@ -1626,6 +1627,13 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
       trx
     });
 
+    if (status !== venda.status_funil) {
+      await vendaNotificacaoParadaService.desativarNotificacaoVendaParada(id, venda.status_funil, trx);
+      if (!await statusEhFinal(status)) {
+        await vendaNotificacaoParadaService.registrarEntradaEstagio(id, status, new Date(agora), trx);
+      }
+    }
+
     return atualizada;
   });
 
@@ -1795,6 +1803,11 @@ async function listarVendedoras() {
     .select('id', 'nome', 'email', 'ativo')
     .where('ativo', true)
     .orderBy('nome', 'asc');
+}
+
+async function statusEhFinal(status) {
+  const codigoFinal = await obterCodigoEtapaFinal();
+  return status === codigoFinal;
 }
 
 module.exports = {

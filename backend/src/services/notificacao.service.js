@@ -3,6 +3,7 @@ const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
 const db = require('../database/connection');
+const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
 
 const PERMISSAO_VISUALIZAR = 'notificacoes_visualizar';
 const PERMISSAO_RECEBER_TODAS = 'notificacoes_receber_todas';
@@ -365,6 +366,7 @@ function parseDados(dados) {
 async function listarNotificacoes(usuarioId, filtros = {}) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
+  await vendaNotificacaoParadaService.sincronizarVendasParadas();
 
   const usuario = await Usuario.query()
     .findById(usuarioId)
