@@ -151,6 +151,58 @@ function formatarRetornoResumo(notificacao) {
   });
 }
 
+function formatarPrazoRelativo(valor) {
+  if (!valor) return 'Pendente';
+
+  const data = new Date(String(valor).replace(' ', 'T'));
+  if (Number.isNaN(data.getTime())) return 'Pendente';
+
+  const agora = new Date();
+  const diffDias = Math.round((agora.setHours(0, 0, 0, 0) - data.setHours(0, 0, 0, 0)) / 86400000);
+
+  if (diffDias <= 0) return 'Pendente hoje';
+  return `Pendencia ha ${diffDias} dia${diffDias === 1 ? '' : 's'}`;
+}
+
+function getNotificacaoTitulo(notificacao) {
+  return notificacao?.dados?.cliente_nome
+    || notificacao?.dados?.venda_nome
+    || notificacao?.dados?.titulo_nota
+    || notificacao?.titulo
+    || 'Sem titulo';
+}
+
+function getNotificacaoDescricao(notificacao) {
+  if (!notificacao) return '';
+
+  if (notificacao.tipo === 'cliente_fidelidade') {
+    return notificacao.mensagem;
+  }
+
+  if (TIPOS_RETORNO_NOTA.includes(notificacao.tipo)) {
+    return notificacao.mensagem.replace(/^Retorne a ligacao de\s*/i, '').replace(/^Retorno de\s*/i, '');
+  }
+
+  if (TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo)) {
+    return notificacao.dados?.mensagem || notificacao.mensagem;
+  }
+
+  return notificacao.mensagem;
+}
+
+function getFidelidadePrazo(notificacao) {
+  const dias = Number(notificacao?.dados?.dias_restantes);
+  if (!Number.isFinite(dias)) return 'Sem data';
+  if (dias < 0) return `Vencida ha ${Math.abs(dias)} dia${Math.abs(dias) === 1 ? '' : 's'}`;
+  if (dias === 0) return 'Vence hoje';
+  return `Vence em ${dias} dias`;
+}
+
+function getRetornoPrazo(notificacao) {
+  if (notificacao?.tipo === 'nota_retorno_due') return formatarRetornoResumo(notificacao);
+  return formatarRetornoResumo(notificacao);
+}
+
 function DashboardPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -204,7 +256,7 @@ function DashboardPage() {
       return undefined;
     }
 
-    listarNotificacoes({ limit: 5 })
+    listarNotificacoes({ limit: 24 })
       .then(data => setNotificacoes(data.notificacoes || []))
       .catch(console.error);
   }, [podeVerNotificacoes]);
@@ -262,6 +314,50 @@ function DashboardPage() {
   const notificacoesProblema = notificacoes
     .filter(notificacao => TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo))
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  const notificacaoCards = [
+    {
+      key: 'retornos',
+      title: 'Retornos',
+      subtitle: 'Chips devolvidos',
+      count: notificacoesRetorno.length,
+      variant: 'danger',
+      icon: <I.AlertTriangle size={15} />,
+      items: notificacoesRetorno.slice(0, 3),
+      metric: notificacao => notificacao.tipo === 'nota_retorno_due' ? 'Retorno vencido' : getRetornoPrazo(notificacao),
+      actionLabel: 'Ver todos os retornos',
+      onAction: () => navigate('/retornos')
+    },
+    {
+      key: 'fidelidade',
+      title: 'Fim de fidelidade',
+      subtitle: 'Proximos 30 dias',
+      count: notificacoesFidelidade.length,
+      variant: 'warn',
+      icon: <I.History size={15} />,
+      items: notificacoesFidelidade.slice(0, 3),
+      metric: getFidelidadePrazo,
+      actionLabel: 'Iniciar abordagem de renovacao',
+      onAction: () => navigate('/clientes?fidelidade=alerta')
+    },
+    {
+      key: 'problemas',
+      title: 'Vendas com problema',
+      subtitle: 'Precisam de acao',
+      count: notificacoesProblema.length,
+      variant: 'info',
+      icon: <I.AlertTriangle size={15} />,
+      items: notificacoesProblema.slice(0, 3),
+      metric: notificacao => formatarPrazoRelativo(notificacao.updated_at),
+      actionLabel: 'Resolver pendencias',
+      onAction: () => {
+        if (notificacoesProblema[0]) {
+          handleReadNotification(notificacoesProblema[0]);
+          return;
+        }
+        navigate('/vendas');
+      }
+    }
+  ];
   const proximaFidelidade = notificacoesFidelidade[0];
   const proximoRetorno = notificacoesRetorno[0];
   const proximoProblema = notificacoesProblema[0];
@@ -337,6 +433,53 @@ function DashboardPage() {
         )}
 
         {(notificacoesFidelidade.length > 0 || notificacoesRetorno.length > 0 || notificacoesProblema.length > 0) && (
+          <section className="home-notifications">
+            <div className="home-notifications__header">
+              <div>
+                <h2>Notificacoes</h2>
+                <p>Acompanhe os pontos que exigem atencao imediata.</p>
+              </div>
+            </div>
+
+            <div className="home-notifications__list">
+              {notificacaoCards.map(card => (
+                <article key={card.key} className={`home-notification-card home-notification-card--${card.variant}`}>
+                  <div className="home-notification-card__top">
+                    <span className="home-notification-card__icon">{card.icon}</span>
+                    <span className="home-notification-card__title">
+                      <strong>{card.title}</strong>
+                      <em>{card.subtitle}</em>
+                    </span>
+                    <span className="home-notification-card__count">{card.count}</span>
+                  </div>
+
+                  <div className="home-notification-card__items">
+                    {card.items.length === 0 ? (
+                      <div className="home-notification-card__empty">Nenhuma notificacao ativa.</div>
+                    ) : card.items.map(notificacao => (
+                      <button
+                        type="button"
+                        key={notificacao.destinatario_id || notificacao.id}
+                        className={`home-notification-card__item ${notificacao.lida ? '' : 'is-unread'}`}
+                        onClick={() => handleReadNotification(notificacao)}
+                      >
+                        <strong>{getNotificacaoTitulo(notificacao)}</strong>
+                        <span>{getNotificacaoDescricao(notificacao)}</span>
+                        <em>{card.metric(notificacao)}</em>
+                      </button>
+                    ))}
+                  </div>
+
+                  <button type="button" className="home-notification-card__action" disabled={card.count === 0} onClick={card.onAction}>
+                    {card.actionLabel} <I.ArrowRight size={13} />
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {false && (notificacoesFidelidade.length > 0 || notificacoesRetorno.length > 0 || notificacoesProblema.length > 0) && (
           <section className="home-notifications">
             <div className="home-notifications__header">
               <div>
