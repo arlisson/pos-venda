@@ -1500,6 +1500,8 @@ function VendaModal({
   const quantidadePortabilidade = somarQuantidadePortabilidadeItensChips(form.valores_unitarios_chips || []);
   const quantidadeLinhasFechadas = Number(form.quantidade_linhas || 0);
   function atualizarCampo(campo, valor) {
+    if (somenteVisualizacao) return;
+
     setForm(prev => ({
       ...prev,
       [campo]: formatarCampoVenda(campo, valor)
@@ -1515,6 +1517,8 @@ function VendaModal({
   }
 
   function atualizarClienteVenda(valor) {
+    if (somenteVisualizacao) return;
+
     const c = clientes.find(cliente => String(cliente.id) === String(valor));
 
     setForm(prev => {
@@ -1536,6 +1540,12 @@ function VendaModal({
         nome_administrador: prev.nome_administrador || nomeAdm,
       };
     });
+  }
+
+  function atualizarVendedorasVenda(ids) {
+    if (somenteVisualizacao) return;
+
+    setForm(prev => ({ ...prev, vendedoras: ids }));
   }
 
   function aplicarDadosCnpj(dados, sobrescrever = false) {
@@ -1567,6 +1577,8 @@ function VendaModal({
   }
 
   async function buscarDadosCnpj(manual = false) {
+    if (somenteVisualizacao) return;
+
     const cnpj = sanitizarCnpj(form.cnpj);
 
     if (cnpj.length !== 14) {
@@ -1605,6 +1617,8 @@ function VendaModal({
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
+    if (somenteVisualizacao) return;
+
     const cnpj = sanitizarCnpj(form.cnpj);
 
     if (cnpj.length === 0) {
@@ -1620,11 +1634,13 @@ function VendaModal({
 
       buscarDadosCnpj(false);
     }
-  }, [form.cnpj]);
+  }, [form.cnpj, somenteVisualizacao]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
+    if (somenteVisualizacao) return;
+
     const cep = apenasDigitos(form.cep, 8);
 
     if (cep.length !== 8) {
@@ -1675,18 +1691,19 @@ function VendaModal({
     return () => {
       cancelado = true;
     };
-  }, [form.cep]);
+  }, [form.cep, somenteVisualizacao]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    if (somenteVisualizacao) return;
     if (!vendaPortabilidade) return;
 
     setForm(prev => ({
       ...prev,
       numeros_portados: ajustarQuantidadeNumerosPortados(prev.numeros_portados, quantidadePortabilidade)
     }));
-  }, [vendaPortabilidade, quantidadePortabilidade]);
+  }, [somenteVisualizacao, vendaPortabilidade, quantidadePortabilidade]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleSubmit(event) {
@@ -1864,7 +1881,7 @@ function VendaModal({
                     <VendedorasSelect
                       value={form.vendedoras || []}
                       options={vendedoras}
-                      onChange={ids => setForm(prev => ({ ...prev, vendedoras: ids }))}
+                      onChange={atualizarVendedorasVenda}
                     />
                   ) : campo.type === 'timeRange' ? (
                     <div className="range-pair">
@@ -2258,14 +2275,6 @@ function VendasPage() {
     setModalAberto(true);
   }
 
-  function abrirEdicao(venda) {
-    setModalVenda(venda);
-    setModalAbaInicial('venda');
-    setModalModoEdicao(true);
-    setVendaInicial(null);
-    setModalAberto(true);
-  }
-
   async function salvarVenda(dados) {
     setErro('');
     const editando = Boolean(modalVenda);
@@ -2392,6 +2401,7 @@ function VendasPage() {
           onStartEdit={() => setModalModoEdicao(true)}
           onClose={() => {
             setModalAberto(false);
+            setModalVenda(null);
             setModalAbaInicial('venda');
             setModalModoEdicao(true);
             setVendaInicial(null);
