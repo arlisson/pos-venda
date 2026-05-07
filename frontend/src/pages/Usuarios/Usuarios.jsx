@@ -143,6 +143,11 @@ const GRUPOS_PERMISSOES = [
             descricao: 'Permite editar vendas acessíveis.'
           },
           {
+            chave: 'vendas_documentos',
+            nome: 'Documentos',
+            descricao: 'Libera a aba de documentos na visualização da venda.'
+          },
+          {
             chave: 'vendas_excluir',
             nome: 'Excluir',
             descricao: 'Permite excluir vendas acessíveis.'

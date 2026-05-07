@@ -1666,6 +1666,7 @@ function VendaModal({
   tiposVenda,
   servicos,
   podeEditarVenda,
+  podeVerDocumentosVenda,
   usuarioLogado,
   initialTab = 'venda',
   modoEdicao = true,
@@ -1680,9 +1681,8 @@ function VendaModal({
   const [cepStatus, setCepStatus] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
-  const [cnpjDados, setCnpjDados] = useState(null);
-  const [cnpjSugestoes, setCnpjSugestoes] = useState({});
-  const [abaAtiva, setAbaAtiva] = useState(initialTab);
+  const abaInicial = initialTab === 'arquivos' && !podeVerDocumentosVenda ? 'venda' : initialTab;
+  const [abaAtiva, setAbaAtiva] = useState(abaInicial);
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
   const cepPreenchidoPorCnpjRef = useRef('');
@@ -1837,6 +1837,14 @@ function VendaModal({
       setConsultandoCnpj(false);
     }
   }
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (abaAtiva === 'arquivos' && !podeVerDocumentosVenda) {
+      setAbaAtiva('venda');
+    }
+  }, [abaAtiva, podeVerDocumentosVenda]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -2071,13 +2079,15 @@ function VendaModal({
           >
             <I.Note size={14} /> Notas
           </button>
-          <button
-            type="button"
-            className={`modal-tab ${abaAtiva === 'arquivos' ? 'active' : ''}`}
-            onClick={() => setAbaAtiva('arquivos')}
-          >
-            <I.Note size={14} /> Arquivos
-          </button>
+          {podeVerDocumentosVenda && (
+            <button
+              type="button"
+              className={`modal-tab ${abaAtiva === 'arquivos' ? 'active' : ''}`}
+              onClick={() => setAbaAtiva('arquivos')}
+            >
+              <I.Note size={14} /> Documentos
+            </button>
+          )}
           <button
             type="button"
             className={`modal-tab ${abaAtiva === 'problema' ? 'active' : ''}`}
@@ -2110,7 +2120,7 @@ function VendaModal({
         <div className="modal-body">
           {abaAtiva === 'notas' ? (
             <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
-          ) : abaAtiva === 'arquivos' ? (
+          ) : abaAtiva === 'arquivos' && podeVerDocumentosVenda ? (
             <ArquivosVendaTab venda={venda} podeEditar={podeEditarVenda} />
           ) : abaAtiva === 'problema' ? (
             <VendaProblemaPanel venda={venda} usuario={usuarioLogado} />
@@ -2439,6 +2449,7 @@ function VendasPage() {
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, 'vendas_editar');
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
+  const podeVerDocumentosVenda = temPermissao(usuarioLogado, 'vendas_documentos');
   const podeMarcarProblema = temPermissao(usuarioLogado, 'vendas_marcar_problema');
   const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const podeVerTodasVendas = temPermissao(usuarioLogado, 'vendas_ver_todas');
@@ -2559,7 +2570,7 @@ function VendasPage() {
   useEffect(() => {
     const vendaId = searchParams.get('venda_id');
     const abaParam = searchParams.get('aba');
-    const abasPermitidas = ['venda', 'notas', 'arquivos', 'problema'];
+    const abasPermitidas = ['venda', 'notas', ...(podeVerDocumentosVenda ? ['arquivos'] : []), 'problema'];
     const aba = abasPermitidas.includes(abaParam) ? abaParam : 'venda';
 
     if (!vendaId) return;
@@ -2574,7 +2585,7 @@ function VendasPage() {
         navigate('/vendas', { replace: true });
       })
       .catch(error => setErro(error.message || 'Erro ao abrir venda.'));
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, podeVerDocumentosVenda]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function abrirVisualizacao(venda) {
@@ -2705,6 +2716,7 @@ function VendasPage() {
           tiposVenda={tiposVenda}
           servicos={servicos}
           podeEditarVenda={podeEditarVenda}
+          podeVerDocumentosVenda={podeVerDocumentosVenda}
           usuarioLogado={usuarioLogado}
           initialTab={modalAbaInicial}
           modoEdicao={modalModoEdicao}

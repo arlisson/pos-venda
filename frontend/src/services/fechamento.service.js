@@ -21,3 +21,7 @@ export async function getDetalhes(filtros = {}) {
 export async function getDetalhesChips(filtros = {}) {
   return apiGet(`/fechamento/detalhes-chips${montarQuery(filtros)}`);
 }
+
+export async function getDossieVenda(id, filtros = {}) {
+  return apiGet(`/fechamento/vendas/${id}/dossie${montarQuery(filtros)}`);
+}

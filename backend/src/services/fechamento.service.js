@@ -1,6 +1,7 @@
 const Venda = require('../models/Venda');
 const FunilEtapa = require('../models/FunilEtapa');
 const RegraComissao = require('../models/RegraComissao');
+const vendaService = require('./venda.service');
 
 const STATUS_FINAL_FALLBACK = 'concluido';
 
@@ -23,6 +24,19 @@ function normalizarServicoNome(nome) {
 function categoriaServico(servicoNome) {
   if (!servicoNome) return null;
   return CATEGORIA_POR_SERVICO[normalizarServicoNome(servicoNome)] || null;
+}
+
+function categoriaPainel(servicoNome) {
+  return categoriaServico(servicoNome) || 'outros';
+}
+
+function labelCategoriaPainel(categoria) {
+  return ({
+    movel: 'Móvel',
+    fixo: 'Fixo',
+    internet: 'Internet / Velox',
+    outros: 'Outros'
+  })[categoria] || 'Outros';
 }
 
 function tipoVendaNormalizado(tipoVendaNome) {
@@ -163,6 +177,39 @@ async function obterCodigoEtapaFinal() {
   }
 }
 
+async function listarEtapasPainel() {
+  try {
+    const etapas = await FunilEtapa.query()
+      .where('ativo', true)
+      .orderBy('ordem', 'asc')
+      .orderBy('nome', 'asc');
+
+    if (etapas.length > 0) {
+      return etapas.map(etapa => ({
+        codigo: etapa.codigo,
+        nome: etapa.nome,
+        etapa_final: Boolean(etapa.etapa_final)
+      }));
+    }
+  } catch {
+    // Usa fallback abaixo quando a tabela de funil não estiver disponível.
+  }
+
+  return [
+    { codigo: 'aprovacao', nome: 'Aprovação', etapa_final: false },
+    { codigo: 'ativacao', nome: 'Ativação', etapa_final: false },
+    { codigo: 'envio', nome: 'Envio / Logística', etapa_final: false },
+    { codigo: 'entrega', nome: 'Entrega', etapa_final: false },
+    { codigo: 'confirmacao', nome: 'Confirmação', etapa_final: false },
+    { codigo: STATUS_FINAL_FALLBACK, nome: 'Concluído', etapa_final: true }
+  ];
+}
+
+function nomeEtapa(etapas, codigo) {
+  if (codigo === 'retorno') return 'Retorno';
+  return etapas.find(etapa => etapa.codigo === codigo)?.nome || codigo || 'Sem etapa';
+}
+
 function encontrarRegraComissao(regras, valorUnitario) {
   const valor = Number(valorUnitario || 0);
   if (!Number.isFinite(valor)) return null;
@@ -207,7 +254,7 @@ function quantidadeChipsPorTipo(venda, tipo) {
   return tipoVendaNormalizado(venda.tipo_venda_nome) === tipo ? quantidadeChipsVenda(venda) : 0;
 }
 
-async function carregarVendasNoPeriodo(filtros, criterioData = 'registro') {
+async function carregarVendasNoPeriodo(filtros, criterioData = 'registro', opcoes = {}) {
   const inicio = normalizarData(filtros.data_inicio);
   const fim = normalizarData(filtros.data_fim);
   const statusFinal = await obterCodigoEtapaFinal();
@@ -225,7 +272,6 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro') {
     .leftJoin('operadoras as oc', 'c.operadora_atual_id', 'oc.id')
     
     .whereNull('v.excluido_em')
-    .whereNot('v.status_funil', 'retorno')
     .select(
       'v.id',
       'v.status_funil',
@@ -255,9 +301,12 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro') {
       'c.cnpj as cliente_cnpj',
       'c.fidelidade_fim as cliente_fidelidade_fim',
       'c.operadora_atual_id as cliente_operadora_atual_id',
-      'oc.nome as cliente_operadora_atual_nome',
-
+      'oc.nome as cliente_operadora_atual_nome'
     );
+
+  if (!opcoes.incluirRetornos) {
+    query.whereNot('v.status_funil', 'retorno');
+  }
 
   if (inicio) {
     query.whereRaw(`${dataReferencia} >= ?`, [inicio]);
@@ -273,13 +322,69 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro') {
   };
 }
 
+async function carregarVendaFechamentoPorId(id) {
+  return Venda.query()
+    .alias('v')
+    .leftJoin('operadoras as o', 'v.operadora_id', 'o.id')
+    .leftJoin('tipos_venda as tv', 'v.tipo_venda_id', 'tv.id')
+    .leftJoin('servicos as s', 'v.servico_id', 's.id')
+    .leftJoin('usuarios as u', 'v.vendedora_id', 'u.id')
+    .leftJoin('clientes as c', 'v.cliente_id', 'c.id')
+    .leftJoin('operadoras as oc', 'c.operadora_atual_id', 'oc.id')
+    .where('v.id', id)
+    .whereNull('v.excluido_em')
+    .select(
+      'v.id',
+      'v.status_funil',
+      'v.valor_total',
+      'v.valores_unitarios_chips',
+      'v.numeros_ativados',
+      'v.quantidade_linhas',
+      'v.data_venda',
+      'v.data_ativacao',
+      'v.criado_em',
+      'v.created_at',
+      'v.dia_vencimento',
+      'v.ddd',
+      'v.gb',
+      'v.operadora_id',
+      'v.vendedora_id',
+      'v.tipo_venda_id',
+      'v.servico_id',
+      'v.cliente_id',
+      'o.nome as operadora_nome',
+      'tv.nome as tipo_venda_nome',
+      's.nome as servico_nome',
+      'u.nome as vendedora_nome',
+      'u.email as vendedora_email',
+      'c.nome as cliente_nome',
+      'c.razao_social as cliente_razao_social',
+      'c.cnpj as cliente_cnpj',
+      'c.fidelidade_fim as cliente_fidelidade_fim',
+      'c.operadora_atual_id as cliente_operadora_atual_id',
+      'oc.nome as cliente_operadora_atual_nome'
+    )
+    .first();
+}
+
 function classificarSecao(statusFunil, statusFinal = STATUS_FINAL_FALLBACK) {
   if (statusFunil === statusFinal) return 'ativas';
   if (statusFunil && statusFunil !== 'retorno') return 'tratando';
   return null;
 }
 
-function novaLinhaOperadora(operadoraId, operadoraNome) {
+function montarEtapasZeradas(etapasBase = [], statusFinal = STATUS_FINAL_FALLBACK) {
+  return etapasBase.map(etapa => ({
+    codigo: etapa.codigo,
+    nome: etapa.nome,
+    vendas: 0,
+    ugrs: 0,
+    retorno: Boolean(etapa.retorno),
+    etapa_final: etapa.codigo === statusFinal || Boolean(etapa.etapa_final)
+  }));
+}
+
+function novaLinhaOperadora(operadoraId, operadoraNome, etapasBase = [], statusFinal = STATUS_FINAL_FALLBACK) {
   return {
     operadora_id: operadoraId,
     operadora_nome: operadoraNome || 'Sem operadora',
@@ -291,11 +396,32 @@ function novaLinhaOperadora(operadoraId, operadoraNome) {
     internet: 0,
     novo: 0,
     portabilidade: 0,
-    receita: 0
+    receita: 0,
+    etapas_funil: montarEtapasZeradas(etapasBase, statusFinal)
   };
 }
 
-function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
+function somarEtapaLinha(linha, venda, chips, etapasBase = [], statusFinal = STATUS_FINAL_FALLBACK) {
+  const codigo = venda.status_funil || etapasBase[0]?.codigo || 'sem_etapa';
+  let etapa = linha.etapas_funil.find(item => item.codigo === codigo);
+
+  if (!etapa) {
+    etapa = {
+      codigo,
+      nome: nomeEtapa(etapasBase, codigo),
+      vendas: 0,
+      ugrs: 0,
+      retorno: codigo === 'retorno',
+      etapa_final: codigo === statusFinal
+    };
+    linha.etapas_funil.push(etapa);
+  }
+
+  etapa.vendas += 1;
+  etapa.ugrs += chips;
+}
+
+function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapasBase = []) {
   const total = new Map();
   const tratando = new Map();
   const ativas = new Map();
@@ -304,7 +430,7 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
     const chave = venda.operadora_id ?? 'sem_operadora';
     const inicializa = (mapa) => {
       if (!mapa.has(chave)) {
-        mapa.set(chave, novaLinhaOperadora(venda.operadora_id || null, venda.operadora_nome));
+        mapa.set(chave, novaLinhaOperadora(venda.operadora_id || null, venda.operadora_nome, etapasBase, statusFinal));
       }
       return mapa.get(chave);
     };
@@ -328,6 +454,7 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
       linha.novo += chipsNovos;
       linha.portabilidade += chipsPortabilidade;
       linha.receita += valor;
+      somarEtapaLinha(linha, venda, chips, etapasBase, statusFinal);
     };
 
     aplicar(inicializa(total));
@@ -343,7 +470,8 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
   const finalizar = (mapa) => Array.from(mapa.values())
     .map(linha => ({
       ...linha,
-      receita: Number(linha.receita.toFixed(2))
+      receita: Number(linha.receita.toFixed(2)),
+      etapas_funil: linha.etapas_funil.map(etapa => ({ ...etapa }))
     }))
     .sort((a, b) => b.receita - a.receita);
 
@@ -354,17 +482,126 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
   };
 }
 
+function criarLinhaPainel(categoria) {
+  return {
+    categoria,
+    label: labelCategoriaPainel(categoria),
+    total_vendas: 0,
+    tratando: 0,
+    ativas: 0,
+    retornos: 0,
+    ugrs_total: 0,
+    ugrs_ativas: 0,
+    novo: 0,
+    portabilidade: 0,
+    receita: 0,
+    comissao_estimada: 0,
+    net_add: 0,
+    etapas_funil: []
+  };
+}
+
+async function montarPainelGerencial(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
+  const regrasComissao = await carregarRegrasComissaoAtivas();
+  const etapas = await listarEtapasPainel();
+  const etapasBase = [
+    ...etapas,
+    { codigo: 'retorno', nome: 'Retorno', etapa_final: false, retorno: true }
+  ];
+  const linhasChips = montarLinhasChips(vendas, regrasComissao);
+  const comissaoPorVenda = linhasChips.reduce((acc, linha) => {
+    if (linha.comissao === null) return acc;
+    acc[linha.venda_id] = (acc[linha.venda_id] || 0) + Number(linha.comissao || 0);
+    return acc;
+  }, {});
+  const painel = new Map();
+
+  vendas.forEach(venda => {
+    const categoria = categoriaPainel(venda.servico_nome);
+    if (!painel.has(categoria)) {
+      painel.set(categoria, criarLinhaPainel(categoria));
+    }
+
+    const linha = painel.get(categoria);
+    const chips = quantidadeChipsVenda(venda);
+    const ehAtiva = venda.status_funil === statusFinal;
+    const ehRetorno = venda.status_funil === 'retorno';
+    const ehTratando = venda.status_funil && !ehAtiva && !ehRetorno;
+
+    linha.total_vendas += 1;
+    linha.ugrs_total += chips;
+    linha.novo += quantidadeChipsPorTipo(venda, 'novo');
+    linha.portabilidade += quantidadeChipsPorTipo(venda, 'portabilidade');
+    linha.receita += Number(venda.valor_total || 0);
+    linha.comissao_estimada += Number(comissaoPorVenda[venda.id] || 0);
+
+    if (ehAtiva) {
+      linha.ativas += 1;
+      linha.ugrs_ativas += chips;
+    } else if (ehRetorno) {
+      linha.retornos += 1;
+    } else if (ehTratando) {
+      linha.tratando += 1;
+    }
+
+    const status = venda.status_funil || etapas[0]?.codigo || 'aprovacao';
+    const etapaExistente = linha.etapas_funil.find(item => item.codigo === status);
+    const etapa = etapaExistente || {
+      codigo: status,
+      nome: nomeEtapa(etapasBase, status),
+      vendas: 0,
+      ugrs: 0,
+      retorno: status === 'retorno',
+      etapa_final: status === statusFinal
+    };
+
+    etapa.vendas += 1;
+    etapa.ugrs += chips;
+
+    if (!etapaExistente) {
+      linha.etapas_funil.push(etapa);
+    }
+  });
+
+  const ordem = ['movel', 'fixo', 'internet', 'outros'];
+
+  return Array.from(painel.values())
+    .map(linha => ({
+      ...linha,
+      receita: Number(linha.receita.toFixed(2)),
+      comissao_estimada: Number(linha.comissao_estimada.toFixed(2)),
+      net_add: linha.ugrs_ativas - linha.retornos,
+      etapas_funil: [
+        ...etapasBase
+          .map(etapa => linha.etapas_funil.find(item => item.codigo === etapa.codigo) || {
+            codigo: etapa.codigo,
+            nome: etapa.nome,
+            vendas: 0,
+            ugrs: 0,
+            retorno: Boolean(etapa.retorno),
+            etapa_final: etapa.codigo === statusFinal || Boolean(etapa.etapa_final)
+          }),
+        ...linha.etapas_funil.filter(item => !etapasBase.some(etapa => etapa.codigo === item.codigo))
+      ]
+    }))
+    .sort((a, b) => ordem.indexOf(a.categoria) - ordem.indexOf(b.categoria));
+}
+
 async function obterResumo(filtros = {}) {
   const { vendas: vendasRegistro, statusFinal } = await carregarVendasNoPeriodo(filtros, 'registro');
+  const { vendas: vendasPainel } = await carregarVendasNoPeriodo(filtros, 'registro', { incluirRetornos: true });
   const { vendas: vendasAtivacao } = await carregarVendasNoPeriodo(filtros, 'ativacao');
-  const resumoRegistro = agregarPorOperadora(vendasRegistro, statusFinal);
-  const resumoAtivacao = agregarPorOperadora(vendasAtivacao, statusFinal);
+  const etapasBase = await listarEtapasPainel();
+  const resumoRegistro = agregarPorOperadora(vendasRegistro, statusFinal, etapasBase);
+  const resumoAtivacao = agregarPorOperadora(vendasAtivacao, statusFinal, etapasBase);
+  const painel = await montarPainelGerencial(vendasPainel, statusFinal);
 
   return {
     periodo: {
       data_inicio: normalizarData(filtros.data_inicio),
       data_fim: normalizarData(filtros.data_fim)
     },
+    painel,
     secoes: {
       total: resumoRegistro.total,
       tratando: resumoRegistro.tratando,
@@ -454,6 +691,10 @@ async function obterDetalhesChips(filtros = {}) {
     ? vendasSecao.filter(v => Number(v.operadora_id) === Number(filtros.operadora_id))
     : vendasSecao;
 
+  return montarRespostaLinhasChips(montarLinhasChips(filtradas, regrasComissao));
+}
+
+function montarLinhasChips(vendas, regrasComissao = []) {
   const linhas = [];
 
   function montarLinhaComRegra(venda, chip) {
@@ -485,7 +726,7 @@ async function obterDetalhesChips(filtros = {}) {
     };
   }
 
-  filtradas.forEach(venda => {
+  vendas.forEach(venda => {
     const chips = parseChips(venda.valores_unitarios_chips);
     const numerosAtivados = parseNumerosLinha(venda.numeros_ativados);
 
@@ -523,13 +764,16 @@ async function obterDetalhesChips(filtros = {}) {
     });
   });
 
-  const linhasOrdenadas = linhas.sort((a, b) => {
+  return linhas.sort((a, b) => {
     const dataA = a.data_fechamento || '';
     const dataB = b.data_fechamento || '';
     const cmp = dataB.localeCompare(dataA);
     if (cmp !== 0) return cmp;
     return Number(a.venda_id) - Number(b.venda_id);
   });
+}
+
+function montarRespostaLinhasChips(linhasOrdenadas) {
   const totaisVendedora = new Map();
 
   linhasOrdenadas.forEach(linha => {
@@ -553,10 +797,10 @@ async function obterDetalhesChips(filtros = {}) {
       .map(item => ({ ...item, total_comissao: Number(item.total_comissao.toFixed(2)) }))
       .sort((a, b) => b.total_comissao - a.total_comissao),
     total_geral: {
-      chips: linhas.length,
-      valor: Number(linhas.reduce((soma, l) => soma + Number(l.valor_unitario || 0), 0).toFixed(2)),
-      comissao: Number(linhas.reduce((soma, l) => soma + Number(l.comissao || 0), 0).toFixed(2)),
-      ugrs_sem_regra: linhas.filter(linha => linha.sem_regra).length
+      chips: linhasOrdenadas.length,
+      valor: Number(linhasOrdenadas.reduce((soma, l) => soma + Number(l.valor_unitario || 0), 0).toFixed(2)),
+      comissao: Number(linhasOrdenadas.reduce((soma, l) => soma + Number(l.comissao || 0), 0).toFixed(2)),
+      ugrs_sem_regra: linhasOrdenadas.filter(linha => linha.sem_regra).length
     }
   };
 }
@@ -602,8 +846,44 @@ function montarLinhaChip(venda, chip) {
   };
 }
 
+async function obterDossieVenda(id, filtros = {}, usuarioId) {
+  const venda = await vendaService.buscarVendaPorId(id, usuarioId);
+
+  if (!venda) {
+    return null;
+  }
+
+  const vendaFechamento = await carregarVendaFechamentoPorId(id);
+  const regrasComissao = await carregarRegrasComissaoAtivas();
+  const linhas = vendaFechamento ? montarLinhasChips([vendaFechamento], regrasComissao) : [];
+  const totais = montarRespostaLinhasChips(linhas);
+  const statusFinal = await obterCodigoEtapaFinal();
+  const etapas = await listarEtapasPainel();
+  const categoria = categoriaPainel(vendaFechamento?.servico_nome || venda.servico?.nome);
+
+  return {
+    venda,
+    contexto: {
+      secao: classificarSecao(venda.status_funil, statusFinal) || 'retorno',
+      categoria,
+      categoria_label: labelCategoriaPainel(categoria),
+      periodo: {
+        data_inicio: normalizarData(filtros.data_inicio),
+        data_fim: normalizarData(filtros.data_fim)
+      },
+      status_final: statusFinal,
+      status_funil_label: nomeEtapa(etapas, venda.status_funil),
+      churn_aproximado: venda.status_funil === 'retorno'
+    },
+    linhas: totais.linhas,
+    totais_por_vendedora: totais.totais_por_vendedora,
+    total_geral: totais.total_geral
+  };
+}
+
 module.exports = {
   obterResumo,
   obterDetalhes,
-  obterDetalhesChips
+  obterDetalhesChips,
+  obterDossieVenda
 };

@@ -27,6 +27,179 @@
   height: 34px;
 }
 
+.fechamento-painel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.fechamento-painel__header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fechamento-painel__header strong {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.fechamento-painel__header span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.fechamento-painel__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px 18px 18px;
+}
+
+.fechamento-painel-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.fechamento-painel-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.fechamento-painel-card__top strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.fechamento-painel-card__top span {
+  color: var(--text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fechamento-painel-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fechamento-painel-card__metrics div {
+  min-height: 58px;
+  padding: 9px 10px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.fechamento-painel-card__metrics div:nth-child(4n) {
+  border-right: 0;
+}
+
+.fechamento-painel-card__metrics span,
+.fechamento-painel-card__footer span {
+  display: block;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.fechamento-painel-card__metrics strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fechamento-painel-card__metrics .is-highlight {
+  background: #fef9c3;
+}
+
+.fechamento-painel-card__funil {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.fechamento-painel-card__funil-title {
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.fechamento-painel-card__etapa {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.fechamento-painel-card__etapa span {
+  min-width: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fechamento-painel-card__etapa strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fechamento-painel-card__etapa.is-final {
+  border-color: #bbf7d0;
+  background: var(--success-bg);
+}
+
+.fechamento-painel-card__etapa.is-return {
+  border-color: #fecaca;
+  background: var(--danger-bg);
+}
+
+.fechamento-painel-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.fechamento-painel-card__footer strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
 .fechamento-secao {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -100,6 +273,71 @@
   overflow-x: auto;
   overflow-y: visible;
   padding-bottom: 8px;
+}
+
+.fechamento-etapas-resumo {
+  border-top: 1px solid var(--border);
+  padding: 12px 18px 14px;
+  background: #fafafa;
+}
+
+.fechamento-etapas-resumo__title {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.fechamento-etapas-resumo__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+.fechamento-etapa-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.fechamento-etapa-chip span {
+  min-width: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fechamento-etapa-chip strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fechamento-etapa-chip.is-final {
+  border-color: #bbf7d0;
+  background: var(--success-bg);
+}
+
+.fechamento-etapa-chip.is-return {
+  border-color: #fecaca;
+  background: var(--danger-bg);
 }
 
 .fechamento-table td {
@@ -215,6 +453,47 @@
   outline-offset: -2px;
 }
 
+.fechamento-venda-etapa {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 112px;
+}
+
+.fechamento-venda-etapa strong {
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+.fechamento-etapa-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 140px;
+  min-height: 22px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.fechamento-etapa-badge.is-final {
+  border-color: #bbf7d0;
+  background: var(--success-bg);
+  color: #166534;
+}
+
+.fechamento-etapa-badge.is-return {
+  border-color: #fecaca;
+  background: var(--danger-bg);
+  color: #991b1b;
+}
+
 .fechamento-modal-table .num {
   text-align: right;
   white-space: nowrap;
@@ -271,6 +550,119 @@
   padding-top: 6px;
   border-top: 1px dashed var(--border-strong);
   font-weight: 600;
+}
+
+.dossie-modal .modal-tabs {
+  border-bottom: 1px solid var(--border);
+}
+
+.dossie-body {
+  padding: 16px 18px;
+  min-height: 360px;
+}
+
+.dossie-section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dossie-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dossie-field,
+.dossie-note,
+.dossie-history,
+.dossie-doc {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.dossie-field span,
+.dossie-note strong,
+.dossie-history > strong {
+  display: block;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.dossie-field strong,
+.dossie-note span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.dossie-table-wrap {
+  max-height: 62vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.dossie-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dossie-history__item {
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+}
+
+.dossie-history__item span,
+.dossie-history__item small {
+  display: block;
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.dossie-history__item strong {
+  display: block;
+  margin: 3px 0;
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+.dossie-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dossie-doc {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.dossie-doc strong,
+.dossie-doc span {
+  display: block;
+}
+
+.dossie-doc span {
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.dossie-doc > div:last-child {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .plano-form {
@@ -330,4 +722,31 @@
 .plano-list-table input.taxa {
   width: 80px;
   text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .fechamento-painel__grid,
+  .dossie-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .fechamento-painel__grid,
+  .dossie-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fechamento-painel-card__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fechamento-painel-card__metrics div:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .dossie-doc {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

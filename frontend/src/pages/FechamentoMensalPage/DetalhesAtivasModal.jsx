@@ -35,6 +35,26 @@ function fmtRepasse(linha) {
   return linha.cliente_base_operadora ? 'Base da operadora' : 'Cliente novo/portabilidade';
 }
 
+function fmtEtapaFunil(codigo) {
+  const etapas = {
+    aprovacao: 'Aprovacao',
+    ativacao: 'Ativacao',
+    envio: 'Envio',
+    entrega: 'Entrega',
+    confirmacao: 'Confirmacao',
+    concluido: 'Concluido',
+    retorno: 'Retorno'
+  };
+
+  return etapas[codigo] || codigo || '-';
+}
+
+function classeEtapaFunil(codigo) {
+  if (codigo === 'retorno') return 'is-return';
+  if (codigo === 'concluido') return 'is-final';
+  return '';
+}
+
 function normalizarBusca(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -61,6 +81,8 @@ function valoresBuscaLinha(linha) {
     linha.cliente?.fidelidade_fim,
     linha.cliente?.operadora_atual?.nome,
     linha.operadora?.nome,
+    linha.status_funil,
+    fmtEtapaFunil(linha.status_funil),
     fmtRepasse(linha),
     linha.tipo_venda,
     linha.servico,
@@ -109,7 +131,7 @@ function calcularTotais(linhas) {
   };
 }
 
-function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose }) {
+function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onOpenDossie }) {
   const navigate = useNavigate();
   const [dados, setDados] = useState(DADOS_VAZIOS);
   const [loading, setLoading] = useState(true);
@@ -167,6 +189,10 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose }) {
 
   function abrirVenda(vendaId) {
     if (!vendaId) return;
+    if (onOpenDossie) {
+      onOpenDossie(vendaId);
+      return;
+    }
     onClose?.();
     navigate(`/vendas?venda_id=${vendaId}`);
   }
@@ -223,13 +249,14 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose }) {
                 <table className="fechamento-modal-table">
                   <thead>
                     <tr>
-                      <th>Venda</th>
+                      <th>Venda / etapa</th>
                       <th>Ativacao</th>
                       <th>Venda</th>
                       <th>Vendedora</th>
                       <th>Cliente</th>
                       <th>CNPJ</th>
                       <th>Operadora</th>
+                      <th>Etapa</th>
                       <th>Operadora atual</th>
                       <th>Repasse</th>
                       <th>Tipo</th>
@@ -254,13 +281,21 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose }) {
                         onClick={() => abrirVenda(linha.venda_id)}
                         onKeyDown={event => handleLinhaKeyDown(event, linha.venda_id)}
                       >
-                        <td>#{linha.venda_id}</td>
+                        <td>
+                          <div className="fechamento-venda-etapa">
+                            <strong>#{linha.venda_id}</strong>
+                            <span className={`fechamento-etapa-badge ${classeEtapaFunil(linha.status_funil)}`}>
+                              {fmtEtapaFunil(linha.status_funil)}
+                            </span>
+                          </div>
+                        </td>
                         <td>{fmtData(linha.data_ativacao)}</td>
                         <td>{fmtData(linha.data_venda)}</td>
                         <td>{linha.vendedora?.nome || '-'}</td>
                         <td>{linha.cliente?.nome || linha.cliente?.razao_social || '-'}</td>
                         <td>{linha.cliente?.cnpj || '-'}</td>
                         <td>{linha.operadora?.nome || '-'}</td>
+                        <td>{fmtEtapaFunil(linha.status_funil)}</td>
                         <td>{linha.cliente?.operadora_atual?.nome || '-'}</td>
                         <td>{fmtRepasse(linha)}</td>
                         <td>{linha.tipo_venda || '-'}</td>
