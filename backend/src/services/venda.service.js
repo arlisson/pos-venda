@@ -25,6 +25,10 @@ const CAMPOS = [
   'numeros_ativados',
   'gb',
   'valores_unitarios_chips',
+  'cliente_solicitou_servicos',
+  'cliente_solicitou_bloqueio_qtd',
+  'cliente_solicitou_cancelamento_qtd',
+  'cliente_solicitou_numeros',
   'ponto_referencia',
   'tipo_local_cpf',
   'razao_social',
@@ -321,6 +325,76 @@ function normalizarIdsVendedoras(vendedoras) {
   ));
 }
 
+const CLIENTE_SOLICITOU_SERVICOS = ['bloqueio', 'cancelamento', 'nenhum_servico'];
+const CLIENTE_SOLICITOU_ACOES = ['bloqueio', 'cancelamento'];
+
+function normalizarClienteSolicitouServicos(valor) {
+  if (!valor) return [];
+
+  let lista = valor;
+
+  if (typeof valor === 'string') {
+    try {
+      lista = JSON.parse(valor);
+    } catch {
+      lista = valor.split(/\r?\n|[,;]/);
+    }
+  }
+
+  if (!Array.isArray(lista)) return [];
+
+  const servicos = lista
+    .map(item => String(item || '').trim())
+    .filter(item => CLIENTE_SOLICITOU_SERVICOS.includes(item));
+
+  return servicos.includes('nenhum_servico')
+    ? ['nenhum_servico']
+    : CLIENTE_SOLICITOU_ACOES.filter(item => servicos.includes(item));
+}
+
+function normalizarNumerosLista(valor) {
+  if (!valor) return [];
+
+  let lista = valor;
+
+  if (typeof valor === 'string') {
+    try {
+      lista = JSON.parse(valor);
+    } catch {
+      lista = valor.split(/\r?\n|[,;]/);
+    }
+  }
+
+  if (!Array.isArray(lista)) return [];
+
+  return lista
+    .map(item => String(item || '').trim())
+    .filter(item => item.replace(/\D/g, '').length > 2);
+}
+
+function normalizarClienteSolicitouNumeros(valor) {
+  if (!valor) return { bloqueio: [], cancelamento: [] };
+
+  let dados = valor;
+
+  if (typeof valor === 'string') {
+    try {
+      dados = JSON.parse(valor);
+    } catch {
+      return { bloqueio: [], cancelamento: [] };
+    }
+  }
+
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) {
+    return { bloqueio: [], cancelamento: [] };
+  }
+
+  return {
+    bloqueio: normalizarNumerosLista(dados.bloqueio),
+    cancelamento: normalizarNumerosLista(dados.cancelamento)
+  };
+}
+
 function montarPayload(dados) {
   const payload = {};
 
@@ -363,6 +437,26 @@ function montarPayload(dados) {
 
   if (payload.dia_vencimento !== undefined && payload.dia_vencimento !== null) {
     payload.dia_vencimento = Number(payload.dia_vencimento);
+  }
+
+  if (dados.cliente_solicitou_servicos !== undefined) {
+    const servicos = normalizarClienteSolicitouServicos(dados.cliente_solicitou_servicos);
+    const nenhumServico = servicos.includes('nenhum_servico');
+    const numeros = normalizarClienteSolicitouNumeros(dados.cliente_solicitou_numeros);
+
+    payload.cliente_solicitou_servicos = servicos.length > 0 ? JSON.stringify(servicos) : null;
+    payload.cliente_solicitou_bloqueio_qtd = !nenhumServico && servicos.includes('bloqueio')
+      ? Number(dados.cliente_solicitou_bloqueio_qtd || 0) || null
+      : null;
+    payload.cliente_solicitou_cancelamento_qtd = !nenhumServico && servicos.includes('cancelamento')
+      ? Number(dados.cliente_solicitou_cancelamento_qtd || 0) || null
+      : null;
+    payload.cliente_solicitou_numeros = !nenhumServico && CLIENTE_SOLICITOU_ACOES.some(acao => servicos.includes(acao))
+      ? JSON.stringify({
+        bloqueio: servicos.includes('bloqueio') ? numeros.bloqueio : [],
+        cancelamento: servicos.includes('cancelamento') ? numeros.cancelamento : []
+      })
+      : null;
   }
 
   const itensChips = normalizarItensChips(dados.valores_unitarios_chips);
