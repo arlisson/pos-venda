@@ -478,6 +478,33 @@ async function buscarEscopoVendas(usuarioId) {
   };
 }
 
+async function buscarPermissoesUsuario(usuarioId) {
+  const usuario = await Usuario.query()
+    .findById(usuarioId)
+    .withGraphFetched('role');
+
+  if (!usuario || !usuario.ativo) {
+    return { admin: false, permissoes: [] };
+  }
+
+  if (usuario.role?.nome === 'admin') {
+    return { admin: true, permissoes: [] };
+  }
+
+  return {
+    admin: false,
+    permissoes: [
+      ...parsePermissoes(usuario.permissoes),
+      ...parsePermissoes(usuario.role?.permissoes)
+    ]
+  };
+}
+
+async function usuarioTemPermissao(usuarioId, permissao) {
+  const dados = await buscarPermissoesUsuario(usuarioId);
+  return dados.admin || dados.permissoes.includes(permissao);
+}
+
 function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
   const campo = (nome) => alias ? `${alias}.${nome}` : nome;
 
@@ -855,6 +882,16 @@ async function listarVendas(filtros = {}, usuarioId) {
     query.where('status_funil', filtros.status_funil);
   }
 
+  if (filtros.enviadas_pos_venda !== undefined) {
+    const somenteEnviadas = ['1', 'true', true, 1].includes(filtros.enviadas_pos_venda);
+
+    if (somenteEnviadas) {
+      query.whereNotNull('enviada_pos_venda_em');
+    } else {
+      query.whereNull('enviada_pos_venda_em');
+    }
+  }
+
   if (filtros.data_inicio) {
     query.where('data_venda', '>=', normalizarData(filtros.data_inicio));
   }
@@ -1130,6 +1167,7 @@ async function criarVenda(dados, usuarioId) {
   return Venda.transaction(async trx => {
     const venda = await Venda.query(trx).insertAndFetch({
       ...payload,
+      status_funil: null,
       criado_por_id: usuarioId,
       criado_em: agora,
       ultima_atividade_em: agora
@@ -1139,11 +1177,11 @@ async function criarVenda(dados, usuarioId) {
       vendaId: venda.id,
       usuarioId,
       acao: 'venda.criada',
-      statusNovo: venda.status_funil || 'aprovacao',
+      statusNovo: venda.status_funil || null,
       observacao: 'Venda cadastrada',
       dados: {
         venda_id: venda.id,
-        status_funil: venda.status_funil || 'aprovacao'
+        status_funil: venda.status_funil || null
       },
       createdAt: agora,
       trx
@@ -1173,9 +1211,28 @@ async function atualizarVenda(id, dados, usuarioId) {
     return null;
   }
 
+  const vendaAtual = await Venda.query()
+    .findById(id)
+    .select('id', 'enviada_pos_venda_em', 'excluido_em');
+
+  if (!vendaAtual || vendaAtual.excluido_em) {
+    return null;
+  }
+
+  if (vendaAtual.enviada_pos_venda_em && !await usuarioTemPermissao(usuarioId, 'pos_venda')) {
+    const error = new Error('Venda já enviada ao pós-venda. Apenas usuários com permissão de pós-venda podem editar.');
+    error.statusCode = 403;
+    throw error;
+  }
+
   const agora = formatarDateTimeSQL();
   const vendedorasIds = Array.isArray(dados.vendedoras) ? normalizarIdsVendedoras(dados.vendedoras) : null;
   let payload = montarPayload(dados);
+
+  if (!vendaAtual.enviada_pos_venda_em) {
+    delete payload.status_funil;
+    delete payload.status_anterior_retorno;
+  }
 
   if (vendedorasIds && vendedorasIds.length > 0) {
     payload.vendedora_id = vendedorasIds[0];
@@ -1234,6 +1291,14 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 
   if (!venda || venda.excluido_em) {
     return { status: 'not_found' };
+  }
+
+  if (!venda.enviada_pos_venda_em) {
+    return { status: 'invalid', message: 'Envie a venda ao pós-venda antes de movimentar no funil.' };
+  }
+
+  if (!await usuarioTemPermissao(usuarioId, 'pos_venda')) {
+    return { status: 'forbidden', message: 'Apenas usuários com permissão de pós-venda podem movimentar vendas no funil.' };
   }
 
   const agora = formatarDateTimeSQL();
@@ -1417,6 +1482,58 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   return { status: 'ok', venda: vendaAtualizada };
 }
 
+async function enviarVendaParaPosVenda(id, usuarioId) {
+  const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
+
+  if (!permitido) {
+    return { status: 'not_found' };
+  }
+
+  const venda = await Venda.query().findById(id);
+
+  if (!venda || venda.excluido_em) {
+    return { status: 'not_found' };
+  }
+
+  if (venda.enviada_pos_venda_em) {
+    return { status: 'already_sent', venda };
+  }
+
+  const agora = formatarDateTimeSQL();
+  const etapas = await listarEtapasFunilOrdenadas();
+  const primeiraEtapa = etapas[0]?.id || 'aprovacao';
+
+  const vendaAtualizada = await Venda.transaction(async trx => {
+    const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+      status_funil: primeiraEtapa,
+      prioridade_funil: venda.prioridade_funil || 'media',
+      enviada_pos_venda_em: agora,
+      enviada_pos_venda_por_id: usuarioId,
+      ultima_atividade_em: agora,
+      updated_at: agora
+    });
+
+    await registrarHistoricoVenda({
+      vendaId: id,
+      usuarioId,
+      acao: 'venda.enviada_pos_venda',
+      statusAnterior: venda.status_funil || null,
+      statusNovo: primeiraEtapa,
+      observacao: 'Venda enviada ao pós-venda',
+      dados: {
+        status_funil: primeiraEtapa,
+        enviada_pos_venda_em: agora
+      },
+      createdAt: agora,
+      trx
+    });
+
+    return atualizada;
+  });
+
+  return { status: 'ok', venda: vendaAtualizada };
+}
+
 async function excluirVenda(id, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
 
@@ -1539,6 +1656,7 @@ module.exports = {
   criarVenda,
   atualizarVenda,
   atualizarStatusVenda,
+  enviarVendaParaPosVenda,
   excluirVenda,
   restaurarVenda,
   excluirVendaDefinitivo,

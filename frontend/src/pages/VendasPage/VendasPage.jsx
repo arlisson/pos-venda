@@ -13,6 +13,7 @@ import {
   buscarVendaPorId,
   criarVenda,
   deletarVenda,
+  enviarVendaParaPosVenda,
   excluirArquivoVenda,
   gerarPacoteArquivosVenda,
   gerarEmailVenda,
@@ -1652,6 +1653,7 @@ function VendaModal({
   onStartEdit,
   onClose,
   onSave,
+  onSendToPosVenda,
   onCreateClient
 }) {
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) });
@@ -1663,6 +1665,9 @@ function VendaModal({
   const abaInicial = initialTab === 'arquivos' && !podeVerDocumentosVenda ? 'venda' : initialTab;
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
+  const enviadaPosVenda = Boolean(venda?.enviada_pos_venda_em || form.enviada_pos_venda_em);
+  const usuarioPosVenda = temPermissao(usuarioLogado, 'pos_venda');
+  const vendaBloqueadaParaUsuario = enviadaPosVenda && !usuarioPosVenda;
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
   const cepPreenchidoPorCnpjRef = useRef('');
   const vendaPortabilidade = temChipPortabilidade(form.valores_unitarios_chips);
@@ -1672,7 +1677,7 @@ function VendaModal({
   const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
   const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
   function atualizarCampo(campo, valor) {
-    if (somenteVisualizacao) return;
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
     const valorFormatado = formatarCampoVenda(campo, valor);
 
@@ -1709,7 +1714,7 @@ function VendaModal({
   }
 
   function atualizarClienteVenda(valor) {
-    if (somenteVisualizacao) return;
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
     const c = clientes.find(cliente => String(cliente.id) === String(valor));
 
@@ -1735,7 +1740,7 @@ function VendaModal({
   }
 
   function atualizarVendedorasVenda(ids) {
-    if (somenteVisualizacao) return;
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
     setForm(prev => ({ ...prev, vendedoras: ids }));
   }
@@ -1934,7 +1939,7 @@ function VendaModal({
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (somenteVisualizacao) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) {
       return;
     }
 
@@ -2010,15 +2015,31 @@ function VendaModal({
     }
   }
 
+  async function handleEnviarPosVenda() {
+    if (!venda?.id || salvando || enviadaPosVenda) return;
+
+    setErro('');
+    setSalvando(true);
+
+    try {
+      await onSendToPosVenda(venda);
+    } catch (error) {
+      setErro(error.message || 'Erro ao enviar venda para o pós-venda.');
+      setSalvando(false);
+    }
+  }
+
   return (
     <div className="modal-overlay">
       <form className="modal venda-modal" onSubmit={handleSubmit}>
         <div className="modal-header">
           <div className="modal-header-row">
             <div>
-              <div className="modal-client">{venda ? (somenteVisualizacao ? 'Visualizar venda' : 'Editar venda') : 'Nova venda'}</div>
+              <div className="modal-client">{venda ? ((somenteVisualizacao || vendaBloqueadaParaUsuario) ? 'Visualizar venda' : 'Editar venda') : 'Nova venda'}</div>
               <div className="modal-sub">
-                {somenteVisualizacao
+                {vendaBloqueadaParaUsuario
+                  ? 'Venda enviada ao pós-venda. Apenas a equipe de pós-venda pode editar.'
+                  : somenteVisualizacao
                   ? 'Revise os dados cadastrados antes de editar.'
                   : 'Selecione o cliente e preencha apenas os dados especificos da venda.'}
               </div>
@@ -2091,7 +2112,13 @@ function VendaModal({
             <VendaProblemaPanel venda={venda} usuario={usuarioLogado} />
           ) : (
           <>
-            <fieldset className="venda-readonly-fieldset" disabled={somenteVisualizacao}>
+            {enviadaPosVenda && (
+              <div className="venda-pos-venda-banner">
+                <I.Check size={14} />
+                <span>Enviada para o pós-venda</span>
+              </div>
+            )}
+            <fieldset className="venda-readonly-fieldset" disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}>
             <div className="vendas-form-grid">
             {CAMPOS.map(campo => {
               if (campo.section) {
@@ -2268,10 +2295,15 @@ function VendaModal({
         <div className="modal-footer">
           {abaAtiva === 'notas' || abaAtiva === 'arquivos' || abaAtiva === 'problema' ? (
             <button type="button" className="btn" onClick={onClose}>Fechar</button>
-          ) : somenteVisualizacao ? (
+          ) : (somenteVisualizacao || vendaBloqueadaParaUsuario) ? (
             <>
               <button type="button" className="btn" onClick={onClose}>Fechar</button>
-              {podeEditarVenda && (
+              {podeEditarVenda && !enviadaPosVenda && (
+                <button type="button" className="btn venda-pos-venda-send-btn" disabled={salvando} onClick={handleEnviarPosVenda}>
+                  <I.ArrowRight size={14} /> {salvando ? 'Enviando...' : 'Enviar para o pós-venda'}
+                </button>
+              )}
+              {podeEditarVenda && !vendaBloqueadaParaUsuario && (
                 <button type="button" className="btn btn-primary" onClick={handleStartEdit}>
                   <I.Edit size={14} /> Editar venda
                 </button>
@@ -2406,7 +2438,7 @@ function VendasPage() {
   const [copiandoEmail, setCopiandoEmail] = useState(false);
   const usuarioLogado = getUsuarioLocal();
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
-  const podeEditarVenda = temPermissao(usuarioLogado, 'vendas_editar');
+  const podeEditarVenda = temPermissao(usuarioLogado, ['vendas_editar', 'pos_venda']);
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
   const podeVerDocumentosVenda = temPermissao(usuarioLogado, 'vendas_documentos');
   const podeMarcarProblema = temPermissao(usuarioLogado, 'vendas_marcar_problema');
@@ -2574,6 +2606,18 @@ function VendasPage() {
     setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
   }
 
+  async function enviarPosVenda(venda) {
+    setErro('');
+    await enviarVendaParaPosVenda(venda.id);
+    setModalAberto(false);
+    setModalVenda(null);
+    setModalAbaInicial('venda');
+    setModalModoEdicao(true);
+    setVendaInicial(null);
+    await carregarDados();
+    setSucesso('Venda enviada para o pós-venda.');
+  }
+
   async function confirmarRemocaoVenda() {
     if (!vendaParaLixeira) return;
 
@@ -2688,6 +2732,7 @@ function VendasPage() {
             setVendaInicial(null);
           }}
           onSave={salvarVenda}
+          onSendToPosVenda={enviarPosVenda}
           onCreateClient={() => navigate('/clientes/novo')}
         />
       )}
@@ -2919,7 +2964,15 @@ function VendasPage() {
                     >
                       <td>
                         <div className="vendas-table-name">
-                          <strong>{venda.cliente?.nome || venda.nome}</strong>
+                          <div className="vendas-table-name__title">
+                            <strong>{venda.cliente?.nome || venda.nome}</strong>
+                            {!venda.enviada_pos_venda_em && (
+                              <span className="vendas-pos-venda-pending">
+                                <I.AlertTriangle size={11} />
+                                Falta enviar ao pós-venda
+                              </span>
+                            )}
+                          </div>
                           <span>{venda.cliente?.razao_social || venda.razao_social || venda.telefone || venda.email || '-'}</span>
                         </div>
                       </td>

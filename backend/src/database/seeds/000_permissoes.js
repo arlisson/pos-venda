@@ -35,6 +35,11 @@ const PERMISSOES = [
     descricao: 'Permite visualizar a aba de documentos da venda.'
   },
   {
+    chave: 'pos_venda',
+    nome: 'Pós-venda',
+    descricao: 'Permite editar vendas já enviadas ao pós-venda e operar o funil.'
+  },
+  {
     chave: 'funil_vendas',
     nome: 'Funil de vendas',
     descricao: 'Permite acessar a página do funil de vendas.'

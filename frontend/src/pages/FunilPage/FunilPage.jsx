@@ -863,7 +863,7 @@ function FunilPage() {
 
     try {
       const [vendas, etapas] = await Promise.all([
-        listarVendas(),
+        listarVendas({ enviadas_pos_venda: '1' }),
         podeGerenciarEtapas ? listarEtapasFunilAdmin() : listarEtapasFunil()
       ]);
       const labels = sincronizarEtapas(etapas, { atualizarAdmin: podeGerenciarEtapas });

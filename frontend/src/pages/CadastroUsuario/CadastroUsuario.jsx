@@ -5,6 +5,20 @@ import { criarUsuario, listarPermissoes } from '../../services/usuario.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import * as I from '../../components/Icons';
 
+const PERMISSAO_POS_VENDA = {
+  chave: 'pos_venda',
+  nome: 'Pós-venda',
+  descricao: 'Permite editar vendas enviadas ao pós-venda e movimentar vendas no funil.'
+};
+
+function garantirPermissaoPosVenda(permissoes = []) {
+  if (permissoes.some(permissao => permissao.chave === PERMISSAO_POS_VENDA.chave)) {
+    return permissoes;
+  }
+
+  return [...permissoes, PERMISSAO_POS_VENDA];
+}
+
 function CadastroUsuario() {
   const navigate = useNavigate();
 
@@ -44,7 +58,7 @@ function CadastroUsuario() {
 
       try {
         const permissoesData = await listarPermissoes();
-        setPermissoes(permissoesData);
+        setPermissoes(garantirPermissaoPosVenda(permissoesData));
       } catch (error) {
         setErro(error.message || 'Erro ao carregar permissões.');
       }
