@@ -809,6 +809,14 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
     });
   }
 
+  function recusarSugestaoCnpj(campoApi) {
+    setCnpjSugestoes(prev => {
+      const proximo = { ...prev };
+      delete proximo[campoApi];
+      return proximo;
+    });
+  }
+
   async function buscarDadosCnpj(manual = false) {
     const cnpj = sanitizarCnpj(form.cnpj);
 
@@ -967,6 +975,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
                 sugestoes={cnpjSugestoes}
                 labels={CNPJ_LABELS_CLIENTE}
                 onAceitar={aceitarSugestaoCnpj}
+                onRecusar={recusarSugestaoCnpj}
               />
             </div>
 

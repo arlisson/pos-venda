@@ -213,6 +213,14 @@ function ClienteFormPage() {
     });
   }
 
+  function recusarSugestaoCnpj(campoApi) {
+    setCnpjSugestoes(prev => {
+      const proximo = { ...prev };
+      delete proximo[campoApi];
+      return proximo;
+    });
+  }
+
   async function buscarDadosCnpj(manual = false) {
     const cnpj = sanitizarCnpj(form.cnpj);
 
@@ -378,6 +386,7 @@ function ClienteFormPage() {
                         sugestoes={cnpjSugestoes}
                         labels={CNPJ_LABELS_CLIENTE}
                         onAceitar={aceitarSugestaoCnpj}
+                        onRecusar={recusarSugestaoCnpj}
                       />
                     </div>
 
