@@ -118,6 +118,8 @@ const VENDA_VAZIA = {
   rg_responsavel_recebimento_2: '',
   responsavel_recebimento_3: '',
   rg_responsavel_recebimento_3: '',
+  promessa_cliente: '',
+  promessa_cumprida: '',
   observacoes: '',
   // Referências
   operadora_id: '',
@@ -183,6 +185,12 @@ const FECHOU_VENDA_OPCOES = [
   { value: 'ADM', label: 'ADM' }
 ];
 
+const PROMESSA_CUMPRIDA_OPCOES = [
+  { value: 'pendente', label: 'Pendente' },
+  { value: 'sim', label: 'Sim' },
+  { value: 'nao', label: 'Não' }
+];
+
 const CAMPOS = [
   { section: 'Cliente' },
   { name: 'cliente_id', label: 'Cliente', type: 'client', required: true, span: true },
@@ -244,6 +252,8 @@ const CAMPOS = [
   { name: 'senha', label: 'Senha (portal do cliente)' },
   { name: 'numero_cliente_contrato', label: 'Número do cliente no contrato', placeholder: 'Caso não tenha Login e Senha', span: true },
   { name: 'responsaveis_recebimento', type: 'responsaveis', span: true },
+  { name: 'promessa_cliente', label: 'O que foi prometido ao cliente', type: 'longText', span: true, maxRows: 5 },
+  { name: 'promessa_cumprida', label: 'Cumprimos o prometido?', type: 'promiseStatus', span: true },
   { name: 'observacoes', label: 'Observações', type: 'longText', span: true, maxRows: 6 },
 ];
 
@@ -2007,6 +2017,1075 @@ function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
   );
 }
 
+<<<<<<< HEAD
+=======
+function VendaModal({
+  venda,
+  initialValues,
+  clientes,
+  vendas = [],
+  vendedoras,
+  operadoras,
+  tiposVenda,
+  servicos,
+  vendasPorCliente,
+  podeEditarVenda,
+  podeVerDocumentosVenda,
+  usuarioLogado,
+  initialTab = 'venda',
+  initialProblemaId = null,
+  modoEdicao = true,
+  onStartEdit,
+  onClose,
+  onSave,
+  onSendToPosVenda,
+  onCreateClient
+}) {
+  const [form, setForm] = useState(venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) });
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
+  const [cepStatus, setCepStatus] = useState('');
+  const [consultandoCnpj, setConsultandoCnpj] = useState(false);
+  const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const [cnpjDados, setCnpjDados] = useState(null);
+  const [cnpjSugestoes, setCnpjSugestoes] = useState({});
+  const [clienteSolicitouQuantidadeAberta, setClienteSolicitouQuantidadeAberta] = useState(false);
+  const [clienteSolicitouNumerosAberto, setClienteSolicitouNumerosAberto] = useState(false);
+  const [clienteSolicitouServicosDraft, setClienteSolicitouServicosDraft] = useState([]);
+  const [clienteSolicitouQuantidadesDraft, setClienteSolicitouQuantidadesDraft] = useState({ bloqueio: '', cancelamento: '' });
+  const [clienteSolicitouNumerosDraft, setClienteSolicitouNumerosDraft] = useState({ bloqueio: [], cancelamento: [] });
+  const [enderecoRealModalAberto, setEnderecoRealModalAberto] = useState(false);
+  const abaInicial = initialTab === 'arquivos' && !podeVerDocumentosVenda ? 'venda' : initialTab;
+  const [abaAtiva, setAbaAtiva] = useState(abaInicial);
+  const somenteVisualizacao = Boolean(venda) && !modoEdicao;
+  const enviadaPosVenda = Boolean(venda?.enviada_pos_venda_em || form.enviada_pos_venda_em);
+  const usuarioPosVenda = temPermissao(usuarioLogado, 'pos_venda');
+  const usuarioAdmin = usuarioLogado?.role?.nome === 'admin';
+  const vendaBloqueadaParaUsuario = enviadaPosVenda && !usuarioPosVenda;
+  const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
+  const cepPreenchidoPorCnpjRef = useRef('');
+  const vendaPortabilidade = temChipPortabilidade(form.valores_unitarios_chips);
+  const quantidadePortabilidade = somarQuantidadePortabilidadeItensChips(form.valores_unitarios_chips || []);
+  const vendaAtivada = Boolean(normalizarDataVendaInput(form.data_ativacao));
+  const chaveClienteSelecionado = form.cliente_id ? `cliente:${form.cliente_id}` : '';
+  const totalVendasClienteSelecionado = chaveClienteSelecionado ? (vendasPorCliente.get(chaveClienteSelecionado) || 0) : 0;
+  const vendasRegistradasClienteSelecionado = venda?.id
+    ? Math.max(totalVendasClienteSelecionado - 1, 0)
+    : totalVendasClienteSelecionado;
+  const quantidadeLinhasFechadas = Number(form.quantidade_linhas || 0);
+  const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
+  const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
+  const clienteSolicitouServicos = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
+  const clienteIdProtocolo = String(form.cliente_id || '');
+  const vendaIdAtual = venda?.id ? String(venda.id) : '';
+  const protocoloOriginal = String(venda?.protocolo || '').trim();
+  const protocoloAtual = String(form.protocolo || '').trim();
+  const vendaComProtocoloDoCliente = clienteIdProtocolo
+    ? vendas.find(item => (
+        String(item.id) !== vendaIdAtual
+        && String(item.cliente_id || item.cliente?.id || '') === clienteIdProtocolo
+        && String(item.protocolo || '').trim()
+      ))
+    : null;
+  const clienteJaTemOutroProtocolo = Boolean(vendaComProtocoloDoCliente);
+  const protocoloProtegido = Boolean(protocoloOriginal) && !usuarioAdmin;
+  const protocoloBloqueado = somenteVisualizacao
+    || vendaBloqueadaParaUsuario
+    || clienteJaTemOutroProtocolo
+    || !usuarioAdmin;
+  const podeGerarProtocolo = !somenteVisualizacao
+    && !vendaBloqueadaParaUsuario
+    && !clienteJaTemOutroProtocolo
+    && (!protocoloAtual || usuarioAdmin);
+  const dicaProtocolo = clienteJaTemOutroProtocolo
+    ? `Este cliente já possui protocolo: ${vendaComProtocoloDoCliente.protocolo}.`
+    : protocoloProtegido
+      ? 'Protocolo já gerado. Apenas ADM pode alterar ou apagar.'
+      : !usuarioAdmin && protocoloAtual
+        ? 'Protocolo gerado. Apenas ADM pode alterar ou apagar.'
+        : '';
+
+  function atualizarCampo(campo, valor) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    const valorFormatado = formatarCampoVenda(campo, valor);
+
+    setForm(prev => {
+      const proximo = {
+        ...prev,
+        [campo]: valorFormatado
+      };
+
+      if (campo === 'quantidade_linhas') {
+        proximo.valores_unitarios_chips = limitarItensChipsPorQuantidadeLinhas(
+          prev.valores_unitarios_chips,
+          valorFormatado
+        );
+      }
+
+      if (campo === 'valores_unitarios_chips') {
+        proximo.valores_unitarios_chips = limitarItensChipsPorQuantidadeLinhas(
+          valorFormatado,
+          prev.quantidade_linhas
+        );
+      }
+
+      return proximo;
+    });
+  }
+
+  function formatarMensagemCnpj(dados) {
+    return formatarMensagemResumoCnpj(dados);
+  }
+
+  function montarSugestoesCnpj(dados) {
+    return Object.entries(CNPJ_SUGESTOES_VENDA).reduce((acc, [campoApi]) => {
+      const valor = dados[campoApi];
+      if (String(valor || '').trim()) acc[campoApi] = valor;
+      return acc;
+    }, {});
+  }
+
+  function atualizarClienteVenda(valor) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    const c = clientes.find(cliente => String(cliente.id) === String(valor));
+
+    setForm(prev => {
+      const telefoneWhatsapp = c ? formatarTelefoneComDdd([c.whatsapp_ddd, c.whatsapp_numero].filter(Boolean).join(''), true) : '';
+      const telefoneFixo = c ? formatarTelefoneComDdd([c.fixo_ddd, c.fixo_numero].filter(Boolean).join(''), false) : '';
+      const nomeRl = c?.responsavel_tipo === 'rl' ? (c.responsavel_nome || '') : '';
+      const nomeAdm = c?.responsavel_tipo === 'adm' ? (c.responsavel_nome || '') : '';
+      const fechouVenda = c?.responsavel_tipo === 'rl' ? 'RL' : c?.responsavel_tipo === 'adm' ? 'ADM' : '';
+
+      return {
+        ...prev,
+        cliente_id: valor,
+        nome: prev.nome || c?.nome || '',
+        razao_social: prev.razao_social || c?.razao_social || '',
+        cnpj: prev.cnpj || formatarCnpj(c?.cnpj || ''),
+        email: prev.email || c?.email || '',
+        telefone: prev.telefone || telefoneWhatsapp || '',
+        fixo_ddd: prev.fixo_ddd || telefoneFixo || '',
+        nome_representante_legal: prev.nome_representante_legal || nomeRl,
+        nome_administrador: prev.nome_administrador || nomeAdm,
+        nome_fechou_venda: prev.nome_fechou_venda || fechouVenda,
+      };
+    });
+  }
+
+  function atualizarVendedorasVenda(ids) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    setForm(prev => ({ ...prev, vendedoras: ids }));
+  }
+
+  function alternarEnderecoReal(marcado) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    setForm(prev => ({
+      ...prev,
+      endereco_real_divergente: marcado
+    }));
+
+    if (marcado) {
+      setEnderecoRealModalAberto(true);
+    }
+  }
+
+  function abrirClienteSolicitouQuantidades(servicos = clienteSolicitouServicos) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    const selecionados = parseClienteSolicitouServicos(servicos).filter(servico => CLIENTE_SOLICITOU_ACOES.includes(servico));
+    if (selecionados.length === 0) return;
+
+    setClienteSolicitouServicosDraft(selecionados);
+    setClienteSolicitouQuantidadesDraft({
+      bloqueio: selecionados.includes('bloqueio') ? String(form.cliente_solicitou_bloqueio_qtd || '') : '',
+      cancelamento: selecionados.includes('cancelamento') ? String(form.cliente_solicitou_cancelamento_qtd || '') : ''
+    });
+    setClienteSolicitouQuantidadeAberta(true);
+  }
+
+  function alternarClienteSolicitouServico(servico) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    setForm(prev => {
+      const atuais = parseClienteSolicitouServicos(prev.cliente_solicitou_servicos);
+
+      if (servico === 'nenhum_servico') {
+        const selecionado = atuais.includes('nenhum_servico');
+        return {
+          ...prev,
+          cliente_solicitou_servicos: selecionado ? [] : ['nenhum_servico'],
+          cliente_solicitou_bloqueio_qtd: '',
+          cliente_solicitou_cancelamento_qtd: '',
+          cliente_solicitou_numeros: { bloqueio: [], cancelamento: [] }
+        };
+      }
+
+      const semNenhum = atuais.filter(item => item !== 'nenhum_servico');
+      const proximos = semNenhum.includes(servico)
+        ? semNenhum.filter(item => item !== servico)
+        : [...semNenhum, servico];
+      const numerosAtuais = parseClienteSolicitouNumeros(prev.cliente_solicitou_numeros);
+
+      return {
+        ...prev,
+        cliente_solicitou_servicos: proximos,
+        cliente_solicitou_bloqueio_qtd: proximos.includes('bloqueio') ? prev.cliente_solicitou_bloqueio_qtd : '',
+        cliente_solicitou_cancelamento_qtd: proximos.includes('cancelamento') ? prev.cliente_solicitou_cancelamento_qtd : '',
+        cliente_solicitou_numeros: {
+          bloqueio: proximos.includes('bloqueio') ? numerosAtuais.bloqueio : [],
+          cancelamento: proximos.includes('cancelamento') ? numerosAtuais.cancelamento : []
+        }
+      };
+    });
+  }
+
+  function confirmarClienteSolicitouQuantidades() {
+    const selecionados = parseClienteSolicitouServicos(clienteSolicitouServicosDraft);
+    const bloqueioQtd = selecionados.includes('bloqueio') ? Number(clienteSolicitouQuantidadesDraft.bloqueio || 0) : 0;
+    const cancelamentoQtd = selecionados.includes('cancelamento') ? Number(clienteSolicitouQuantidadesDraft.cancelamento || 0) : 0;
+
+    if (selecionados.includes('bloqueio') && bloqueioQtd <= 0) {
+      setErro('Informe a quantidade de chips para bloqueio.');
+      return;
+    }
+
+    if (selecionados.includes('cancelamento') && cancelamentoQtd <= 0) {
+      setErro('Informe a quantidade de chips para cancelamento.');
+      return;
+    }
+
+    const numerosAtuais = parseClienteSolicitouNumeros(form.cliente_solicitou_numeros);
+    const numerosAjustados = {
+      bloqueio: selecionados.includes('bloqueio')
+        ? ajustarQuantidadeNumerosSolicitados(numerosAtuais.bloqueio, bloqueioQtd)
+        : [],
+      cancelamento: selecionados.includes('cancelamento')
+        ? ajustarQuantidadeNumerosSolicitados(numerosAtuais.cancelamento, cancelamentoQtd)
+        : []
+    };
+
+    setForm(prev => ({
+      ...prev,
+      cliente_solicitou_bloqueio_qtd: bloqueioQtd ? String(bloqueioQtd) : '',
+      cliente_solicitou_cancelamento_qtd: cancelamentoQtd ? String(cancelamentoQtd) : '',
+      cliente_solicitou_numeros: numerosAjustados
+    }));
+    setClienteSolicitouNumerosDraft(numerosAjustados);
+    setClienteSolicitouQuantidadeAberta(false);
+    setClienteSolicitouNumerosAberto(true);
+  }
+
+  function confirmarClienteSolicitouNumeros() {
+    const numeros = montarClienteSolicitouNumeros(clienteSolicitouNumerosDraft);
+    const bloqueioQtd = Number(form.cliente_solicitou_bloqueio_qtd || clienteSolicitouQuantidadesDraft.bloqueio || 0);
+    const cancelamentoQtd = Number(form.cliente_solicitou_cancelamento_qtd || clienteSolicitouQuantidadesDraft.cancelamento || 0);
+
+    if (clienteSolicitouServicosDraft.includes('bloqueio') && numeros.bloqueio.length !== bloqueioQtd) return;
+    if (clienteSolicitouServicosDraft.includes('cancelamento') && numeros.cancelamento.length !== cancelamentoQtd) return;
+
+    setForm(prev => ({ ...prev, cliente_solicitou_numeros: numeros }));
+    setClienteSolicitouNumerosAberto(false);
+  }
+
+  function aceitarSugestaoCnpj(campoApi) {
+    const valor = cnpjSugestoes[campoApi];
+    const config = CNPJ_SUGESTOES_VENDA[campoApi];
+    if (!config || !String(valor || '').trim()) return;
+
+    setForm(prev => {
+      let valorFormatado = valor;
+      if (campoApi === 'cep') {
+        valorFormatado = formatarCep(valor);
+        cepPreenchidoPorCnpjRef.current = apenasDigitos(valorFormatado, 8);
+      } else if (campoApi === 'telefone') {
+        valorFormatado = formatarTelefoneComDdd(valor, true);
+      } else if (campoApi === 'uf') {
+        valorFormatado = formatarCampoVenda('uf', valor);
+      }
+
+      return {
+        ...prev,
+        [config.campo]: valorFormatado
+      };
+    });
+
+    setCnpjSugestoes(prev => {
+      const proximo = { ...prev };
+      delete proximo[campoApi];
+      return proximo;
+    });
+  }
+
+  function recusarSugestaoCnpj(campoApi) {
+    setCnpjSugestoes(prev => {
+      const proximo = { ...prev };
+      delete proximo[campoApi];
+      return proximo;
+    });
+  }
+
+  async function buscarDadosCnpj(manual = false) {
+    if (somenteVisualizacao) return;
+
+    const cnpj = sanitizarCnpj(form.cnpj);
+
+    if (cnpj.length !== 14) {
+      if (manual) {
+        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 dígitos.' });
+      }
+      return;
+    }
+
+    if (!validarDigitosCnpj(cnpj)) {
+      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
+      setCnpjDados(null);
+      setCnpjSugestoes({});
+      return;
+    }
+
+    if (!manual && ultimoCnpjConsultadoRef.current === cnpj) {
+      return;
+    }
+
+    ultimoCnpjConsultadoRef.current = cnpj;
+    setConsultandoCnpj(true);
+    setCnpjStatus({ tipo: 'info', mensagem: 'Buscando CNPJ...' });
+
+    try {
+      const dados = await consultarCnpj(cnpj);
+      setCnpjDados(dados);
+      setCnpjSugestoes(montarSugestoesCnpj(dados));
+      setCnpjStatus({
+        tipo: 'sucesso',
+        mensagem: formatarMensagemCnpj(dados)
+      });
+    } catch (error) {
+      setCnpjDados(null);
+      setCnpjSugestoes({});
+      setCnpjStatus({ tipo: 'erro', mensagem: error.message || 'Não foi possível consultar o CNPJ.' });
+    } finally {
+      setConsultandoCnpj(false);
+    }
+  }
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (abaAtiva === 'arquivos' && !podeVerDocumentosVenda) {
+      setAbaAtiva('venda');
+    }
+  }, [abaAtiva, podeVerDocumentosVenda]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (somenteVisualizacao) return;
+
+    const cnpj = sanitizarCnpj(form.cnpj);
+
+    if (cnpj.length === 0) {
+      setCnpjStatus({ tipo: '', mensagem: '' });
+      setCnpjDados(null);
+      setCnpjSugestoes({});
+      return;
+    }
+
+    if (cnpj.length === 14) {
+      if (!validarDigitosCnpj(cnpj)) {
+        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
+        setCnpjDados(null);
+        setCnpjSugestoes({});
+        return;
+      }
+
+      buscarDadosCnpj(false);
+    }
+  }, [form.cnpj, somenteVisualizacao]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (somenteVisualizacao) return;
+
+    const cep = apenasDigitos(form.cep, 8);
+
+    if (cep.length !== 8) {
+      setCepStatus('');
+      return;
+    }
+
+    if (
+      cepPreenchidoPorCnpjRef.current === cep
+      && (form.endereco || form.bairro || form.municipio || form.uf)
+    ) {
+      setCepStatus('Endereço preenchido pelo CNPJ.');
+      return;
+    }
+
+    let cancelado = false;
+    setCepStatus('Buscando CEP...');
+
+    fetch(`https://viacep.com.br/ws/${cep}/json/`)
+      .then(response => {
+        if (!response.ok) throw new Error('Erro ao buscar CEP.');
+        return response.json();
+      })
+      .then(data => {
+        if (cancelado) return;
+
+        if (data.erro) {
+          setCepStatus('CEP não encontrado.');
+          return;
+        }
+
+        setForm(prev => ({
+          ...prev,
+          endereco: data.logradouro || prev.endereco,
+          bairro: data.bairro || prev.bairro,
+          municipio: data.localidade || prev.municipio,
+          uf: data.uf || prev.uf,
+          complemento: prev.complemento || data.complemento || ''
+        }));
+        setCepStatus('Endereço preenchido pelo CEP.');
+      })
+      .catch(() => {
+        if (!cancelado) {
+          setCepStatus('Não foi possível buscar o CEP.');
+        }
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [form.cep, somenteVisualizacao]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (somenteVisualizacao) return;
+    if (!vendaPortabilidade) return;
+
+    setForm(prev => ({
+      ...prev,
+      numeros_portados: ajustarQuantidadeNumerosPortados(prev.numeros_portados, quantidadePortabilidade, prev.ddd)
+    }));
+  }, [vendaPortabilidade, quantidadePortabilidade, form.ddd]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (somenteVisualizacao) return;
+
+    if (!vendaAtivada) {
+      if (Array.isArray(form.numeros_ativados) && form.numeros_ativados.length === 0) return;
+      setForm(prev => ({ ...prev, numeros_ativados: [] }));
+      return;
+    }
+
+    setForm(prev => ({
+      ...prev,
+      numeros_ativados: ajustarQuantidadeNumerosPortados(prev.numeros_ativados, quantidadeNumerosAtivados, prev.ddd)
+    }));
+  }, [somenteVisualizacao, vendaAtivada, quantidadeNumerosAtivados, form.ddd]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  function handleStartEdit(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setErro('');
+    setSalvando(false);
+    onStartEdit();
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) {
+      return;
+    }
+
+    setErro('');
+    setSalvando(true);
+
+    try {
+      if (!form.cliente_id) {
+        setErro('Selecione um cliente para cadastrar a venda.');
+        setSalvando(false);
+        return;
+      }
+
+      const vendedorasIds = normalizarIdsVendedorasInput(form.vendedoras);
+
+      if (vendedorasIds.length === 0) {
+        setErro('Selecione pelo menos uma vendedora para cadastrar a venda.');
+        setSalvando(false);
+        return;
+      }
+
+      const erroCpf = obterErroCpfVenda(form);
+
+      if (erroCpf) {
+        setErro(erroCpf);
+        setSalvando(false);
+        return;
+      }
+
+      if (protocoloProtegido && protocoloAtual !== protocoloOriginal) {
+        setErro('Apenas ADM pode alterar ou apagar o protocolo do cliente.');
+        setSalvando(false);
+        return;
+      }
+
+      if (clienteJaTemOutroProtocolo && protocoloAtual) {
+        setErro('Este cliente já possui um protocolo cadastrado em outra venda.');
+        setSalvando(false);
+        return;
+      }
+
+      const numerosPortados = montarNumerosPortados(form.numeros_portados);
+      const numerosAtivados = montarNumerosAtivados(form.numeros_ativados);
+      const quantidadeChips = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
+
+      if (quantidadeLinhasFechadas > 0 && quantidadeChips > quantidadeLinhasFechadas) {
+        setErro('A quantidade de chips não pode ser maior que a quantidade de linhas fechadas.');
+        setSalvando(false);
+        return;
+      }
+
+      if (vendaPortabilidade && !numerosPortados) {
+        setErro('Informe pelo menos um número a ser portado.');
+        setSalvando(false);
+        return;
+      }
+
+      const servicosSolicitados = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
+      const solicitouNenhumServico = servicosSolicitados.includes('nenhum_servico');
+      const solicitouBloqueio = servicosSolicitados.includes('bloqueio');
+      const solicitouCancelamento = servicosSolicitados.includes('cancelamento');
+      const bloqueioQtd = solicitouBloqueio ? Number(form.cliente_solicitou_bloqueio_qtd || 0) : 0;
+      const cancelamentoQtd = solicitouCancelamento ? Number(form.cliente_solicitou_cancelamento_qtd || 0) : 0;
+      const numerosSolicitados = montarClienteSolicitouNumeros(form.cliente_solicitou_numeros);
+
+      if (solicitouBloqueio && bloqueioQtd <= 0) {
+        setErro('Informe a quantidade de chips para bloqueio.');
+        setSalvando(false);
+        return;
+      }
+
+      if (solicitouCancelamento && cancelamentoQtd <= 0) {
+        setErro('Informe a quantidade de chips para cancelamento.');
+        setSalvando(false);
+        return;
+      }
+
+      if (solicitouBloqueio && numerosSolicitados.bloqueio.length !== bloqueioQtd) {
+        setErro('Preencha exatamente a quantidade de números de bloqueio informada.');
+        setSalvando(false);
+        return;
+      }
+
+      if (solicitouCancelamento && numerosSolicitados.cancelamento.length !== cancelamentoQtd) {
+        setErro('Preencha exatamente a quantidade de números de cancelamento informada.');
+        setSalvando(false);
+        return;
+      }
+
+      const chipsProcessados = (form.valores_unitarios_chips || [])
+        .map(item => ({
+          quantidade: Number(item.quantidade || 0),
+          gb: String(item.gb || '').trim(),
+          tipo_linha: normalizarTipoLinhaChip(item.tipo_linha),
+          valor_unitario: parseValorInput(item.valor_unitario),
+          ...(item.vendedora_id ? { vendedora_id: Number(item.vendedora_id) } : {})
+        }))
+        .filter(item => item.quantidade > 0 && item.valor_unitario > 0);
+
+      const payload = {
+        ...form,
+        data_venda: normalizarDataVendaInput(form.data_venda) || null,
+        data_ativacao: normalizarDataVendaInput(form.data_ativacao) || null,
+        numeros_portados: vendaPortabilidade ? numerosPortados : null,
+        numeros_ativados: form.data_ativacao ? numerosAtivados : null,
+        valores_unitarios_chips: chipsProcessados,
+        cliente_solicitou_servicos: solicitouNenhumServico ? ['nenhum_servico'] : servicosSolicitados,
+        cliente_solicitou_bloqueio_qtd: solicitouNenhumServico || !solicitouBloqueio ? null : bloqueioQtd,
+        cliente_solicitou_cancelamento_qtd: solicitouNenhumServico || !solicitouCancelamento ? null : cancelamentoQtd,
+        cliente_solicitou_numeros: solicitouNenhumServico ? { bloqueio: [], cancelamento: [] } : {
+          bloqueio: solicitouBloqueio ? numerosSolicitados.bloqueio : [],
+          cancelamento: solicitouCancelamento ? numerosSolicitados.cancelamento : []
+        },
+        vendedoras: vendedorasIds
+      };
+
+      payload.valor_total = calcularTotalItensChips(form.valores_unitarios_chips);
+      payload.gb = resumirGigasItensChips(payload.valores_unitarios_chips);
+
+      await onSave(payload);
+    } catch (error) {
+      setErro(error.message || 'Erro ao salvar venda.');
+      setSalvando(false);
+    }
+  }
+
+  async function handleEnviarPosVenda() {
+    if (!venda?.id || salvando || enviadaPosVenda) return;
+
+    setErro('');
+    setSalvando(true);
+
+    try {
+      await onSendToPosVenda(venda);
+    } catch (error) {
+      setErro(error.message || 'Erro ao enviar venda para o pós-venda.');
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay">
+      <form className="modal venda-modal" onSubmit={handleSubmit}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">{venda ? ((somenteVisualizacao || vendaBloqueadaParaUsuario) ? 'Visualizar venda' : 'Editar venda') : 'Nova venda'}</div>
+              <div className="modal-sub">
+                {vendaBloqueadaParaUsuario
+                  ? 'Venda enviada ao pós-venda. Apenas a equipe de pós-venda pode editar.'
+                  : somenteVisualizacao
+                  ? 'Revise os dados cadastrados antes de editar.'
+                  : 'Selecione o cliente e preencha apenas os dados específicos da venda.'}
+              </div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-tabs">
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'venda' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('venda')}
+          >
+            <I.Chart size={14} /> Venda
+          </button>
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('notas')}
+          >
+            <I.Note size={14} /> Notas
+          </button>
+          {podeVerDocumentosVenda && (
+            <button
+              type="button"
+              className={`modal-tab ${abaAtiva === 'arquivos' ? 'active' : ''}`}
+              onClick={() => setAbaAtiva('arquivos')}
+            >
+              <I.Note size={14} /> Documentos
+            </button>
+          )}
+          <button
+            type="button"
+            className={`modal-tab ${abaAtiva === 'problema' ? 'active' : ''}`}
+            onClick={() => setAbaAtiva('problema')}
+          >
+            <I.AlertTriangle size={14} /> Problema
+          </button>
+        </div>
+
+        {erro && abaAtiva === 'venda' && (
+          <div className="venda-modal-alert" role="alert" aria-live="assertive">
+            <div className="venda-modal-alert__icon">
+              <I.AlertTriangle size={16} />
+            </div>
+            <div className="venda-modal-alert__content">
+              <strong>Não foi possível salvar a venda</strong>
+              <span>{erro}</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-icon btn-ghost"
+              onClick={() => setErro('')}
+              title="Fechar aviso"
+            >
+              <I.Close size={13} />
+            </button>
+          </div>
+        )}
+
+        <div className="modal-body">
+          {abaAtiva === 'notas' ? (
+            <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
+          ) : abaAtiva === 'arquivos' && podeVerDocumentosVenda ? (
+            <ArquivosVendaTab venda={venda} podeEditar={podeEditarVenda} />
+          ) : abaAtiva === 'problema' ? (
+            <VendaProblemaPanel venda={venda} usuario={usuarioLogado} initialProblemaId={initialProblemaId} />
+          ) : (
+          <>
+            {enviadaPosVenda && (
+              <div className="venda-pos-venda-banner">
+                <I.Check size={14} />
+                <span>Enviada para o pós-venda</span>
+              </div>
+            )}
+            <fieldset className="venda-readonly-fieldset" disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}>
+            <div className="vendas-form-grid">
+            {CAMPOS.map(campo => {
+              if (campo.section) {
+                return <div key={campo.section} className="vendas-form-section">{campo.section}</div>;
+              }
+
+              if (campo.name === 'numeros_portados' && !vendaPortabilidade) {
+                return null;
+              }
+
+              if (campo.name === 'numeros_ativados' && !vendaAtivada) {
+                return null;
+              }
+
+              const labelCampo = campo.type === 'responsaveis'
+                ? 'Responsáveis pelo recebimento'
+                : campo.label;
+
+              return (
+                <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''}`}>
+                  {labelCampo && <label>{labelCampo}</label>}
+                  {campo.type === 'client' ? (
+                    <ClienteVendaSelect
+                      value={form[campo.name] ?? ''}
+                      clientes={clientes}
+                      vendasRegistradas={vendasRegistradasClienteSelecionado}
+                      onChange={atualizarClienteVenda}
+                      onCreateClient={onCreateClient}
+                    />
+                  ) : campo.type === 'cnpj' ? (
+                    <>
+                      <input
+                        type="text"
+                        maxLength={getMaxLengthCampo(campo.name, campo.maxLength)}
+                        inputMode={getInputModeCampo(campo.name)}
+                        value={form[campo.name] ?? ''}
+                        onChange={e => atualizarCampo(campo.name, e.target.value)}
+                        placeholder="00.000.000/0000-00"
+                      />
+                      <div className="cnpj-lookup-row">
+                        {cnpjStatus.mensagem && (
+                          <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
+                            {cnpjStatus.mensagem}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => buscarDadosCnpj(true)}
+                          disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
+                        >
+                          {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
+                        </button>
+                      </div>
+                      <CnpjSugestoes
+                        dados={cnpjDados}
+                        sugestoes={cnpjSugestoes}
+                        labels={CNPJ_LABELS_VENDA}
+                        onAceitar={aceitarSugestaoCnpj}
+                        onRecusar={recusarSugestaoCnpj}
+                      />
+                    </>
+                  ) : campo.type === 'sellers' ? (
+                    <VendedorasSelect
+                      value={form.vendedoras || []}
+                      options={vendedoras}
+                      onChange={atualizarVendedorasVenda}
+                    />
+                  ) : campo.type === 'timeRange' ? (
+                    <div className="range-pair">
+                      <div className="range-pair__item">
+                        <label className="range-pair__label">{campo.labelDe}</label>
+                        <input type="time" value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)} />
+                      </div>
+                      <div className="range-pair__sep">até</div>
+                      <div className="range-pair__item">
+                        <label className="range-pair__label">{campo.labelAte}</label>
+                        <input type="time" value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)} />
+                      </div>
+                    </div>
+                  ) : campo.type === 'dayRange' ? (
+                    <div className="range-pair">
+                      <div className="range-pair__item">
+                        <label className="range-pair__label">{campo.labelDe}</label>
+                        <select value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)}>
+                          <option value="">Selecione</option>
+                          {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                        </select>
+                      </div>
+                      <div className="range-pair__sep">até</div>
+                      <div className="range-pair__item">
+                        <label className="range-pair__label">{campo.labelAte}</label>
+                        <select value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)}>
+                          <option value="">Selecione</option>
+                          {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  ) : campo.type === 'responsaveis' ? (
+                    <ResponsaveisRecebimentoInput form={form} onChange={atualizarCampo} />
+                  ) : campo.type === 'closedWith' ? (
+                    <select
+                      value={FECHOU_VENDA_OPCOES.some(opcao => opcao.value === form[campo.name]) ? form[campo.name] : ''}
+                      onChange={e => atualizarCampo(campo.name, e.target.value)}
+                    >
+                      <option value="">Selecione</option>
+                      {FECHOU_VENDA_OPCOES.map(opcao => (
+                        <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                      ))}
+                    </select>
+                  ) : ['operator', 'saleType', 'service'].includes(campo.type) ? (
+                    <select
+                      value={form[campo.name] ?? ''}
+                      onChange={e => atualizarCampo(campo.name, e.target.value)}
+                      required={campo.required}
+                    >
+                      <option value="">Selecione</option>
+                      {(
+                        campo.type === 'operator'
+                          ? operadoras
+                          : campo.type === 'saleType'
+                            ? tiposVenda
+                            : servicos
+                      ).map(item => (
+                        <option key={item.id} value={item.id}>{item.nome}</option>
+                      ))}
+                    </select>
+                  ) : campo.type === 'chips' ? (
+                    <ItensChipsInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      vendedoras={vendedoras.filter(v => (form.vendedoras || []).includes(String(v.id)))}
+                      limiteQuantidade={form.quantidade_linhas}
+                    />
+                  ) : campo.type === 'clientRequested' ? (
+                    <ClienteSolicitouInput
+                      form={form}
+                      onToggle={alternarClienteSolicitouServico}
+                      onOpenQuantidades={() => abrirClienteSolicitouQuantidades()}
+                    />
+                  ) : campo.type === 'realAddressToggle' ? (
+                    <div className="venda-address-toggle">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.endereco_real_divergente)}
+                          onChange={e => alternarEnderecoReal(e.target.checked)}
+                          disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                        />
+                        <span>{campo.label}</span>
+                      </label>
+                      {form.endereco_real_divergente && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => setEnderecoRealModalAberto(true)}
+                        >
+                          Editar endereço real
+                        </button>
+                      )}
+                    </div>
+                  ) : campo.type === 'promiseStatus' ? (
+                    <select
+                      value={form[campo.name] ?? ''}
+                      onChange={e => atualizarCampo(campo.name, e.target.value)}
+                    >
+                      <option value="">Selecione</option>
+                      {PROMESSA_CUMPRIDA_OPCOES.map(opcao => (
+                        <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                      ))}
+                    </select>
+                  ) : campo.type === 'portedNumbers' ? (
+                    <NumerosPortadosInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      quantidadeEsperada={quantidadePortabilidade}
+                      dddPadrao={form.ddd}
+                    />
+                  ) : campo.type === 'activatedNumbers' ? (
+                    <NumerosAtivadosInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      quantidadeEsperada={quantidadeNumerosAtivados}
+                      dddPadrao={form.ddd}
+                    />
+                  ) : campo.name === 'protocolo' ? (
+                    <>
+                      <div className="protocolo-input-row">
+                        <input
+                          type="text"
+                          value={form[campo.name] ?? ''}
+                          onChange={e => atualizarCampo(campo.name, e.target.value)}
+                          readOnly={protocoloBloqueado}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => atualizarCampo('protocolo', gerarProtocoloDataHora())}
+                          disabled={!podeGerarProtocolo}
+                        >
+                          Gerar
+                        </button>
+                      </div>
+                      {dicaProtocolo && <span className="field-hint">{dicaProtocolo}</span>}
+                    </>
+                  ) : campo.type === 'longText' ? (
+                    <AutoResizeTextarea
+                      value={form[campo.name] ?? ''}
+                      onChange={e => atualizarCampo(campo.name, e.target.value)}
+                      maxRows={campo.maxRows || 5}
+                    />
+                  ) : (
+                    <input
+                      type={campo.type || 'text'}
+                      step={campo.step}
+                      min={campo.min}
+                      max={campo.max}
+                      maxLength={getMaxLengthCampo(campo.name, campo.maxLength)}
+                      inputMode={getInputModeCampo(campo.name)}
+                      value={form[campo.name] ?? ''}
+                      onChange={e => atualizarCampo(campo.name, e.target.value)}
+                      placeholder={campo.placeholder}
+                      required={campo.required}
+                    />
+                  )}
+                  {campo.name === 'cep' && cepStatus && (
+                    <span className="field-hint">{cepStatus}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          </fieldset>
+
+          </>
+          )}
+        </div>
+
+        {clienteSolicitouQuantidadeAberta && (
+          <ClienteSolicitouQuantidadeModal
+            servicos={clienteSolicitouServicosDraft}
+            quantidades={clienteSolicitouQuantidadesDraft}
+            onChange={(tipo, valor) => setClienteSolicitouQuantidadesDraft(prev => ({ ...prev, [tipo]: valor }))}
+            onClose={() => setClienteSolicitouQuantidadeAberta(false)}
+            onConfirm={confirmarClienteSolicitouQuantidades}
+          />
+        )}
+
+        {clienteSolicitouNumerosAberto && (
+          <ClienteSolicitouNumerosModal
+            servicos={clienteSolicitouServicosDraft}
+            quantidades={{
+              bloqueio: form.cliente_solicitou_bloqueio_qtd || clienteSolicitouQuantidadesDraft.bloqueio,
+              cancelamento: form.cliente_solicitou_cancelamento_qtd || clienteSolicitouQuantidadesDraft.cancelamento
+            }}
+            numeros={clienteSolicitouNumerosDraft}
+            onChange={setClienteSolicitouNumerosDraft}
+            onClose={() => {
+              setClienteSolicitouNumerosAberto(false);
+              setClienteSolicitouQuantidadeAberta(true);
+            }}
+            onConfirm={confirmarClienteSolicitouNumeros}
+          />
+        )}
+
+        {enderecoRealModalAberto && (
+          <div className="modal-overlay" role="dialog" aria-modal="true" onClick={event => event.target === event.currentTarget && setEnderecoRealModalAberto(false)}>
+            <div className="modal venda-address-modal">
+              <div className="modal-header">
+                <div className="modal-header-row">
+                  <div>
+                    <div className="modal-client">Endereço real</div>
+                    <div className="modal-sub">Fica salvo na venda sem substituir o endereço da Receita.</div>
+                  </div>
+                  <button
+                    className="btn btn-icon btn-ghost"
+                    type="button"
+                    onClick={() => setEnderecoRealModalAberto(false)}
+                    title="Fechar"
+                  >
+                    <I.Close />
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-body">
+                <div className="vendas-form-grid venda-address-modal__grid">
+                  {CAMPOS_ENDERECO_REAL_VENDA.map(campo => (
+                    <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''}`}>
+                      <label>{campo.label}</label>
+                      {campo.type === 'longText' ? (
+                        <AutoResizeTextarea
+                          value={form[campo.name] ?? ''}
+                          onChange={e => atualizarCampo(campo.name, e.target.value)}
+                          maxRows={3}
+                          disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                        />
+                      ) : (
+                        <input
+                          value={form[campo.name] ?? ''}
+                          onChange={e => atualizarCampo(campo.name, e.target.value)}
+                          maxLength={getMaxLengthCampo(campo.name, campo.maxLength)}
+                          inputMode={getInputModeCampo(campo.name)}
+                          disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn btn-primary" type="button" onClick={() => setEnderecoRealModalAberto(false)}>
+                  Concluir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="modal-footer">
+          {abaAtiva === 'notas' || abaAtiva === 'arquivos' || abaAtiva === 'problema' ? (
+            <button type="button" className="btn" onClick={onClose}>Fechar</button>
+          ) : (somenteVisualizacao || vendaBloqueadaParaUsuario) ? (
+            <>
+              <button type="button" className="btn" onClick={onClose}>Fechar</button>
+              {podeEditarVenda && !enviadaPosVenda && (
+                <button type="button" className="btn venda-pos-venda-send-btn" disabled={salvando} onClick={handleEnviarPosVenda}>
+                  <I.ArrowRight size={14} /> {salvando ? 'Enviando...' : 'Enviar para o pós-venda'}
+                </button>
+              )}
+              {podeEditarVenda && !vendaBloqueadaParaUsuario && (
+                <button type="button" className="btn btn-primary" onClick={handleStartEdit}>
+                  <I.Edit size={14} /> Editar venda
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+              <button type="submit" className="btn btn-primary" disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar venda'}
+              </button>
+            </>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
+
+>>>>>>> b3b68090e9c64dce4134e28b0afc1e164dab910b
 function ConfirmarLixeiraModal({ venda, deletando, onClose, onConfirm }) {
   if (!venda) return null;
 

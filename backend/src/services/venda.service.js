@@ -37,6 +37,8 @@ const CAMPOS = [
   'data_venda',
   'data_ativacao',
   'qc_feito_por',
+  'promessa_cliente',
+  'promessa_cumprida',
   'observacoes',
   'cliente_id',
   'dia_vencimento',
@@ -100,6 +102,7 @@ const FUNIL_STATUS_LABELS = {
 };
 
 const FUNIL_PRIORIDADES = ['alta', 'media', 'baixa'];
+const PROMESSA_CUMPRIDA_OPCOES = ['pendente', 'sim', 'nao'];
 
 function limparValor(valor) {
   if (valor === undefined) return undefined;
@@ -450,6 +453,11 @@ function montarPayload(dados) {
 
   if (payload.endereco_real_divergente !== undefined) {
     payload.endereco_real_divergente = Boolean(payload.endereco_real_divergente);
+  }
+
+  if (payload.promessa_cumprida !== undefined && payload.promessa_cumprida !== null) {
+    const valor = String(payload.promessa_cumprida || '').trim().toLowerCase();
+    payload.promessa_cumprida = PROMESSA_CUMPRIDA_OPCOES.includes(valor) ? valor : null;
   }
 
   if (dados.cliente_solicitou_servicos !== undefined) {
