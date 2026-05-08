@@ -165,6 +165,22 @@ async function enviarPosVenda(req, res) {
       });
     }
 
+    if (resultado.status === 'pendente') {
+      return res.status(202).json({
+        message: resultado.message || 'Solicitacao enviada para aprovacao do ADM.',
+        status: resultado.status,
+        solicitacao: resultado.solicitacao
+      });
+    }
+
+    if (resultado.status === 'recusada') {
+      return res.status(403).json({
+        message: resultado.message || 'Solicitacao recusada pelo ADM.',
+        status: resultado.status,
+        solicitacao: resultado.solicitacao
+      });
+    }
+
     const vendaCompleta = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
 
     return res.json(vendaCompleta);

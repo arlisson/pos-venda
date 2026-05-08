@@ -543,6 +543,12 @@ function normalizarIdsVendedorasInput(vendedoras) {
   ));
 }
 
+function obterSolicitacaoAprovacaoAtual(venda) {
+  if (!Array.isArray(venda?.aprovacaoSolicitacoes)) return null;
+
+  return venda.aprovacaoSolicitacoes.find(item => item.status !== 'obsoleta') || null;
+}
+
 function calcularTotalItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => (
     acc + (Number(item.quantidade || 0) * parseValorInput(item.valor_unitario))
@@ -2350,7 +2356,7 @@ function VendasPage() {
 
   async function enviarPosVenda(venda) {
     setErro('');
-    await enviarVendaParaPosVenda(venda.id);
+    const resultado = await enviarVendaParaPosVenda(venda.id);
     setModalAberto(false);
     setModalVenda(null);
     setModalAbaInicial('venda');
@@ -2358,7 +2364,10 @@ function VendasPage() {
     setModalModoEdicao(true);
     setVendaInicial(null);
     await carregarDados();
-    setSucesso('Venda enviada para o pós-venda.');
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    setSucesso(resultado?.status === 'pendente'
+      ? (resultado.message || 'Solicitação enviada para aprovação do ADM.')
+      : 'Venda enviada para o pós-venda.');
   }
 
   async function confirmarRemocaoVenda() {
@@ -2707,6 +2716,7 @@ function VendasPage() {
                 ) : (
                   vendas.map(venda => {
                     const totalVendasCliente = vendasPorCliente.get(getChaveClienteVenda(venda)) || 0;
+                    const solicitacaoAprovacao = obterSolicitacaoAprovacaoAtual(venda);
 
                     return (
                     <tr
@@ -2730,6 +2740,18 @@ function VendasPage() {
                               <span className="vendas-pos-venda-pending">
                                 <I.AlertTriangle size={11} />
                                 Falta enviar ao pós-venda
+                              </span>
+                            )}
+                            {!venda.enviada_pos_venda_em && solicitacaoAprovacao?.status === 'pendente' && (
+                              <span className="vendas-pos-venda-pending">
+                                <I.Shield size={11} />
+                                Aguardando ADM
+                              </span>
+                            )}
+                            {!venda.enviada_pos_venda_em && solicitacaoAprovacao?.status === 'recusada' && (
+                              <span className="vendas-cliente-repeat-badge">
+                                <I.AlertTriangle size={11} />
+                                Recusada pelo ADM
                               </span>
                             )}
                             {totalVendasCliente > 1 && (

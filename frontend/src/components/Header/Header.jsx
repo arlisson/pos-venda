@@ -11,6 +11,7 @@ import { temPermissao } from '../../services/auth.service';
 
 const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
+const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 
 function formatDate(value) {
   if (!value) return '';
@@ -39,6 +40,11 @@ function getNotificationTarget(notification) {
   if (notification.entidade === 'vendas') {
     const vendaId = notification.entidade_id || notification.dados?.venda_id;
     if (!vendaId) return '/vendas';
+
+    if (TIPOS_APROVACAO_VENDA.includes(notification.tipo)) {
+      const solicitacaoId = notification.dados?.solicitacao_id;
+      return solicitacaoId ? `/vendas/aprovacoes?solicitacao_id=${solicitacaoId}` : '/vendas/aprovacoes';
+    }
 
     if (TIPOS_PROBLEMA_VENDA.includes(notification.tipo)) {
       return `/vendas?venda_id=${vendaId}&aba=problema`;

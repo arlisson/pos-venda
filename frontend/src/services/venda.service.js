@@ -153,6 +153,18 @@ export async function enviarVendaParaPosVenda(id) {
   return apiPost(`/vendas/${id}/enviar-pos-venda`, {});
 }
 
+export async function listarAprovacoesVenda(filtros) {
+  return apiGet(`/vendas/aprovacoes${montarQuery(filtros)}`);
+}
+
+export async function aprovarSolicitacaoVenda(id, dados = {}) {
+  return apiPost(`/vendas/aprovacoes/${id}/aprovar`, dados);
+}
+
+export async function recusarSolicitacaoVenda(id, dados = {}) {
+  return apiPost(`/vendas/aprovacoes/${id}/recusar`, dados);
+}
+
 export async function atualizarStatusVenda(id, dados) {
   return apiRequest(`/vendas/${id}/status`, {
     method: 'PATCH',

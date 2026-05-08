@@ -33,6 +33,7 @@ const CATEGORY_LABELS = {
 
 const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
+const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 
 function getCampanhaKey(campanha) {
   return campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`;
@@ -114,6 +115,11 @@ function getNotificationTarget(notificacao) {
   if (notificacao.entidade === 'vendas') {
     const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id;
     if (!vendaId) return '/vendas';
+
+    if (TIPOS_APROVACAO_VENDA.includes(notificacao.tipo)) {
+      const solicitacaoId = notificacao.dados?.solicitacao_id;
+      return solicitacaoId ? `/vendas/aprovacoes?solicitacao_id=${solicitacaoId}` : '/vendas/aprovacoes';
+    }
 
     if (TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo)) {
       const problemaId = notificacao.dados?.problema_id;

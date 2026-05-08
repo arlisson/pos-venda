@@ -5,6 +5,7 @@ const FunilEtapa = require('../models/FunilEtapa');
 const clienteService = require('./cliente.service');
 const vendaArquivoService = require('./venda-arquivo.service');
 const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
+const vendaAprovacaoService = require('./venda-aprovacao.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
 
 const CAMPOS = [
@@ -1003,11 +1004,12 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario]')
+    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario, aprovacaoSolicitacoes]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
     .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
+    .modifyGraph('aprovacaoSolicitacoes', builder => builder.orderBy('id', 'desc'))
     .whereNull('excluido_em')
     .orderBy('data_venda', 'desc')
     .orderBy('id', 'desc');
@@ -1286,11 +1288,12 @@ async function buscarVendaPorId(id, usuarioId) {
   const query = Venda.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario]')
+    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario, aprovacaoSolicitacoes]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
-    .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'));
+    .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
+    .modifyGraph('aprovacaoSolicitacoes', builder => builder.orderBy('id', 'desc'));
 
   if (usuarioId) {
     aplicarEscopoVendas(query, usuarioId, escopo);
@@ -1433,6 +1436,16 @@ async function atualizarVenda(id, dados, usuarioId) {
 
     if (vendedorasIds !== null) {
       await salvarVendedoras(id, vendedorasIds, trx);
+    }
+
+    if (
+      !vendaAtual.enviada_pos_venda_em
+      && (
+        Object.prototype.hasOwnProperty.call(payload, 'cliente_id')
+        || vendedorasIds !== null
+      )
+    ) {
+      await vendaAprovacaoService.sincronizarAprovacaoAposAlteracao(id, trx);
     }
 
     return venda;
@@ -1683,6 +1696,12 @@ async function enviarVendaParaPosVenda(id, usuarioId) {
   const primeiraEtapa = etapas[0]?.id || 'aprovacao';
 
   const vendaAtualizada = await Venda.transaction(async trx => {
+    const validacaoAprovacao = await vendaAprovacaoService.validarEnvioPosVenda(id, usuarioId, trx);
+
+    if (validacaoAprovacao.status !== 'liberada') {
+      return validacaoAprovacao;
+    }
+
     const atualizada = await Venda.query(trx).patchAndFetchById(id, {
       status_funil: primeiraEtapa,
       prioridade_funil: venda.prioridade_funil || 'media',
@@ -1709,6 +1728,10 @@ async function enviarVendaParaPosVenda(id, usuarioId) {
 
     return atualizada;
   });
+
+  if (vendaAtualizada?.status && vendaAtualizada.status !== 'liberada') {
+    return vendaAtualizada;
+  }
 
   return { status: 'ok', venda: vendaAtualizada };
 }

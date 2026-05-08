@@ -13,6 +13,7 @@ import HistoricoPage from '../pages/HistoricoPage/HistoricoPage';
 import ConfiguracoesPage from '../pages/ConfiguracoesPage/ConfiguracoesPage';
 import VendasPage from '../pages/VendasPage/VendasPage';
 import VendasLixeiraPage from '../pages/VendasPage/VendasLixeiraPage';
+import VendasAprovacoesPage from '../pages/VendasPage/VendasAprovacoesPage';
 import RetornosPage from '../pages/RetornosPage/RetornosPage';
 import Clientes from '../pages/Clientes/Clientes';
 import ClienteFormPage from '../pages/Clientes/ClienteFormPage';
@@ -48,6 +49,7 @@ function AppRoutes() {
       <Route path="/funil" element={<PrivateRoute permission="funil_vendas"><FunilPage /></PrivateRoute>} />
 
       <Route path="/vendas" element={<PrivateRoute permission={['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir']}><VendasPage /></PrivateRoute>} />
+      <Route path="/vendas/aprovacoes" element={<PrivateRoute permission="vendas_aprovacoes_visualizar"><VendasAprovacoesPage /></PrivateRoute>} />
       <Route path="/vendas/lixeira" element={<PrivateRoute permission={['vendas_ver_proprias', 'vendas_ver_todas']}><VendasLixeiraPage /></PrivateRoute>} />
 
       <Route path="/login" element={<LoginPage />} />

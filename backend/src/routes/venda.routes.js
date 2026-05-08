@@ -4,6 +4,7 @@ const router = express.Router();
 const vendaController = require('../controllers/venda.controller');
 const vendaArquivoController = require('../controllers/venda-arquivo.controller');
 const vendaProblemaController = require('../controllers/venda-problema.controller');
+const vendaAprovacaoController = require('../controllers/venda-aprovacao.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { auditar } = require('../middlewares/audit.middleware');
 const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
@@ -16,6 +17,9 @@ router.get('/relatorios', exigirUmaPermissao(['relatorios_visualizar']), vendaCo
 router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.lixeira);
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaController.index);
 router.get('/problemas/destinatarios', exigirUmaPermissao(['vendas_marcar_problema']), vendaProblemaController.destinatarios);
+router.get('/aprovacoes', exigirUmaPermissao(['vendas_aprovacoes_visualizar']), vendaAprovacaoController.index);
+router.post('/aprovacoes/:id/aprovar', exigirUmaPermissao(['vendas_aprovacoes_decidir']), vendaAprovacaoController.aprovar);
+router.post('/aprovacoes/:id/recusar', exigirUmaPermissao(['vendas_aprovacoes_decidir']), vendaAprovacaoController.recusar);
 router.post('/problemas/:problemaId/resolver', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.resolver);
 router.post('/problemas/:problemaId/correcao', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.correcao);
 router.post('/problemas/:problemaId/verificar', exigirUmaPermissao(['vendas_ver_proprias', 'vendas_ver_todas']), vendaProblemaController.verificar);

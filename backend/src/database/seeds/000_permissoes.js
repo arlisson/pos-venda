@@ -35,6 +35,16 @@ const PERMISSOES = [
     descricao: 'Permite visualizar a aba de documentos da venda.'
   },
   {
+    chave: 'vendas_aprovacoes_visualizar',
+    nome: 'Vendas: visualizar aprovacoes',
+    descricao: 'Permite acessar a pagina de solicitacoes de liberacao de vendas especiais.'
+  },
+  {
+    chave: 'vendas_aprovacoes_decidir',
+    nome: 'Vendas: aprovar solicitacoes',
+    descricao: 'Permite aprovar ou recusar solicitacoes de liberacao de vendas especiais.'
+  },
+  {
     chave: 'pos_venda',
     nome: 'Pós-venda',
     descricao: 'Permite editar vendas já enviadas ao pós-venda e operar o funil.'
