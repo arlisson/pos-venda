@@ -90,6 +90,14 @@ const VENDA_VAZIA = {
   bairro: '',
   municipio: '',
   uf: '',
+  endereco_real_divergente: false,
+  cep_real: '',
+  endereco_real: '',
+  numero_endereco_real: '',
+  complemento_real: '',
+  bairro_real: '',
+  municipio_real: '',
+  uf_real: '',
   ponto_referencia: '',
   tipo_local_cpf: '',
   // Aceite e recebimento
@@ -132,6 +140,16 @@ const CNPJ_SUGESTOES_VENDA = {
 const CNPJ_LABELS_VENDA = Object.fromEntries(
   Object.entries(CNPJ_SUGESTOES_VENDA).map(([campo, config]) => [campo, config.label])
 );
+
+const CAMPOS_ENDERECO_REAL_VENDA = [
+  { name: 'cep_real', label: 'CEP' },
+  { name: 'endereco_real', label: 'Endereço real', type: 'longText', span: true },
+  { name: 'numero_endereco_real', label: 'Número' },
+  { name: 'complemento_real', label: 'Complemento', type: 'longText', span: true },
+  { name: 'bairro_real', label: 'Bairro' },
+  { name: 'municipio_real', label: 'Município' },
+  { name: 'uf_real', label: 'UF', maxLength: 2 }
+];
 
 const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' };
 const NUMERO_PORTADO_VAZIO = '';
@@ -212,6 +230,7 @@ const CAMPOS = [
   { name: 'bairro', label: 'Bairro' },
   { name: 'municipio', label: 'Município' },
   { name: 'uf', label: 'UF', maxLength: 2 },
+  { name: 'endereco_real_divergente', label: 'Endereço da Receita não é o endereço real', type: 'realAddressToggle', span: true },
   { name: 'ponto_referencia', label: 'Ponto de referência', type: 'longText', span: true },
   { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condomínio, shopping...', type: 'longText', span: true },
 
@@ -449,8 +468,8 @@ function formatarCampoVenda(campo, valor) {
   if (campo === 'fixo_ddd') return formatarTelefoneComDdd(valor, false);
   if (campo === 'cpf_representante_legal' || campo === 'cpf_administrador') return formatarCpf(valor);
   if (campo === 'cnpj') return formatarCnpj(valor);
-  if (campo === 'cep') return formatarCep(valor);
-  if (campo === 'uf') return String(valor || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+  if (campo === 'cep' || campo === 'cep_real') return formatarCep(valor);
+  if (campo === 'uf' || campo === 'uf_real') return String(valor || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
   if (campo === 'ddd') return apenasDigitos(valor, 2);
   if (campo === 'gb') return apenasDigitos(valor, 4);
   if (campo === 'quantidade_linhas') return apenasDigitos(valor, 4);
@@ -461,7 +480,7 @@ function formatarCampoVenda(campo, valor) {
 function getInputModeCampo(campo) {
   if ([
     'telefone', 'fixo_ddd', 'telefone_representante_legal', 'telefone_administrador',
-    'cpf_representante_legal', 'cpf_administrador', 'cnpj', 'cep', 'ddd', 'gb', 'quantidade_linhas', 'dia_vencimento'
+    'cpf_representante_legal', 'cpf_administrador', 'cnpj', 'cep', 'cep_real', 'ddd', 'gb', 'quantidade_linhas', 'dia_vencimento'
   ].includes(campo)) {
     return 'numeric';
   }
@@ -479,9 +498,11 @@ function getMaxLengthCampo(campo, maxLength) {
     cpf_administrador: 14,
     cnpj: 18,
     cep: 9,
+    cep_real: 9,
     ddd: 2,
     gb: 4,
     uf: 2,
+    uf_real: 2,
     dia_vencimento: 2,
     quantidade_linhas: 4
   };
@@ -2019,6 +2040,7 @@ function VendaModal({
   const [clienteSolicitouServicosDraft, setClienteSolicitouServicosDraft] = useState([]);
   const [clienteSolicitouQuantidadesDraft, setClienteSolicitouQuantidadesDraft] = useState({ bloqueio: '', cancelamento: '' });
   const [clienteSolicitouNumerosDraft, setClienteSolicitouNumerosDraft] = useState({ bloqueio: [], cancelamento: [] });
+  const [enderecoRealModalAberto, setEnderecoRealModalAberto] = useState(false);
   const abaInicial = initialTab === 'arquivos' && !podeVerDocumentosVenda ? 'venda' : initialTab;
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
@@ -2134,13 +2156,6 @@ function VendaModal({
         nome_representante_legal: prev.nome_representante_legal || nomeRl,
         nome_administrador: prev.nome_administrador || nomeAdm,
         nome_fechou_venda: prev.nome_fechou_venda || fechouVenda,
-        cep: prev.cep || c?.cep || '',
-        endereco: prev.endereco || c?.endereco || '',
-        numero_endereco: prev.numero_endereco || c?.numero_endereco || '',
-        complemento: prev.complemento || c?.complemento || '',
-        bairro: prev.bairro || c?.bairro || '',
-        municipio: prev.municipio || c?.municipio || '',
-        uf: prev.uf || c?.uf || '',
       };
     });
   }
@@ -2149,6 +2164,19 @@ function VendaModal({
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
     setForm(prev => ({ ...prev, vendedoras: ids }));
+  }
+
+  function alternarEnderecoReal(marcado) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    setForm(prev => ({
+      ...prev,
+      endereco_real_divergente: marcado
+    }));
+
+    if (marcado) {
+      setEnderecoRealModalAberto(true);
+    }
   }
 
   function abrirClienteSolicitouQuantidades(servicos = clienteSolicitouServicos) {
@@ -2832,6 +2860,27 @@ function VendaModal({
                       onToggle={alternarClienteSolicitouServico}
                       onOpenQuantidades={() => abrirClienteSolicitouQuantidades()}
                     />
+                  ) : campo.type === 'realAddressToggle' ? (
+                    <div className="venda-address-toggle">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.endereco_real_divergente)}
+                          onChange={e => alternarEnderecoReal(e.target.checked)}
+                          disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                        />
+                        <span>{campo.label}</span>
+                      </label>
+                      {form.endereco_real_divergente && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => setEnderecoRealModalAberto(true)}
+                        >
+                          Editar endereço real
+                        </button>
+                      )}
+                    </div>
                   ) : campo.type === 'portedNumbers' ? (
                     <NumerosPortadosInput
                       value={form[campo.name]}
@@ -2924,6 +2973,61 @@ function VendaModal({
             }}
             onConfirm={confirmarClienteSolicitouNumeros}
           />
+        )}
+
+        {enderecoRealModalAberto && (
+          <div className="modal-overlay" role="dialog" aria-modal="true" onClick={event => event.target === event.currentTarget && setEnderecoRealModalAberto(false)}>
+            <div className="modal venda-address-modal">
+              <div className="modal-header">
+                <div className="modal-header-row">
+                  <div>
+                    <div className="modal-client">Endereço real</div>
+                    <div className="modal-sub">Fica salvo na venda sem substituir o endereço da Receita.</div>
+                  </div>
+                  <button
+                    className="btn btn-icon btn-ghost"
+                    type="button"
+                    onClick={() => setEnderecoRealModalAberto(false)}
+                    title="Fechar"
+                  >
+                    <I.Close />
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-body">
+                <div className="vendas-form-grid venda-address-modal__grid">
+                  {CAMPOS_ENDERECO_REAL_VENDA.map(campo => (
+                    <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''}`}>
+                      <label>{campo.label}</label>
+                      {campo.type === 'longText' ? (
+                        <AutoResizeTextarea
+                          value={form[campo.name] ?? ''}
+                          onChange={e => atualizarCampo(campo.name, e.target.value)}
+                          maxRows={3}
+                          disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                        />
+                      ) : (
+                        <input
+                          value={form[campo.name] ?? ''}
+                          onChange={e => atualizarCampo(campo.name, e.target.value)}
+                          maxLength={getMaxLengthCampo(campo.name, campo.maxLength)}
+                          inputMode={getInputModeCampo(campo.name)}
+                          disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn btn-primary" type="button" onClick={() => setEnderecoRealModalAberto(false)}>
+                  Concluir
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         <div className="modal-footer">

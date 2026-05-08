@@ -158,12 +158,12 @@ function expandirLinhasChips(valoresUnitariosChips, gbPadrao, produto, valorTota
 
 function montarEndereco(venda) {
   const partes = [
-    txt(venda.cliente?.endereco || venda.endereco),
-    txt(venda.cliente?.numero_endereco || venda.numero_endereco),
-    txt(venda.cliente?.complemento || venda.complemento),
-    txt(venda.cliente?.bairro || venda.bairro),
-    txt(venda.cliente?.municipio || venda.municipio) + (venda.cliente?.uf || venda.uf ? `/${txt(venda.cliente?.uf || venda.uf)}` : ''),
-    txt(venda.cliente?.cep || venda.cep)
+    txt(venda.endereco),
+    txt(venda.numero_endereco),
+    txt(venda.complemento),
+    txt(venda.bairro),
+    txt(venda.municipio) + (venda.uf ? `/${txt(venda.uf)}` : ''),
+    txt(venda.cep)
   ].filter(Boolean);
   return partes.join(', ');
 }

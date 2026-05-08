@@ -47,6 +47,14 @@ const CAMPOS = [
   'municipio',
   'uf',
   'cep',
+  'endereco_real_divergente',
+  'cep_real',
+  'endereco_real',
+  'numero_endereco_real',
+  'complemento_real',
+  'bairro_real',
+  'municipio_real',
+  'uf_real',
   'horario_aceite_voz',
   'horario_aceite_inicio',
   'horario_aceite_fim',
@@ -440,6 +448,10 @@ function montarPayload(dados) {
     payload.dia_vencimento = Number(payload.dia_vencimento);
   }
 
+  if (payload.endereco_real_divergente !== undefined) {
+    payload.endereco_real_divergente = Boolean(payload.endereco_real_divergente);
+  }
+
   if (dados.cliente_solicitou_servicos !== undefined) {
     const servicos = normalizarClienteSolicitouServicos(dados.cliente_solicitou_servicos);
     const nenhumServico = servicos.includes('nenhum_servico');
@@ -523,14 +535,7 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
     nome_administrador: payload.nome_administrador || (
       cliente.responsavel_tipo === 'adm' ? cliente.responsavel_nome : null
     ),
-    quantidade_linhas: payload.quantidade_linhas || cliente.quantidade_chips,
-    cep: payload.cep || cliente.cep,
-    endereco: payload.endereco || cliente.endereco,
-    numero_endereco: payload.numero_endereco || cliente.numero_endereco,
-    complemento: payload.complemento || cliente.complemento,
-    bairro: payload.bairro || cliente.bairro,
-    municipio: payload.municipio || cliente.municipio,
-    uf: payload.uf || cliente.uf
+    quantidade_linhas: payload.quantidade_linhas || cliente.quantidade_chips
   };
 }
 

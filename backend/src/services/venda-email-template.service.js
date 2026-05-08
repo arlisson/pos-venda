@@ -184,7 +184,7 @@ function nomeVendedora(venda) {
 }
 
 function enderecoReceita(venda, campo) {
-  return texto(venda.cliente?.[campo] || venda[campo]);
+  return texto(venda[campo]);
 }
 
 function montarContexto(venda) {

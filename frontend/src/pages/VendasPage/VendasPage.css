@@ -348,6 +348,38 @@
   grid-column: 1 / -1;
 }
 
+.venda-address-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.venda-address-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.venda-address-toggle input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+}
+
+.venda-address-modal {
+  max-width: 760px;
+}
+
+.venda-address-modal__grid {
+  padding: 0;
+}
+
 .vendas-form-section {
   grid-column: 1 / -1;
   padding-top: 8px;
@@ -1630,6 +1662,11 @@
 
   .vendas-form-grid .span-2 {
     grid-column: auto;
+  }
+
+  .venda-address-toggle {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .chip-items__head {

@@ -20,47 +20,15 @@ const FORM_INICIAL = {
   fixo: '',
   fidelidade_fim: '',
   operadora_atual_id: '',
-  quantidade_chips: '',
-  cep: '',
-  endereco: '',
-  numero_endereco: '',
-  complemento: '',
-  bairro: '',
-  municipio: '',
-  uf: '',
-  endereco_real_divergente: false,
-  cep_real: '',
-  endereco_real: '',
-  numero_endereco_real: '',
-  complemento_real: '',
-  bairro_real: '',
-  municipio_real: '',
-  uf_real: ''
+  quantidade_chips: ''
 };
 
 const CNPJ_SUGESTOES_CLIENTE = {
   nomeFantasia: { campo: 'nome', label: 'Nome fantasia' },
   razaoSocial: { campo: 'razao_social', label: 'Razao social' },
   email: { campo: 'email', label: 'Email' },
-  telefone: { campo: 'whatsapp', label: 'Whatsapp' },
-  cep: { campo: 'cep', label: 'CEP' },
-  endereco: { campo: 'endereco', label: 'Endereco' },
-  numero: { campo: 'numero_endereco', label: 'Numero' },
-  complemento: { campo: 'complemento', label: 'Complemento' },
-  bairro: { campo: 'bairro', label: 'Bairro' },
-  municipio: { campo: 'municipio', label: 'Municipio' },
-  uf: { campo: 'uf', label: 'UF' }
+  telefone: { campo: 'whatsapp', label: 'Whatsapp' }
 };
-
-const CAMPOS_ENDERECO_REAL = [
-  { name: 'cep_real', label: 'CEP' },
-  { name: 'endereco_real', label: 'Endereco real', span: true },
-  { name: 'numero_endereco_real', label: 'Numero' },
-  { name: 'complemento_real', label: 'Complemento', span: true },
-  { name: 'bairro_real', label: 'Bairro' },
-  { name: 'municipio_real', label: 'Municipio' },
-  { name: 'uf_real', label: 'UF', maxLength: 2 }
-];
 
 const CNPJ_LABELS_CLIENTE = Object.fromEntries(
   Object.entries(CNPJ_SUGESTOES_CLIENTE).map(([campo, config]) => [campo, config.label])
@@ -112,22 +80,6 @@ function formatarTelefoneComDdd(valor, celular = false) {
   return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
 }
 
-function formatarCep(valor) {
-  const digitos = apenasDigitos(valor, 8);
-  if (digitos.length <= 5) return digitos;
-  return `${digitos.slice(0, 5)}-${digitos.slice(5)}`;
-}
-
-function formatarUf(valor) {
-  return String(valor || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
-}
-
-function formatarCampoEndereco(campo, valor) {
-  if (campo === 'cep' || campo === 'cep_real') return formatarCep(valor);
-  if (campo === 'uf' || campo === 'uf_real') return formatarUf(valor);
-  return valor;
-}
-
 function juntarTelefone(ddd, numero, celular = false) {
   return formatarTelefoneComDdd(`${ddd || ''}${numero || ''}`, celular);
 }
@@ -158,8 +110,7 @@ function montarPayload(form) {
     fixo_numero: fixo.numero,
     fidelidade_fim: form.fidelidade_fim || null,
     operadora_atual_id: form.operadora_atual_id ? Number(form.operadora_atual_id) : null,
-    quantidade_chips: form.quantidade_chips !== '' ? Number(form.quantidade_chips) : null,
-    endereco_real_divergente: Boolean(form.endereco_real_divergente)
+    quantidade_chips: form.quantidade_chips !== '' ? Number(form.quantidade_chips) : null
   };
 }
 
@@ -177,7 +128,6 @@ function ClienteFormPage() {
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
-  const [enderecoRealModalAberto, setEnderecoRealModalAberto] = useState(false);
   const ultimoCnpjConsultadoRef = useRef('');
 
   useEffect(() => {
@@ -212,22 +162,7 @@ function ClienteFormPage() {
             fixo: juntarTelefone(clienteData.fixo_ddd, clienteData.fixo_numero),
             fidelidade_fim: normalizarDataInput(clienteData.fidelidade_fim),
             operadora_atual_id: clienteData.operadora_atual_id || '',
-            quantidade_chips: clienteData.quantidade_chips ?? '',
-            cep: formatarCep(clienteData.cep || ''),
-            endereco: clienteData.endereco || '',
-            numero_endereco: clienteData.numero_endereco || '',
-            complemento: clienteData.complemento || '',
-            bairro: clienteData.bairro || '',
-            municipio: clienteData.municipio || '',
-            uf: formatarUf(clienteData.uf || ''),
-            endereco_real_divergente: Boolean(clienteData.endereco_real_divergente),
-            cep_real: formatarCep(clienteData.cep_real || ''),
-            endereco_real: clienteData.endereco_real || '',
-            numero_endereco_real: clienteData.numero_endereco_real || '',
-            complemento_real: clienteData.complemento_real || '',
-            bairro_real: clienteData.bairro_real || '',
-            municipio_real: clienteData.municipio_real || '',
-            uf_real: formatarUf(clienteData.uf_real || '')
+            quantidade_chips: clienteData.quantidade_chips ?? ''
           });
         }
       } catch (error) {
@@ -245,19 +180,8 @@ function ClienteFormPage() {
   function atualizarCampo(campo, valor) {
     setForm(prev => ({
       ...prev,
-      [campo]: formatarCampoEndereco(campo, valor)
+      [campo]: valor
     }));
-  }
-
-  function alternarEnderecoReal(marcado) {
-    setForm(prev => ({
-      ...prev,
-      endereco_real_divergente: marcado
-    }));
-
-    if (marcado) {
-      setEnderecoRealModalAberto(true);
-    }
   }
 
   function formatarMensagemCnpj(dados) {
@@ -279,9 +203,7 @@ function ClienteFormPage() {
 
     setForm(prev => ({
       ...prev,
-      [config.campo]: campoApi === 'telefone'
-        ? formatarTelefoneComDdd(valor, true)
-        : formatarCampoEndereco(config.campo, valor)
+      [config.campo]: campoApi === 'telefone' ? formatarTelefoneComDdd(valor, true) : valor
     }));
 
     setCnpjSugestoes(prev => {
@@ -542,77 +464,6 @@ function ClienteFormPage() {
                   </div>
                 </section>
 
-                <section className="cliente-form-section">
-                  <div className="cliente-form-section__header">
-                    <h3>Endereco da Receita</h3>
-                  </div>
-
-                  <div className="cliente-form-grid cliente-form-grid--three">
-                    <div className="form-field">
-                      <label>CEP</label>
-                      <input value={form.cep} onChange={event => atualizarCampo('cep', event.target.value)} inputMode="numeric" maxLength={9} />
-                    </div>
-
-                    <div className="form-field span-2">
-                      <label>Endereco</label>
-                      <AutoResizeTextarea
-                        value={form.endereco}
-                        onChange={event => atualizarCampo('endereco', event.target.value)}
-                        maxRows={3}
-                      />
-                    </div>
-
-                    <div className="form-field">
-                      <label>Numero</label>
-                      <input value={form.numero_endereco} onChange={event => atualizarCampo('numero_endereco', event.target.value)} />
-                    </div>
-
-                    <div className="form-field span-2">
-                      <label>Complemento</label>
-                      <AutoResizeTextarea
-                        value={form.complemento}
-                        onChange={event => atualizarCampo('complemento', event.target.value)}
-                        maxRows={3}
-                      />
-                    </div>
-
-                    <div className="form-field">
-                      <label>Bairro</label>
-                      <input value={form.bairro} onChange={event => atualizarCampo('bairro', event.target.value)} />
-                    </div>
-
-                    <div className="form-field">
-                      <label>Municipio</label>
-                      <input value={form.municipio} onChange={event => atualizarCampo('municipio', event.target.value)} />
-                    </div>
-
-                    <div className="form-field">
-                      <label>UF</label>
-                      <input value={form.uf} onChange={event => atualizarCampo('uf', event.target.value)} maxLength={2} />
-                    </div>
-
-                    <div className="form-field span-3 cliente-address-toggle">
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={form.endereco_real_divergente}
-                          onChange={event => alternarEnderecoReal(event.target.checked)}
-                        />
-                        <span>Endereco da Receita nao e o endereco real</span>
-                      </label>
-                      {form.endereco_real_divergente && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          onClick={() => setEnderecoRealModalAberto(true)}
-                        >
-                          Editar endereco real
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </section>
-
                 <div className="cliente-form-actions">
                   <button className="btn" type="button" onClick={() => navigate('/clientes')}>
                     Cancelar
@@ -627,58 +478,6 @@ function ClienteFormPage() {
         </section>
       </div>
 
-      {enderecoRealModalAberto && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal cliente-address-modal">
-            <div className="modal-header">
-              <div className="modal-header-row">
-                <div>
-                  <div className="modal-client">Endereco real</div>
-                  <div className="modal-sub">Este endereco fica salvo no cliente, sem substituir o endereco da Receita.</div>
-                </div>
-                <button
-                  className="btn btn-icon btn-ghost"
-                  type="button"
-                  onClick={() => setEnderecoRealModalAberto(false)}
-                  title="Fechar"
-                >
-                  <I.Close />
-                </button>
-              </div>
-            </div>
-
-            <div className="modal-body">
-              <div className="cliente-form-grid cliente-form-grid--three cliente-address-modal__grid">
-                {CAMPOS_ENDERECO_REAL.map(campo => (
-                  <div key={campo.name} className={`form-field ${campo.span ? 'span-3' : ''}`}>
-                    <label>{campo.label}</label>
-                    {campo.span ? (
-                      <AutoResizeTextarea
-                        value={form[campo.name]}
-                        onChange={event => atualizarCampo(campo.name, event.target.value)}
-                        maxRows={3}
-                      />
-                    ) : (
-                      <input
-                        value={form[campo.name]}
-                        onChange={event => atualizarCampo(campo.name, event.target.value)}
-                        maxLength={campo.maxLength}
-                        inputMode={campo.name === 'cep_real' ? 'numeric' : undefined}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button className="btn btn-primary" type="button" onClick={() => setEnderecoRealModalAberto(false)}>
-                Concluir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </LayoutPrivado>
   );
 }
