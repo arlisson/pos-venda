@@ -105,7 +105,7 @@ function AppRoutes() {
       />
       <Route
         path="/clientes/novo"
-        element={<PrivateRoute permission="clientes_criar"><ClienteFormPage /></PrivateRoute>}
+        element={<PrivateRoute permission="clientes_criar"><Navigate to="/clientes?novo=1" replace /></PrivateRoute>}
       />
       <Route
         path="/clientes/:id/editar"
