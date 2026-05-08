@@ -1099,7 +1099,14 @@ function FunilPage() {
     [stagesVisiveis]
   );
   const { filtradas, arquivadas, total } = useMemo(() => {
-    const etapasFinaisIds = new Set(stagesVisiveis.filter(st => st.etapaFinal).map(st => st.id));
+    let etapasFinaisIds = new Set(stagesVisiveis.filter(st => st.etapaFinal).map(st => st.id));
+    if (etapasFinaisIds.size === 0) {
+      const validas = stagesVisiveis.filter(st => st.id !== 'retorno');
+      if (validas.length > 0) {
+        const maxOrdem = Math.max(...validas.map(st => st.ordem ?? 0));
+        validas.filter(st => (st.ordem ?? 0) === maxOrdem).forEach(st => etapasFinaisIds.add(st.id));
+      }
+    }
     const agora = Date.now();
     const filtered = sales.filter(s => {
       if (s.stage === 'retorno') return false;

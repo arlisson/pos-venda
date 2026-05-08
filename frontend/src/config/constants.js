@@ -4,7 +4,7 @@ export const STAGES = [
   { id: 'envio', name: 'Envio / Logística', dot: 'envio' },
   { id: 'entrega', name: 'Entrega', dot: 'entrega' },
   { id: 'confirmacao', name: 'Confirmação do cliente', dot: 'confirmacao' },
-  { id: 'concluido', name: 'Concluído', dot: 'concluido' },
+  { id: 'concluido', name: 'Concluído', dot: 'concluido', etapaFinal: true },
 ];
 
 export const RETURN_STAGES = [
