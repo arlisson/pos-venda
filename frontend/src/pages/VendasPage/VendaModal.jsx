@@ -180,6 +180,8 @@ const FECHOU_VENDA_OPCOES = [
   { value: 'ADM', label: 'ADM' }
 ];
 
+const CAMPOS_CPF_VENDA = ['cpf_representante_legal', 'cpf_administrador'];
+
 const CAMPOS = [
   { section: 'Cliente' },
   { name: 'cliente_id', label: 'Cliente', type: 'client', required: true, span: true },
@@ -433,6 +435,17 @@ function obterErroCpfVenda(form) {
   if (!validarCpf(form.cpf_administrador)) {
     return 'CPF ADM inválido. Confira os 11 dígitos antes de salvar.';
   }
+
+  return '';
+}
+
+function obterErroCpfCampo(campo, valor) {
+  if (!CAMPOS_CPF_VENDA.includes(campo)) return '';
+
+  const cpf = apenasDigitos(valor, 11);
+  if (!cpf) return '';
+  if (cpf.length < 11) return 'CPF incompleto.';
+  if (!validarCpf(valor)) return 'CPF invalido.';
 
   return '';
 }
@@ -2737,9 +2750,11 @@ function VendaModal({
               const labelCampo = campo.type === 'responsaveis'
                 ? 'Responsáveis pelo recebimento'
                 : campo.label;
+              const erroCpfCampo = obterErroCpfCampo(campo.name, form[campo.name]);
+              const hintCpfId = erroCpfCampo ? `venda-${campo.name}-erro` : undefined;
 
               return (
-                <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''}`}>
+                <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''} ${erroCpfCampo ? 'is-invalid' : ''}`}>
                   {labelCampo && <label>{labelCampo}</label>}
                   {campo.type === 'client' ? (
                       <ClienteVendaSelect
@@ -2938,7 +2953,12 @@ function VendaModal({
                       onChange={e => atualizarCampo(campo.name, e.target.value)}
                       placeholder={campo.placeholder}
                       required={campo.required}
+                      aria-invalid={erroCpfCampo ? 'true' : undefined}
+                      aria-describedby={hintCpfId}
                     />
+                  )}
+                  {erroCpfCampo && (
+                    <span id={hintCpfId} className="field-hint field-hint--error">{erroCpfCampo}</span>
                   )}
                   {campo.name === 'cep' && cepStatus && (
                     <span className="field-hint">{cepStatus}</span>
