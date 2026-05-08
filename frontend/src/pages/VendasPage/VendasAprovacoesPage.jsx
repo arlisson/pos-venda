@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   aprovarSolicitacaoVenda,
+  buscarVendaPorId,
   listarAprovacoesVenda,
   recusarSolicitacaoVenda
 } from '../../services/venda.service';
@@ -56,7 +57,6 @@ function nomesVendedoras(venda) {
 }
 
 function VendasAprovacoesPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const usuario = getUsuarioLocal();
   const podeDecidir = temPermissao(usuario, 'vendas_aprovacoes_decidir');
@@ -65,6 +65,8 @@ function VendasAprovacoesPage() {
   const [carregando, setCarregando] = useState(true);
   const [salvandoId, setSalvandoId] = useState(null);
   const [recusando, setRecusando] = useState(null);
+  const [vendaModal, setVendaModal] = useState(null);
+  const [carregandoVendaId, setCarregandoVendaId] = useState(null);
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -139,6 +141,20 @@ function VendasAprovacoesPage() {
       setErro(error.message || 'Erro ao recusar solicitação.');
     } finally {
       setSalvandoId(null);
+    }
+  }
+
+  async function abrirVenda(solicitacao) {
+    setErro('');
+    setCarregandoVendaId(solicitacao.venda_id);
+
+    try {
+      const venda = await buscarVendaPorId(solicitacao.venda_id);
+      setVendaModal(venda || solicitacao.venda);
+    } catch (error) {
+      setErro(error.message || 'Erro ao abrir venda.');
+    } finally {
+      setCarregandoVendaId(null);
     }
   }
 
@@ -238,9 +254,10 @@ function VendasAprovacoesPage() {
                       <button
                         type="button"
                         className="btn btn-sm btn-ghost"
-                        onClick={() => navigate(`/vendas?venda_id=${solicitacao.venda_id}`)}
+                        disabled={carregandoVendaId === solicitacao.venda_id}
+                        onClick={() => abrirVenda(solicitacao)}
                       >
-                        Abrir venda
+                        {carregandoVendaId === solicitacao.venda_id ? 'Abrindo...' : 'Abrir venda'}
                       </button>
 
                       {podeDecidir && solicitacao.status === 'pendente' && (
@@ -307,6 +324,88 @@ function VendasAprovacoesPage() {
               <button type="button" className="btn btn-danger" disabled={salvandoId === recusando.id} onClick={() => recusar(recusando)}>
                 {salvandoId === recusando.id ? 'Recusando...' : 'Recusar'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {vendaModal && (
+        <div className="modal-overlay">
+          <div className="modal venda-modal" style={{ maxWidth: 920 }}>
+            <div className="modal-header">
+              <div className="modal-header-row">
+                <div>
+                  <div className="modal-client">{nomeVenda(vendaModal)}</div>
+                  <div className="modal-sub">
+                    Venda #{vendaModal.id} · {vendaModal.cliente?.razao_social || vendaModal.razao_social || 'Sem razão social'}
+                  </div>
+                </div>
+                <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={() => setVendaModal(null)}>
+                  <I.Close size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-body">
+              <div className="form-grid">
+                <div className="form-field">
+                  <label>Cliente</label>
+                  <input value={nomeVenda(vendaModal)} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Razão social</label>
+                  <input value={vendaModal.cliente?.razao_social || vendaModal.razao_social || '-'} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>CNPJ</label>
+                  <input value={vendaModal.cliente?.cnpj || vendaModal.cnpj || '-'} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Telefone</label>
+                  <input value={vendaModal.telefone || '-'} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Operadora</label>
+                  <input value={vendaModal.operadora?.nome || '-'} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Tipo de venda</label>
+                  <input value={vendaModal.tipoVenda?.nome || '-'} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Produto</label>
+                  <input value={vendaModal.servico?.nome || vendaModal.produto_fechado || '-'} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Linhas</label>
+                  <input value={vendaModal.quantidade_linhas || '-'} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Vendedoras</label>
+                  <input value={nomesVendedoras(vendaModal)} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Protocolo</label>
+                  <input value={vendaModal.protocolo || '-'} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Data da venda</label>
+                  <input value={formatarData(vendaModal.data_venda).replace(/,.*$/, '')} readOnly />
+                </div>
+                <div className="form-field">
+                  <label>Status pós-venda</label>
+                  <input value={vendaModal.enviada_pos_venda_em ? 'Enviada ao pós-venda' : 'Ainda não enviada'} readOnly />
+                </div>
+              </div>
+
+              <div className="form-field" style={{ marginTop: 14 }}>
+                <label>Observações</label>
+                <textarea value={vendaModal.observacoes || '-'} readOnly rows={4} />
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn" onClick={() => setVendaModal(null)}>Fechar</button>
             </div>
           </div>
         </div>
