@@ -83,7 +83,7 @@ function montarStageLabels(stages = []) {
   };
 }
 
-const SEIS_MESES_MS = 6 * 30 * 24 * 60 * 60 * 1000;
+const SEIS_MESES_MS = 1 * 60 * 1000; // TESTE: 1 minuto (produção: 6 * 30 * 24 * 60 * 60 * 1000)
 
 const PRIORITIES = {
   alta: { label: 'Prioridade Alta', color: '#ef4444' },
@@ -1098,26 +1098,25 @@ function FunilPage() {
     () => stagesVisiveis.filter(stage => stage.ativo !== false),
     [stagesVisiveis]
   );
-  const etapasFinaisIds = useMemo(
-    () => new Set(stagesVisiveis.filter(st => st.etapaFinal).map(st => st.id)),
-    [stagesVisiveis]
-  );
-  const agora = Date.now();
-  const filtradas = sales.filter(s => {
-    if (s.stage === 'retorno') return false;
-    if (!mostrarArquivadas
-      && etapasFinaisIds.has(s.stage)
-      && (agora - s.updated.getTime()) > SEIS_MESES_MS) return false;
-    if (filter !== 'todas' && s.operator !== filter) return false;
-    if (!vendaCorrespondeBusca(s, busca)) return false;
-    return true;
-  });
-  const arquivadas = mostrarArquivadas ? 0 : sales.filter(s =>
-    s.stage !== 'retorno'
-      && etapasFinaisIds.has(s.stage)
-      && (agora - s.updated.getTime()) > SEIS_MESES_MS
-  ).length;
-  const total = filtradas.reduce((sum, s) => sum + s.value, 0);
+  const { filtradas, arquivadas, total } = useMemo(() => {
+    const etapasFinaisIds = new Set(stagesVisiveis.filter(st => st.etapaFinal).map(st => st.id));
+    const agora = Date.now();
+    const filtered = sales.filter(s => {
+      if (s.stage === 'retorno') return false;
+      if (!mostrarArquivadas
+        && etapasFinaisIds.has(s.stage)
+        && (agora - s.updated.getTime()) > SEIS_MESES_MS) return false;
+      if (filter !== 'todas' && s.operator !== filter) return false;
+      if (!vendaCorrespondeBusca(s, busca)) return false;
+      return true;
+    });
+    const archived = mostrarArquivadas ? 0 : sales.filter(s =>
+      s.stage !== 'retorno'
+        && etapasFinaisIds.has(s.stage)
+        && (agora - s.updated.getTime()) > SEIS_MESES_MS
+    ).length;
+    return { filtradas: filtered, arquivadas: archived, total: filtered.reduce((sum, s) => sum + s.value, 0) };
+  }, [sales, stagesVisiveis, mostrarArquivadas, filter, busca]);
   const stageLabels = montarStageLabels(stagesVisiveis);
   const operators = useMemo(
     () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),
