@@ -119,6 +119,7 @@ class Venda extends Model {
     const TipoVenda = require('./TipoVenda');
     const Servico = require('./Servico');
     const VendaHistorico = require('./VendaHistorico');
+    const VendaAprovacaoSolicitacao = require('./VendaAprovacaoSolicitacao');
 
     return {
       operadora: {
@@ -205,6 +206,14 @@ class Venda extends Model {
             extra: ['ordem']
           },
           to: 'usuarios.id'
+        }
+      },
+      aprovacaoSolicitacoes: {
+        relation: Model.HasManyRelation,
+        modelClass: VendaAprovacaoSolicitacao,
+        join: {
+          from: 'vendas.id',
+          to: 'venda_aprovacao_solicitacoes.venda_id'
         }
       }
     };

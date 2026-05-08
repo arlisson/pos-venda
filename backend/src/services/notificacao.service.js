@@ -15,6 +15,11 @@ const TIPOS_PROBLEMA_VENDA = [
   'venda_problema_resolvido',
   'venda_problema_correcao'
 ];
+const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
+const TIPOS_OPERACIONAIS_VENDA = [
+  ...TIPOS_PROBLEMA_VENDA,
+  ...TIPOS_APROVACAO_VENDA
+];
 const RETORNO_PRE_AVISO_MINUTOS = 15;
 
 function parsePermissoes(permissoes) {
@@ -372,6 +377,8 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
     .findById(usuarioId)
     .withGraphFetched('role');
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
+  const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
+    || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
 
   const limit = Math.min(Number(filtros.limit || 20), 50);
   const query = NotificacaoDestinatario.query()
@@ -398,7 +405,7 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
     );
 
   if (!podeVerTudo) {
-    query.whereIn('n.tipo', TIPOS_PROBLEMA_VENDA);
+    query.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
   }
 
   if (filtros.nao_lidas) {
@@ -415,7 +422,7 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
     .first();
 
   if (!podeVerTudo) {
-    contadorQuery.whereIn('n.tipo', TIPOS_PROBLEMA_VENDA);
+    contadorQuery.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
   }
 
   const [notificacoes, contador] = await Promise.all([
@@ -471,6 +478,8 @@ async function marcarComoLida(notificacaoId, usuarioId) {
     .findById(usuarioId)
     .withGraphFetched('role');
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
+  const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
+    || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
   const query = NotificacaoDestinatario.query()
     .alias('nd')
     .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
@@ -480,7 +489,7 @@ async function marcarComoLida(notificacaoId, usuarioId) {
     .select('nd.id');
 
   if (!podeVerTudo) {
-    query.whereIn('n.tipo', TIPOS_PROBLEMA_VENDA);
+    query.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
   }
 
   const destinatario = await query.first();
@@ -500,6 +509,8 @@ async function marcarTodasComoLidas(usuarioId) {
     .findById(usuarioId)
     .withGraphFetched('role');
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
+  const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
+    || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
   const query = NotificacaoDestinatario.query()
     .alias('nd')
     .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
@@ -509,7 +520,7 @@ async function marcarTodasComoLidas(usuarioId) {
     .select('nd.id');
 
   if (!podeVerTudo) {
-    query.whereIn('n.tipo', TIPOS_PROBLEMA_VENDA);
+    query.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
   }
 
   const destinatarios = await query;
@@ -548,6 +559,7 @@ module.exports = {
   PERMISSAO_VISUALIZAR,
   PERMISSAO_RECEBER_TODAS,
   TIPOS_PROBLEMA_VENDA,
+  TIPOS_APROVACAO_VENDA,
   listarNotificacoes,
   listarUrgentes,
   marcarComoLida,

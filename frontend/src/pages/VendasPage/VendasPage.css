@@ -348,6 +348,11 @@
   grid-column: 1 / -1;
 }
 
+.row-highlight {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
 .venda-address-toggle {
   display: flex;
   align-items: center;

@@ -119,6 +119,21 @@ const GRUPOS_PERMISSOES = [
         ]
       },
       {
+        titulo: 'Aprovações ADM',
+        itens: [
+          {
+            chave: 'vendas_aprovacoes_visualizar',
+            nome: 'Visualizar aprovações',
+            descricao: 'Permite acessar a página de solicitações de liberação ADM.'
+          },
+          {
+            chave: 'vendas_aprovacoes_decidir',
+            nome: 'Aprovar solicitações',
+            descricao: 'Permite aprovar ou recusar liberações de vendas especiais.'
+          }
+        ]
+      },
+      {
         titulo: 'Visualização',
         exclusivo: true,
         itens: [
