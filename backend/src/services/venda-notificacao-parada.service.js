@@ -90,22 +90,25 @@ async function registrarEntradaEstagio(vendaId, etapaCodigo, dataEntrada = new D
 }
 
 async function desativarNotificacaoVendaParada(vendaId, etapaCodigo, trx = null) {
-  const sourceKey = `${TIPO_NOTIFICACAO}:${vendaId}:${etapaCodigo}`;
-  
-  const query = Notificacao.query(trx)
-    .where('source_key', sourceKey);
+  try {
+    const sourceKey = `${TIPO_NOTIFICACAO}:${vendaId}:${etapaCodigo}`;
 
-  const notificacoes = await query.select('id');
+    const notificacoes = await Notificacao.query(trx)
+      .where('source_key', sourceKey)
+      .select('id');
 
-  if (notificacoes.length > 0) {
-    await NotificacaoDestinatario.query(trx)
-      .whereIn('notificacao_id', notificacoes.map(n => n.id))
-      .delete();
+    if (notificacoes.length > 0) {
+      await NotificacaoDestinatario.query(trx)
+        .whereIn('notificacao_id', notificacoes.map(n => n.id))
+        .delete();
+    }
+
+    return Notificacao.query(trx)
+      .where('source_key', sourceKey)
+      .patch({ ativa: false, updated_at: new Date() });
+  } catch (erro) {
+    console.error('Erro ao desativar notificação de venda parada:', erro);
   }
-
-  return Notificacao.query(trx)
-    .where('source_key', sourceKey)
-    .patch({ ativa: false, updated_at: new Date() });
 }
 
 async function sincronizarVendasParadas() {
