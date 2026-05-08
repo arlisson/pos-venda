@@ -83,6 +83,8 @@ function montarStageLabels(stages = []) {
   };
 }
 
+const SEIS_MESES_MS = 6 * 30 * 24 * 60 * 60 * 1000;
+
 const PRIORITIES = {
   alta: { label: 'Prioridade Alta', color: '#ef4444' },
   media: { label: 'Prioridade Média', color: '#3b82f6' },
@@ -797,6 +799,7 @@ function FunilPage() {
   const [emailTemplate, setEmailTemplate] = useState(null);
   const [gerandoEmailId, setGerandoEmailId] = useState(null);
   const [copiandoEmail, setCopiandoEmail] = useState(false);
+  const [mostrarArquivadas, setMostrarArquivadas] = useState(false);
   const [baixandoXlsxId, setBaixandoXlsxId] = useState(null);
 
   async function handleBaixarXlsxClaro(venda) {
@@ -1069,11 +1072,21 @@ function FunilPage() {
     }));
   }
 
-  const filtradas = sales.filter(
-    s => s.stage !== 'retorno'
-      && (filter === 'todas' || s.operator === filter)
-      && vendaCorrespondeBusca(s, busca)
-  );
+  const agora = Date.now();
+  const filtradas = sales.filter(s => {
+    if (s.stage === 'retorno') return false;
+    if (!mostrarArquivadas
+      && etapasFinaisIds.has(s.stage)
+      && (agora - s.updated.getTime()) > SEIS_MESES_MS) return false;
+    if (filter !== 'todas' && s.operator !== filter) return false;
+    if (!vendaCorrespondeBusca(s, busca)) return false;
+    return true;
+  });
+  const arquivadas = mostrarArquivadas ? 0 : sales.filter(s =>
+    s.stage !== 'retorno'
+      && etapasFinaisIds.has(s.stage)
+      && (agora - s.updated.getTime()) > SEIS_MESES_MS
+  ).length;
   const total = filtradas.reduce((sum, s) => sum + s.value, 0);
   const selectedSale = selectedSaleId ? sales.find(s => s.id === selectedSaleId) : null;
   const adminStagesByCode = useMemo(
@@ -1099,6 +1112,10 @@ function FunilPage() {
   }, [sales, stages]);
   const stagesValidas = useMemo(
     () => stagesVisiveis.filter(stage => stage.ativo !== false),
+    [stagesVisiveis]
+  );
+  const etapasFinaisIds = useMemo(
+    () => new Set(stagesVisiveis.filter(st => st.etapaFinal).map(st => st.id)),
     [stagesVisiveis]
   );
   const stageLabels = montarStageLabels(stagesVisiveis);
@@ -1158,6 +1175,16 @@ function FunilPage() {
               {op === 'todas' ? 'Todas' : op}
             </button>
           ))}
+          {(arquivadas > 0 || mostrarArquivadas) && (
+            <button
+              type="button"
+              className={`filter-chip${mostrarArquivadas ? ' active' : ''}`}
+              onClick={() => setMostrarArquivadas(v => !v)}
+              title="Vendas na etapa final sem atividade há mais de 6 meses"
+            >
+              {mostrarArquivadas ? 'Ocultar arquivadas' : `Arquivadas (${arquivadas})`}
+            </button>
+          )}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 12.5 }}>
             <span className="muted">{filtradas.length} vendas</span>
             <span style={{ color: 'var(--border-strong)' }}>·</span>
