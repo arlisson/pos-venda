@@ -103,7 +103,7 @@ function DetalhesModal({ secao, periodo, onClose }) {
                     <th>Serviço</th>
                     <th className="num">Linhas</th>
                     <th className="num">Valor</th>
-                    <th className="num">Vencto</th>
+                    <th className="num">Vencimento</th>
                     <th>Fidelidade</th>
                     <th>Status</th>
                   </tr>

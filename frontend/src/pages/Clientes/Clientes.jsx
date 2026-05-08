@@ -228,7 +228,7 @@ function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }
           <div className="modal-header-row">
             <div>
               <div className="modal-client">Registrar venda</div>
-              <div className="modal-sub">Escolha quais colunas vao preencher a nova venda.</div>
+              <div className="modal-sub">Escolha quais colunas vão preencher a nova venda.</div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
               <I.Close size={14} />
@@ -683,7 +683,7 @@ function NotasClienteReadOnlyModal({ cliente, notas, carregando, erro, onClose }
             <div className="notes-empty notes-empty--compact">
               <I.Note size={20} />
               <strong>Nenhuma nota ainda.</strong>
-              <span>Este cliente ainda nao tem anotacoes.</span>
+              <span>Este cliente ainda não tem anotações.</span>
             </div>
           ) : (
             <div className="cliente-notes-readonly-list">
@@ -832,7 +832,7 @@ function Clientes() {
       setClienteModal(null);
       setModalAberto(true);
     } else {
-      setErro('Voce nao tem permissao para cadastrar clientes.');
+      setErro('Você não tem permissão para cadastrar clientes.');
     }
 
     const proximosParams = new URLSearchParams(searchParams);

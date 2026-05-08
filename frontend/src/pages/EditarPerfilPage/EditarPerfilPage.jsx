@@ -82,7 +82,7 @@ function EditarPerfilPage() {
     }
 
     if (arquivo.size > 4 * 1024 * 1024) {
-      setErro('A foto deve ter ate 4 MB.');
+      setErro('A foto deve ter até 4 MB.');
       return;
     }
 
@@ -192,7 +192,7 @@ function EditarPerfilPage() {
                       Remover
                     </button>
                   )}
-                  <div className="editar-perfil-help">PNG, JPG ou WEBP ate 4 MB.</div>
+                  <div className="editar-perfil-help">PNG, JPG ou WEBP até 4 MB.</div>
                 </div>
               </div>
 

@@ -25,7 +25,7 @@ const FORM_INICIAL = {
 
 const CNPJ_SUGESTOES_CLIENTE = {
   nomeFantasia: { campo: 'nome', label: 'Nome fantasia' },
-  razaoSocial: { campo: 'razao_social', label: 'Razao social' },
+  razaoSocial: { campo: 'razao_social', label: 'Razão social' },
   email: { campo: 'email', label: 'Email' },
   telefone: { campo: 'whatsapp', label: 'Whatsapp' }
 };

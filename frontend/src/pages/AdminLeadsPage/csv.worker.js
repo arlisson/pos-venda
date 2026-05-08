@@ -210,7 +210,7 @@ self.onmessage = async (event) => {
     flushBatch();
 
     if (!columns || columns.length === 0) {
-      throw new Error('CSV sem cabecalho valido.');
+      throw new Error('CSV sem cabeçalho válido.');
     }
 
     self.postMessage({

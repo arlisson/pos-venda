@@ -118,9 +118,9 @@ function ClientesLixeiraPage() {
                   <th>Responsavel</th>
                   <th>Contato</th>
                   <th>Enviado em</th>
-                  <th>Exclusao definitiva</th>
+                  <th>Exclusão definitiva</th>
                   <th>Enviado por</th>
-                  {podeExcluir && <th>Acoes</th>}
+                  {podeExcluir && <th>Ações</th>}
                 </tr>
               </thead>
               <tbody>

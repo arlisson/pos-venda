@@ -540,7 +540,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                       <th>Repasse</th>
                       <th>Tipo</th>
                       <th>Serviço</th>
-                      <th className="num">Vencto</th>
+                      <th className="num">Vencimento</th>
                       <th>Cliente solicitou</th>
                       <th>Qtd. bloqueio</th>
                       <th>Qtd. cancelamento</th>

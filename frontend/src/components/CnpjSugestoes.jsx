@@ -20,7 +20,7 @@ export function formatarMensagemResumoCnpj(dados) {
     .map(meta => meta?.atualizadoEm)
     .filter(Boolean)
     .sort((a, b) => new Date(b) - new Date(a));
-  const dataMaisRecente = datas[0] ? ` Atualizado na fonte em ${formatarData(datas[0])}.` : ' Sem data de atualizacao informada.';
+  const dataMaisRecente = datas[0] ? ` Atualizado na fonte em ${formatarData(datas[0])}.` : ' Sem data de atualização informada.';
   const alertas = dados.alertas?.length ? ` ${dados.alertas.length} alerta(s) para conferencia.` : '';
   const cache = dados.cache ? ' Resposta do cache.' : '';
 
