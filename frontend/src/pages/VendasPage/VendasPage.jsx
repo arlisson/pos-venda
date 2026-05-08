@@ -69,6 +69,10 @@ const VENDA_VAZIA = {
   gb: '',
   valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' }],
   valor_total: '',
+  cliente_solicitou_servicos: [],
+  cliente_solicitou_bloqueio_qtd: '',
+  cliente_solicitou_cancelamento_qtd: '',
+  cliente_solicitou_numeros: { bloqueio: [], cancelamento: [] },
   ponto_referencia: '',
   tipo_local_cpf: '',
   razao_social: '',
@@ -86,6 +90,14 @@ const VENDA_VAZIA = {
   bairro: '',
   municipio: '',
   uf: '',
+  endereco_real_divergente: false,
+  cep_real: '',
+  endereco_real: '',
+  numero_endereco_real: '',
+  complemento_real: '',
+  bairro_real: '',
+  municipio_real: '',
+  uf_real: '',
   ponto_referencia: '',
   tipo_local_cpf: '',
   // Aceite e recebimento
@@ -129,12 +141,30 @@ const CNPJ_LABELS_VENDA = Object.fromEntries(
   Object.entries(CNPJ_SUGESTOES_VENDA).map(([campo, config]) => [campo, config.label])
 );
 
+const CAMPOS_ENDERECO_REAL_VENDA = [
+  { name: 'cep_real', label: 'CEP' },
+  { name: 'endereco_real', label: 'Endereço real', type: 'longText', span: true },
+  { name: 'numero_endereco_real', label: 'Número' },
+  { name: 'complemento_real', label: 'Complemento', type: 'longText', span: true },
+  { name: 'bairro_real', label: 'Bairro' },
+  { name: 'municipio_real', label: 'Município' },
+  { name: 'uf_real', label: 'UF', maxLength: 2 }
+];
+
 const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' };
 const NUMERO_PORTADO_VAZIO = '';
 const TIPOS_LINHA_CHIP = [
   { value: 'novo', label: 'Novo' },
   { value: 'portabilidade', label: 'Port.' }
 ];
+
+const CLIENTE_SOLICITOU_OPCOES = [
+  { value: 'bloqueio', label: 'Bloqueio' },
+  { value: 'cancelamento', label: 'Cancelamento' },
+  { value: 'nenhum_servico', label: 'Nenhum serviço' }
+];
+
+const CLIENTE_SOLICITOU_ACOES = ['bloqueio', 'cancelamento'];
 
 const DIAS_SEMANA = [
   { value: 'segunda', label: 'Segunda-feira' },
@@ -187,6 +217,7 @@ const CAMPOS = [
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
+  { name: 'cliente_solicitou_servicos', label: 'Cliente solicitou', type: 'clientRequested', span: true },
   { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitários', type: 'chips', span: true },
   { name: 'numeros_ativados', label: 'Números ativados', type: 'activatedNumbers', span: true },
   { name: 'numeros_portados', label: 'Números a serem portados', type: 'portedNumbers', span: true },
@@ -199,6 +230,7 @@ const CAMPOS = [
   { name: 'bairro', label: 'Bairro' },
   { name: 'municipio', label: 'Município' },
   { name: 'uf', label: 'UF', maxLength: 2 },
+  { name: 'endereco_real_divergente', label: 'Endereço da Receita não é o endereço real', type: 'realAddressToggle', span: true },
   { name: 'ponto_referencia', label: 'Ponto de referência', type: 'longText', span: true },
   { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condomínio, shopping...', type: 'longText', span: true },
 
@@ -436,8 +468,8 @@ function formatarCampoVenda(campo, valor) {
   if (campo === 'fixo_ddd') return formatarTelefoneComDdd(valor, false);
   if (campo === 'cpf_representante_legal' || campo === 'cpf_administrador') return formatarCpf(valor);
   if (campo === 'cnpj') return formatarCnpj(valor);
-  if (campo === 'cep') return formatarCep(valor);
-  if (campo === 'uf') return String(valor || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+  if (campo === 'cep' || campo === 'cep_real') return formatarCep(valor);
+  if (campo === 'uf' || campo === 'uf_real') return String(valor || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
   if (campo === 'ddd') return apenasDigitos(valor, 2);
   if (campo === 'gb') return apenasDigitos(valor, 4);
   if (campo === 'quantidade_linhas') return apenasDigitos(valor, 4);
@@ -448,7 +480,7 @@ function formatarCampoVenda(campo, valor) {
 function getInputModeCampo(campo) {
   if ([
     'telefone', 'fixo_ddd', 'telefone_representante_legal', 'telefone_administrador',
-    'cpf_representante_legal', 'cpf_administrador', 'cnpj', 'cep', 'ddd', 'gb', 'quantidade_linhas', 'dia_vencimento'
+    'cpf_representante_legal', 'cpf_administrador', 'cnpj', 'cep', 'cep_real', 'ddd', 'gb', 'quantidade_linhas', 'dia_vencimento'
   ].includes(campo)) {
     return 'numeric';
   }
@@ -466,9 +498,11 @@ function getMaxLengthCampo(campo, maxLength) {
     cpf_administrador: 14,
     cnpj: 18,
     cep: 9,
+    cep_real: 9,
     ddd: 2,
     gb: 4,
     uf: 2,
+    uf_real: 2,
     dia_vencimento: 2,
     quantidade_linhas: 4
   };
@@ -686,6 +720,68 @@ function montarNumerosPortados(valor) {
 const parseNumerosAtivados = parseNumerosPortados;
 const montarNumerosAtivados = montarNumerosPortados;
 
+function parseClienteSolicitouServicos(valor) {
+  if (!valor) return [];
+
+  if (Array.isArray(valor)) {
+    const servicos = valor
+      .map(item => String(item || '').trim())
+      .filter(item => CLIENTE_SOLICITOU_OPCOES.some(opcao => opcao.value === item));
+
+    return servicos.includes('nenhum_servico')
+      ? ['nenhum_servico']
+      : CLIENTE_SOLICITOU_ACOES.filter(item => servicos.includes(item));
+  }
+
+  if (typeof valor === 'string') {
+    try {
+      return parseClienteSolicitouServicos(JSON.parse(valor));
+    } catch {
+      return parseClienteSolicitouServicos(valor.split(/\r?\n|[,;]/));
+    }
+  }
+
+  return [];
+}
+
+function parseClienteSolicitouNumeros(valor) {
+  const vazio = { bloqueio: [], cancelamento: [] };
+  if (!valor) return vazio;
+
+  if (typeof valor === 'string') {
+    try {
+      return parseClienteSolicitouNumeros(JSON.parse(valor));
+    } catch {
+      return vazio;
+    }
+  }
+
+  if (typeof valor !== 'object') return vazio;
+
+  return {
+    bloqueio: parseNumerosPortados(valor.bloqueio).filter(numero => apenasDigitos(numero).length > 2),
+    cancelamento: parseNumerosPortados(valor.cancelamento).filter(numero => apenasDigitos(numero).length > 2)
+  };
+}
+
+function montarClienteSolicitouNumeros(numeros = {}) {
+  return {
+    bloqueio: (Array.isArray(numeros.bloqueio) ? numeros.bloqueio : parseNumerosPortados(numeros.bloqueio))
+      .map(numero => String(numero || '').trim())
+      .filter(numero => apenasDigitos(numero).length > 2),
+    cancelamento: (Array.isArray(numeros.cancelamento) ? numeros.cancelamento : parseNumerosPortados(numeros.cancelamento))
+      .map(numero => String(numero || '').trim())
+      .filter(numero => apenasDigitos(numero).length > 2)
+  };
+}
+
+function ajustarQuantidadeNumerosSolicitados(value, quantidade) {
+  const total = Math.max(Number(quantidade || 0), 0);
+  const atuais = Array.isArray(value) ? value : parseNumerosPortados(value);
+
+  return Array.from({ length: total }, (_, index) => atuais[index] || NUMERO_PORTADO_VAZIO);
+}
+
 function normalizarVenda(venda) {
   // Montar array de vendedoras a partir da relação (junction) ou do campo legado
   const vendedorasIds = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
@@ -702,6 +798,10 @@ function normalizarVenda(venda) {
     valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips, venda.gb, tipoLinhaPadrao),
     numeros_portados: parseNumerosPortados(venda.numeros_portados),
     numeros_ativados: parseNumerosAtivados(venda.numeros_ativados),
+    cliente_solicitou_servicos: parseClienteSolicitouServicos(venda.cliente_solicitou_servicos),
+    cliente_solicitou_bloqueio_qtd: venda.cliente_solicitou_bloqueio_qtd ?? '',
+    cliente_solicitou_cancelamento_qtd: venda.cliente_solicitou_cancelamento_qtd ?? '',
+    cliente_solicitou_numeros: parseClienteSolicitouNumeros(venda.cliente_solicitou_numeros),
     quantidade_linhas: venda.quantidade_linhas ?? '',
     dia_vencimento: venda.dia_vencimento ?? '',
     operadora_id: venda.operadora_id ? String(venda.operadora_id) : '',
@@ -972,6 +1072,154 @@ function NumerosPortadosInput(props) {
 
 function NumerosAtivadosInput(props) {
   return <NumerosLinhaInput {...props} labelAdicionar="Adicionar número ativado" />;
+}
+
+function ClienteSolicitouInput({ form, onToggle, onOpenQuantidades }) {
+  const servicos = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
+  const nenhumSelecionado = servicos.includes('nenhum_servico');
+  const selecionouAcao = CLIENTE_SOLICITOU_ACOES.some(acao => servicos.includes(acao));
+  const numeros = parseClienteSolicitouNumeros(form.cliente_solicitou_numeros);
+  const totalNumeros = numeros.bloqueio.length + numeros.cancelamento.length;
+
+  return (
+    <div className="cliente-solicitou">
+      <div className="cliente-solicitou__options">
+        {CLIENTE_SOLICITOU_OPCOES.map(opcao => {
+          const marcado = servicos.includes(opcao.value);
+          const disabled = nenhumSelecionado && opcao.value !== 'nenhum_servico';
+
+          return (
+            <label key={opcao.value} className={`cliente-solicitou-option ${marcado ? 'is-active' : ''} ${disabled ? 'is-disabled' : ''}`}>
+              <input
+                type="checkbox"
+                checked={marcado}
+                disabled={disabled}
+                onChange={() => onToggle(opcao.value)}
+              />
+              <span>{opcao.label}</span>
+            </label>
+          );
+        })}
+      </div>
+
+      {selecionouAcao && (
+        <div className="cliente-solicitou__summary">
+          <span>Bloqueio: <strong>{Number(form.cliente_solicitou_bloqueio_qtd || 0)}</strong></span>
+          <span>Cancelamento: <strong>{Number(form.cliente_solicitou_cancelamento_qtd || 0)}</strong></span>
+          <span>Números: <strong>{totalNumeros}</strong></span>
+          <button type="button" className="btn btn-sm" onClick={onOpenQuantidades}>
+            <I.Edit size={13} /> Quantificar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClienteSolicitouQuantidadeModal({ servicos, quantidades, onChange, onClose, onConfirm }) {
+  const bloqueioSelecionado = servicos.includes('bloqueio');
+  const cancelamentoSelecionado = servicos.includes('cancelamento');
+
+  return (
+    <div className="modal-overlay cliente-solicitou-quantidade-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <div className="modal cliente-solicitou-quantidade-modal" role="dialog" aria-modal="true" aria-labelledby="cliente-solicitou-quantidade-title">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div id="cliente-solicitou-quantidade-title" className="modal-client">Quantificar chips</div>
+              <div className="modal-sub">Informe quantos chips entram em cada operação.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} title="Fechar">
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="cliente-solicitou-quantidade-fields">
+          {bloqueioSelecionado && (
+            <label className="form-field">
+              <span>Chips para bloqueio</span>
+              <input type="number" min="1" inputMode="numeric" value={quantidades.bloqueio} onChange={event => onChange('bloqueio', apenasDigitos(event.target.value, 4))} placeholder="0" />
+            </label>
+          )}
+
+          {cancelamentoSelecionado && (
+            <label className="form-field">
+              <span>Chips para cancelamento</span>
+              <input type="number" min="1" inputMode="numeric" value={quantidades.cancelamento} onChange={event => onChange('cancelamento', apenasDigitos(event.target.value, 4))} placeholder="0" />
+            </label>
+          )}
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+          <button type="button" className="btn btn-primary" onClick={onConfirm}>Informar números</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange, onClose, onConfirm }) {
+  const selecionados = CLIENTE_SOLICITOU_ACOES.filter(acao => servicos.includes(acao));
+
+  function atualizarNumero(tipo, index, valor) {
+    onChange({
+      ...numeros,
+      [tipo]: (numeros[tipo] || []).map((numero, numeroIndex) => (
+        numeroIndex === index ? formatarTelefoneComDdd(valor, true) : numero
+      ))
+    });
+  }
+
+  const faltando = selecionados.some(tipo => (
+    (numeros[tipo] || []).filter(numero => apenasDigitos(numero).length > 2).length !== Number(quantidades[tipo] || 0)
+  ));
+
+  return (
+    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <div className="modal cliente-solicitou-numeros-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Números envolvidos</div>
+              <div className="modal-sub">Preencha exatamente os números dos chips informados.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} title="Fechar">
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="cliente-solicitou-numeros">
+            {selecionados.map(tipo => (
+              <section key={tipo} className="cliente-solicitou-numeros__group">
+                <div className="cliente-solicitou-numeros__title">
+                  {tipo === 'bloqueio' ? 'Bloqueio' : 'Cancelamento'} ({Number(quantidades[tipo] || 0)})
+                </div>
+                {(numeros[tipo] || []).map((numero, index) => (
+                  <label key={`${tipo}-${index}`} className="cliente-solicitou-numero-row">
+                    <span>{index + 1}</span>
+                    <input type="text" inputMode="numeric" value={numero} onChange={event => atualizarNumero(tipo, index, event.target.value)} maxLength={15} placeholder="(11) 99999-9999" />
+                  </label>
+                ))}
+              </section>
+            ))}
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Voltar</button>
+          <button type="button" className="btn btn-primary" onClick={onConfirm} disabled={faltando}>
+            Confirmar números
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ResponsaveisRecebimentoInput({ form, onChange }) {
@@ -1787,6 +2035,12 @@ function VendaModal({
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
+  const [clienteSolicitouQuantidadeAberta, setClienteSolicitouQuantidadeAberta] = useState(false);
+  const [clienteSolicitouNumerosAberto, setClienteSolicitouNumerosAberto] = useState(false);
+  const [clienteSolicitouServicosDraft, setClienteSolicitouServicosDraft] = useState([]);
+  const [clienteSolicitouQuantidadesDraft, setClienteSolicitouQuantidadesDraft] = useState({ bloqueio: '', cancelamento: '' });
+  const [clienteSolicitouNumerosDraft, setClienteSolicitouNumerosDraft] = useState({ bloqueio: [], cancelamento: [] });
+  const [enderecoRealModalAberto, setEnderecoRealModalAberto] = useState(false);
   const abaInicial = initialTab === 'arquivos' && !podeVerDocumentosVenda ? 'venda' : initialTab;
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
@@ -1807,6 +2061,7 @@ function VendaModal({
   const quantidadeLinhasFechadas = Number(form.quantidade_linhas || 0);
   const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
   const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
+  const clienteSolicitouServicos = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
   const clienteIdProtocolo = String(form.cliente_id || '');
   const vendaIdAtual = venda?.id ? String(venda.id) : '';
   const protocoloOriginal = String(venda?.protocolo || '').trim();
@@ -1909,6 +2164,117 @@ function VendaModal({
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
     setForm(prev => ({ ...prev, vendedoras: ids }));
+  }
+
+  function alternarEnderecoReal(marcado) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    setForm(prev => ({
+      ...prev,
+      endereco_real_divergente: marcado
+    }));
+
+    if (marcado) {
+      setEnderecoRealModalAberto(true);
+    }
+  }
+
+  function abrirClienteSolicitouQuantidades(servicos = clienteSolicitouServicos) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    const selecionados = parseClienteSolicitouServicos(servicos).filter(servico => CLIENTE_SOLICITOU_ACOES.includes(servico));
+    if (selecionados.length === 0) return;
+
+    setClienteSolicitouServicosDraft(selecionados);
+    setClienteSolicitouQuantidadesDraft({
+      bloqueio: selecionados.includes('bloqueio') ? String(form.cliente_solicitou_bloqueio_qtd || '') : '',
+      cancelamento: selecionados.includes('cancelamento') ? String(form.cliente_solicitou_cancelamento_qtd || '') : ''
+    });
+    setClienteSolicitouQuantidadeAberta(true);
+  }
+
+  function alternarClienteSolicitouServico(servico) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    setForm(prev => {
+      const atuais = parseClienteSolicitouServicos(prev.cliente_solicitou_servicos);
+
+      if (servico === 'nenhum_servico') {
+        const selecionado = atuais.includes('nenhum_servico');
+        return {
+          ...prev,
+          cliente_solicitou_servicos: selecionado ? [] : ['nenhum_servico'],
+          cliente_solicitou_bloqueio_qtd: '',
+          cliente_solicitou_cancelamento_qtd: '',
+          cliente_solicitou_numeros: { bloqueio: [], cancelamento: [] }
+        };
+      }
+
+      const semNenhum = atuais.filter(item => item !== 'nenhum_servico');
+      const proximos = semNenhum.includes(servico)
+        ? semNenhum.filter(item => item !== servico)
+        : [...semNenhum, servico];
+      const numerosAtuais = parseClienteSolicitouNumeros(prev.cliente_solicitou_numeros);
+
+      return {
+        ...prev,
+        cliente_solicitou_servicos: proximos,
+        cliente_solicitou_bloqueio_qtd: proximos.includes('bloqueio') ? prev.cliente_solicitou_bloqueio_qtd : '',
+        cliente_solicitou_cancelamento_qtd: proximos.includes('cancelamento') ? prev.cliente_solicitou_cancelamento_qtd : '',
+        cliente_solicitou_numeros: {
+          bloqueio: proximos.includes('bloqueio') ? numerosAtuais.bloqueio : [],
+          cancelamento: proximos.includes('cancelamento') ? numerosAtuais.cancelamento : []
+        }
+      };
+    });
+  }
+
+  function confirmarClienteSolicitouQuantidades() {
+    const selecionados = parseClienteSolicitouServicos(clienteSolicitouServicosDraft);
+    const bloqueioQtd = selecionados.includes('bloqueio') ? Number(clienteSolicitouQuantidadesDraft.bloqueio || 0) : 0;
+    const cancelamentoQtd = selecionados.includes('cancelamento') ? Number(clienteSolicitouQuantidadesDraft.cancelamento || 0) : 0;
+
+    if (selecionados.includes('bloqueio') && bloqueioQtd <= 0) {
+      setErro('Informe a quantidade de chips para bloqueio.');
+      return;
+    }
+
+    if (selecionados.includes('cancelamento') && cancelamentoQtd <= 0) {
+      setErro('Informe a quantidade de chips para cancelamento.');
+      return;
+    }
+
+    const numerosAtuais = parseClienteSolicitouNumeros(form.cliente_solicitou_numeros);
+    const numerosAjustados = {
+      bloqueio: selecionados.includes('bloqueio')
+        ? ajustarQuantidadeNumerosSolicitados(numerosAtuais.bloqueio, bloqueioQtd)
+        : [],
+      cancelamento: selecionados.includes('cancelamento')
+        ? ajustarQuantidadeNumerosSolicitados(numerosAtuais.cancelamento, cancelamentoQtd)
+        : []
+    };
+
+    setForm(prev => ({
+      ...prev,
+      cliente_solicitou_bloqueio_qtd: bloqueioQtd ? String(bloqueioQtd) : '',
+      cliente_solicitou_cancelamento_qtd: cancelamentoQtd ? String(cancelamentoQtd) : '',
+      cliente_solicitou_numeros: numerosAjustados
+    }));
+    setClienteSolicitouNumerosDraft(numerosAjustados);
+    setClienteSolicitouQuantidadeAberta(false);
+    setClienteSolicitouNumerosAberto(true);
+  }
+
+  function confirmarClienteSolicitouNumeros() {
+    const numeros = montarClienteSolicitouNumeros(clienteSolicitouNumerosDraft);
+    const bloqueioQtd = Number(form.cliente_solicitou_bloqueio_qtd || clienteSolicitouQuantidadesDraft.bloqueio || 0);
+    const cancelamentoQtd = Number(form.cliente_solicitou_cancelamento_qtd || clienteSolicitouQuantidadesDraft.cancelamento || 0);
+
+    if (clienteSolicitouServicosDraft.includes('bloqueio') && numeros.bloqueio.length !== bloqueioQtd) return;
+    if (clienteSolicitouServicosDraft.includes('cancelamento') && numeros.cancelamento.length !== cancelamentoQtd) return;
+
+    setForm(prev => ({ ...prev, cliente_solicitou_numeros: numeros }));
+    setClienteSolicitouNumerosAberto(false);
   }
 
   function aceitarSugestaoCnpj(campoApi) {
@@ -2181,6 +2547,38 @@ function VendaModal({
         return;
       }
 
+      const servicosSolicitados = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
+      const solicitouNenhumServico = servicosSolicitados.includes('nenhum_servico');
+      const solicitouBloqueio = servicosSolicitados.includes('bloqueio');
+      const solicitouCancelamento = servicosSolicitados.includes('cancelamento');
+      const bloqueioQtd = solicitouBloqueio ? Number(form.cliente_solicitou_bloqueio_qtd || 0) : 0;
+      const cancelamentoQtd = solicitouCancelamento ? Number(form.cliente_solicitou_cancelamento_qtd || 0) : 0;
+      const numerosSolicitados = montarClienteSolicitouNumeros(form.cliente_solicitou_numeros);
+
+      if (solicitouBloqueio && bloqueioQtd <= 0) {
+        setErro('Informe a quantidade de chips para bloqueio.');
+        setSalvando(false);
+        return;
+      }
+
+      if (solicitouCancelamento && cancelamentoQtd <= 0) {
+        setErro('Informe a quantidade de chips para cancelamento.');
+        setSalvando(false);
+        return;
+      }
+
+      if (solicitouBloqueio && numerosSolicitados.bloqueio.length !== bloqueioQtd) {
+        setErro('Preencha exatamente a quantidade de números de bloqueio informada.');
+        setSalvando(false);
+        return;
+      }
+
+      if (solicitouCancelamento && numerosSolicitados.cancelamento.length !== cancelamentoQtd) {
+        setErro('Preencha exatamente a quantidade de números de cancelamento informada.');
+        setSalvando(false);
+        return;
+      }
+
       const chipsProcessados = (form.valores_unitarios_chips || [])
         .map(item => ({
           quantidade: Number(item.quantidade || 0),
@@ -2198,6 +2596,13 @@ function VendaModal({
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
         numeros_ativados: form.data_ativacao ? numerosAtivados : null,
         valores_unitarios_chips: chipsProcessados,
+        cliente_solicitou_servicos: solicitouNenhumServico ? ['nenhum_servico'] : servicosSolicitados,
+        cliente_solicitou_bloqueio_qtd: solicitouNenhumServico || !solicitouBloqueio ? null : bloqueioQtd,
+        cliente_solicitou_cancelamento_qtd: solicitouNenhumServico || !solicitouCancelamento ? null : cancelamentoQtd,
+        cliente_solicitou_numeros: solicitouNenhumServico ? { bloqueio: [], cancelamento: [] } : {
+          bloqueio: solicitouBloqueio ? numerosSolicitados.bloqueio : [],
+          cancelamento: solicitouCancelamento ? numerosSolicitados.cancelamento : []
+        },
         vendedoras: vendedorasIds
       };
 
@@ -2449,6 +2854,33 @@ function VendaModal({
                       vendedoras={vendedoras.filter(v => (form.vendedoras || []).includes(String(v.id)))}
                       limiteQuantidade={form.quantidade_linhas}
                     />
+                  ) : campo.type === 'clientRequested' ? (
+                    <ClienteSolicitouInput
+                      form={form}
+                      onToggle={alternarClienteSolicitouServico}
+                      onOpenQuantidades={() => abrirClienteSolicitouQuantidades()}
+                    />
+                  ) : campo.type === 'realAddressToggle' ? (
+                    <div className="venda-address-toggle">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.endereco_real_divergente)}
+                          onChange={e => alternarEnderecoReal(e.target.checked)}
+                          disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                        />
+                        <span>{campo.label}</span>
+                      </label>
+                      {form.endereco_real_divergente && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => setEnderecoRealModalAberto(true)}
+                        >
+                          Editar endereço real
+                        </button>
+                      )}
+                    </div>
                   ) : campo.type === 'portedNumbers' ? (
                     <NumerosPortadosInput
                       value={form[campo.name]}
@@ -2515,6 +2947,88 @@ function VendaModal({
           </>
           )}
         </div>
+
+        {clienteSolicitouQuantidadeAberta && (
+          <ClienteSolicitouQuantidadeModal
+            servicos={clienteSolicitouServicosDraft}
+            quantidades={clienteSolicitouQuantidadesDraft}
+            onChange={(tipo, valor) => setClienteSolicitouQuantidadesDraft(prev => ({ ...prev, [tipo]: valor }))}
+            onClose={() => setClienteSolicitouQuantidadeAberta(false)}
+            onConfirm={confirmarClienteSolicitouQuantidades}
+          />
+        )}
+
+        {clienteSolicitouNumerosAberto && (
+          <ClienteSolicitouNumerosModal
+            servicos={clienteSolicitouServicosDraft}
+            quantidades={{
+              bloqueio: form.cliente_solicitou_bloqueio_qtd || clienteSolicitouQuantidadesDraft.bloqueio,
+              cancelamento: form.cliente_solicitou_cancelamento_qtd || clienteSolicitouQuantidadesDraft.cancelamento
+            }}
+            numeros={clienteSolicitouNumerosDraft}
+            onChange={setClienteSolicitouNumerosDraft}
+            onClose={() => {
+              setClienteSolicitouNumerosAberto(false);
+              setClienteSolicitouQuantidadeAberta(true);
+            }}
+            onConfirm={confirmarClienteSolicitouNumeros}
+          />
+        )}
+
+        {enderecoRealModalAberto && (
+          <div className="modal-overlay" role="dialog" aria-modal="true" onClick={event => event.target === event.currentTarget && setEnderecoRealModalAberto(false)}>
+            <div className="modal venda-address-modal">
+              <div className="modal-header">
+                <div className="modal-header-row">
+                  <div>
+                    <div className="modal-client">Endereço real</div>
+                    <div className="modal-sub">Fica salvo na venda sem substituir o endereço da Receita.</div>
+                  </div>
+                  <button
+                    className="btn btn-icon btn-ghost"
+                    type="button"
+                    onClick={() => setEnderecoRealModalAberto(false)}
+                    title="Fechar"
+                  >
+                    <I.Close />
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-body">
+                <div className="vendas-form-grid venda-address-modal__grid">
+                  {CAMPOS_ENDERECO_REAL_VENDA.map(campo => (
+                    <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''}`}>
+                      <label>{campo.label}</label>
+                      {campo.type === 'longText' ? (
+                        <AutoResizeTextarea
+                          value={form[campo.name] ?? ''}
+                          onChange={e => atualizarCampo(campo.name, e.target.value)}
+                          maxRows={3}
+                          disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                        />
+                      ) : (
+                        <input
+                          value={form[campo.name] ?? ''}
+                          onChange={e => atualizarCampo(campo.name, e.target.value)}
+                          maxLength={getMaxLengthCampo(campo.name, campo.maxLength)}
+                          inputMode={getInputModeCampo(campo.name)}
+                          disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn btn-primary" type="button" onClick={() => setEnderecoRealModalAberto(false)}>
+                  Concluir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="modal-footer">
           {abaAtiva === 'notas' || abaAtiva === 'arquivos' || abaAtiva === 'problema' ? (
