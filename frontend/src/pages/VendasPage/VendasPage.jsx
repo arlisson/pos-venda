@@ -116,6 +116,8 @@ const VENDA_VAZIA = {
   rg_responsavel_recebimento_2: '',
   responsavel_recebimento_3: '',
   rg_responsavel_recebimento_3: '',
+  promessa_cliente: '',
+  promessa_cumprida: '',
   observacoes: '',
   // Referências
   operadora_id: '',
@@ -181,6 +183,12 @@ const FECHOU_VENDA_OPCOES = [
   { value: 'ADM', label: 'ADM' }
 ];
 
+const PROMESSA_CUMPRIDA_OPCOES = [
+  { value: 'pendente', label: 'Pendente' },
+  { value: 'sim', label: 'Sim' },
+  { value: 'nao', label: 'Não' }
+];
+
 const CAMPOS = [
   { section: 'Cliente' },
   { name: 'cliente_id', label: 'Cliente', type: 'client', required: true, span: true },
@@ -242,6 +250,8 @@ const CAMPOS = [
   { name: 'senha', label: 'Senha (portal do cliente)' },
   { name: 'numero_cliente_contrato', label: 'Número do cliente no contrato', placeholder: 'Caso não tenha Login e Senha', span: true },
   { name: 'responsaveis_recebimento', type: 'responsaveis', span: true },
+  { name: 'promessa_cliente', label: 'O que foi prometido ao cliente', type: 'longText', span: true, maxRows: 5 },
+  { name: 'promessa_cumprida', label: 'Cumprimos o prometido?', type: 'promiseStatus', span: true },
   { name: 'observacoes', label: 'Observações', type: 'longText', span: true, maxRows: 6 },
 ];
 
@@ -2881,6 +2891,16 @@ function VendaModal({
                         </button>
                       )}
                     </div>
+                  ) : campo.type === 'promiseStatus' ? (
+                    <select
+                      value={form[campo.name] ?? ''}
+                      onChange={e => atualizarCampo(campo.name, e.target.value)}
+                    >
+                      <option value="">Selecione</option>
+                      {PROMESSA_CUMPRIDA_OPCOES.map(opcao => (
+                        <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                      ))}
+                    </select>
                   ) : campo.type === 'portedNumbers' ? (
                     <NumerosPortadosInput
                       value={form[campo.name]}

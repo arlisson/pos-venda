@@ -45,6 +45,8 @@ class Venda extends Model {
         data_venda: { type: ['string', 'null'] },
         data_ativacao: { type: ['string', 'null'] },
         qc_feito_por: { type: ['string', 'null'], maxLength: 120 },
+        promessa_cliente: { type: ['string', 'null'] },
+        promessa_cumprida: { type: ['string', 'null'], enum: ['pendente', 'sim', 'nao', null] },
         observacoes: { type: ['string', 'null'] },
         dia_vencimento: { type: ['integer', 'null'] },
         endereco: { type: ['string', 'null'], maxLength: 255 },
