@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import { getDetalhesChips } from '../../services/fechamento.service';
 
@@ -260,8 +259,7 @@ function calcularTotais(linhas) {
   };
 }
 
-function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose }) {
-  const navigate = useNavigate();
+function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda, reloadKey = 0 }) {
   const [dados, setDados] = useState(DADOS_VAZIOS);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
@@ -298,7 +296,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose }) {
     return () => {
       ativo = false;
     };
-  }, [secao, periodo]);
+  }, [secao, periodo, reloadKey]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const linhasBase = useMemo(() => (Array.isArray(dados.linhas) ? dados.linhas : []), [dados.linhas]);
@@ -367,8 +365,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose }) {
 
   function abrirVenda(vendaId) {
     if (!vendaId) return;
-    onClose?.();
-    navigate(`/vendas?venda_id=${vendaId}`);
+    onAbrirVenda?.(vendaId);
   }
 
   function handleLinhaKeyDown(event, vendaId) {

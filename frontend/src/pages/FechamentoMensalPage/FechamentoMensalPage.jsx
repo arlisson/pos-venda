@@ -1,6 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getResumo } from '../../services/fechamento.service';
+import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
+import { criarCliente, listarClientes } from '../../services/cliente.service';
+import {
+  atualizarVenda,
+  buscarVendaPorId,
+  enviarVendaParaPosVenda,
+  listarVendas,
+  listarVendedoras
+} from '../../services/venda.service';
+import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import ClienteModal from '../Clientes/ClienteModal';
+import VendaModal from '../VendasPage/VendaModal';
 import DetalhesAtivasModal from './DetalhesAtivasModal';
 import FechamentoSecao from './FechamentoSecao';
 import PainelGerencial from './PainelGerencial';
@@ -29,6 +41,29 @@ function dataValida(valor) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(valor || ''));
 }
 
+function chaveClienteVenda(venda = {}) {
+  if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
+  if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
+  if (venda.cnpj || venda.cliente?.cnpj) return `cnpj:${String(venda.cnpj || venda.cliente?.cnpj).replace(/\D/g, '')}`;
+
+  const nome = String(venda.nome || venda.cliente?.nome || venda.razao_social || venda.cliente?.razao_social || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+  return nome ? `nome:${nome}` : '';
+}
+
+function contarVendasPorCliente(vendas = []) {
+  return vendas.reduce((acc, venda) => {
+    const chave = chaveClienteVenda(venda);
+    if (!chave) return acc;
+    acc.set(chave, (acc.get(chave) || 0) + 1);
+    return acc;
+  }, new Map());
+}
+
 function FechamentoMensalPage() {
   const [periodo, setPeriodo] = useState(() => periodoMesAtual());
   const [periodoConsulta, setPeriodoConsulta] = useState(() => periodoMesAtual());
@@ -37,33 +72,147 @@ function FechamentoMensalPage() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [modalDetalhes, setModalDetalhes] = useState(null);
+  const [detalhesReloadKey, setDetalhesReloadKey] = useState(0);
+  const [modalVenda, setModalVenda] = useState(null);
+  const [modalVendaAberto, setModalVendaAberto] = useState(false);
+  const [modalModoEdicao, setModalModoEdicao] = useState(false);
+  const [vendaLoadingId, setVendaLoadingId] = useState(null);
+  const [clientes, setClientes] = useState([]);
+  const [vendas, setVendas] = useState([]);
+  const [vendedoras, setVendedoras] = useState([]);
+  const [operadoras, setOperadoras] = useState([]);
+  const [tiposVenda, setTiposVenda] = useState([]);
+  const [servicos, setServicos] = useState([]);
+  const [clienteRapidoAberto, setClienteRapidoAberto] = useState(false);
+  const [, setResolverClienteRapido] = useState(null);
+  const usuarioLogado = getUsuarioLocal();
+  const podeEditarVenda = temPermissao(usuarioLogado, ['vendas_editar', 'pos_venda']);
+  const podeVerDocumentosVenda = temPermissao(usuarioLogado, 'vendas_documentos');
+  const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
+  const vendasPorCliente = useMemo(() => contarVendasPorCliente(vendas), [vendas]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    let ativo = true;
-    setLoading(true);
+  const carregarResumo = useCallback(async (periodoAtual, { sinalizarLoading = true } = {}) => {
+    if (sinalizarLoading) setLoading(true);
     setErro('');
 
-    getResumo(periodoConsulta)
-      .then(dados => {
-        if (!ativo) return;
-        setResumo(dados?.secoes || { total: [], tratando: [], ativas: [] });
-        setPainel(dados?.painel || []);
-      })
-      .catch(error => {
-        if (!ativo) return;
-        setErro(error.message || 'Erro ao carregar fechamento mensal.');
-      })
-      .finally(() => {
-        if (!ativo) return;
-        setLoading(false);
-      });
+    try {
+      const dados = await getResumo(periodoAtual);
+      setResumo(dados?.secoes || { total: [], tratando: [], ativas: [] });
+      setPainel(dados?.painel || []);
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar fechamento mensal.');
+    } finally {
+      if (sinalizarLoading) setLoading(false);
+    }
+  }, []);
 
-    return () => {
-      ativo = false;
-    };
-  }, [periodoConsulta]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    carregarResumo(periodoConsulta);
+  }, [periodoConsulta, carregarResumo]);
+
+  async function carregarDadosVenda() {
+    const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
+      listarVendas(),
+      podeListarClientes ? listarClientes() : Promise.resolve([]),
+      listarVendedoras(),
+      listarOperadoras(),
+      listarTiposVenda(),
+      listarServicos()
+    ]);
+
+    setVendas(vendasData || []);
+    setClientes(clientesData || []);
+    setVendedoras(vendedorasData || []);
+    setOperadoras(operadorasData || []);
+    setTiposVenda(tiposVendaData || []);
+    setServicos(servicosData || []);
+  }
+
+  async function abrirVenda(vendaId) {
+    if (!vendaId) return;
+    setErro('');
+    setVendaLoadingId(vendaId);
+
+    try {
+      const [venda] = await Promise.all([
+        buscarVendaPorId(vendaId),
+        carregarDadosVenda()
+      ]);
+
+      setModalVenda(venda);
+      setModalModoEdicao(false);
+      setModalVendaAberto(true);
+    } catch (error) {
+      setErro(error.message || 'Erro ao abrir venda.');
+    } finally {
+      setVendaLoadingId(null);
+    }
+  }
+
+  function fecharVenda() {
+    setModalVendaAberto(false);
+    setModalVenda(null);
+    setModalModoEdicao(false);
+  }
+
+  async function atualizarDadosFechamento() {
+    await Promise.all([
+      carregarResumo(periodoConsulta, { sinalizarLoading: false }),
+      carregarDadosVenda()
+    ]);
+    setDetalhesReloadKey(prev => prev + 1);
+  }
+
+  async function salvarVenda(dados) {
+    setErro('');
+
+    try {
+      await atualizarVenda(modalVenda.id, dados);
+
+      fecharVenda();
+      await atualizarDadosFechamento();
+    } catch (error) {
+      setErro(error.message || 'Erro ao salvar venda.');
+      throw error;
+    }
+  }
+
+  async function enviarPosVenda(venda) {
+    setErro('');
+
+    try {
+      await enviarVendaParaPosVenda(venda.id);
+      fecharVenda();
+      await atualizarDadosFechamento();
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    } catch (error) {
+      setErro(error.message || 'Erro ao enviar venda para o pos-venda.');
+      throw error;
+    }
+  }
+
+  function abrirClienteRapido() {
+    return new Promise(resolve => {
+      setResolverClienteRapido(() => resolve);
+      setClienteRapidoAberto(true);
+    });
+  }
+
+  function fecharClienteRapido(cliente = null) {
+    setClienteRapidoAberto(false);
+    setResolverClienteRapido(resolve => {
+      resolve?.(cliente);
+      return null;
+    });
+  }
+
+  async function salvarClienteRapido(dados) {
+    const clienteCriado = await criarCliente(dados);
+    const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
+    setClientes(clientesAtualizados || []);
+    fecharClienteRapido(clienteCriado);
+    return clienteCriado;
+  }
 
   function atualizarPeriodo(campo, valor) {
     setPeriodo(prev => ({ ...prev, [campo]: valor }));
@@ -96,6 +245,11 @@ function FechamentoMensalPage() {
         </div>
 
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}
+        {vendaLoadingId && (
+          <div className="alert-info" style={{ marginBottom: 16 }}>
+            Abrindo venda #{vendaLoadingId}...
+          </div>
+        )}
 
         <PainelGerencial linhas={painel} loading={loading} />
 
@@ -130,10 +284,43 @@ function FechamentoMensalPage() {
           <DetalhesAtivasModal
             secao={modalDetalhes}
             periodo={periodoConsulta}
+            reloadKey={detalhesReloadKey}
+            onAbrirVenda={abrirVenda}
             onClose={() => setModalDetalhes(null)}
           />
         )}
       </div>
+
+      {modalVendaAberto && (
+        <VendaModal
+          venda={modalVenda}
+          clientes={clientes}
+          vendas={vendas}
+          vendedoras={vendedoras}
+          operadoras={operadoras}
+          tiposVenda={tiposVenda}
+          servicos={servicos}
+          vendasPorCliente={vendasPorCliente}
+          podeEditarVenda={podeEditarVenda}
+          podeVerDocumentosVenda={podeVerDocumentosVenda}
+          usuarioLogado={usuarioLogado}
+          modoEdicao={modalModoEdicao}
+          onStartEdit={() => setModalModoEdicao(true)}
+          onClose={fecharVenda}
+          onSave={salvarVenda}
+          onSendToPosVenda={enviarPosVenda}
+          onCreateClient={abrirClienteRapido}
+        />
+      )}
+
+      {clienteRapidoAberto && (
+        <ClienteModal
+          cliente={null}
+          operadoras={operadoras}
+          onClose={() => fecharClienteRapido(null)}
+          onSave={salvarClienteRapido}
+        />
+      )}
     </LayoutPrivado>
   );
 }
