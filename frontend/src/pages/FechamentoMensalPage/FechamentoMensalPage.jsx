@@ -4,7 +4,6 @@ import { getResumo } from '../../services/fechamento.service';
 import DetalhesAtivasModal from './DetalhesAtivasModal';
 import FechamentoSecao from './FechamentoSecao';
 import PainelGerencial from './PainelGerencial';
-import VendaDossieModal from './VendaDossieModal';
 import './FechamentoMensalPage.css';
 
 function dataISO(data) {
@@ -38,7 +37,6 @@ function FechamentoMensalPage() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [modalDetalhes, setModalDetalhes] = useState(null);
-  const [dossieVendaId, setDossieVendaId] = useState(null);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -133,15 +131,6 @@ function FechamentoMensalPage() {
             secao={modalDetalhes}
             periodo={periodoConsulta}
             onClose={() => setModalDetalhes(null)}
-            onOpenDossie={setDossieVendaId}
-          />
-        )}
-
-        {dossieVendaId && (
-          <VendaDossieModal
-            vendaId={dossieVendaId}
-            periodo={periodoConsulta}
-            onClose={() => setDossieVendaId(null)}
           />
         )}
       </div>

@@ -11,7 +11,7 @@ import {
 import { getDossieVenda } from '../../services/fechamento.service';
 
 const ABAS_BASE = [
-  { id: 'resumo', label: 'Resumo' },
+  { id: 'resumo', label: 'Dados da venda' },
   { id: 'linhas', label: 'Linhas / UGRs' },
   { id: 'cliente', label: 'Cliente' },
   { id: 'operacional', label: 'Operacional' },
@@ -47,15 +47,86 @@ function valor(valor) {
   return valor || '-';
 }
 
+function valorBoolean(valor) {
+  if (valor === true) return 'Sim';
+  if (valor === false) return 'Não';
+  return '-';
+}
+
+function juntarValores(valores, separador = ', ') {
+  const texto = (valores || [])
+    .map(item => String(item || '').trim())
+    .filter(Boolean)
+    .join(separador);
+
+  return texto || '-';
+}
+
+function nomesVendedoras(venda) {
+  const nomes = (venda.vendedoras || []).map(item => item.nome).filter(Boolean);
+  return nomes.length > 0 ? nomes.join(', ') : valor(venda.vendedora?.nome);
+}
+
+function formatarEndereco(venda) {
+  return juntarValores([
+    venda.endereco,
+    venda.numero_endereco,
+    venda.complemento,
+    venda.bairro,
+    venda.municipio,
+    venda.uf,
+    venda.cep
+  ]);
+}
+
+function formatarEnderecoReal(venda) {
+  return juntarValores([
+    venda.endereco_real,
+    venda.numero_endereco_real,
+    venda.complemento_real,
+    venda.bairro_real,
+    venda.municipio_real,
+    venda.uf_real,
+    venda.cep_real
+  ]);
+}
+
+function formatarLista(valorCampo) {
+  if (!valorCampo) return '-';
+  if (Array.isArray(valorCampo)) {
+    return valorCampo.length > 0 ? valorCampo.join(', ') : '-';
+  }
+  if (typeof valorCampo === 'object') {
+    return JSON.stringify(valorCampo);
+  }
+  return String(valorCampo);
+}
+
 function InfoGrid({ itens }) {
   return (
-    <div className="dossie-grid">
-      {itens.map(item => (
-        <div key={item.label} className="dossie-field">
-          <span>{item.label}</span>
-          <strong>{item.value ?? '-'}</strong>
-        </div>
-      ))}
+    <div className="fechamento-modal-table-wrapper dossie-info-table-wrap">
+      <table className="fechamento-modal-table dossie-info-table">
+        <thead>
+          <tr>
+            <th>Campo</th>
+            <th>Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {itens.map(item => (
+            item.section ? (
+              <tr key={item.section} className="dossie-info-table__section">
+                <td colSpan={2}>{item.section}</td>
+              </tr>
+            ) : (
+              <tr key={item.label}>
+                <td>{item.label}</td>
+                <td>{item.value ?? '-'}</td>
+              </tr>
+            )
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -63,31 +134,83 @@ function InfoGrid({ itens }) {
 function ResumoTab({ dossie }) {
   const venda = dossie.venda || {};
   const total = dossie.total_geral || {};
+  const cliente = venda.cliente || {};
+  const itensResumo = [
+    { section: 'Identificação' },
+    { label: 'Venda', value: `#${venda.id}` },
+    { label: 'Protocolo', value: valor(venda.protocolo) },
+    { label: 'Login', value: valor(venda.login) },
+    { label: 'Senha', value: valor(venda.senha) },
+    { label: 'Número do cliente no contrato', value: valor(venda.numero_cliente_contrato) },
+    { label: 'Cliente', value: valor(cliente.nome || venda.nome) },
+    { label: 'Razão social', value: valor(cliente.razao_social || venda.razao_social) },
+    { label: 'CNPJ', value: valor(cliente.cnpj || venda.cnpj) },
+    { label: 'E-mail principal', value: valor(venda.email || cliente.email) },
+    { label: 'E-mail secundário', value: valor(venda.email_2) },
+    { label: 'Celular', value: valor(venda.telefone) },
+    { label: 'Telefone fixo', value: valor(venda.fixo_ddd) },
+    { section: 'Responsáveis' },
+    { label: 'Venda fechada com', value: valor(venda.nome_fechou_venda) },
+    { label: 'Setor/Função', value: valor(venda.setor_funcao) },
+    { label: 'Representante legal', value: valor(venda.nome_representante_legal) },
+    { label: 'CPF RL', value: valor(venda.cpf_representante_legal) },
+    { label: 'Telefone RL', value: valor(venda.telefone_representante_legal) },
+    { label: 'E-mail RL', value: valor(venda.email_representante_legal) },
+    { label: 'Administrador', value: valor(venda.nome_administrador) },
+    { label: 'CPF ADM', value: valor(venda.cpf_administrador) },
+    { label: 'Telefone ADM', value: valor(venda.telefone_administrador) },
+    { label: 'E-mail ADM', value: valor(venda.email_administrador) },
+    { label: 'Responsáveis pelo recebimento', value: formatarLista(venda.responsaveis_recebimento) },
+    { section: 'Venda e produto' },
+    { label: 'Categoria', value: valor(dossie.contexto?.categoria_label) },
+    { label: 'Operadora', value: valor(venda.operadora?.nome) },
+    { label: 'Operadora atual do cliente', value: valor(cliente.operadoraAtual?.nome || cliente.operadora_atual?.nome) },
+    { label: 'Serviço', value: valor(venda.servico?.nome) },
+    { label: 'Tipo de venda', value: valor(venda.tipoVenda?.nome) },
+    { label: 'Quantidade de linhas fechadas', value: valor(venda.quantidade_linhas) },
+    { label: 'DDD', value: valor(venda.ddd) },
+    { label: 'GB', value: valor(venda.gb) },
+    { label: 'Dia de vencimento', value: valor(venda.dia_vencimento) },
+    { label: 'Etapa do funil', value: valor(dossie.contexto?.status_funil_label || venda.status_funil) },
+    { label: 'Prioridade', value: valor(venda.prioridade_funil) },
+    { label: 'Data venda', value: fmtData(venda.data_venda) },
+    { label: 'Data ativação', value: fmtData(venda.data_ativacao) },
+    { label: 'Fidelidade fim', value: fmtData(cliente.fidelidade_fim) },
+    { label: 'Valor total', value: fmtMoeda(venda.valor_total) },
+    { label: 'Vendedoras', value: nomesVendedoras(venda) },
+    { label: 'UGRs', value: total.chips || 0 },
+    { label: 'Comissão estimada', value: fmtMoeda(total.comissao) },
+    { section: 'Solicitações do cliente' },
+    { label: 'Cliente solicitou', value: formatarLista(venda.cliente_solicitou_servicos) },
+    { label: 'Qtd. bloqueio', value: valor(venda.cliente_solicitou_bloqueio_qtd) },
+    { label: 'Qtd. cancelamento', value: valor(venda.cliente_solicitou_cancelamento_qtd) },
+    { label: 'Números solicitados', value: formatarLista(venda.cliente_solicitou_numeros) },
+    { label: 'Números ativados', value: formatarLista(venda.numeros_ativados) },
+    { label: 'Números portados', value: formatarLista(venda.numeros_portados) },
+    { section: 'Endereço' },
+    { label: 'Endereço da Receita', value: formatarEndereco(venda) },
+    { label: 'Endereço real divergente', value: valorBoolean(venda.endereco_real_divergente) },
+    { label: 'Endereço real', value: formatarEnderecoReal(venda) },
+    { label: 'Ponto de referência', value: valor(venda.ponto_referencia) },
+    { label: 'Venda CPF: local', value: valor(venda.tipo_local_cpf) },
+    { section: 'Operacional' },
+    { label: 'QC feito por', value: valor(venda.qc_feito_por) },
+    { label: 'Janela do aceite', value: juntarValores([venda.horario_aceite_inicio, venda.horario_aceite_fim], ' até ') },
+    { label: 'Dias para aceite', value: juntarValores([venda.dia_aceite_inicio, venda.dia_aceite_fim], ' até ') },
+    { label: 'Promessa ao cliente', value: valor(venda.promessa_cliente) },
+    { label: 'Promessa cumprida', value: valor(venda.promessa_cumprida) },
+    { label: 'Observações', value: valor(venda.observacoes) },
+    { label: 'Motivo retorno', value: valor(venda.motivo_retorno) },
+    { label: 'Status anterior retorno', value: valor(venda.status_anterior_retorno) },
+    { label: 'Retornou em', value: fmtDataHora(venda.retornou_em) },
+    { label: 'Corrigido em', value: fmtDataHora(venda.corrigido_em) },
+    { label: 'Criado em', value: fmtDataHora(venda.created_at) },
+    { label: 'Atualizado em', value: fmtDataHora(venda.updated_at) }
+  ];
 
   return (
     <div className="dossie-section-stack">
-      <InfoGrid itens={[
-        { label: 'Venda', value: `#${venda.id}` },
-        { label: 'Cliente', value: valor(venda.cliente?.nome || venda.nome) },
-        { label: 'Razão social', value: valor(venda.cliente?.razao_social || venda.razao_social) },
-        { label: 'CNPJ', value: valor(venda.cliente?.cnpj || venda.cnpj) },
-        { label: 'Categoria', value: valor(dossie.contexto?.categoria_label) },
-        { label: 'Operadora', value: valor(venda.operadora?.nome) },
-        { label: 'Serviço', value: valor(venda.servico?.nome) },
-        { label: 'Tipo de venda', value: valor(venda.tipoVenda?.nome) },
-        { label: 'Etapa do funil', value: valor(dossie.contexto?.status_funil_label || venda.status_funil) },
-        { label: 'Prioridade', value: valor(venda.prioridade_funil) },
-        { label: 'Data venda', value: fmtData(venda.data_venda) },
-        { label: 'Data ativação', value: fmtData(venda.data_ativacao) },
-        { label: 'Valor total', value: fmtMoeda(venda.valor_total) },
-        { label: 'UGRs', value: total.chips || 0 },
-        { label: 'Comissão estimada', value: fmtMoeda(total.comissao) }
-      ]} />
-
-      <div className="dossie-note">
-        <strong>Vendedoras</strong>
-        <span>{(venda.vendedoras || []).map(item => item.nome).join(', ') || venda.vendedora?.nome || '-'}</span>
-      </div>
+      <InfoGrid itens={itensResumo} />
     </div>
   );
 }
