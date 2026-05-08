@@ -124,10 +124,10 @@ function VendasLixeiraPage() {
                   <th>Produto</th>
                   <th>Valor</th>
                   <th>Enviada em</th>
-                  <th>Exclusao definitiva</th>
+                  <th>Exclusão definitiva</th>
                   <th>Enviada por</th>
                   {podeExcluirVenda && (
-                    <th className="vendas-trash-actions-col">Acoes</th>
+                    <th className="vendas-trash-actions-col">Ações</th>
                   )}
                 </tr>
               </thead>

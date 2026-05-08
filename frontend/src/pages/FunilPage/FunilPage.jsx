@@ -684,11 +684,11 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
           </p>
           {vendasCount === 0 ? (
             <div className="alert-success">
-              Esta etapa nao possui vendas e sera excluida definitivamente.
+              Esta etapa não possui vendas e será excluída definitivamente.
             </div>
           ) : (
             <div className="alert-error">
-              Existem {vendasCount} venda{vendasCount === 1 ? '' : 's'} nessa etapa. Por isso, ela sera apenas desativada, continuara aparecendo no funil e deixara de ser um destino valido para vendas.
+              Existem {vendasCount} venda{vendasCount === 1 ? '' : 's'} nessa etapa. Por isso, ela será apenas desativada, continuará aparecendo no funil e deixará de ser um destino válido para vendas.
             </div>
           )}
         </div>
@@ -1012,8 +1012,8 @@ function FunilPage() {
       setStageToDelete(null);
       await atualizarEtapasAposCrud(
         resultado?.acao === 'desativada'
-          ? 'Etapa desativada porque possui vendas vinculadas. Ela continuara visivel no funil.'
-          : 'Etapa excluida com sucesso.',
+          ? 'Etapa desativada porque possui vendas vinculadas. Ela continuará visível no funil.'
+          : 'Etapa excluída com sucesso.',
         etapaFallback
       );
     } catch (err) {

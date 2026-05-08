@@ -202,11 +202,11 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
 
           <div className="leads-divide-summary">
             <div>
-              <span>Disponiveis agora</span>
+              <span>Disponíveis agora</span>
               <strong>{formatarNumero(disponiveisPadrao)}</strong>
             </div>
             <div>
-              <span>Ja enviados</span>
+              <span>Já enviados</span>
               <strong>{formatarNumero(jaEnviados)}</strong>
             </div>
             <div>
@@ -221,7 +221,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
 
           <div className="leads-divide-help">
             {incluirEnviados
-              ? `Este envio pode usar leads novos e transferir ate ${formatarNumero(Math.min(vaiTransferir, jaEnviados))} lead(s) ja enviados.`
+              ? `Este envio pode usar leads novos e transferir até ${formatarNumero(Math.min(vaiTransferir, jaEnviados))} lead(s) já enviados.`
               : 'O envio automático começa no próximo lead ainda não enviado e ignora os leads já distribuídos.'}
           </div>
 
@@ -232,14 +232,14 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
               onChange={event => setIncluirEnviados(event.target.checked)}
             />
             <span>
-              <strong>Incluir leads ja enviados</strong>
-              <small>Use para transferir leads que ja foram enviados para outro vendedor.</small>
+              <strong>Incluir leads já enviados</strong>
+              <small>Use para transferir leads que já foram enviados para outro vendedor.</small>
             </span>
           </label>
 
           {incluirEnviados && (
             <div className="leads-warning">
-              Leads ja enviados que entrarem nesta divisao serao transferidos para o novo vendedor e novo envio.
+              Leads já enviados que entrarem nesta divisão serão transferidos para o novo vendedor e novo envio.
             </div>
           )}
 
@@ -255,7 +255,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
 
           {manual && (
             <div className="leads-warning">
-              A divisao deixou {manual.sobra} cliente(s) sobrando. Distribua manualmente a sobra abaixo. Base: {manual.base} por vendedor.
+              A divisão deixou {manual.sobra} cliente(s) sobrando. Distribua manualmente a sobra abaixo. Base: {manual.base} por vendedor.
               <div className="leads-manual-grid">
                 {usuarios.map(id => {
                   const vendedor = vendedoras.find(item => item.id === id);
@@ -808,7 +808,7 @@ function AdminLeadsPage() {
     });
     if (!resultado?.requires_manual_allocation) {
       setSucesso(resultado?.total_reenviados > 0
-        ? `Leads enviados. ${resultado.total_reenviados} lead(s) ja enviados foram transferidos.`
+        ? `Leads enviados. ${resultado.total_reenviados} lead(s) já enviados foram transferidos.`
         : 'Leads enviados para os vendedores.');
       setSelecionadas([...selecionadas]);
     }
@@ -832,7 +832,7 @@ function AdminLeadsPage() {
       setPagina(1);
       setModalExcluir(null);
       await carregarBase();
-      setSucesso('Planilha excluida com sucesso.');
+      setSucesso('Planilha excluída com sucesso.');
     } catch (error) {
       const mensagem = error.message || 'Erro ao excluir planilha.';
       setErroExclusao(mensagem);
@@ -1002,7 +1002,7 @@ function AdminLeadsPage() {
           <div className="lead-filter-chips">
             {filtros.map(filtro => (
               <button key={filtro.id} className="filter-chip active" type="button" onClick={() => setFiltros(prev => prev.filter(item => item.id !== filtro.id))}>
-                {colunas.find(coluna => coluna.id === filtro.coluna)?.label || filtro.coluna}: {filtro.valor}{filtro.valor2 ? ` ate ${filtro.valor2}` : ''} x
+                {colunas.find(coluna => coluna.id === filtro.coluna)?.label || filtro.coluna}: {filtro.valor}{filtro.valor2 ? ` até ${filtro.valor2}` : ''} x
               </button>
             ))}
           </div>
@@ -1019,7 +1019,7 @@ function AdminLeadsPage() {
                       <span>{coluna}</span>
                       <select value={planilha.schema_colunas?.[coluna] || 'string'} onChange={event => alterarTipo(planilha, coluna, event.target.value)}>
                         <option value="string">Texto</option>
-                        <option value="number">Numero</option>
+                        <option value="number">Número</option>
                         <option value="date">Data</option>
                       </select>
                     </label>

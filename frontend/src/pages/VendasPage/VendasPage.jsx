@@ -129,15 +129,15 @@ const VENDA_VAZIA = {
 
 const CNPJ_SUGESTOES_VENDA = {
   nomeFantasia: { campo: 'nome', label: 'Nome fantasia' },
-  razaoSocial: { campo: 'razao_social', label: 'Razao social' },
+  razaoSocial: { campo: 'razao_social', label: 'Razão social' },
   email: { campo: 'email', label: 'Email' },
   telefone: { campo: 'telefone', label: 'Telefone' },
   cep: { campo: 'cep', label: 'CEP' },
-  endereco: { campo: 'endereco', label: 'Endereco' },
-  numero: { campo: 'numero_endereco', label: 'Numero' },
+  endereco: { campo: 'endereco', label: 'Endereço' },
+  numero: { campo: 'numero_endereco', label: 'Número' },
   complemento: { campo: 'complemento', label: 'Complemento' },
   bairro: { campo: 'bairro', label: 'Bairro' },
-  municipio: { campo: 'municipio', label: 'Municipio' },
+  municipio: { campo: 'municipio', label: 'Município' },
   uf: { campo: 'uf', label: 'UF' }
 };
 
@@ -1068,7 +1068,7 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao 
             placeholder="(11) 99999-9999"
             maxLength={15}
           />
-          <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerNumero(index)} title="Remover numero">
+          <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerNumero(index)} title="Remover número">
             <I.Trash size={13} />
           </button>
         </div>
@@ -1620,7 +1620,7 @@ function ArquivosVendaTab({ venda, podeEditar }) {
         <span className="venda-arquivos-empty__icon">
           <I.Note size={20} />
         </span>
-        <strong>Venda ainda nao salva</strong>
+        <strong>Venda ainda não salva</strong>
         <span>Salve a venda antes de anexar arquivos.</span>
       </div>
     );

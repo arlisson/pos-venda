@@ -398,7 +398,7 @@ function ConfiguracoesPage() {
             <tbody>
               {listaAtual.map(item => (
                 <tr key={item.id}>
-                  <td>{fmtMoeda(item.valor_min)} ate {fmtMoeda(item.valor_max)}</td>
+                  <td>{fmtMoeda(item.valor_min)} até {fmtMoeda(item.valor_max)}</td>
                   <td>{fmtMoeda(item.valor_comissao)}</td>
                   <td>{fmtMoeda(item.valor_comissao_base ?? item.valor_comissao)}</td>
                   <td>{item.ordem}</td>

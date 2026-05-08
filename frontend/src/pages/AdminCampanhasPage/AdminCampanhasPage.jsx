@@ -101,7 +101,7 @@ function AdminCampanhasPage() {
     try {
       await deleteCampanha(id);
       setCampanhas(prev => prev.filter(campanha => campanha.id !== id));
-      setMessage({ type: 'success', text: 'Campanha excluida com sucesso!' });
+      setMessage({ type: 'success', text: 'Campanha excluída com sucesso!' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       setMessage({ type: 'error', text: 'Erro ao excluir campanha.' });

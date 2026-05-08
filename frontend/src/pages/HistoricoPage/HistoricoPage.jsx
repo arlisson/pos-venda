@@ -15,7 +15,7 @@ const ACAO_LABELS = {
   'venda.status_atualizado': 'Status da venda atualizado',
   'venda.enviada_lixeira': 'Venda enviada para lixeira',
   'venda.restaurada': 'Venda restaurada',
-  'venda.excluida_definitivamente': 'Venda excluida definitivamente'
+  'venda.excluida_definitivamente': 'Venda excluída definitivamente'
 };
 
 function parseDados(dados) {
