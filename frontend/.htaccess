@@ -1,0 +1,13 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # Não redireciona se for arquivo real
+  RewriteCond %{REQUEST_FILENAME} !-f
+  
+  # Não redireciona se for diretório real
+  RewriteCond %{REQUEST_FILENAME} !-d
+  
+  # Redireciona tudo para index.html (preserva query string)
+  RewriteRule ^ index.html [QSA,L]
+</IfModule>
