@@ -1,9 +1,14 @@
 import { matchPath, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import Header from '../../components/Header/Header';
 import * as I from '../../components/Icons';
-import { buscarPerfil, getUsuarioLocal, logout } from '../../services/auth.service';
+import { buscarPerfil, getUsuarioLocal, logout, temPermissao } from '../../services/auth.service';
+import VendaModal from '../../pages/VendasPage/VendaModal';
+import ClienteModal from '../../pages/Clientes/ClienteModal';
+import { criarCliente, listarClientes } from '../../services/cliente.service';
+import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
+import { criarVenda, listarVendas, listarVendedoras } from '../../services/venda.service';
 import {
   listarNotificacoesUrgentes,
   marcarPopupNotificacaoVisto
@@ -15,7 +20,6 @@ const routeConfigs = [
   { path: '/vendas/lixeira', title: 'Lixeira de vendas', sub: 'Vendas removidas e prazo de exclusão definitiva', id: 'vendas' },
   { path: '/clientes', title: 'Clientes', sub: 'Representantes e empresas vinculados as vendas', id: 'clientes', end: true },
   { path: '/clientes/lixeira', title: 'Lixeira de clientes', sub: 'Clientes removidos e prazo de exclusão definitiva', id: 'clientes' },
-  { path: '/clientes/novo', title: 'Novo cliente', sub: 'Cadastrar representante de empresa', id: 'clientes' },
   { path: '/clientes/:id/editar', title: 'Editar cliente', sub: 'Atualize dados do representante e fidelidade', id: 'clientes' },
   { path: '/funil', title: 'Funil de vendas', sub: 'Acompanhe cada venda do lançamento até a conclusão', id: 'funil' },
   { path: '/retornos', title: 'Retornos', sub: 'Chips que retornaram por algum erro', id: 'retornos' },
@@ -41,11 +45,54 @@ function getRouteConfig(pathname) {
   );
 }
 
+function getChaveClienteVenda(venda = {}) {
+  if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
+  if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
+
+  const cnpj = String(venda.cnpj || venda.cliente?.cnpj || '').replace(/\D/g, '');
+  if (cnpj) return `cnpj:${cnpj}`;
+
+  const nome = String(venda.nome || venda.cliente?.nome || venda.razao_social || venda.cliente?.razao_social || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+  return nome ? `nome:${nome}` : '';
+}
+
+function contarVendasPorCliente(vendas = []) {
+  return vendas.reduce((acc, venda) => {
+    const chave = getChaveClienteVenda(venda);
+    if (!chave) return acc;
+    acc.set(chave, (acc.get(chave) || 0) + 1);
+    return acc;
+  }, new Map());
+}
+
 function LayoutPrivado({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [usuario, setUsuario] = useState(() => getUsuarioLocal());
   const currentConfig = getRouteConfig(location.pathname);
+  const podeCriarVenda = usuario && temPermissao(usuario, 'vendas_criar');
+  const podeEditarVenda = usuario && temPermissao(usuario, ['vendas_editar', 'pos_venda']);
+  const podeVerDocumentosVenda = usuario && temPermissao(usuario, 'vendas_documentos');
+  const podeListarVendas = usuario && temPermissao(usuario, ['vendas_ver_proprias', 'vendas_ver_todas']);
+  const podeListarClientes = usuario && temPermissao(usuario, ['clientes_ver_proprios', 'clientes_ver_todos']);
+  const [novaVendaAberta, setNovaVendaAberta] = useState(false);
+  const [carregandoNovaVenda, setCarregandoNovaVenda] = useState(false);
+  const [erroNovaVenda, setErroNovaVenda] = useState('');
+  const [sucessoNovaVenda, setSucessoNovaVenda] = useState('');
+  const [clientesNovaVenda, setClientesNovaVenda] = useState([]);
+  const [vendasNovaVenda, setVendasNovaVenda] = useState([]);
+  const [vendedorasNovaVenda, setVendedorasNovaVenda] = useState([]);
+  const [operadorasNovaVenda, setOperadorasNovaVenda] = useState([]);
+  const [tiposVendaNovaVenda, setTiposVendaNovaVenda] = useState([]);
+  const [servicosNovaVenda, setServicosNovaVenda] = useState([]);
+  const [clienteRapidoAberto, setClienteRapidoAberto] = useState(false);
+  const [, setResolverClienteRapido] = useState(null);
+  const vendasPorClienteNovaVenda = useMemo(() => contarVendasPorCliente(vendasNovaVenda), [vendasNovaVenda]);
 
   useEffect(() => {
     let ativo = true;
@@ -87,13 +134,71 @@ function LayoutPrivado({ children }) {
     if (routeMap[id]) navigate(routeMap[id]);
   };
 
-  function handleNewSale() {
-    if (location.pathname === '/vendas') {
-      window.dispatchEvent(new CustomEvent('pos-venda:nova-venda'));
-      return;
-    }
+  async function carregarDadosNovaVenda() {
+    const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
+      podeListarVendas ? listarVendas() : Promise.resolve([]),
+      podeListarClientes ? listarClientes() : Promise.resolve([]),
+      listarVendedoras(),
+      listarOperadoras(),
+      listarTiposVenda(),
+      listarServicos()
+    ]);
 
-    navigate('/vendas?nova=1');
+    setVendasNovaVenda(vendasData);
+    setClientesNovaVenda(clientesData);
+    setVendedorasNovaVenda(vendedorasData);
+    setOperadorasNovaVenda(operadorasData);
+    setTiposVendaNovaVenda(tiposVendaData);
+    setServicosNovaVenda(servicosData);
+  }
+
+  async function handleNewSale() {
+    if (!podeCriarVenda || carregandoNovaVenda) return;
+
+    setErroNovaVenda('');
+    setSucessoNovaVenda('');
+    setCarregandoNovaVenda(true);
+
+    try {
+      await carregarDadosNovaVenda();
+      setNovaVendaAberta(true);
+    } catch (error) {
+      setErroNovaVenda(error.message || 'Erro ao preparar cadastro de venda.');
+    } finally {
+      setCarregandoNovaVenda(false);
+    }
+  }
+
+  async function salvarNovaVenda(dados) {
+    setErroNovaVenda('');
+    await criarVenda(dados);
+    setNovaVendaAberta(false);
+    setSucessoNovaVenda('Venda cadastrada com sucesso.');
+    window.dispatchEvent(new CustomEvent('pos-venda:vendas-atualizadas'));
+  }
+
+  function abrirClienteRapido() {
+    return new Promise(resolve => {
+      setResolverClienteRapido(() => resolve);
+      setClienteRapidoAberto(true);
+    });
+  }
+
+  function fecharClienteRapido(cliente = null) {
+    setClienteRapidoAberto(false);
+    setResolverClienteRapido(resolve => {
+      resolve?.(cliente);
+      return null;
+    });
+  }
+
+  async function salvarClienteRapido(dados) {
+    const clienteCriado = await criarCliente(dados);
+    const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
+    setClientesNovaVenda(clientesAtualizados);
+    fecharClienteRapido(clienteCriado);
+    setSucessoNovaVenda('Cliente cadastrado com sucesso.');
+    return clienteCriado;
   }
 
   const [alertasUrgentes, setAlertasUrgentes] = useState([]);
@@ -141,13 +246,45 @@ function LayoutPrivado({ children }) {
         <Header
           title={currentConfig.title}
           subtitle={currentConfig.sub}
-          onNew={handleNewSale}
+          onNew={podeCriarVenda ? handleNewSale : null}
           usuario={usuario}
         />
         <div className="content">
+          {sucessoNovaVenda && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucessoNovaVenda}</div>}
+          {erroNovaVenda && <div className="alert-error alert-timed alert-timed--error" style={{ marginBottom: 16 }}>{erroNovaVenda}</div>}
           {children}
         </div>
       </div>
+
+      {novaVendaAberta && (
+        <VendaModal
+          venda={null}
+          clientes={clientesNovaVenda}
+          vendas={vendasNovaVenda}
+          vendedoras={vendedorasNovaVenda}
+          operadoras={operadorasNovaVenda}
+          tiposVenda={tiposVendaNovaVenda}
+          servicos={servicosNovaVenda}
+          vendasPorCliente={vendasPorClienteNovaVenda}
+          podeEditarVenda={podeEditarVenda}
+          podeVerDocumentosVenda={podeVerDocumentosVenda}
+          usuarioLogado={usuario}
+          modoEdicao
+          onClose={() => setNovaVendaAberta(false)}
+          onSave={salvarNovaVenda}
+          onSendToPosVenda={() => {}}
+          onCreateClient={abrirClienteRapido}
+        />
+      )}
+
+      {clienteRapidoAberto && (
+        <ClienteModal
+          cliente={null}
+          operadoras={operadorasNovaVenda}
+          onClose={() => fecharClienteRapido(null)}
+          onSave={salvarClienteRapido}
+        />
+      )}
 
       {alertasUrgentes.length > 0 && (
         <div className="urgent-alert-stack" aria-live="assertive">
