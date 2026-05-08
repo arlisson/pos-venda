@@ -3,12 +3,18 @@ import { useSearchParams } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import { listarClientes } from '../../services/cliente.service';
+import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import {
+  atualizarVenda,
   aprovarSolicitacaoVenda,
   buscarVendaPorId,
+  enviarVendaParaPosVenda,
   listarAprovacoesVenda,
+  listarVendedoras,
   recusarSolicitacaoVenda
 } from '../../services/venda.service';
+import VendaModal from './VendaModal';
 import './VendasPage.css';
 
 const STATUS_LABEL = {
@@ -60,12 +66,20 @@ function VendasAprovacoesPage() {
   const [searchParams] = useSearchParams();
   const usuario = getUsuarioLocal();
   const podeDecidir = temPermissao(usuario, 'vendas_aprovacoes_decidir');
+  const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
+  const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
   const [status, setStatus] = useState(searchParams.get('status') || 'pendente');
   const [solicitacoes, setSolicitacoes] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [vendedoras, setVendedoras] = useState([]);
+  const [operadoras, setOperadoras] = useState([]);
+  const [tiposVenda, setTiposVenda] = useState([]);
+  const [servicos, setServicos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [salvandoId, setSalvandoId] = useState(null);
   const [recusando, setRecusando] = useState(null);
   const [vendaModal, setVendaModal] = useState(null);
+  const [modalModoEdicao, setModalModoEdicao] = useState(false);
   const [carregandoVendaId, setCarregandoVendaId] = useState(null);
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState('');
@@ -87,11 +101,38 @@ function VendasAprovacoesPage() {
     }
   }
 
+  async function carregarAuxiliares() {
+    try {
+      const [clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
+        listarClientes(),
+        listarVendedoras(),
+        listarOperadoras(),
+        listarTiposVenda(),
+        listarServicos()
+      ]);
+
+      setClientes(clientesData);
+      setVendedoras(vendedorasData);
+      setOperadoras(operadorasData);
+      setTiposVenda(tiposVendaData);
+      setServicos(servicosData);
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar dados do modal de venda.');
+    }
+  }
+
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    carregarAuxiliares();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
@@ -151,11 +192,35 @@ function VendasAprovacoesPage() {
     try {
       const venda = await buscarVendaPorId(solicitacao.venda_id);
       setVendaModal(venda || solicitacao.venda);
+      setModalModoEdicao(false);
     } catch (error) {
       setErro(error.message || 'Erro ao abrir venda.');
     } finally {
       setCarregandoVendaId(null);
     }
+  }
+
+  async function salvarVendaModal(dados) {
+    if (!vendaModal?.id) return;
+
+    await atualizarVenda(vendaModal.id, dados);
+    const atualizada = await buscarVendaPorId(vendaModal.id);
+    setVendaModal(atualizada);
+    setModalModoEdicao(false);
+    setSucesso('Venda atualizada com sucesso.');
+    await carregar();
+  }
+
+  async function enviarPosVendaModal(venda) {
+    const resultado = await enviarVendaParaPosVenda(venda.id);
+    const atualizada = await buscarVendaPorId(venda.id);
+    setVendaModal(atualizada);
+    setModalModoEdicao(false);
+    setSucesso(resultado?.status === 'pendente'
+      ? (resultado.message || 'Solicitação enviada para aprovação do ADM.')
+      : 'Venda enviada para o pós-venda.');
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    await carregar();
   }
 
   return (
@@ -330,85 +395,31 @@ function VendasAprovacoesPage() {
       )}
 
       {vendaModal && (
-        <div className="modal-overlay">
-          <div className="modal venda-modal" style={{ maxWidth: 920 }}>
-            <div className="modal-header">
-              <div className="modal-header-row">
-                <div>
-                  <div className="modal-client">{nomeVenda(vendaModal)}</div>
-                  <div className="modal-sub">
-                    Venda #{vendaModal.id} · {vendaModal.cliente?.razao_social || vendaModal.razao_social || 'Sem razão social'}
-                  </div>
-                </div>
-                <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={() => setVendaModal(null)}>
-                  <I.Close size={14} />
-                </button>
-              </div>
-            </div>
-
-            <div className="modal-body">
-              <div className="form-grid">
-                <div className="form-field">
-                  <label>Cliente</label>
-                  <input value={nomeVenda(vendaModal)} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Razão social</label>
-                  <input value={vendaModal.cliente?.razao_social || vendaModal.razao_social || '-'} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>CNPJ</label>
-                  <input value={vendaModal.cliente?.cnpj || vendaModal.cnpj || '-'} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Telefone</label>
-                  <input value={vendaModal.telefone || '-'} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Operadora</label>
-                  <input value={vendaModal.operadora?.nome || '-'} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Tipo de venda</label>
-                  <input value={vendaModal.tipoVenda?.nome || '-'} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Produto</label>
-                  <input value={vendaModal.servico?.nome || vendaModal.produto_fechado || '-'} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Linhas</label>
-                  <input value={vendaModal.quantidade_linhas || '-'} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Vendedoras</label>
-                  <input value={nomesVendedoras(vendaModal)} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Protocolo</label>
-                  <input value={vendaModal.protocolo || '-'} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Data da venda</label>
-                  <input value={formatarData(vendaModal.data_venda).replace(/,.*$/, '')} readOnly />
-                </div>
-                <div className="form-field">
-                  <label>Status pós-venda</label>
-                  <input value={vendaModal.enviada_pos_venda_em ? 'Enviada ao pós-venda' : 'Ainda não enviada'} readOnly />
-                </div>
-              </div>
-
-              <div className="form-field" style={{ marginTop: 14 }}>
-                <label>Observações</label>
-                <textarea value={vendaModal.observacoes || '-'} readOnly rows={4} />
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button type="button" className="btn" onClick={() => setVendaModal(null)}>Fechar</button>
-            </div>
-          </div>
-        </div>
+        <VendaModal
+          venda={vendaModal}
+          initialValues={null}
+          clientes={clientes}
+          vendas={solicitacoes.map(solicitacao => solicitacao.venda).filter(Boolean)}
+          vendedoras={vendedoras}
+          operadoras={operadoras}
+          tiposVenda={tiposVenda}
+          servicos={servicos}
+          vendasPorCliente={new Map()}
+          podeEditarVenda={podeEditarVenda}
+          podeVerDocumentosVenda={podeVerDocumentosVenda}
+          usuarioLogado={usuario}
+          initialTab="venda"
+          initialProblemaId={null}
+          modoEdicao={modalModoEdicao}
+          onStartEdit={() => setModalModoEdicao(true)}
+          onClose={() => {
+            setVendaModal(null);
+            setModalModoEdicao(false);
+          }}
+          onSave={salvarVendaModal}
+          onSendToPosVenda={enviarPosVendaModal}
+          onCreateClient={() => {}}
+        />
       )}
     </LayoutPrivado>
   );
