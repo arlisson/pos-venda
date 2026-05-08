@@ -1072,22 +1072,6 @@ function FunilPage() {
     }));
   }
 
-  const agora = Date.now();
-  const filtradas = sales.filter(s => {
-    if (s.stage === 'retorno') return false;
-    if (!mostrarArquivadas
-      && etapasFinaisIds.has(s.stage)
-      && (agora - s.updated.getTime()) > SEIS_MESES_MS) return false;
-    if (filter !== 'todas' && s.operator !== filter) return false;
-    if (!vendaCorrespondeBusca(s, busca)) return false;
-    return true;
-  });
-  const arquivadas = mostrarArquivadas ? 0 : sales.filter(s =>
-    s.stage !== 'retorno'
-      && etapasFinaisIds.has(s.stage)
-      && (agora - s.updated.getTime()) > SEIS_MESES_MS
-  ).length;
-  const total = filtradas.reduce((sum, s) => sum + s.value, 0);
   const selectedSale = selectedSaleId ? sales.find(s => s.id === selectedSaleId) : null;
   const adminStagesByCode = useMemo(
     () => new Map(adminStages.map(stage => [stage.id, stage])),
@@ -1118,6 +1102,22 @@ function FunilPage() {
     () => new Set(stagesVisiveis.filter(st => st.etapaFinal).map(st => st.id)),
     [stagesVisiveis]
   );
+  const agora = Date.now();
+  const filtradas = sales.filter(s => {
+    if (s.stage === 'retorno') return false;
+    if (!mostrarArquivadas
+      && etapasFinaisIds.has(s.stage)
+      && (agora - s.updated.getTime()) > SEIS_MESES_MS) return false;
+    if (filter !== 'todas' && s.operator !== filter) return false;
+    if (!vendaCorrespondeBusca(s, busca)) return false;
+    return true;
+  });
+  const arquivadas = mostrarArquivadas ? 0 : sales.filter(s =>
+    s.stage !== 'retorno'
+      && etapasFinaisIds.has(s.stage)
+      && (agora - s.updated.getTime()) > SEIS_MESES_MS
+  ).length;
+  const total = filtradas.reduce((sum, s) => sum + s.value, 0);
   const stageLabels = montarStageLabels(stagesVisiveis);
   const operators = useMemo(
     () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),
