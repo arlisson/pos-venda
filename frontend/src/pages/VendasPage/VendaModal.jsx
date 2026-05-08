@@ -2024,6 +2024,7 @@ function VendaModal({
   onClose,
   onSave,
   onSendToPosVenda,
+  sendToPosVendaLabel = 'Enviar para o pós-venda',
   onCreateClient
 }) {
   const [form, setForm] = useState(venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) });
@@ -3042,7 +3043,7 @@ function VendaModal({
               <button type="button" className="btn" onClick={onClose}>Fechar</button>
               {podeEditarVenda && !enviadaPosVenda && (
                 <button type="button" className="btn venda-pos-venda-send-btn" disabled={salvando} onClick={handleEnviarPosVenda}>
-                  <I.ArrowRight size={14} /> {salvando ? 'Enviando...' : 'Enviar para o pós-venda'}
+                  <I.ArrowRight size={14} /> {salvando ? 'Aguarde...' : sendToPosVendaLabel}
                 </button>
               )}
               {podeEditarVenda && !vendaBloqueadaParaUsuario && (

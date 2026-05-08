@@ -81,6 +81,7 @@ function VendasAprovacoesPage() {
   const [vendaModal, setVendaModal] = useState(null);
   const [modalModoEdicao, setModalModoEdicao] = useState(false);
   const [carregandoVendaId, setCarregandoVendaId] = useState(null);
+  const [solicitacaoModal, setSolicitacaoModal] = useState(null);
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -192,6 +193,7 @@ function VendasAprovacoesPage() {
     try {
       const venda = await buscarVendaPorId(solicitacao.venda_id);
       setVendaModal(venda || solicitacao.venda);
+      setSolicitacaoModal(solicitacao);
       setModalModoEdicao(false);
     } catch (error) {
       setErro(error.message || 'Erro ao abrir venda.');
@@ -219,6 +221,19 @@ function VendasAprovacoesPage() {
     setSucesso(resultado?.status === 'pendente'
       ? (resultado.message || 'Solicitação enviada para aprovação do ADM.')
       : 'Venda enviada para o pós-venda.');
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    await carregar();
+  }
+
+  async function aprovarEEnviarPosVendaModal(venda) {
+    if (solicitacaoModal?.id) {
+      await aprovarSolicitacaoVenda(solicitacaoModal.id);
+    }
+    await enviarVendaParaPosVenda(venda.id);
+    const atualizada = await buscarVendaPorId(venda.id);
+    setVendaModal(atualizada);
+    setModalModoEdicao(false);
+    setSucesso('Venda aprovada e enviada para o pós-venda.');
     window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
     await carregar();
   }
@@ -414,10 +429,12 @@ function VendasAprovacoesPage() {
           onStartEdit={() => setModalModoEdicao(true)}
           onClose={() => {
             setVendaModal(null);
+            setSolicitacaoModal(null);
             setModalModoEdicao(false);
           }}
           onSave={salvarVendaModal}
-          onSendToPosVenda={enviarPosVendaModal}
+          onSendToPosVenda={podeDecidir && solicitacaoModal?.status === 'pendente' ? aprovarEEnviarPosVendaModal : enviarPosVendaModal}
+          sendToPosVendaLabel={podeDecidir && solicitacaoModal?.status === 'pendente' ? 'Aprovar' : 'Enviar para o pós-venda'}
           onCreateClient={() => {}}
         />
       )}
