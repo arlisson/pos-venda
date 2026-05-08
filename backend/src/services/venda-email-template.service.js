@@ -183,6 +183,10 @@ function nomeVendedora(venda) {
   return texto(venda.vendedora?.nome);
 }
 
+function enderecoReceita(venda, campo) {
+  return texto(venda.cliente?.[campo] || venda[campo]);
+}
+
 function montarContexto(venda) {
   const itens = parseItensChips(venda.valores_unitarios_chips, venda.gb);
   const portados = parsePortados(venda.numeros_portados);
@@ -239,8 +243,8 @@ function renderClaro(venda) {
     `CLIENTE: ${ctx.cliente}`,
     `CNPJ: ${cnpj(venda.cnpj || venda.cliente?.cnpj)}`,
     'ENDEREÇO:',
-    `Logradouro: ${texto(venda.endereco)}    Número: ${texto(venda.numero_endereco)}    Complemento: ${texto(venda.complemento)}`,
-    `CEP: ${texto(venda.cep)}   Bairro: ${texto(venda.bairro)}   Município: ${texto(venda.municipio)}   UF: ${texto(venda.uf)}`,
+    `Logradouro: ${enderecoReceita(venda, 'endereco')}    Número: ${enderecoReceita(venda, 'numero_endereco')}    Complemento: ${enderecoReceita(venda, 'complemento')}`,
+    `CEP: ${enderecoReceita(venda, 'cep')}   Bairro: ${enderecoReceita(venda, 'bairro')}   Município: ${enderecoReceita(venda, 'municipio')}   UF: ${enderecoReceita(venda, 'uf')}`,
     `PONTO DE REFERÊNCIA: ${texto(venda.ponto_referencia)}`,
     `RESPONSÁVEL: ${texto(venda.nome_representante_legal)}`,
     `CPF: ${texto(venda.cpf_representante_legal)}`,
@@ -298,7 +302,7 @@ function renderVivo(venda) {
     linha('EMAIL PARA ENVIO ACEITE', venda.email_representante_legal),
     linha('TELEFONE', telefone(venda.fixo_ddd || venda.telefone)),
     linha('CONFIRMAÇÃO FALAR COM', venda.nome_fechou_venda),
-    linha('ENDEREÇO', venda.endereco || venda.ponto_referencia || venda.tipo_local_cpf),
+    linha('ENDEREÇO', enderecoReceita(venda, 'endereco') || venda.ponto_referencia || venda.tipo_local_cpf),
     linha('LINHA NOVA', linhaNova),
     linha('PORTABILIDADE', portabilidade),
     linha('LINHA COM DDD X PLANO', planoVivo(venda, ctx)),

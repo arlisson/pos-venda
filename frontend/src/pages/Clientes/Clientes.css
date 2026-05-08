@@ -786,6 +786,37 @@
   grid-column: span 3;
 }
 
+.cliente-address-toggle {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.cliente-address-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cliente-address-toggle input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+}
+
+.cliente-address-modal {
+  max-width: 760px;
+}
+
+.cliente-address-modal__grid {
+  padding: 0;
+}
+
 .cliente-form-actions {
   display: flex;
   justify-content: flex-end;
@@ -875,5 +906,10 @@
   .cliente-form-actions button {
     justify-content: center;
     width: 100%;
+  }
+
+  .cliente-address-toggle {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

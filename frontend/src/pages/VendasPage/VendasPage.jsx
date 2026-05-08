@@ -2134,6 +2134,13 @@ function VendaModal({
         nome_representante_legal: prev.nome_representante_legal || nomeRl,
         nome_administrador: prev.nome_administrador || nomeAdm,
         nome_fechou_venda: prev.nome_fechou_venda || fechouVenda,
+        cep: prev.cep || c?.cep || '',
+        endereco: prev.endereco || c?.endereco || '',
+        numero_endereco: prev.numero_endereco || c?.numero_endereco || '',
+        complemento: prev.complemento || c?.complemento || '',
+        bairro: prev.bairro || c?.bairro || '',
+        municipio: prev.municipio || c?.municipio || '',
+        uf: prev.uf || c?.uf || '',
       };
     });
   }

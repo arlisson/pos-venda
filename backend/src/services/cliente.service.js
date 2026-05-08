@@ -15,7 +15,22 @@ const CAMPOS = [
   'fixo_numero',
   'fidelidade_fim',
   'operadora_atual_id',
-  'quantidade_chips'
+  'quantidade_chips',
+  'cep',
+  'endereco',
+  'numero_endereco',
+  'complemento',
+  'bairro',
+  'municipio',
+  'uf',
+  'endereco_real_divergente',
+  'cep_real',
+  'endereco_real',
+  'numero_endereco_real',
+  'complemento_real',
+  'bairro_real',
+  'municipio_real',
+  'uf_real'
 ];
 
 function limparValor(valor) {
@@ -123,6 +138,10 @@ function montarPayload(dados) {
 
   if (payload.quantidade_chips !== undefined && payload.quantidade_chips !== null) {
     payload.quantidade_chips = Number(payload.quantidade_chips);
+  }
+
+  if (payload.endereco_real_divergente !== undefined) {
+    payload.endereco_real_divergente = Boolean(payload.endereco_real_divergente);
   }
 
   if (payload.fidelidade_fim !== undefined) {

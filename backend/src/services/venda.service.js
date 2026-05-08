@@ -523,7 +523,14 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
     nome_administrador: payload.nome_administrador || (
       cliente.responsavel_tipo === 'adm' ? cliente.responsavel_nome : null
     ),
-    quantidade_linhas: payload.quantidade_linhas || cliente.quantidade_chips
+    quantidade_linhas: payload.quantidade_linhas || cliente.quantidade_chips,
+    cep: payload.cep || cliente.cep,
+    endereco: payload.endereco || cliente.endereco,
+    numero_endereco: payload.numero_endereco || cliente.numero_endereco,
+    complemento: payload.complemento || cliente.complemento,
+    bairro: payload.bairro || cliente.bairro,
+    municipio: payload.municipio || cliente.municipio,
+    uf: payload.uf || cliente.uf
   };
 }
 
