@@ -83,7 +83,7 @@ function montarStageLabels(stages = []) {
   };
 }
 
-const SEIS_MESES_MS = 6 * 30 * 24 * 60 * 60 * 1000;
+const SEIS_MESES_MS = 1 * 60 * 1000; // TESTE: 1 minuto (produção: 6 * 30 * 24 * 60 * 60 * 1000)
 
 const PRIORITIES = {
   alta: { label: 'Prioridade Alta', color: '#ef4444' },
