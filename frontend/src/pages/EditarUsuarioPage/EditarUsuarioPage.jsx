@@ -13,7 +13,9 @@ import {
   listarPermissoes
 } from '../../services/usuario.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import { montarGruposPermissoes, PermissaoGrupo } from '../Usuarios/permissoes';
 
+import '../Usuarios/Usuarios.css';
 import './EditarUsuarioPage.css';
 
 const PERMISSAO_POS_VENDA = {
@@ -115,8 +117,13 @@ function EditarUsuarioPage() {
     carregarDados();
   }, [id]);
 
-  function handlePermissaoChange(chave) {
+  function handlePermissaoChange(chave, opcoes = {}) {
     setPermissoesSelecionadas((atuais) => {
+      if (opcoes.grupoExclusivo) {
+        const semGrupo = atuais.filter(item => !opcoes.grupoExclusivo.includes(item));
+        return atuais.includes(chave) ? semGrupo : [...semGrupo, chave];
+      }
+
       if (atuais.includes(chave)) {
         return atuais.filter((item) => item !== chave);
       }
@@ -156,6 +163,7 @@ function EditarUsuarioPage() {
   const totalPermissoesSelecionadas = isAdminEditado
     ? permissoes.length
     : permissoesSelecionadas.length;
+  const gruposPermissoes = useMemo(() => montarGruposPermissoes(permissoes), [permissoes]);
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -410,22 +418,14 @@ function EditarUsuarioPage() {
                   </span>
                 </div>
 
-                <div className="editar-usuario__permissions-grid">
-                  {permissoes.map((permissao) => (
-                    <label
-                      title={permissao.descricao || permissao.nome}
-                      key={permissao.id}
-                      className={`editar-usuario__permission ${permissoesSelecionadas.includes(permissao.chave) ? 'is-selected' : ''}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={permissoesSelecionadas.includes(permissao.chave)}
-                        onChange={() => handlePermissaoChange(permissao.chave)}
-                      />
-
-                      <span>{permissao.nome}</span>
-                      {permissao.descricao && <small>{permissao.descricao}</small>}
-                    </label>
+                <div className="editar-usuario__permissions-grid permissions-grid">
+                  {gruposPermissoes.map(grupo => (
+                    <PermissaoGrupo
+                      key={grupo.id}
+                      grupo={grupo}
+                      selecionadas={permissoesSelecionadas}
+                      onToggle={handlePermissaoChange}
+                    />
                   ))}
                 </div>
               </section>
