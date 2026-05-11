@@ -2445,34 +2445,20 @@ function VendaModal({
   const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
   const clienteSolicitouServicos = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
   const temClienteSolicitouAba = CLIENTE_SOLICITOU_ACOES.some(acao => clienteSolicitouServicos.includes(acao));
-  const clienteIdProtocolo = String(form.cliente_id || '');
-  const vendaIdAtual = venda?.id ? String(venda.id) : '';
   const protocoloOriginal = String(venda?.protocolo || '').trim();
   const protocoloAtual = String(form.protocolo || '').trim();
-  const vendaComProtocoloDoCliente = clienteIdProtocolo
-    ? vendas.find(item => (
-        String(item.id) !== vendaIdAtual
-        && String(item.cliente_id || item.cliente?.id || '') === clienteIdProtocolo
-        && String(item.protocolo || '').trim()
-      ))
-    : null;
-  const clienteJaTemOutroProtocolo = Boolean(vendaComProtocoloDoCliente);
   const protocoloProtegido = Boolean(protocoloOriginal) && !usuarioAdmin;
   const protocoloBloqueado = somenteVisualizacao
     || vendaBloqueadaParaUsuario
-    || clienteJaTemOutroProtocolo
     || !usuarioAdmin;
   const podeGerarProtocolo = !somenteVisualizacao
     && !vendaBloqueadaParaUsuario
-    && !clienteJaTemOutroProtocolo
     && (!protocoloAtual || usuarioAdmin);
-  const dicaProtocolo = clienteJaTemOutroProtocolo
-    ? `Este cliente já possui protocolo: ${vendaComProtocoloDoCliente.protocolo}.`
-    : protocoloProtegido
-      ? 'Protocolo já gerado. Apenas ADM pode alterar ou apagar.'
-      : !usuarioAdmin && protocoloAtual
-        ? 'Protocolo gerado. Apenas ADM pode alterar ou apagar.'
-        : '';
+  const dicaProtocolo = protocoloProtegido
+    ? 'Protocolo já gerado. Apenas ADM pode alterar ou apagar.'
+    : !usuarioAdmin && protocoloAtual
+      ? 'Protocolo gerado. Apenas ADM pode alterar ou apagar.'
+      : '';
 
   function atualizarCampo(campo, valor) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
@@ -2728,6 +2714,9 @@ function VendaModal({
   }
 
   async function buscarDadosCnpj(manual = false) {
+    // Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
+    return;
+
     if (somenteVisualizacao) return;
 
     const cnpj = sanitizarCnpj(form.cnpj);
@@ -2819,7 +2808,10 @@ function VendaModal({
         return;
       }
 
-      buscarDadosCnpj(false);
+      setCnpjStatus({ tipo: '', mensagem: '' });
+      setCnpjDados(null);
+      setCnpjSugestoes({});
+      // Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
     }
   }, [form.cnpj, somenteVisualizacao]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
@@ -2953,12 +2945,6 @@ function VendaModal({
 
       if (protocoloProtegido && protocoloAtual !== protocoloOriginal) {
         setErro('Apenas ADM pode alterar ou apagar o protocolo do cliente.');
-        setSalvando(false);
-        return;
-      }
-
-      if (clienteJaTemOutroProtocolo && protocoloAtual) {
-        setErro('Este cliente já possui um protocolo cadastrado em outra venda.');
         setSalvando(false);
         return;
       }
@@ -3300,6 +3286,7 @@ function VendaModal({
                               onChange={e => atualizarCampo(campo.name, e.target.value)}
                               placeholder="00.000.000/0000-00"
                             />
+                            {/* Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
                             <button
                               type="button"
                               className="btn btn-sm btn-ghost"
@@ -3307,20 +3294,20 @@ function VendaModal({
                               disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
                             >
                               {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
-                            </button>
+                            </button> */}
                           </div>
                           {cnpjStatus.mensagem && (
                             <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
                               {cnpjStatus.mensagem}
                             </span>
                           )}
-                          <CnpjSugestoes
+                          {/* <CnpjSugestoes
                             dados={cnpjDados}
                             sugestoes={cnpjSugestoes}
                             labels={CNPJ_LABELS_VENDA}
                             onAceitar={aceitarSugestaoCnpj}
                             onRecusar={recusarSugestaoCnpj}
-                          />
+                          /> */}
                         </>
                       ) : (
                         <>
