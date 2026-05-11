@@ -349,11 +349,16 @@
   margin-bottom: 0;
 }
 
-.vendas-form-grid .field-hint {
+.field-hint {
   display: block;
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--text-3);
   font-size: 11.5px;
+}
+
+.field-hint--error {
+  color: var(--danger);
+  font-weight: 600;
 }
 
 .vendas-form-grid .form-field.is-invalid input {
@@ -362,9 +367,8 @@
   box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.08);
 }
 
-.vendas-form-grid .field-hint--error {
-  color: var(--danger);
-  font-weight: 600;
+input.is-invalid {
+  border-color: #f87171 !important;
 }
 
 .vendas-form-grid .span-2 {
@@ -1298,9 +1302,6 @@
   font-size: 13.5px;
 }
 
-.ported-number-row input.is-invalid {
-  border-color: #f87171;
-}
 
 .ported-numbers__footer {
   display: flex;
@@ -1436,7 +1437,11 @@
   color: var(--text-3);
   font-size: 12px;
   font-weight: 700;
-  margin-top: 5px;
+  margin-top: 4px;
+}
+
+.cliente-solicitou-numero-row .ported-number-input-wrap {
+  min-width: 0;
 }
 
 .cliente-solicitou-numero-row input {
