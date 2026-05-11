@@ -458,7 +458,8 @@
   font-size: 11.5px;
 }
 
-.field-hint--error {
+.field-hint--error,
+.field-hint.field-hint--error {
   color: var(--danger);
   font-weight: 600;
 }
@@ -1727,6 +1728,21 @@ input.is-invalid {
   height: 36px;
 }
 
+.cnpj-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cnpj-input-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.cnpj-input-row .btn {
+  flex-shrink: 0;
+}
+
 .doc-tipo-toggle {
   display: flex;
   gap: 6px;
@@ -1753,15 +1769,15 @@ input.is-invalid {
   margin-top: 0 !important;
 }
 
-.cnpj-lookup-status.sucesso {
+.field-hint.cnpj-lookup-status.sucesso {
   color: var(--success);
 }
 
-.cnpj-lookup-status.erro {
+.field-hint.cnpj-lookup-status.erro {
   color: var(--danger);
 }
 
-.cnpj-lookup-status.info {
+.field-hint.cnpj-lookup-status.info {
   color: var(--text-2);
 }
 
