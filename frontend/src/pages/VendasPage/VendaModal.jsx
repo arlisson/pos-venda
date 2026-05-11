@@ -1464,12 +1464,66 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
     form[slot.nomeKey] || form[slot.rgKey] ? index + 1 : total
   ), 1);
   const [linhasVisiveis, setLinhasVisiveis] = useState(Math.max(1, preenchidos));
+  const [tiposResponsaveis, setTiposResponsaveis] = useState({});
   const visiveis = slots.slice(0, linhasVisiveis);
+  const opcoesRecebimento = [
+    {
+      value: 'rl',
+      nome: form.nome_representante_legal || '',
+      rg: form.rg_representante_legal || ''
+    },
+    {
+      value: 'adm',
+      nome: form.nome_administrador || '',
+      rg: form.rg_administrador || ''
+    }
+  ];
+
+  function obterTipoResponsavel(slot) {
+    if (tiposResponsaveis[slot.nomeKey]) return tiposResponsaveis[slot.nomeKey];
+
+    const nome = String(form[slot.nomeKey] || '').trim();
+    const rg = String(form[slot.rgKey] || '').trim();
+    if (!nome && !rg) return '';
+
+    const encontrado = opcoesRecebimento.find(opcao => (
+      (opcao.nome || opcao.rg)
+      && nome === String(opcao.nome || '').trim()
+      && rg === String(opcao.rg || '').trim()
+    ));
+
+    return encontrado?.value || 'outra';
+  }
+
+  function selecionarTipo(slot, tipo) {
+    setTiposResponsaveis(prev => ({
+      ...prev,
+      [slot.nomeKey]: tipo
+    }));
+
+    const opcao = opcoesRecebimento.find(item => item.value === tipo);
+
+    if (opcao) {
+      onChange(slot.nomeKey, opcao.nome);
+      onChange(slot.rgKey, opcao.rg);
+      return;
+    }
+
+    if (tipo === 'outra' && ['rl', 'adm'].includes(obterTipoResponsavel(slot))) {
+      onChange(slot.nomeKey, '');
+      onChange(slot.rgKey, '');
+    }
+  }
 
   function removerLinha(index) {
     const slot = slots[index];
     onChange(slot.nomeKey, '');
     onChange(slot.rgKey, '');
+    setTiposResponsaveis(prev => {
+      const proximo = { ...prev };
+      delete proximo[slot.nomeKey];
+      return proximo;
+    });
     setLinhasVisiveis(prev => Math.max(1, prev - 1));
   }
 
@@ -1478,19 +1532,34 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
       {visiveis.map((slot, index) => (
         <div key={slot.nomeKey} className="responsavel-row">
           <span className="responsavel-row__num">{index + 1}</span>
+          <select
+            value={obterTipoResponsavel(slot)}
+            onChange={event => selecionarTipo(slot, event.target.value)}
+            aria-label={`Quem vai receber o chip ${index + 1}`}
+          >
+            <option value="">Selecione</option>
+            <option value="rl" disabled={!form.nome_representante_legal && !form.rg_representante_legal}>RL</option>
+            <option value="adm" disabled={!form.nome_administrador && !form.rg_administrador}>ADM</option>
+            <option value="outra">Outra pessoa</option>
+          </select>
           <div className="responsavel-row__campos">
             <input
               type="text"
               placeholder="Nome do responsável"
               value={form[slot.nomeKey] || ''}
               onChange={event => onChange(slot.nomeKey, event.target.value)}
+              readOnly={['rl', 'adm'].includes(obterTipoResponsavel(slot))}
             />
             <input
               type="text"
               placeholder="RG"
               value={form[slot.rgKey] || ''}
               onChange={event => onChange(slot.rgKey, event.target.value)}
+              readOnly={['rl', 'adm'].includes(obterTipoResponsavel(slot))}
             />
+            {['rl', 'adm'].includes(obterTipoResponsavel(slot)) && (
+              <span className="responsavel-row__source">Dados preenchidos pela venda</span>
+            )}
           </div>
           {linhasVisiveis > 1 && (
             <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerLinha(index)} title="Remover responsável">
