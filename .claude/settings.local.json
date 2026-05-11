@@ -8,7 +8,8 @@
       "Bash(git -C \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\" diff fb2428c~1..fb2428c)",
       "Bash(git -C \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\" diff fb2428c~1..fb2428c --name-only)",
       "Bash(git -C \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\" diff fb2428c~1..fb2428c -- frontend/src/pages/VendasPage/VendasLixeiraPage.jsx)",
-      "Bash(git -C \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\" diff fb2428c~1..fb2428c -- frontend/src/pages/VendasPage/VendasPage.css)"
+      "Bash(git -C \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\" diff fb2428c~1..fb2428c -- frontend/src/pages/VendasPage/VendasPage.css)",
+      "Bash(Find c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\backend\\\\src\\\\database\\\\migrations -name \"*config*\" -type f)"
     ]
   }
 }

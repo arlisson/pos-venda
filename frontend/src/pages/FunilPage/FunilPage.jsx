@@ -800,6 +800,7 @@ function FunilPage() {
   const [gerandoEmailId, setGerandoEmailId] = useState(null);
   const [copiandoEmail, setCopiandoEmail] = useState(false);
   const [mostrarArquivadas, setMostrarArquivadas] = useState(false);
+  const [agora, setAgora] = useState(Date.now);
   const [baixandoXlsxId, setBaixandoXlsxId] = useState(null);
 
   async function handleBaixarXlsxClaro(venda) {
@@ -916,6 +917,11 @@ function FunilPage() {
     carregarVendas();
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    const id = setInterval(() => setAgora(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!stageFeedback.message) return undefined;
@@ -1107,7 +1113,6 @@ function FunilPage() {
         validas.filter(st => (st.ordem ?? 0) === maxOrdem).forEach(st => etapasFinaisIds.add(st.id));
       }
     }
-    const agora = Date.now();
     const filtered = sales.filter(s => {
       if (s.stage === 'retorno') return false;
       if (!mostrarArquivadas
@@ -1123,7 +1128,7 @@ function FunilPage() {
         && (agora - s.updated.getTime()) > SEIS_MESES_MS
     ).length;
     return { filtradas: filtered, arquivadas: archived, total: filtered.reduce((sum, s) => sum + s.value, 0) };
-  }, [sales, stagesVisiveis, mostrarArquivadas, filter, busca]);
+  }, [sales, stagesVisiveis, mostrarArquivadas, filter, busca, agora]);
   const stageLabels = montarStageLabels(stagesVisiveis);
   const operators = useMemo(
     () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),
