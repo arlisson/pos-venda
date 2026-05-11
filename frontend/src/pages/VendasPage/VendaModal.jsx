@@ -113,6 +113,8 @@ const VENDA_VAZIA = {
   horario_aceite_fim: '',
   dia_aceite_inicio: '',
   dia_aceite_fim: '',
+  horario_aceite_fixo: '',
+  dia_aceite_fixo: '',
   protocolo: '',
   login: '',
   senha: '',
@@ -273,11 +275,10 @@ const CAMPOS = [
   { name: 'uf', label: 'UF', maxLength: 2 },
   { name: 'endereco_real_divergente', label: 'Endereço da Receita não é o endereço real', type: 'realAddressToggle', span: true },
   { name: 'ponto_referencia', label: 'Ponto de referência', type: 'longText', span: true },
-  { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condomínio, shopping...', type: 'longText', span: true },
+  { name: 'tipo_local_cpf', label: 'Tipo de local', type: 'tipoLocalCpf', span: true },
 
   { section: 'Aceite e recebimento' },
-  { name: 'horario_aceite_range', label: 'Janela do aceite', type: 'timeRange', nameDe: 'horario_aceite_inicio', nameAte: 'horario_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
-  { name: 'dia_aceite_range', label: 'Dias para aceite', type: 'dayRange', nameDe: 'dia_aceite_inicio', nameAte: 'dia_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
+  { name: 'aceite_range', label: 'Disponibilidade para aceite', type: 'aceiteRange', span: true },
   { name: 'protocolo', label: 'Protocolo do Cliente', span: true },
   { name: 'login', label: 'Login (portal do cliente)' },
   { name: 'senha', label: 'Senha (portal do cliente)' },
@@ -845,6 +846,63 @@ function ajustarQuantidadeNumerosSolicitados(value, quantidade) {
   const atuais = Array.isArray(value) ? value : parseNumerosPortados(value);
 
   return Array.from({ length: total }, (_, index) => atuais[index] || NUMERO_PORTADO_VAZIO);
+}
+
+const TIPO_LOCAL_CPF_OPCOES = ['casa', 'hotel', 'condomínio', 'shopping'];
+
+function parseTipoLocalCpf(valor) {
+  if (!valor) return { selecionado: '', outros: '' };
+  const str = String(valor).trim();
+  if (str.startsWith('outros:')) {
+    return { selecionado: 'outros', outros: str.slice(7).trim() };
+  }
+  if (str === 'outros') {
+    return { selecionado: 'outros', outros: '' };
+  }
+  return { selecionado: TIPO_LOCAL_CPF_OPCOES.includes(str) ? str : '', outros: '' };
+}
+
+function TipoLocalCpfInput({ value, onChange, disabled }) {
+  const { selecionado, outros } = parseTipoLocalCpf(value);
+
+  function selecionar(opcao) {
+    if (disabled) return;
+    if (opcao === selecionado) {
+      onChange('');
+      return;
+    }
+    onChange(opcao === 'outros' ? (outros ? `outros: ${outros}` : 'outros') : opcao);
+  }
+
+  return (
+    <div className="tipo-local-cpf">
+      <div className="tipo-local-cpf__opcoes">
+        {[...TIPO_LOCAL_CPF_OPCOES, 'outros'].map(opcao => (
+          <label key={opcao} className={`tipo-local-cpf__opcao${disabled ? ' tipo-local-cpf__opcao--disabled' : ''}`}>
+            <input
+              type="radio"
+              name="tipo_local_cpf"
+              checked={selecionado === opcao}
+              onChange={() => selecionar(opcao)}
+              disabled={disabled}
+            />
+            {opcao.charAt(0).toUpperCase() + opcao.slice(1)}
+          </label>
+        ))}
+      </div>
+      {selecionado === 'outros' && (
+        <input
+          type="text"
+          className="tipo-local-cpf__outros-input"
+          value={outros}
+          onChange={e => onChange(e.target.value ? `outros: ${e.target.value}` : 'outros')}
+          placeholder="Descreva o local..."
+          disabled={disabled}
+          autoFocus
+        />
+      )}
+    </div>
+  );
 }
 
 function normalizarVenda(venda) {
@@ -2353,7 +2411,8 @@ function VendaModal({
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
-  const [tipoBusca, setTipoBusca] = useState(() => sanitizarCpf(form.cnpj).length === 11 ? 'cpf' : 'cnpj');
+  const [tipoBusca, setTipoBusca] = useState(() => sanitizarCnpj(form.cnpj).length === 11 ? 'cpf' : 'cnpj');
+  const [aceiteMode, setAceiteMode] = useState(() => (form.dia_aceite_fixo || form.horario_aceite_fixo) ? 'fixo' : 'janela');
   const [clienteSolicitouQuantidadeAberta, setClienteSolicitouQuantidadeAberta] = useState(false);
   const [clienteSolicitouNumerosAberto, setClienteSolicitouNumerosAberto] = useState(false);
   const [clienteSolicitouServicosDraft, setClienteSolicitouServicosDraft] = useState([]);
@@ -2718,6 +2777,15 @@ function VendaModal({
     setCnpjStatus({ tipo: '', mensagem: '' });
     setCnpjDados(null);
     setCnpjSugestoes({});
+  }
+
+  function alterarAceiteMode(modo) {
+    setAceiteMode(modo);
+    if (modo === 'fixo') {
+      setForm(prev => ({ ...prev, horario_aceite_inicio: '', horario_aceite_fim: '', dia_aceite_inicio: '', dia_aceite_fim: '' }));
+    } else {
+      setForm(prev => ({ ...prev, dia_aceite_fixo: '', horario_aceite_fixo: '' }));
+    }
   }
 
   useEffect(() => {
@@ -3188,6 +3256,10 @@ function VendaModal({
                 return null;
               }
 
+              if (campo.name === 'tipo_local_cpf' && tipoBusca !== 'cpf') {
+                return null;
+              }
+
               const labelCampo = campo.type === 'responsaveis'
                 ? 'Responsáveis pelo recebimento'
                 : campo.label;
@@ -3276,35 +3348,47 @@ function VendaModal({
                       onChange={atualizarVendedorasVenda}
                       idProtegido={vendedoras?.some(v => String(v.id) === String(usuarioLogado?.id)) ? usuarioLogado?.id : null}
                     />
-                  ) : campo.type === 'timeRange' ? (
-                    <div className="range-pair">
-                      <div className="range-pair__item">
-                        <label className="range-pair__label">{campo.labelDe}</label>
-                        <input type="time" value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)} />
+                  ) : campo.type === 'aceiteRange' ? (
+                    <div className="aceite-bloco">
+                      <div className="aceite-bloco__toggle">
+                        <button type="button" className={`btn btn-sm${aceiteMode === 'janela' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => !somenteVisualizacao && !vendaBloqueadaParaUsuario && alterarAceiteMode('janela')}>Janela</button>
+                        <button type="button" className={`btn btn-sm${aceiteMode === 'fixo' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => !somenteVisualizacao && !vendaBloqueadaParaUsuario && alterarAceiteMode('fixo')}>Horário fixo</button>
                       </div>
-                      <div className="range-pair__sep">até</div>
-                      <div className="range-pair__item">
-                        <label className="range-pair__label">{campo.labelAte}</label>
-                        <input type="time" value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)} />
-                      </div>
-                    </div>
-                  ) : campo.type === 'dayRange' ? (
-                    <div className="range-pair">
-                      <div className="range-pair__item">
-                        <label className="range-pair__label">{campo.labelDe}</label>
-                        <select value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)}>
-                          <option value="">Selecione</option>
-                          {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                        </select>
-                      </div>
-                      <div className="range-pair__sep">até</div>
-                      <div className="range-pair__item">
-                        <label className="range-pair__label">{campo.labelAte}</label>
-                        <select value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)}>
-                          <option value="">Selecione</option>
-                          {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                        </select>
-                      </div>
+                      {aceiteMode === 'janela' ? (
+                        <div className="aceite-bloco__janela">
+                          <div className="aceite-bloco__row">
+                            <span className="aceite-bloco__row-label">Dias</span>
+                            <div className="aceite-bloco__inputs">
+                              <select value={form.dia_aceite_inicio || ''} onChange={e => atualizarCampo('dia_aceite_inicio', e.target.value)}>
+                                <option value="">Selecione</option>
+                                {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                              </select>
+                              <span className="aceite-bloco__sep">até</span>
+                              <select value={form.dia_aceite_fim || ''} onChange={e => atualizarCampo('dia_aceite_fim', e.target.value)}>
+                                <option value="">Selecione</option>
+                                {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="aceite-bloco__row">
+                            <span className="aceite-bloco__row-label">Horário</span>
+                            <div className="aceite-bloco__inputs">
+                              <input type="time" value={form.horario_aceite_inicio || ''} onChange={e => atualizarCampo('horario_aceite_inicio', e.target.value)} />
+                              <span className="aceite-bloco__sep">até</span>
+                              <input type="time" value={form.horario_aceite_fim || ''} onChange={e => atualizarCampo('horario_aceite_fim', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="aceite-bloco__fixo">
+                          <select value={form.dia_aceite_fixo || ''} onChange={e => atualizarCampo('dia_aceite_fixo', e.target.value)}>
+                            <option value="">Selecione o dia</option>
+                            {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                          </select>
+                          <span className="aceite-bloco__sep">às</span>
+                          <input type="time" value={form.horario_aceite_fixo || ''} onChange={e => atualizarCampo('horario_aceite_fixo', e.target.value)} />
+                        </div>
+                      )}
                     </div>
                   ) : campo.type === 'responsaveis' ? (
                     <ResponsaveisRecebimentoInput form={form} onChange={atualizarCampo} />
@@ -3403,6 +3487,12 @@ function VendaModal({
                       </div>
                       {dicaProtocolo && <span className="field-hint">{dicaProtocolo}</span>}
                     </>
+                  ) : campo.type === 'tipoLocalCpf' ? (
+                    <TipoLocalCpfInput
+                      value={form[campo.name] ?? ''}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                    />
                   ) : campo.type === 'longText' ? (
                     <AutoResizeTextarea
                       value={form[campo.name] ?? ''}

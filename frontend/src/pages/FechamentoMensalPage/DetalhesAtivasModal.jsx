@@ -68,6 +68,15 @@ function juntarValores(valores, separador = ', ') {
   return texto || '-';
 }
 
+function formatarHorarioAceite(linha) {
+  const partes = [];
+  const range = [linha.horario_aceite_inicio, linha.horario_aceite_fim].filter(Boolean);
+  if (range.length) partes.push(range.join(' até '));
+  const fixoParts = [linha.dia_aceite_fixo, linha.horario_aceite_fixo].filter(Boolean);
+  if (fixoParts.length) partes.push(fixoParts.join(' às '));
+  return partes.join(' ou ') || '-';
+}
+
 function fmtEndereco(linha) {
   return juntarValores([
     linha.endereco,
@@ -214,6 +223,8 @@ function valoresBuscaLinha(linha) {
     linha.horario_aceite_fim,
     linha.dia_aceite_inicio,
     linha.dia_aceite_fim,
+    linha.dia_aceite_fixo,
+    linha.horario_aceite_fixo,
     linha.motivo_retorno,
     linha.status_anterior_retorno,
     linha.valor_unitario,
@@ -551,7 +562,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                       <th>Endereço real</th>
                       <th>Ponto referência</th>
                       <th>Local CPF</th>
-                      <th>Janela aceite</th>
+                      <th>Horário aceite</th>
                       <th>Dias aceite</th>
                       <th>QC feito por</th>
                       <th>Promessa</th>
@@ -630,7 +641,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                         <td>{fmtEnderecoReal(linha)}</td>
                         <td>{fmtTexto(linha.ponto_referencia)}</td>
                         <td>{fmtTexto(linha.tipo_local_cpf)}</td>
-                        <td>{juntarValores([linha.horario_aceite_inicio, linha.horario_aceite_fim], ' até ')}</td>
+                        <td>{formatarHorarioAceite(linha)}</td>
                         <td>{juntarValores([linha.dia_aceite_inicio, linha.dia_aceite_fim], ' até ')}</td>
                         <td>{fmtTexto(linha.qc_feito_por)}</td>
                         <td>{fmtTexto(linha.promessa_cliente)}</td>

@@ -14,7 +14,8 @@
       "Bash(Find c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\backend -name \"*venda*\" -type f)",
       "Bash(xargs grep -l \"feriado\\\\|holiday\")",
       "Bash(xargs grep -l \"cliente\")",
-      "Bash(xargs grep -l \"2024\\\\|2025\\\\|2026\\\\|natal\\\\|páscoa\\\\|corpus\\\\|carnaval\\\\|independencia\\\\|tiradentes\\\\|trabalho\\\\|nossa\")"
+      "Bash(xargs grep -l \"2024\\\\|2025\\\\|2026\\\\|natal\\\\|páscoa\\\\|corpus\\\\|carnaval\\\\|independencia\\\\|tiradentes\\\\|trabalho\\\\|nossa\")",
+      "Bash(npm run *)"
     ]
   }
 }
