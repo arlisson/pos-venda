@@ -253,6 +253,9 @@ function ClienteFormPage() {
   }
 
   async function buscarDadosCnpj(manual = false) {
+    // Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
+    return;
+
     const cnpj = sanitizarCnpj(form.cnpj);
 
     if (cnpj.length !== 14) {
@@ -312,7 +315,10 @@ function ClienteFormPage() {
         return;
       }
 
-      buscarDadosCnpj(false);
+      setCnpjStatus({ tipo: '', mensagem: '' });
+      setCnpjDados(null);
+      setCnpjSugestoes({});
+      // Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
     }
   }, [form.cnpj]);
 
@@ -397,28 +403,12 @@ function ClienteFormPage() {
                         inputMode="numeric"
                         maxLength={18}
                       />
-                      <div className="cnpj-lookup-row">
-                        {cnpjStatus.mensagem && (
-                          <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
-                            {cnpjStatus.mensagem}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          onClick={() => buscarDadosCnpj(true)}
-                          disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
-                        >
-                          {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
-                        </button>
-                      </div>
-                      <CnpjSugestoes
-                        dados={cnpjDados}
-                        sugestoes={cnpjSugestoes}
-                        labels={CNPJ_LABELS_CLIENTE}
-                        onAceitar={aceitarSugestaoCnpj}
-                        onRecusar={recusarSugestaoCnpj}
-                      />
+                      {/* Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes. */}
+                      {cnpjStatus.mensagem && (
+                        <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
+                          {cnpjStatus.mensagem}
+                        </span>
+                      )}
                     </div>
 
                     <div className="form-field">
