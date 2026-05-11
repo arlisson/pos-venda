@@ -850,38 +850,27 @@ function ajustarQuantidadeNumerosSolicitados(value, quantidade) {
 const TIPO_LOCAL_CPF_OPCOES = ['casa', 'hotel', 'condomínio', 'shopping'];
 
 function parseTipoLocalCpf(valor) {
-  if (!valor) return { selecionados: [], outros: '' };
-  const partes = String(valor).split(',').map(s => s.trim()).filter(Boolean);
-  const selecionados = [];
-  let outros = '';
-  for (const parte of partes) {
-    if (parte.startsWith('outros:')) {
-      selecionados.push('outros');
-      outros = parte.slice(7).trim();
-    } else if (TIPO_LOCAL_CPF_OPCOES.includes(parte)) {
-      selecionados.push(parte);
-    }
+  if (!valor) return { selecionado: '', outros: '' };
+  const str = String(valor).trim();
+  if (str.startsWith('outros:')) {
+    return { selecionado: 'outros', outros: str.slice(7).trim() };
   }
-  return { selecionados, outros };
-}
-
-function serializarTipoLocalCpf(selecionados, outros) {
-  const partes = selecionados.filter(s => s !== 'outros');
-  if (selecionados.includes('outros')) {
-    partes.push(outros ? `outros: ${outros}` : 'outros');
+  if (str === 'outros') {
+    return { selecionado: 'outros', outros: '' };
   }
-  return partes.join(', ');
+  return { selecionado: TIPO_LOCAL_CPF_OPCOES.includes(str) ? str : '', outros: '' };
 }
 
 function TipoLocalCpfInput({ value, onChange, disabled }) {
-  const { selecionados, outros } = parseTipoLocalCpf(value);
+  const { selecionado, outros } = parseTipoLocalCpf(value);
 
-  function toggleOpcao(opcao) {
+  function selecionar(opcao) {
     if (disabled) return;
-    const novos = selecionados.includes(opcao)
-      ? selecionados.filter(s => s !== opcao)
-      : [...selecionados, opcao];
-    onChange(serializarTipoLocalCpf(novos, outros));
+    if (opcao === selecionado) {
+      onChange('');
+      return;
+    }
+    onChange(opcao === 'outros' ? (outros ? `outros: ${outros}` : 'outros') : opcao);
   }
 
   return (
@@ -890,23 +879,25 @@ function TipoLocalCpfInput({ value, onChange, disabled }) {
         {[...TIPO_LOCAL_CPF_OPCOES, 'outros'].map(opcao => (
           <label key={opcao} className={`tipo-local-cpf__opcao${disabled ? ' tipo-local-cpf__opcao--disabled' : ''}`}>
             <input
-              type="checkbox"
-              checked={selecionados.includes(opcao)}
-              onChange={() => toggleOpcao(opcao)}
+              type="radio"
+              name="tipo_local_cpf"
+              checked={selecionado === opcao}
+              onChange={() => selecionar(opcao)}
               disabled={disabled}
             />
             {opcao.charAt(0).toUpperCase() + opcao.slice(1)}
           </label>
         ))}
       </div>
-      {selecionados.includes('outros') && (
+      {selecionado === 'outros' && (
         <input
           type="text"
           className="tipo-local-cpf__outros-input"
           value={outros}
-          onChange={e => onChange(serializarTipoLocalCpf(selecionados, e.target.value))}
+          onChange={e => onChange(e.target.value ? `outros: ${e.target.value}` : 'outros')}
           placeholder="Descreva o local..."
           disabled={disabled}
+          autoFocus
         />
       )}
     </div>
