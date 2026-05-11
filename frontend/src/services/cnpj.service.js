@@ -1,5 +1,27 @@
 import { apiGet } from './api';
 
+export function sanitizarCpf(valor) {
+  return String(valor || '').replace(/\D/g, '').slice(0, 11);
+}
+
+export function formatarCpf(valor) {
+  const d = sanitizarCpf(valor);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9, 11)}`;
+}
+
+export function validarDigitosCpf(cpf) {
+  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+  const calc = (n) => {
+    const soma = Array.from({ length: n }, (_, i) => Number(cpf[i]) * (n + 1 - i)).reduce((a, b) => a + b, 0);
+    const r = (soma * 10) % 11;
+    return r >= 10 ? 0 : r;
+  };
+  return calc(9) === Number(cpf[9]) && calc(10) === Number(cpf[10]);
+}
+
 export class CnpjConsultaError extends Error {
   constructor(message, code = 'erro') {
     super(message);

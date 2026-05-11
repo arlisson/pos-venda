@@ -28,7 +28,7 @@ import {
   verificarProblemaVenda,
   visualizarArquivoVenda
 } from '../../services/venda.service';
-import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
+import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj, sanitizarCpf, formatarCpf, validarDigitosCpf } from '../../services/cnpj.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -2182,6 +2182,7 @@ function VendaModal({
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
+  const [tipoBusca, setTipoBusca] = useState(() => sanitizarCpf(form.cnpj).length === 11 ? 'cpf' : 'cnpj');
   const [clienteSolicitouQuantidadeAberta, setClienteSolicitouQuantidadeAberta] = useState(false);
   const [clienteSolicitouNumerosAberto, setClienteSolicitouNumerosAberto] = useState(false);
   const [clienteSolicitouServicosDraft, setClienteSolicitouServicosDraft] = useState([]);
@@ -2510,6 +2511,14 @@ function VendaModal({
     }
   }
 
+  function alterarTipoBusca(tipo) {
+    setTipoBusca(tipo);
+    setForm(prev => ({ ...prev, cnpj: '' }));
+    setCnpjStatus({ tipo: '', mensagem: '' });
+    setCnpjDados(null);
+    setCnpjSugestoes({});
+  }
+
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (abaAtiva === 'arquivos' && !podeVerDocumentosVenda) {
@@ -2521,6 +2530,7 @@ function VendaModal({
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     if (somenteVisualizacao) return;
+    if (tipoBusca !== 'cnpj') return;
 
     const cnpj = sanitizarCnpj(form.cnpj);
 
@@ -2681,6 +2691,32 @@ function VendaModal({
         setErro('Este cliente já possui um protocolo cadastrado em outra venda.');
         setSalvando(false);
         return;
+      }
+
+      if (tipoBusca === 'cnpj') {
+        const cnpjDigitos = sanitizarCnpj(form.cnpj);
+        if (cnpjDigitos.length > 0 && cnpjDigitos.length < 14) {
+          setErro('CNPJ incompleto.');
+          setSalvando(false);
+          return;
+        }
+        if (cnpjDigitos.length === 14 && !validarDigitosCnpj(cnpjDigitos)) {
+          setErro('CNPJ inválido.');
+          setSalvando(false);
+          return;
+        }
+      } else {
+        const cpfDigitos = sanitizarCpf(form.cnpj);
+        if (cpfDigitos.length > 0 && cpfDigitos.length < 11) {
+          setErro('CPF incompleto.');
+          setSalvando(false);
+          return;
+        }
+        if (cpfDigitos.length === 11 && !validarDigitosCpf(cpfDigitos)) {
+          setErro('CPF inválido.');
+          setSalvando(false);
+          return;
+        }
       }
 
       const numerosPortados = montarNumerosPortados(form.numeros_portados);
@@ -2923,36 +2959,61 @@ function VendaModal({
                       />
                   ) : campo.type === 'cnpj' ? (
                     <>
-                      <input
-                        type="text"
-                        maxLength={getMaxLengthCampo(campo.name, campo.maxLength)}
-                        inputMode={getInputModeCampo(campo.name)}
-                        value={form[campo.name] ?? ''}
-                        onChange={e => atualizarCampo(campo.name, e.target.value)}
-                        placeholder="00.000.000/0000-00"
-                      />
-                      <div className="cnpj-lookup-row">
-                        {cnpjStatus.mensagem && (
-                          <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
-                            {cnpjStatus.mensagem}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          onClick={() => buscarDadosCnpj(true)}
-                          disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
-                        >
-                          {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
-                        </button>
+                      <div className="doc-tipo-toggle">
+                        <button type="button" className={`btn btn-sm${tipoBusca === 'cnpj' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => alterarTipoBusca('cnpj')}>CNPJ</button>
+                        <button type="button" className={`btn btn-sm${tipoBusca === 'cpf' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => alterarTipoBusca('cpf')}>CPF</button>
                       </div>
-                      <CnpjSugestoes
-                        dados={cnpjDados}
-                        sugestoes={cnpjSugestoes}
-                        labels={CNPJ_LABELS_VENDA}
-                        onAceitar={aceitarSugestaoCnpj}
-                        onRecusar={recusarSugestaoCnpj}
-                      />
+                      {tipoBusca === 'cnpj' ? (
+                        <>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={18}
+                            value={form[campo.name] ?? ''}
+                            onChange={e => atualizarCampo(campo.name, e.target.value)}
+                            placeholder="00.000.000/0000-00"
+                          />
+                          <div className="cnpj-lookup-row">
+                            {cnpjStatus.mensagem && (
+                              <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
+                                {cnpjStatus.mensagem}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => buscarDadosCnpj(true)}
+                              disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
+                            >
+                              {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
+                            </button>
+                          </div>
+                          <CnpjSugestoes
+                            dados={cnpjDados}
+                            sugestoes={cnpjSugestoes}
+                            labels={CNPJ_LABELS_VENDA}
+                            onAceitar={aceitarSugestaoCnpj}
+                            onRecusar={recusarSugestaoCnpj}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={14}
+                            value={form[campo.name] ?? ''}
+                            onChange={e => atualizarCampo(campo.name, formatarCpf(e.target.value))}
+                            placeholder="000.000.000-00"
+                          />
+                          {(() => {
+                            const digitos = sanitizarCpf(form[campo.name] || '');
+                            if (digitos.length > 0 && digitos.length < 11) return <span className="field-hint field-hint--error">CPF incompleto</span>;
+                            if (digitos.length === 11 && !validarDigitosCpf(digitos)) return <span className="field-hint field-hint--error">CPF inválido</span>;
+                            return null;
+                          })()}
+                        </>
+                      )}
                     </>
                   ) : campo.type === 'sellers' ? (
                     <VendedorasSelect

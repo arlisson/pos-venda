@@ -1581,6 +1581,16 @@ input.is-invalid {
   height: 36px;
 }
 
+.doc-tipo-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.doc-tipo-toggle .btn {
+  flex: 1;
+}
+
 .cnpj-lookup-row {
   display: flex;
   align-items: center;
