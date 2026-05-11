@@ -10,15 +10,15 @@
 }
 
 .clientes-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto auto;
+  gap: 10px;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  margin-bottom: 4px;
+}
+
+.clientes-toolbar .search-box {
+  width: 100%;
 }
 
 .clientes-tabs {
@@ -929,22 +929,12 @@
 
 @media (max-width: 780px) {
   .clientes-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-    padding: 14px;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
   }
 
-  .clientes-toolbar > div {
-    width: 100%;
-  }
-
-  .clientes-toolbar__actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .clientes-toolbar__actions .btn {
-    justify-content: center;
+  .clientes-toolbar .search-box {
+    grid-column: 1 / -1;
   }
 
   .clientes-page {
