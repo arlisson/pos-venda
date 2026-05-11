@@ -121,6 +121,18 @@
   white-space: nowrap;
 }
 
+.vendas-cliente-concluidas-badge {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.vendas-retorno-badge {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .vendas-page .list-table .vendas-actions-col {
   position: sticky;
   min-width: 60px;

@@ -2191,6 +2191,10 @@ function VendasPage() {
     const ativas = vendasReferencia.filter(v => !codigosFinais.has(v.status_funil));
     return contarVendasPorCliente(ativas);
   }, [vendasReferencia, etapasFunil]);
+  const etapasFinaisSet = useMemo(
+    () => new Set(etapasFunil.filter(e => e.etapa_final).map(e => e.codigo)),
+    [etapasFunil]
+  );
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -2762,10 +2766,16 @@ function VendasPage() {
                                 Recusada pelo ADM
                               </span>
                             )}
-                            {totalVendasCliente > 1 && (
-                              <span className="vendas-cliente-repeat-badge">
+                            {etapasFinaisSet.has(venda.status_funil) && (
+                              <span className="vendas-cliente-concluidas-badge">
                                 <I.Check size={11} />
-                                Cliente com {totalVendasCliente} vendas
+                                Concluída
+                              </span>
+                            )}
+                            {venda.status_funil === 'retorno' && (
+                              <span className="vendas-retorno-badge">
+                                <I.AlertTriangle size={11} />
+                                Retorno
                               </span>
                             )}
                           </div>

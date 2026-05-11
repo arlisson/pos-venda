@@ -7,7 +7,8 @@ import ClienteModal from './ClienteModal';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { atualizarCliente, criarCliente, excluirCliente, listarClientes } from '../../services/cliente.service';
 import { listarNotasEntidade } from '../../services/nota.service';
-import { listarOperadoras } from '../../services/config.service';
+import { listarEtapasFunil, listarOperadoras } from '../../services/config.service';
+import { listarVendas } from '../../services/venda.service';
 import {
   atualizarCampoLeadRecebido,
   listarMeusLeadEnvios,
@@ -729,6 +730,8 @@ function Clientes() {
 
   const [clientes, setClientes] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
+  const [vendas, setVendas] = useState([]);
+  const [etapasFunil, setEtapasFunil] = useState([]);
   const [busca, setBusca] = useState('');
   const [operadoraId, setOperadoraId] = useState('');
   const [responsavelTipo, setResponsavelTipo] = useState('');
@@ -788,12 +791,16 @@ function Clientes() {
     setCarregando(true);
 
     try {
-      const [dados, operadorasData] = await Promise.all([
+      const [dados, operadorasData, vendasData, etapasData] = await Promise.all([
         listarClientes(proximosFiltros),
-        listarOperadoras()
+        listarOperadoras(),
+        listarVendas(),
+        listarEtapasFunil(),
       ]);
       setClientes(dados);
       setOperadoras(operadorasData);
+      setVendas(vendasData);
+      setEtapasFunil(etapasData || []);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar clientes.');
     } finally {
@@ -848,6 +855,18 @@ function Clientes() {
   const clientesComAviso = useMemo(() => (
     clientes.filter(cliente => cliente.aviso_fidelidade?.deve_avisar).length
   ), [clientes]);
+
+  const vendasConcluidasPorCliente = useMemo(() => {
+    const codigosFinais = new Set(etapasFunil.filter(e => e.etapa_final).map(e => e.codigo));
+    return vendas
+      .filter(v => codigosFinais.has(v.status_funil))
+      .reduce((acc, v) => {
+        if (!v.cliente_id) return acc;
+        const chave = `cliente:${v.cliente_id}`;
+        acc.set(chave, (acc.get(chave) || 0) + 1);
+        return acc;
+      }, new Map());
+  }, [vendas, etapasFunil]);
 
   async function handleBuscar(event) {
     event.preventDefault();
@@ -1129,7 +1148,19 @@ function Clientes() {
                       >
                         <td>
                           <div className="cliente-primary">
-                            <strong>{cliente.nome}</strong>
+                            <div className="cliente-primary__title">
+                              <strong>{cliente.nome}</strong>
+                              {(() => {
+                                const n = vendasConcluidasPorCliente.get(`cliente:${cliente.id}`) || 0;
+                                if (!n) return null;
+                                return (
+                                  <span className="clientes-concluidas-badge">
+                                    <I.Check size={11} />
+                                    {n} {n === 1 ? 'venda concluída' : 'vendas concluídas'}
+                                  </span>
+                                );
+                              })()}
+                            </div>
                             <span>{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
                           </div>
                         </td>
