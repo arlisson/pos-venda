@@ -3333,7 +3333,7 @@ function VendaModal({
 
               return (
                 <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''} ${erroCpfCampo ? 'is-invalid' : ''}`}>
-                  {labelCampo && <label>{labelCampo}{campo.required && <span className="field-required-mark"> *</span>}</label>}
+                  {labelCampo && campo.type !== 'realAddressToggle' && <label>{labelCampo}{campo.required && <span className="field-required-mark"> *</span>}</label>}
                   {campo.type === 'client' ? (
                       <ClienteVendaSelect
                         value={form[campo.name] ?? ''}
