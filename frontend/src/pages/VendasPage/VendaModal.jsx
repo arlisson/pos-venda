@@ -2462,6 +2462,7 @@ function VendaModal({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [cepStatus, setCepStatus] = useState('');
+  const [cepRealStatus, setCepRealStatus] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
@@ -2944,6 +2945,55 @@ function VendaModal({
       cancelado = true;
     };
   }, [form.cep, somenteVisualizacao]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (somenteVisualizacao) return;
+
+    const cep = apenasDigitos(form.cep_real, 8);
+
+    if (cep.length !== 8) {
+      setCepRealStatus('');
+      return;
+    }
+
+    let cancelado = false;
+    setCepRealStatus('Buscando CEP...');
+
+    fetch(`https://viacep.com.br/ws/${cep}/json/`)
+      .then(response => {
+        if (!response.ok) throw new Error('Erro ao buscar CEP.');
+        return response.json();
+      })
+      .then(data => {
+        if (cancelado) return;
+
+        if (data.erro) {
+          setCepRealStatus('CEP não encontrado.');
+          return;
+        }
+
+        setForm(prev => ({
+          ...prev,
+          endereco_real: data.logradouro || prev.endereco_real,
+          bairro_real: data.bairro || prev.bairro_real,
+          municipio_real: data.localidade || prev.municipio_real,
+          uf_real: data.uf || prev.uf_real,
+          complemento_real: prev.complemento_real || data.complemento || ''
+        }));
+        setCepRealStatus('Endereço preenchido pelo CEP.');
+      })
+      .catch(() => {
+        if (!cancelado) {
+          setCepRealStatus('Não foi possível buscar o CEP.');
+        }
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [form.cep_real, somenteVisualizacao]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -3669,6 +3719,9 @@ function VendaModal({
                           inputMode={getInputModeCampo(campo.name)}
                           disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
                         />
+                      )}
+                      {campo.name === 'cep_real' && cepRealStatus && (
+                        <span className="field-hint">{cepRealStatus}</span>
                       )}
                     </div>
                   ))}
