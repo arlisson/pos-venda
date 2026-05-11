@@ -46,11 +46,15 @@ const VENDA_VAZIA = {
   // Representante Legal
   nome_representante_legal: '',
   cpf_representante_legal: '',
+  rg_representante_legal: '',
+  data_nascimento_representante_legal: '',
   telefone_representante_legal: '',
   email_representante_legal: '',
   // Administrador
   nome_administrador: '',
   cpf_administrador: '',
+  rg_administrador: '',
+  data_nascimento_administrador: '',
   telefone_administrador: '',
   email_administrador: '',
   // Dados da venda
@@ -196,12 +200,16 @@ const CAMPOS = [
   { section: 'Representante Legal (RL)' },
   { name: 'nome_representante_legal', label: 'Nome RL' },
   { name: 'cpf_representante_legal', label: 'CPF RL' },
+  { name: 'rg_representante_legal', label: 'RG RL' },
+  { name: 'data_nascimento_representante_legal', label: 'Data de nascimento RL', type: 'date' },
   { name: 'telefone_representante_legal', label: 'Telefone RL' },
   { name: 'email_representante_legal', label: 'Email RL' },
 
   { section: 'Administrador (ADM)' },
   { name: 'nome_administrador', label: 'Nome ADM' },
   { name: 'cpf_administrador', label: 'CPF ADM' },
+  { name: 'rg_administrador', label: 'RG ADM' },
+  { name: 'data_nascimento_administrador', label: 'Data de nascimento ADM', type: 'date' },
   { name: 'telefone_administrador', label: 'Telefone ADM' },
   { name: 'email_administrador', label: 'E-mail ADM' },
 
