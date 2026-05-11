@@ -3,6 +3,36 @@
   overflow-y: auto;
 }
 
+.tipo-local-cpf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tipo-local-cpf__opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.tipo-local-cpf__opcao {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tipo-local-cpf__opcao--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tipo-local-cpf__outros-input {
+  margin-top: 2px;
+}
+
 .vendas-toolbar {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto auto;

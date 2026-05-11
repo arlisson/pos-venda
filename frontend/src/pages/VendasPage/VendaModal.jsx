@@ -273,7 +273,7 @@ const CAMPOS = [
   { name: 'uf', label: 'UF', maxLength: 2 },
   { name: 'endereco_real_divergente', label: 'Endereço da Receita não é o endereço real', type: 'realAddressToggle', span: true },
   { name: 'ponto_referencia', label: 'Ponto de referência', type: 'longText', span: true },
-  { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condomínio, shopping...', type: 'longText', span: true },
+  { name: 'tipo_local_cpf', label: 'Tipo de local', type: 'tipoLocalCpf', span: true },
 
   { section: 'Aceite e recebimento' },
   { name: 'horario_aceite_range', label: 'Janela do aceite', type: 'timeRange', nameDe: 'horario_aceite_inicio', nameAte: 'horario_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
@@ -845,6 +845,72 @@ function ajustarQuantidadeNumerosSolicitados(value, quantidade) {
   const atuais = Array.isArray(value) ? value : parseNumerosPortados(value);
 
   return Array.from({ length: total }, (_, index) => atuais[index] || NUMERO_PORTADO_VAZIO);
+}
+
+const TIPO_LOCAL_CPF_OPCOES = ['casa', 'hotel', 'condomínio', 'shopping'];
+
+function parseTipoLocalCpf(valor) {
+  if (!valor) return { selecionados: [], outros: '' };
+  const partes = String(valor).split(',').map(s => s.trim()).filter(Boolean);
+  const selecionados = [];
+  let outros = '';
+  for (const parte of partes) {
+    if (parte.startsWith('outros:')) {
+      selecionados.push('outros');
+      outros = parte.slice(7).trim();
+    } else if (TIPO_LOCAL_CPF_OPCOES.includes(parte)) {
+      selecionados.push(parte);
+    }
+  }
+  return { selecionados, outros };
+}
+
+function serializarTipoLocalCpf(selecionados, outros) {
+  const partes = selecionados.filter(s => s !== 'outros');
+  if (selecionados.includes('outros')) {
+    partes.push(outros ? `outros: ${outros}` : 'outros');
+  }
+  return partes.join(', ');
+}
+
+function TipoLocalCpfInput({ value, onChange, disabled }) {
+  const { selecionados, outros } = parseTipoLocalCpf(value);
+
+  function toggleOpcao(opcao) {
+    if (disabled) return;
+    const novos = selecionados.includes(opcao)
+      ? selecionados.filter(s => s !== opcao)
+      : [...selecionados, opcao];
+    onChange(serializarTipoLocalCpf(novos, outros));
+  }
+
+  return (
+    <div className="tipo-local-cpf">
+      <div className="tipo-local-cpf__opcoes">
+        {[...TIPO_LOCAL_CPF_OPCOES, 'outros'].map(opcao => (
+          <label key={opcao} className={`tipo-local-cpf__opcao${disabled ? ' tipo-local-cpf__opcao--disabled' : ''}`}>
+            <input
+              type="checkbox"
+              checked={selecionados.includes(opcao)}
+              onChange={() => toggleOpcao(opcao)}
+              disabled={disabled}
+            />
+            {opcao.charAt(0).toUpperCase() + opcao.slice(1)}
+          </label>
+        ))}
+      </div>
+      {selecionados.includes('outros') && (
+        <input
+          type="text"
+          className="tipo-local-cpf__outros-input"
+          value={outros}
+          onChange={e => onChange(serializarTipoLocalCpf(selecionados, e.target.value))}
+          placeholder="Descreva o local..."
+          disabled={disabled}
+        />
+      )}
+    </div>
+  );
 }
 
 function normalizarVenda(venda) {
@@ -3119,6 +3185,10 @@ function VendaModal({
                 return null;
               }
 
+              if (campo.name === 'tipo_local_cpf' && tipoBusca !== 'cpf') {
+                return null;
+              }
+
               const labelCampo = campo.type === 'responsaveis'
                 ? 'Responsáveis pelo recebimento'
                 : campo.label;
@@ -3334,6 +3404,12 @@ function VendaModal({
                       </div>
                       {dicaProtocolo && <span className="field-hint">{dicaProtocolo}</span>}
                     </>
+                  ) : campo.type === 'tipoLocalCpf' ? (
+                    <TipoLocalCpfInput
+                      value={form[campo.name] ?? ''}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+                    />
                   ) : campo.type === 'longText' ? (
                     <AutoResizeTextarea
                       value={form[campo.name] ?? ''}
