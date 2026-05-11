@@ -249,7 +249,7 @@ const CAMPOS = [
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
-  { name: 'cliente_solicitou_servicos', label: 'Cliente solicitou', type: 'clientRequested', span: true },
+  { name: 'cliente_solicitou_servicos', label: 'Cliente solicitou', type: 'clientRequested', span: true, required: true },
   { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitários', type: 'chips', span: true },
   { name: 'numeros_ativados', label: 'Números ativados', type: 'activatedNumbers', span: true },
   { name: 'numeros_portados', label: 'Números a serem portados', type: 'portedNumbers', span: true },
@@ -2706,6 +2706,12 @@ function VendaModal({
       }
 
       const servicosSolicitados = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
+
+      if (servicosSolicitados.length === 0) {
+        setErro('Informe o que o cliente solicitou (Bloqueio, Cancelamento ou Nenhum serviço).');
+        setSalvando(false);
+        return;
+      }
       const solicitouNenhumServico = servicosSolicitados.includes('nenhum_servico');
       const solicitouBloqueio = servicosSolicitados.includes('bloqueio');
       const solicitouCancelamento = servicosSolicitados.includes('cancelamento');
@@ -2900,7 +2906,7 @@ function VendaModal({
 
               return (
                 <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''} ${erroCpfCampo ? 'is-invalid' : ''}`}>
-                  {labelCampo && <label>{labelCampo}</label>}
+                  {labelCampo && <label>{labelCampo}{campo.required && <span className="field-required-mark"> *</span>}</label>}
                   {campo.type === 'client' ? (
                       <ClienteVendaSelect
                         value={form[campo.name] ?? ''}
