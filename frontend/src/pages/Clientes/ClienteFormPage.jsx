@@ -20,6 +20,7 @@ const FORM_INICIAL = {
   fixo: '',
   fidelidade_fim: '',
   operadora_atual_id: '',
+  valor_pago: '',
   quantidade_chips: ''
 };
 
@@ -97,6 +98,34 @@ function separarTelefone(valor) {
   };
 }
 
+function parseValorInput(valor) {
+  if (valor === undefined || valor === null || valor === '') return null;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+
+  const numero = Number(String(valor).replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function formatarInputMoedaBR(valor) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+
+  if (!digitos) return '';
+
+  return (Number(digitos) / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function formatarValorPagoInput(valor) {
+  if (valor === undefined || valor === null || valor === '') return '';
+
+  return Number(valor).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
 function montarPayload(form) {
   const whatsapp = separarTelefone(form.whatsapp);
   const fixo = separarTelefone(form.fixo);
@@ -110,6 +139,7 @@ function montarPayload(form) {
     fixo_numero: fixo.numero,
     fidelidade_fim: form.fidelidade_fim || null,
     operadora_atual_id: form.operadora_atual_id ? Number(form.operadora_atual_id) : null,
+    valor_pago: parseValorInput(form.valor_pago),
     quantidade_chips: form.quantidade_chips !== '' ? Number(form.quantidade_chips) : null
   };
 }
@@ -162,6 +192,7 @@ function ClienteFormPage() {
             fixo: juntarTelefone(clienteData.fixo_ddd, clienteData.fixo_numero),
             fidelidade_fim: normalizarDataInput(clienteData.fidelidade_fim),
             operadora_atual_id: clienteData.operadora_atual_id || '',
+            valor_pago: formatarValorPagoInput(clienteData.valor_pago),
             quantidade_chips: clienteData.quantidade_chips ?? ''
           });
         }
@@ -399,6 +430,7 @@ function ClienteFormPage() {
                         ))}
                       </select>
                     </div>
+
                   </div>
                 </section>
 
@@ -442,6 +474,16 @@ function ClienteFormPage() {
                     <div className="form-field">
                       <label>Quantidade de chip</label>
                       <input type="number" min="0" value={form.quantidade_chips} onChange={event => atualizarCampo('quantidade_chips', event.target.value)} />
+                    </div>
+
+                    <div className="form-field">
+                      <label>Valor pago</label>
+                      <input
+                        value={form.valor_pago}
+                        onChange={event => atualizarCampo('valor_pago', formatarInputMoedaBR(event.target.value))}
+                        placeholder="0,00"
+                        inputMode="decimal"
+                      />
                     </div>
 
                     <div className="form-field">

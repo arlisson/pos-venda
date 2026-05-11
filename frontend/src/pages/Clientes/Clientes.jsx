@@ -42,6 +42,15 @@ function formatarFidelidade(aviso) {
   return { label: `${aviso.dias_restantes} dias`, className: 'success' };
 }
 
+function formatarMoeda(valor) {
+  if (valor === undefined || valor === null || valor === '') return '-';
+
+  return Number(valor).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  });
+}
+
 function formatarDataHoraNota(valor) {
   if (!valor) return '';
 
@@ -1102,6 +1111,7 @@ function Clientes() {
                   <th>Contato</th>
                   <th>Operadora</th>
                   <th>Registrado por</th>
+                  <th>Valor pago</th>
                   <th>Chips</th>
                   <th>Fidelidade</th>
                   <th>Retorno</th>
@@ -1111,13 +1121,13 @@ function Clientes() {
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan={podeExcluir ? 9 : 8} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 10 : 9} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando clientes...
                     </td>
                   </tr>
                 ) : clientes.length === 0 ? (
                   <tr>
-                    <td colSpan={podeExcluir ? 9 : 8} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 10 : 9} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhum cliente encontrado.
                     </td>
                   </tr>
@@ -1178,6 +1188,7 @@ function Clientes() {
                         <td>
                           <span className="tag">{cliente.criador?.nome || 'Sem registro'}</span>
                         </td>
+                        <td>{formatarMoeda(cliente.valor_pago)}</td>
                         <td>{cliente.quantidade_chips ?? '-'}</td>
                         <td>
                           <span className={`pill ${fidelidade.className}`}>

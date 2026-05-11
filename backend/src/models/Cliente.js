@@ -27,6 +27,7 @@ class Cliente extends Model {
         fixo_numero: { type: ['string', 'null'], maxLength: 20 },
         fidelidade_fim: { type: ['string', 'null'] },
         operadora_atual_id: { type: ['integer', 'null'] },
+        valor_pago: { type: ['number', 'string', 'null'] },
         quantidade_chips: { type: ['integer', 'null'] },
         criado_por_id: { type: ['integer', 'null'] },
         excluido_em: { type: ['string', 'object', 'null'] },
