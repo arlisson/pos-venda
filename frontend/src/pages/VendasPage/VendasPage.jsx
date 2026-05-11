@@ -625,6 +625,154 @@ function obterTipoVendaTabela(venda = {}) {
     || '-';
 }
 
+function obterCategoriaProdutoWhatsapp(venda = {}) {
+  const texto = normalizarTextoBusca([
+    venda.servico?.nome,
+    venda.produto_fechado,
+    venda.tipoVenda?.nome
+  ].filter(Boolean).join(' '));
+
+  if (texto.includes('internet') || texto.includes('banda larga') || texto.includes('fibra')) return 'Internet';
+  if (texto.includes('fixo') || texto.includes('telefone fixo')) return 'Fixo';
+  if (texto.includes('movel') || texto.includes('chip') || texto.includes('celular') || texto.includes('linha')) return 'Móvel';
+
+  return venda.servico?.nome || venda.produto_fechado || '-';
+}
+
+function obterVendedorasMensagem(venda = {}) {
+  const nomes = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
+    ? venda.vendedoras.map(item => item?.nome).filter(Boolean)
+    : [venda.vendedora?.nome].filter(Boolean);
+
+  return nomes.length > 0 ? nomes.join(', ') : '-';
+}
+
+function obterResumoChipsMensagem(venda = {}) {
+  const itens = normalizarItensChipsInput(venda.valores_unitarios_chips)
+    .filter(item => Number(item.quantidade || 0) > 0 || item.gb || item.valor_unitario || item.tipo_linha);
+
+  if (itens.length === 0) {
+    return [
+      `Valor: ${formatarMoeda(venda.valor_total)}`,
+      `Quantidade: ${venda.quantidade_linhas || '-'}`,
+      `Giga: ${venda.gb || '-'}`,
+      `Tipo: ${obterTipoVendaTabela(venda)}`
+    ].join(' | ');
+  }
+
+  return itens.map(item => {
+    const partes = [
+      `${item.quantidade || 0} linha(s)`,
+      item.gb ? `${item.gb}GB` : '',
+      item.valor_unitario ? formatarMoeda(parseValorInput(item.valor_unitario)) : '',
+      formatarTipoLinhaChipLabel(item.tipo_linha)
+    ].filter(Boolean);
+
+    return partes.join(' - ');
+  }).join('; ');
+}
+
+function obterDocumentosFaltantesMensagem(venda = {}) {
+  const faltantes = [];
+
+  if (venda.nome_representante_legal && !venda.rg_representante_legal) {
+    faltantes.push('RG do representante legal');
+  }
+
+  if (venda.nome_administrador && !venda.rg_administrador) {
+    faltantes.push('RG do administrador');
+  }
+
+  [
+    { nome: venda.responsavel_recebimento, rg: venda.rg_responsavel_recebimento },
+    { nome: venda.responsavel_recebimento_2, rg: venda.rg_responsavel_recebimento_2 },
+    { nome: venda.responsavel_recebimento_3, rg: venda.rg_responsavel_recebimento_3 }
+  ].forEach((responsavel, index) => {
+    if (responsavel.nome && !responsavel.rg) {
+      faltantes.push(`RG do responsável pelo recebimento ${index + 1}`);
+    }
+  });
+
+  if (venda.cnpj && !venda.razao_social && !venda.cliente?.razao_social) {
+    faltantes.push('documento da empresa');
+  }
+
+  return faltantes.length > 0 ? faltantes.join(', ') : '[preencher se faltar RG, doc da empresa, fatura...]';
+}
+
+function montarMensagemWhatsappVenda(venda = {}) {
+  return [
+    'Olá! Seguem os dados da venda:',
+    '',
+    `Operadora: ${venda.operadora?.nome || '-'}`,
+    `Razão social: ${venda.cliente?.razao_social || venda.razao_social || '-'}`,
+    `CNPJ: ${formatarCnpj(venda.cliente?.cnpj || venda.cnpj || '') || '-'}`,
+    `Produto: ${obterCategoriaProdutoWhatsapp(venda)}`,
+    `Detalhes da venda: ${obterResumoChipsMensagem(venda)}`,
+    `Valor total: ${formatarMoeda(venda.valor_total)}`,
+    `Vendedora(s): ${obterVendedorasMensagem(venda)}`,
+    `Protocolo: ${venda.protocolo || '-'}`,
+    `Data da venda: ${formatarData(venda.data_venda)}`,
+    `Falta doc: ${obterDocumentosFaltantesMensagem(venda)}`
+  ].join('\n');
+}
+
+const DOCUMENTOS_FALTANTES_WHATSAPP = [
+  'RG do representante legal',
+  'RG do administrador',
+  'RG do responsavel pelo recebimento',
+  'Documento da empresa',
+  'Fatura',
+  'Contrato social',
+  'Comprovante de endereco'
+];
+
+function obterDocumentosFaltantesPadrao(venda = {}) {
+  const texto = obterDocumentosFaltantesMensagem(venda);
+  if (!texto || texto.startsWith('[')) return [];
+  return texto.split(',').map(item => item.trim()).filter(Boolean);
+}
+
+function formatarResumoVendaWhatsapp(venda = {}) {
+  const itens = normalizarItensChipsInput(venda.valores_unitarios_chips)
+    .filter(item => Number(item.quantidade || 0) > 0 || item.valor_unitario || item.gb || item.tipo_linha);
+  const tipo = resumirTiposLinhaItensChips(itens) || obterTipoVendaTabela(venda);
+  const quantidade = venda.quantidade_linhas || somarQuantidadeItensChips(itens) || '-';
+
+  if (itens.length === 0) {
+    const giga = venda.gb ? ` x ${venda.gb}GB` : '';
+    return `${tipo} - ${quantidade} linha(s) - 1 x ${formatarMoeda(venda.valor_total)}${giga}`;
+  }
+
+  const detalhes = itens.map(item => {
+    const quantidadeItem = Number(item.quantidade || 0) || 1;
+    const valor = item.valor_unitario ? formatarMoeda(parseValorInput(item.valor_unitario)) : formatarMoeda(venda.valor_total);
+    const giga = item.gb || venda.gb;
+
+    return `${quantidadeItem} x ${valor}${giga ? ` x ${giga}GB` : ''}`;
+  });
+
+  return `${tipo} - ${quantidade} linha(s) - ${detalhes.join(' - ')}`;
+}
+
+function montarChecklistWhatsappVenda(venda = {}, documentosFaltantes = obterDocumentosFaltantesPadrao(venda)) {
+  const produto = obterCategoriaProdutoWhatsapp(venda);
+  const razaoSocial = venda.cliente?.razao_social || venda.razao_social || '-';
+  const documentos = documentosFaltantes.length > 0 ? documentosFaltantes.join(', ') : 'NAO';
+
+  return [
+    `OPERADORA : ${venda.operadora?.nome || '-'}`,
+    `RAZAO SOCIAL : ${razaoSocial}`,
+    `CNPJ : ${formatarCnpj(venda.cliente?.cnpj || venda.cnpj || '') || '-'}`,
+    `PRODUTO : ${produto}`,
+    `VENDA : ${formatarResumoVendaWhatsapp(venda)}`,
+    `VENDEDORA(S) : ${obterVendedorasMensagem(venda)}`,
+    `PROTOCOLO : ${venda.protocolo || '-'}`,
+    `DATA DA VENDA : ${formatarData(venda.data_venda)}`,
+    `FALTA DOC : ${documentos}`
+  ].join('\n');
+}
+
 function getChaveClienteVenda(venda = {}) {
   if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
   if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
@@ -2095,6 +2243,78 @@ function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
   );
 }
 
+function WhatsappMensagemModal({ dados, copiando, onClose, onChange, onDocsChange, onCopy }) {
+  if (!dados) return null;
+
+  const documentosSelecionados = dados.documentosFaltantes || [];
+  const semDocumentoFaltante = documentosSelecionados.length === 0;
+
+  function alternarDocumento(documento) {
+    if (documentosSelecionados.includes(documento)) {
+      onDocsChange(documentosSelecionados.filter(item => item !== documento));
+      return;
+    }
+
+    onDocsChange([...documentosSelecionados, documento]);
+  }
+
+  return (
+    <div className="modal-overlay" onClick={event => !copiando && event.target === event.currentTarget && onClose()}>
+      <div className="modal venda-email-modal venda-whatsapp-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Mensagem para WhatsApp</div>
+              <div className="modal-sub">{dados.venda?.operadora?.nome || '-'} - {dados.venda?.cliente?.nome || dados.venda?.nome || `Venda #${dados.venda?.id}`}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={copiando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="whatsapp-docs-panel">
+            <div className="whatsapp-docs-panel__title">Falta doc</div>
+            <div className="whatsapp-docs-options">
+              <label className="whatsapp-doc-option">
+                <input
+                  type="checkbox"
+                  checked={semDocumentoFaltante}
+                  onChange={() => onDocsChange([])}
+                />
+                <span>Nao falta documento</span>
+              </label>
+              {DOCUMENTOS_FALTANTES_WHATSAPP.map(documento => (
+                <label className="whatsapp-doc-option" key={documento}>
+                  <input
+                    type="checkbox"
+                    checked={documentosSelecionados.includes(documento)}
+                    onChange={() => alternarDocumento(documento)}
+                  />
+                  <span>{documento}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <textarea
+            className="venda-email-preview venda-whatsapp-preview"
+            value={dados.texto || ''}
+            onChange={event => onChange(event.target.value)}
+          />
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={copiando}>Fechar</button>
+          <button type="button" className="btn btn-primary" onClick={onCopy} disabled={copiando || !dados.texto}>
+            {copiando ? 'Copiando...' : 'Copiar mensagem'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function VendasPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -2136,9 +2356,11 @@ function VendasPage() {
   const [deletando, setDeletando] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [emailTemplate, setEmailTemplate] = useState(null);
+  const [whatsappMensagem, setWhatsappMensagem] = useState(null);
   const [gerandoEmailId, setGerandoEmailId] = useState(null);
   const [baixandoXlsxId, setBaixandoXlsxId] = useState(null);
   const [copiandoEmail, setCopiandoEmail] = useState(false);
+  const [copiandoWhatsapp, setCopiandoWhatsapp] = useState(false);
   const [clienteRapidoAberto, setClienteRapidoAberto] = useState(false);
   const [, setResolverClienteRapido] = useState(null);
   const usuarioLogado = getUsuarioLocal();
@@ -2453,6 +2675,56 @@ function VendasPage() {
     }
   }
 
+  function abrirMensagemWhatsapp(venda) {
+    setErro('');
+    setSucesso('');
+    const documentosFaltantes = obterDocumentosFaltantesPadrao(venda);
+    setWhatsappMensagem({
+      venda,
+      documentosFaltantes,
+      texto: montarChecklistWhatsappVenda(venda, documentosFaltantes)
+    });
+  }
+
+  function atualizarDocumentosWhatsapp(documentosFaltantes) {
+    setWhatsappMensagem(prev => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        documentosFaltantes,
+        texto: montarChecklistWhatsappVenda(prev.venda, documentosFaltantes)
+      };
+    });
+  }
+
+  async function copiarMensagemWhatsapp() {
+    if (!whatsappMensagem?.texto) return;
+
+    setCopiandoWhatsapp(true);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(whatsappMensagem.texto);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = whatsappMensagem.texto;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setSucesso('Mensagem do WhatsApp copiada.');
+      setWhatsappMensagem(null);
+    } catch {
+      setErro('Não foi possível copiar a mensagem automaticamente.');
+    } finally {
+      setCopiandoWhatsapp(false);
+    }
+  }
+
   function limparFiltros() {
     setBusca('');
     setVendedoraId('');
@@ -2470,6 +2742,9 @@ function VendasPage() {
   }
 
   const totalColunasVendas = 12 + (podeMarcarProblema ? 1 : 0) + (podeExcluirVenda ? 1 : 0);
+  const larguraColunaAcao = 60;
+  const larguraColunaContato = 76;
+  const offsetAcoesFinais = (podeMarcarProblema ? larguraColunaAcao : 0) + (podeExcluirVenda ? larguraColunaAcao : 0);
 
   return (
     <LayoutPrivado>
@@ -2542,6 +2817,15 @@ function VendasPage() {
         copiando={copiandoEmail}
         onClose={() => setEmailTemplate(null)}
         onCopy={copiarEmailVenda}
+      />
+
+      <WhatsappMensagemModal
+        dados={whatsappMensagem}
+        copiando={copiandoWhatsapp}
+        onClose={() => setWhatsappMensagem(null)}
+        onChange={texto => setWhatsappMensagem(prev => prev ? { ...prev, texto } : prev)}
+        onDocsChange={atualizarDocumentosWhatsapp}
+        onCopy={copiarMensagemWhatsapp}
       />
 
       {filtrosAbertos && (
@@ -2703,9 +2987,9 @@ function VendasPage() {
                   <th>Venda</th>
                   <th>Ativação</th>
                   <th>Vendedor(a)</th>
-                  <th className={`vendas-actions-col vendas-email-actions-col ${podeExcluirVenda ? 'has-delete' : ''}`}>Email</th>
+                  <th className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>Contato</th>
                   {podeMarcarProblema && (
-                    <th className="vendas-actions-col vendas-delete-actions-col">Problema</th>
+                    <th className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>Problema</th>
                   )}
                   {podeExcluirVenda && (
                     <th className="vendas-actions-col vendas-delete-actions-col">Excluir</th>
@@ -2792,19 +3076,30 @@ function VendasPage() {
                       <td>{formatarData(venda.data_venda)}</td>
                       <td>{formatarData(venda.data_ativacao)}</td>
                       <td><span className="tag">{venda.vendedora?.nome || '-'}</span></td>
-                      <td className={`vendas-actions-col vendas-email-actions-col ${podeExcluirVenda ? 'has-delete' : ''}`}>
-                        <button
-                          className="btn btn-icon btn-ghost"
-                          title="Gerar corpo de email"
-                          disabled={gerandoEmailId === venda.id}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            abrirEmailVenda(venda);
-                          }}
-                        >
-                          <I.Mail size={13} />
-                        </button>
-                        {/claro/i.test(venda.operadora?.nome) && (
+                      <td className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
+                        <div className="vendas-contact-actions">
+                          <button
+                            className="btn btn-icon btn-ghost vendas-whatsapp-btn"
+                            title="Gerar mensagem para WhatsApp"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              abrirMensagemWhatsapp(venda);
+                            }}
+                          >
+                            <I.Whatsapp size={13} />
+                          </button>
+                          <button
+                            className="btn btn-icon btn-ghost"
+                            title="Gerar corpo de email"
+                            disabled={gerandoEmailId === venda.id}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              abrirEmailVenda(venda);
+                            }}
+                          >
+                            <I.Mail size={13} />
+                          </button>
+                          {/claro/i.test(venda.operadora?.nome) && (
                           <button
                             className="btn btn-icon btn-ghost"
                             title="Baixar planilha Claro"
@@ -2816,10 +3111,11 @@ function VendasPage() {
                           >
                             <I.TableSheet size={13} />
                           </button>
-                        )}
+                          )}
+                        </div>
                       </td>
                       {podeMarcarProblema && (
-                        <td className="vendas-actions-col vendas-delete-actions-col">
+                        <td className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>
                           <button
                             className="btn btn-icon btn-ghost btn-danger-icon"
                             title="Marcar problema"
