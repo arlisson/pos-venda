@@ -29,6 +29,7 @@ class Cliente extends Model {
         operadora_atual_id: { type: ['integer', 'null'] },
         valor_pago: { type: ['number', 'string', 'null'] },
         quantidade_chips: { type: ['integer', 'null'] },
+        base_anterior_sistema: { type: ['boolean', 'integer'] },
         criado_por_id: { type: ['integer', 'null'] },
         excluido_em: { type: ['string', 'object', 'null'] },
         excluir_definitivo_em: { type: ['string', 'object', 'null'] },

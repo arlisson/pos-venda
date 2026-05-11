@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut } from './api';
+import { apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
 
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -27,6 +27,29 @@ export async function buscarClientePorId(id) {
 
 export async function criarCliente(dados) {
   return apiPost('/clientes', dados);
+}
+
+function montarFormDataImportacao(arquivo, mapeamento) {
+  const formData = new FormData();
+  formData.append('arquivo', arquivo);
+  if (mapeamento) {
+    formData.append('mapeamento', JSON.stringify(mapeamento));
+  }
+  return formData;
+}
+
+export async function previewImportacaoBaseAnterior(arquivo) {
+  return apiRequest('/clientes/importar-base-anterior/preview', {
+    method: 'POST',
+    body: montarFormDataImportacao(arquivo)
+  });
+}
+
+export async function importarBaseAnterior(arquivo, mapeamento) {
+  return apiRequest('/clientes/importar-base-anterior', {
+    method: 'POST',
+    body: montarFormDataImportacao(arquivo, mapeamento)
+  });
 }
 
 export async function atualizarCliente(id, dados) {

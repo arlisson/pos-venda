@@ -130,7 +130,9 @@ async function avaliarRequisitosVenda(vendaId, trx = null) {
     motivos.push(MOTIVO_VENDA_COMPARTILHADA);
   }
 
-  if (venda.cliente_id) {
+  if (venda.cliente?.base_anterior_sistema) {
+    motivos.push(MOTIVO_CLIENTE_COM_VENDA_EXISTENTE);
+  } else if (venda.cliente_id) {
     const vendaExistente = await Venda.query(trx)
       .where('cliente_id', venda.cliente_id)
       .whereNot('id', venda.id)

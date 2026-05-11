@@ -5,7 +5,14 @@ import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import ClienteModal from './ClienteModal';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
-import { atualizarCliente, criarCliente, excluirCliente, listarClientes } from '../../services/cliente.service';
+import {
+  atualizarCliente,
+  criarCliente,
+  excluirCliente,
+  importarBaseAnterior,
+  listarClientes,
+  previewImportacaoBaseAnterior
+} from '../../services/cliente.service';
 import { listarNotasEntidade } from '../../services/nota.service';
 import { listarEtapasFunil, listarOperadoras } from '../../services/config.service';
 import { listarVendas } from '../../services/venda.service';
@@ -723,6 +730,177 @@ function NotasClienteReadOnlyModal({ cliente, notas, carregando, erro, onClose }
   );
 }
 
+const CAMPOS_IMPORTACAO_BASE = [
+  { name: 'cnpj', label: 'CNPJ', required: true },
+  { name: 'nome', label: 'Nome' },
+  { name: 'razao_social', label: 'Razao social' },
+  { name: 'responsavel_nome', label: 'Responsavel' },
+  { name: 'email', label: 'E-mail' },
+  { name: 'whatsapp', label: 'WhatsApp' },
+  { name: 'fixo', label: 'Fixo' },
+  { name: 'quantidade_chips', label: 'Quantidade de chips' },
+  { name: 'valor_pago', label: 'Valor pago' },
+  { name: 'operadora_atual', label: 'Operadora atual' }
+];
+
+function ImportarBaseAnteriorModal({ onClose, onImported }) {
+  const [arquivo, setArquivo] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [mapeamento, setMapeamento] = useState({});
+  const [resultado, setResultado] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const colunas = preview?.colunas || [];
+  const podeImportar = Boolean(arquivo && preview && mapeamento.cnpj && !carregando);
+
+  async function carregarPreview(file) {
+    setArquivo(file || null);
+    setPreview(null);
+    setResultado(null);
+    setMapeamento({});
+    setErro('');
+
+    if (!file) return;
+
+    setCarregando(true);
+    try {
+      const data = await previewImportacaoBaseAnterior(file);
+      setPreview(data);
+      setMapeamento(data.sugestoes || {});
+    } catch (error) {
+      setErro(error.message || 'Erro ao ler planilha.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function executarImportacao(event) {
+    event.preventDefault();
+    if (!podeImportar) return;
+
+    setCarregando(true);
+    setErro('');
+    setResultado(null);
+
+    try {
+      const data = await importarBaseAnterior(arquivo, mapeamento);
+      setResultado(data);
+      await onImported(data);
+    } catch (error) {
+      setErro(error.message || 'Erro ao importar planilha.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  function atualizarMapeamento(campo, coluna) {
+    setMapeamento(prev => ({ ...prev, [campo]: coluna }));
+  }
+
+  return (
+    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && !carregando && onClose()}>
+      <form className="modal cliente-import-modal" onSubmit={executarImportacao}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Importar base anterior</div>
+              <div className="modal-sub">Selecione o Excel e relacione cada coluna aos campos do cliente.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={carregando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="form-field">
+            <label>Arquivo .xlsx</label>
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={event => carregarPreview(event.target.files?.[0])}
+              disabled={carregando}
+            />
+          </div>
+
+          {preview && (
+            <>
+              <div className="cliente-import-summary">
+                <span>Aba: <strong>{preview.aba}</strong></span>
+                <span>Linhas: <strong>{preview.total_linhas}</strong></span>
+                <span>Colunas: <strong>{colunas.length}</strong></span>
+              </div>
+
+              <div className="cliente-import-map">
+                <div className="cliente-import-map__head">
+                  <span>Campo do cliente</span>
+                  <span>Coluna do Excel</span>
+                  <span>Amostras</span>
+                </div>
+                {CAMPOS_IMPORTACAO_BASE.map(campo => {
+                  const colunaSelecionada = mapeamento[campo.name] || '';
+                  const amostras = (preview.amostras || [])
+                    .map(item => item.dados?.[colunaSelecionada])
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .join(' | ');
+
+                  return (
+                    <div className="cliente-import-map__row" key={campo.name}>
+                      <label>
+                        {campo.label}
+                        {campo.required && <span className="required-mark">*</span>}
+                      </label>
+                      <select
+                        value={colunaSelecionada}
+                        onChange={event => atualizarMapeamento(campo.name, event.target.value)}
+                        required={campo.required}
+                        disabled={carregando}
+                      >
+                        <option value="">Nao importar</option>
+                        {colunas.map(coluna => (
+                          <option key={`${campo.name}:${coluna.index}`} value={coluna.nome}>{coluna.nome}</option>
+                        ))}
+                      </select>
+                      <span title={amostras}>{amostras || '-'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {resultado && (
+            <div className="cliente-import-result">
+              <span>Linhas lidas: <strong>{resultado.linhas_lidas}</strong></span>
+              <span>CNPJs unicos: <strong>{resultado.cnpjs_unicos}</strong></span>
+              <span>Criados: <strong>{resultado.criados}</strong></span>
+              <span>Atualizados: <strong>{resultado.atualizados}</strong></span>
+              <span>Ignorados: <strong>{resultado.linhas_ignoradas}</strong></span>
+              {resultado.operadoras_nao_encontradas?.length > 0 && (
+                <span>Operadoras nao encontradas: <strong>{resultado.operadoras_nao_encontradas.join(', ')}</strong></span>
+              )}
+              {resultado.erros?.length > 0 && (
+                <span>Erros: <strong>{resultado.erros.slice(0, 3).map(item => `linha ${item.row_index}`).join(', ')}</strong></span>
+              )}
+            </div>
+          )}
+
+          {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={carregando}>Fechar</button>
+          <button type="submit" className="btn btn-primary" disabled={!podeImportar}>
+            {carregando ? 'Processando...' : 'Importar clientes'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function Clientes() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -746,6 +924,7 @@ function Clientes() {
   const [responsavelTipo, setResponsavelTipo] = useState('');
   const [fidelidade, setFidelidade] = useState(fidelidadeParam);
   const [retorno, setRetorno] = useState(retornoParam);
+  const [baseAnterior, setBaseAnterior] = useState('');
   const [chipsMin, setChipsMin] = useState('');
   const [chipsMax, setChipsMax] = useState('');
   const [clienteIdFiltro, setClienteIdFiltro] = useState(clienteIdParam);
@@ -754,6 +933,7 @@ function Clientes() {
   const [sucesso, setSucesso] = useState('');
   const [clienteModal, setClienteModal] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [importModalAberto, setImportModalAberto] = useState(false);
   const [clienteParaLixeira, setClienteParaLixeira] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
@@ -769,19 +949,20 @@ function Clientes() {
     responsavel_tipo: responsavelTipo,
     fidelidade,
     retorno,
+    base_anterior_sistema: baseAnterior,
     chips_min: chipsMin,
     chips_max: chipsMax,
     cliente_id: clienteIdFiltro
-  }), [busca, operadoraId, responsavelTipo, fidelidade, retorno, chipsMin, chipsMax, clienteIdFiltro]);
+  }), [busca, operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax, clienteIdFiltro]);
 
   const filtrosAtivos = useMemo(() => (
     Object.entries(filtros).filter(([, valor]) => valor !== '').length
   ), [filtros]);
 
   const filtrosPopupAtivos = useMemo(() => (
-    [operadoraId, responsavelTipo, fidelidade, retorno, chipsMin, chipsMax]
+    [operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax]
       .filter(v => v !== '').length
-  ), [operadoraId, responsavelTipo, fidelidade, retorno, chipsMin, chipsMax]);
+  ), [operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax]);
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -888,6 +1069,7 @@ function Clientes() {
     setResponsavelTipo('');
     setFidelidade('');
     setRetorno('');
+    setBaseAnterior('');
     setChipsMin('');
     setChipsMax('');
     setClienteIdFiltro('');
@@ -918,6 +1100,11 @@ function Clientes() {
     setClienteModal(null);
     await carregarClientes(filtros);
     setSucesso(editando ? 'Cliente atualizado com sucesso.' : 'Cliente cadastrado com sucesso.');
+  }
+
+  async function finalizarImportacaoBaseAnterior(resultado) {
+    await carregarClientes(filtros);
+    setSucesso(`Importacao concluida: ${resultado.criados || 0} criado(s) e ${resultado.atualizados || 0} atualizado(s).`);
   }
 
   async function confirmarExclusaoCliente() {
@@ -960,6 +1147,13 @@ function Clientes() {
           operadoras={operadoras}
           onClose={() => setModalAberto(false)}
           onSave={salvarCliente}
+        />
+      )}
+
+      {importModalAberto && (
+        <ImportarBaseAnteriorModal
+          onClose={() => setImportModalAberto(false)}
+          onImported={finalizarImportacaoBaseAnterior}
         />
       )}
 
@@ -1017,6 +1211,14 @@ function Clientes() {
                   <option value="alerta">Com alerta</option>
                   <option value="vencida">Vencida</option>
                   <option value="sem">Sem fidelidade</option>
+                </select>
+              </div>
+              <div className="filter-field">
+                <label>Base anterior</label>
+                <select value={baseAnterior} onChange={e => setBaseAnterior(e.target.value)}>
+                  <option value="">Todos</option>
+                  <option value="true">Somente base anterior</option>
+                  <option value="false">Sem marcador</option>
                 </select>
               </div>
               <div className="filter-field">
@@ -1085,9 +1287,14 @@ function Clientes() {
             </button>
 
             {podeCriar && (
-              <button className="btn btn-primary" onClick={abrirNovoCliente}>
-                <I.Plus size={14} /> Novo cliente
-              </button>
+              <>
+                <button className="btn" type="button" onClick={() => setImportModalAberto(true)}>
+                  <I.TableSheet size={14} /> Importar base
+                </button>
+                <button className="btn btn-primary" onClick={abrirNovoCliente}>
+                  <I.Plus size={14} /> Novo cliente
+                </button>
+              </>
             )}
 
             {podeExcluir && (
@@ -1160,6 +1367,9 @@ function Clientes() {
                           <div className="cliente-primary">
                             <div className="cliente-primary__title">
                               <strong>{cliente.nome}</strong>
+                              {cliente.base_anterior_sistema ? (
+                                <span className="tag clientes-base-tag">Base anterior</span>
+                              ) : null}
                               {(() => {
                                 const n = vendasConcluidasPorCliente.get(`cliente:${cliente.id}`) || 0;
                                 if (!n) return null;

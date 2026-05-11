@@ -97,6 +97,85 @@
   font-size: 13.5px;
 }
 
+.cliente-import-modal {
+  width: min(920px, calc(100vw - 32px));
+}
+
+.cliente-import-summary,
+.cliente-import-result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cliente-import-summary span,
+.cliente-import-result span {
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.cliente-import-map {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.cliente-import-map__head,
+.cliente-import-map__row {
+  display: grid;
+  grid-template-columns: 180px minmax(180px, 1fr) minmax(180px, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+}
+
+.cliente-import-map__head {
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cliente-import-map__row {
+  border-top: 1px solid var(--border);
+}
+
+.cliente-import-map__row label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cliente-import-map__row select {
+  min-width: 0;
+}
+
+.cliente-import-map__row > span {
+  min-width: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clientes-base-tag {
+  margin-left: 6px;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.required-mark {
+  color: #dc2626;
+  margin-left: 3px;
+}
+
 .clientes-leads-view {
   flex: 1;
   min-height: 0;
