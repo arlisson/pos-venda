@@ -1196,17 +1196,23 @@ function ClienteSolicitouInput({ form, onToggle, onOpenQuantidades }) {
           {numerosBloqueioPreenchiodos.length > 0 && (
             <div className="cliente-solicitou__numeros-grupo">
               <span className="cliente-solicitou__numeros-label cliente-solicitou__numeros-label--bloqueio">Bloqueio</span>
-              {numerosBloqueioPreenchiodos.map((n, i) => (
-                <span key={i} className="cliente-solicitou__numero-badge cliente-solicitou__numero-badge--bloqueio">{n}</span>
-              ))}
+              {numerosBloqueioPreenchiodos.map((n, i) => {
+                const invalido = !validarNumeroTelefone(n).valido;
+                return (
+                  <span key={i} title={invalido ? validarNumeroTelefone(n).motivo : undefined} className={`cliente-solicitou__numero-badge cliente-solicitou__numero-badge--bloqueio${invalido ? ' is-invalid-badge' : ''}`}>{n}</span>
+                );
+              })}
             </div>
           )}
           {numerosCancelamentoPreeenchidos.length > 0 && (
             <div className="cliente-solicitou__numeros-grupo">
               <span className="cliente-solicitou__numeros-label cliente-solicitou__numeros-label--cancelamento">Cancelamento</span>
-              {numerosCancelamentoPreeenchidos.map((n, i) => (
-                <span key={i} className="cliente-solicitou__numero-badge cliente-solicitou__numero-badge--cancelamento">{n}</span>
-              ))}
+              {numerosCancelamentoPreeenchidos.map((n, i) => {
+                const invalido = !validarNumeroTelefone(n).valido;
+                return (
+                  <span key={i} title={invalido ? validarNumeroTelefone(n).motivo : undefined} className={`cliente-solicitou__numero-badge cliente-solicitou__numero-badge--cancelamento${invalido ? ' is-invalid-badge' : ''}`}>{n}</span>
+                );
+              })}
             </div>
           )}
         </div>
@@ -1299,12 +1305,29 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
                 <div className="cliente-solicitou-numeros__title">
                   {tipo === 'bloqueio' ? 'Bloqueio' : 'Cancelamento'} ({Number(quantidades[tipo] || 0)})
                 </div>
-                {(numeros[tipo] || []).map((numero, index) => (
-                  <label key={`${tipo}-${index}`} className="cliente-solicitou-numero-row">
-                    <span>{index + 1}</span>
-                    <input type="text" inputMode="numeric" value={numero} onChange={event => atualizarNumero(tipo, index, event.target.value)} maxLength={15} placeholder="(11) 99999-9999" />
-                  </label>
-                ))}
+                {(numeros[tipo] || []).map((numero, index) => {
+                  const naoVazio = apenasDigitos(numero).length > 2;
+                  const validacao = naoVazio ? validarNumeroTelefone(numero) : null;
+                  const invalido = validacao && !validacao.valido;
+                  return (
+                    <label key={`${tipo}-${index}`} className="cliente-solicitou-numero-row">
+                      <span>{index + 1}</span>
+                      <div className="ported-number-input-wrap">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={numero}
+                          onChange={event => atualizarNumero(tipo, index, event.target.value)}
+                          maxLength={15}
+                          placeholder="(11) 99999-9999"
+                          className={invalido ? 'is-invalid' : undefined}
+                          title={invalido ? validacao.motivo : undefined}
+                        />
+                        {invalido && <span className="field-hint field-hint--error">{validacao.motivo}</span>}
+                      </div>
+                    </label>
+                  );
+                })}
               </section>
             ))}
           </div>
