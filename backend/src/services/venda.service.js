@@ -31,6 +31,10 @@ const CAMPOS = [
   'cliente_solicitou_bloqueio_qtd',
   'cliente_solicitou_cancelamento_qtd',
   'cliente_solicitou_numeros',
+  'cliente_solicitou_resolvido',
+  'cliente_solicitou_resolvido_em',
+  'cliente_solicitou_protocolo_atendimento',
+  'cliente_solicitou_observacao',
   'ponto_referencia',
   'tipo_local_cpf',
   'razao_social',
@@ -109,6 +113,7 @@ const FUNIL_STATUS_LABELS = {
 
 const FUNIL_PRIORIDADES = ['alta', 'media', 'baixa'];
 const PROMESSA_CUMPRIDA_OPCOES = ['pendente', 'sim', 'nao'];
+const CLIENTE_SOLICITOU_RESOLVIDO_OPCOES = ['sim', 'nao'];
 
 function limparValor(valor) {
   if (valor === undefined) return undefined;
@@ -483,6 +488,20 @@ function montarPayload(dados) {
         bloqueio: servicos.includes('bloqueio') ? numeros.bloqueio : [],
         cancelamento: servicos.includes('cancelamento') ? numeros.cancelamento : []
       })
+      : null;
+
+    const resolvido = String(dados.cliente_solicitou_resolvido || '').trim().toLowerCase();
+    const resolvidoValido = !nenhumServico && CLIENTE_SOLICITOU_RESOLVIDO_OPCOES.includes(resolvido);
+
+    payload.cliente_solicitou_resolvido = resolvidoValido ? resolvido : null;
+    payload.cliente_solicitou_resolvido_em = resolvidoValido && resolvido === 'sim'
+      ? normalizarData(dados.cliente_solicitou_resolvido_em)
+      : null;
+    payload.cliente_solicitou_protocolo_atendimento = resolvidoValido && resolvido === 'sim'
+      ? (String(dados.cliente_solicitou_protocolo_atendimento || '').trim() || null)
+      : null;
+    payload.cliente_solicitou_observacao = resolvidoValido && resolvido === 'sim'
+      ? (String(dados.cliente_solicitou_observacao || '').trim() || null)
       : null;
   }
 

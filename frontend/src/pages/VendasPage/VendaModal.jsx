@@ -76,6 +76,10 @@ const VENDA_VAZIA = {
   cliente_solicitou_bloqueio_qtd: '',
   cliente_solicitou_cancelamento_qtd: '',
   cliente_solicitou_numeros: { bloqueio: [], cancelamento: [] },
+  cliente_solicitou_resolvido: '',
+  cliente_solicitou_resolvido_em: '',
+  cliente_solicitou_protocolo_atendimento: '',
+  cliente_solicitou_observacao: '',
   ponto_referencia: '',
   tipo_local_cpf: '',
   razao_social: '',
@@ -169,6 +173,11 @@ const CLIENTE_SOLICITOU_OPCOES = [
 ];
 
 const CLIENTE_SOLICITOU_ACOES = ['bloqueio', 'cancelamento'];
+
+const CLIENTE_SOLICITOU_LABELS = {
+  bloqueio: 'Bloqueio',
+  cancelamento: 'Cancelamento'
+};
 
 const DIAS_SEMANA = [
   { value: 'segunda', label: 'Segunda-feira' },
@@ -818,6 +827,19 @@ function montarClienteSolicitouNumeros(numeros = {}) {
   };
 }
 
+function montarLinhasClienteSolicitou(form) {
+  const servicos = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
+  const numeros = parseClienteSolicitouNumeros(form.cliente_solicitou_numeros);
+
+  return CLIENTE_SOLICITOU_ACOES
+    .filter(servico => servicos.includes(servico))
+    .flatMap(servico => (numeros[servico] || []).map(numero => ({
+      servico,
+      numero
+    })))
+    .filter(item => apenasDigitos(item.numero).length > 2);
+}
+
 function ajustarQuantidadeNumerosSolicitados(value, quantidade) {
   const total = Math.max(Number(quantidade || 0), 0);
   const atuais = Array.isArray(value) ? value : parseNumerosPortados(value);
@@ -845,6 +867,10 @@ function normalizarVenda(venda) {
     cliente_solicitou_bloqueio_qtd: venda.cliente_solicitou_bloqueio_qtd ?? '',
     cliente_solicitou_cancelamento_qtd: venda.cliente_solicitou_cancelamento_qtd ?? '',
     cliente_solicitou_numeros: parseClienteSolicitouNumeros(venda.cliente_solicitou_numeros),
+    cliente_solicitou_resolvido: venda.cliente_solicitou_resolvido ?? '',
+    cliente_solicitou_resolvido_em: toInputDate(venda.cliente_solicitou_resolvido_em),
+    cliente_solicitou_protocolo_atendimento: venda.cliente_solicitou_protocolo_atendimento ?? '',
+    cliente_solicitou_observacao: venda.cliente_solicitou_observacao ?? '',
     quantidade_linhas: venda.quantidade_linhas ?? '',
     dia_vencimento: venda.dia_vencimento ?? '',
     operadora_id: venda.operadora_id ? String(venda.operadora_id) : '',
@@ -1348,6 +1374,82 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ClienteSolicitouResolucaoTab({ form, onChange, disabled }) {
+  const linhas = montarLinhasClienteSolicitou(form);
+
+  return (
+    <div className="cliente-solicitou-resolucao">
+      <div className="cliente-solicitou-resolucao__table-wrap">
+        <table className="cliente-solicitou-resolucao__table">
+          <thead>
+            <tr>
+              <th>Número</th>
+              <th>Serviço solicitado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.length > 0 ? linhas.map((linha, index) => (
+              <tr key={`${linha.servico}-${linha.numero}-${index}`}>
+                <td>{linha.numero}</td>
+                <td>{CLIENTE_SOLICITOU_LABELS[linha.servico] || linha.servico}</td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={2}>Nenhum número informado.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <fieldset className="venda-readonly-fieldset" disabled={disabled}>
+        <div className="vendas-form-grid cliente-solicitou-resolucao__form">
+          <div className="form-field">
+            <label>Problema foi resolvido</label>
+            <select
+              value={form.cliente_solicitou_resolvido || ''}
+              onChange={event => onChange('cliente_solicitou_resolvido', event.target.value)}
+            >
+              <option value="">Selecione</option>
+              <option value="sim">Sim</option>
+              <option value="nao">Não</option>
+            </select>
+          </div>
+
+          {form.cliente_solicitou_resolvido === 'sim' && (
+            <>
+              <div className="form-field">
+                <label>Data de resolução</label>
+                <input
+                  type="date"
+                  value={form.cliente_solicitou_resolvido_em || ''}
+                  onChange={event => onChange('cliente_solicitou_resolvido_em', event.target.value)}
+                />
+              </div>
+              <div className="form-field span-2">
+                <label>Protocolo de atendimento</label>
+                <input
+                  type="text"
+                  value={form.cliente_solicitou_protocolo_atendimento || ''}
+                  onChange={event => onChange('cliente_solicitou_protocolo_atendimento', event.target.value)}
+                />
+              </div>
+              <div className="form-field span-2">
+                <label>Observação</label>
+                <AutoResizeTextarea
+                  value={form.cliente_solicitou_observacao || ''}
+                  onChange={event => onChange('cliente_solicitou_observacao', event.target.value)}
+                  maxRows={5}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </fieldset>
     </div>
   );
 }
@@ -2214,6 +2316,7 @@ function VendaModal({
   const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
   const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
   const clienteSolicitouServicos = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
+  const temClienteSolicitouAba = CLIENTE_SOLICITOU_ACOES.some(acao => clienteSolicitouServicos.includes(acao));
   const clienteIdProtocolo = String(form.cliente_id || '');
   const vendaIdAtual = venda?.id ? String(venda.id) : '';
   const protocoloOriginal = String(venda?.protocolo || '').trim();
@@ -2269,6 +2372,27 @@ function VendaModal({
       }
 
       return proximo;
+    });
+  }
+
+  function atualizarResolucaoClienteSolicitou(campo, valor) {
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+
+    setForm(prev => {
+      if (campo !== 'cliente_solicitou_resolvido') {
+        return {
+          ...prev,
+          [campo]: valor
+        };
+      }
+
+      return {
+        ...prev,
+        cliente_solicitou_resolvido: valor,
+        cliente_solicitou_resolvido_em: valor === 'sim' ? prev.cliente_solicitou_resolvido_em : '',
+        cliente_solicitou_protocolo_atendimento: valor === 'sim' ? prev.cliente_solicitou_protocolo_atendimento : '',
+        cliente_solicitou_observacao: valor === 'sim' ? prev.cliente_solicitou_observacao : ''
+      };
     });
   }
 
@@ -2359,7 +2483,11 @@ function VendaModal({
           cliente_solicitou_servicos: selecionado ? [] : ['nenhum_servico'],
           cliente_solicitou_bloqueio_qtd: '',
           cliente_solicitou_cancelamento_qtd: '',
-          cliente_solicitou_numeros: { bloqueio: [], cancelamento: [] }
+          cliente_solicitou_numeros: { bloqueio: [], cancelamento: [] },
+          cliente_solicitou_resolvido: '',
+          cliente_solicitou_resolvido_em: '',
+          cliente_solicitou_protocolo_atendimento: '',
+          cliente_solicitou_observacao: ''
         };
       }
 
@@ -2377,7 +2505,11 @@ function VendaModal({
         cliente_solicitou_numeros: {
           bloqueio: proximos.includes('bloqueio') ? numerosAtuais.bloqueio : [],
           cancelamento: proximos.includes('cancelamento') ? numerosAtuais.cancelamento : []
-        }
+        },
+        cliente_solicitou_resolvido: proximos.length > 0 ? prev.cliente_solicitou_resolvido : '',
+        cliente_solicitou_resolvido_em: proximos.length > 0 ? prev.cliente_solicitou_resolvido_em : '',
+        cliente_solicitou_protocolo_atendimento: proximos.length > 0 ? prev.cliente_solicitou_protocolo_atendimento : '',
+        cliente_solicitou_observacao: proximos.length > 0 ? prev.cliente_solicitou_observacao : ''
       };
     });
   }
@@ -2519,13 +2651,14 @@ function VendaModal({
     setCnpjSugestoes({});
   }
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (abaAtiva === 'arquivos' && !podeVerDocumentosVenda) {
       setAbaAtiva('venda');
     }
-  }, [abaAtiva, podeVerDocumentosVenda]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+    if (abaAtiva === 'solicitacao' && !temClienteSolicitouAba) {
+      setAbaAtiva('venda');
+    }
+  }, [abaAtiva, podeVerDocumentosVenda, temClienteSolicitouAba]);
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -2779,6 +2912,33 @@ function VendaModal({
         return;
       }
 
+      const clienteSolicitouResolvido = ['sim', 'nao'].includes(form.cliente_solicitou_resolvido)
+        ? form.cliente_solicitou_resolvido
+        : null;
+
+      if (!solicitouNenhumServico && clienteSolicitouResolvido === 'sim') {
+        if (!normalizarDataVendaInput(form.cliente_solicitou_resolvido_em)) {
+          setErro('Informe a data de resolucao da solicitacao do cliente.');
+          setAbaAtiva('solicitacao');
+          setSalvando(false);
+          return;
+        }
+
+        if (!String(form.cliente_solicitou_protocolo_atendimento || '').trim()) {
+          setErro('Informe o protocolo de atendimento da solicitacao do cliente.');
+          setAbaAtiva('solicitacao');
+          setSalvando(false);
+          return;
+        }
+
+        if (!String(form.cliente_solicitou_observacao || '').trim()) {
+          setErro('Informe a observacao da solicitacao do cliente.');
+          setAbaAtiva('solicitacao');
+          setSalvando(false);
+          return;
+        }
+      }
+
       const chipsProcessados = (form.valores_unitarios_chips || [])
         .map(item => ({
           quantidade: Number(item.quantidade || 0),
@@ -2803,6 +2963,16 @@ function VendaModal({
           bloqueio: solicitouBloqueio ? numerosSolicitados.bloqueio : [],
           cancelamento: solicitouCancelamento ? numerosSolicitados.cancelamento : []
         },
+        cliente_solicitou_resolvido: solicitouNenhumServico ? null : clienteSolicitouResolvido,
+        cliente_solicitou_resolvido_em: !solicitouNenhumServico && clienteSolicitouResolvido === 'sim'
+          ? normalizarDataVendaInput(form.cliente_solicitou_resolvido_em)
+          : null,
+        cliente_solicitou_protocolo_atendimento: !solicitouNenhumServico && clienteSolicitouResolvido === 'sim'
+          ? String(form.cliente_solicitou_protocolo_atendimento || '').trim()
+          : null,
+        cliente_solicitou_observacao: !solicitouNenhumServico && clienteSolicitouResolvido === 'sim'
+          ? String(form.cliente_solicitou_observacao || '').trim()
+          : null,
         vendedoras: vendedorasIds
       };
 
@@ -2859,6 +3029,15 @@ function VendaModal({
           >
             <I.Chart size={14} /> Venda
           </button>
+          {temClienteSolicitouAba && (
+            <button
+              type="button"
+              className={`modal-tab ${abaAtiva === 'solicitacao' ? 'active' : ''}`}
+              onClick={() => setAbaAtiva('solicitacao')}
+            >
+              <I.Check size={14} /> Pós Venda
+            </button>
+          )}
           <button
             type="button"
             className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
@@ -2884,7 +3063,7 @@ function VendaModal({
           </button>
         </div>
 
-        {erro && abaAtiva === 'venda' && (
+        {erro && (abaAtiva === 'venda' || abaAtiva === 'solicitacao') && (
           <div className="venda-modal-alert" role="alert" aria-live="assertive">
             <div className="venda-modal-alert__icon">
               <I.AlertTriangle size={16} />
@@ -2907,6 +3086,12 @@ function VendaModal({
         <div className="modal-body">
           {abaAtiva === 'notas' ? (
             <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
+          ) : abaAtiva === 'solicitacao' && temClienteSolicitouAba ? (
+            <ClienteSolicitouResolucaoTab
+              form={form}
+              onChange={atualizarResolucaoClienteSolicitou}
+              disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
+            />
           ) : abaAtiva === 'arquivos' && podeVerDocumentosVenda ? (
             <ArquivosVendaTab venda={venda} podeEditar={podeEditarVenda} />
           ) : abaAtiva === 'problema' ? (
