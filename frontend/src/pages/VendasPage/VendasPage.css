@@ -1910,24 +1910,58 @@ input.is-invalid {
   background: var(--surface-2);
 }
 
-.range-pair--compact {
-  max-width: none;
-  flex: 1;
-  min-width: 220px;
-}
-
 .aceite-horario-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  max-width: 560px;
+  gap: 0;
+}
+
+.aceite-horario-group {
+  display: grid;
+  grid-template-columns: minmax(76px, 1fr) 28px minmax(76px, 1fr);
+  gap: 8px;
+  align-items: end;
+  flex: 1;
+  min-width: 0;
+}
+
+.aceite-horario-group--fixo {
+  grid-template-columns: minmax(110px, 1.6fr) 24px minmax(76px, 1fr);
 }
 
 .aceite-horario-ou {
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  flex-shrink: 0;
+  width: 36px;
+  position: relative;
+}
+
+.aceite-horario-ou::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border);
+}
+
+.aceite-horario-ou span {
+  position: relative;
+  z-index: 1;
+  background: var(--surface-2);
+  padding: 2px 3px;
+  font-size: 11px;
   color: var(--text-3);
   font-style: italic;
-  flex-shrink: 0;
 }
 
 .range-pair__item {

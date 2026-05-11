@@ -3272,7 +3272,7 @@ function VendaModal({
                     />
                   ) : campo.type === 'timeRange' ? (
                     <div className="aceite-horario-row">
-                      <div className="range-pair range-pair--compact">
+                      <div className="aceite-horario-group">
                         <div className="range-pair__item">
                           <label className="range-pair__label">{campo.labelDe}</label>
                           <input type="time" value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)} />
@@ -3285,8 +3285,8 @@ function VendaModal({
                       </div>
                       {campo.nameFixoDia && (
                         <>
-                          <div className="aceite-horario-ou">ou</div>
-                          <div className="range-pair range-pair--compact">
+                          <div className="aceite-horario-ou"><span>ou</span></div>
+                          <div className="aceite-horario-group aceite-horario-group--fixo">
                             <div className="range-pair__item">
                               <label className="range-pair__label">Dia fixo</label>
                               <select value={form[campo.nameFixoDia] || ''} onChange={e => atualizarCampo(campo.nameFixoDia, e.target.value)}>
@@ -3296,7 +3296,7 @@ function VendaModal({
                             </div>
                             <div className="range-pair__sep">às</div>
                             <div className="range-pair__item">
-                              <label className="range-pair__label">Horário fixo</label>
+                              <label className="range-pair__label">Horário</label>
                               <input type="time" value={form[campo.nameFixoHorario] || ''} onChange={e => atualizarCampo(campo.nameFixoHorario, e.target.value)} />
                             </div>
                           </div>
