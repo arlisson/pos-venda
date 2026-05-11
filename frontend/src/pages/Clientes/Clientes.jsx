@@ -1063,39 +1063,37 @@ function Clientes() {
         ) : (
           <>
         <div className="clientes-toolbar">
-          <div className="clientes-toolbar__meta">
-            {clientes.length} clientes cadastrados
-            {clientesComAviso > 0 ? ` - ${clientesComAviso} aviso(s) de fidelidade` : ''}
-            {filtrosAtivos > 0 ? ` - ${filtrosAtivos} filtro(s) ativo(s)` : ''}
+          <div className="search-box">
+            <I.Search size={14} />
+            <input
+              value={busca}
+              onChange={event => setBusca(event.target.value)}
+              placeholder="Buscar por nome, CNPJ, e-mail..."
+            />
           </div>
 
-          <div className="clientes-toolbar__actions">
-            <form className="clientes-search" onSubmit={handleBuscar}>
-              <I.Search size={14} />
-              <input
-                value={busca}
-                onChange={event => setBusca(event.target.value)}
-                placeholder="Buscar por nome, CNPJ, e-mail..."
-              />
-            </form>
+          <button className="btn" type="button" onClick={() => setFiltrosAbertos(true)}>
+            <I.Filter size={14} /> Filtros
+            {filtrosPopupAtivos > 0 && <span className="filtros-count">{filtrosPopupAtivos}</span>}
+          </button>
 
-            <button className="btn" type="button" onClick={() => setFiltrosAbertos(true)}>
-              <I.Filter size={14} /> Filtros
-              {filtrosPopupAtivos > 0 && <span className="filtros-count">{filtrosPopupAtivos}</span>}
+          {podeCriar && (
+            <button className="btn btn-primary" onClick={abrirNovoCliente}>
+              <I.Plus size={14} /> Novo cliente
             </button>
+          )}
 
-            {podeCriar && (
-              <button className="btn btn-primary" onClick={abrirNovoCliente}>
-                <I.Plus size={14} /> Novo cliente
-              </button>
-            )}
+          {podeExcluir && (
+            <button className="btn btn-danger" onClick={() => navigate('/clientes/lixeira')}>
+              <I.Trash size={14} /> Lixeira
+            </button>
+          )}
+        </div>
 
-            {podeExcluir && (
-              <button className="btn btn-danger" onClick={() => navigate('/clientes/lixeira')}>
-                <I.Trash size={14} /> Lixeira
-              </button>
-            )}
-          </div>
+        <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>
+          {clientes.length} clientes cadastrados
+          {clientesComAviso > 0 ? ` - ${clientesComAviso} aviso(s) de fidelidade` : ''}
+          {filtrosAtivos > 0 ? ` - ${filtrosAtivos} filtro(s) ativo(s)` : ''}
         </div>
 
         {sucesso && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucesso}</div>}
