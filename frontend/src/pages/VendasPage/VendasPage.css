@@ -1422,7 +1422,7 @@ input.is-invalid {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 8px;
-  align-items: start;
+  align-items: center;
 }
 
 .cliente-solicitou-numero-row span {
@@ -1437,11 +1437,12 @@ input.is-invalid {
   color: var(--text-3);
   font-size: 12px;
   font-weight: 700;
-  margin-top: 4px;
+  flex-shrink: 0;
 }
 
-.cliente-solicitou-numero-row .ported-number-input-wrap {
-  min-width: 0;
+.cliente-solicitou-numero-row.is-invalid span {
+  border-color: #f87171;
+  color: #b91c1c;
 }
 
 .cliente-solicitou-numero-row input {
@@ -1454,6 +1455,11 @@ input.is-invalid {
   color: var(--text);
   outline: none;
   font-size: 13.5px;
+}
+
+.cliente-solicitou-numero-row.is-invalid input {
+  border-color: #f87171;
+  background: #fff7f7;
 }
 
 .chip-items__aviso-minimo {

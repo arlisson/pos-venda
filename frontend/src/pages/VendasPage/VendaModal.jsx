@@ -1310,21 +1310,17 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
                   const validacao = naoVazio ? validarNumeroTelefone(numero) : null;
                   const invalido = validacao && !validacao.valido;
                   return (
-                    <label key={`${tipo}-${index}`} className="cliente-solicitou-numero-row">
+                    <label key={`${tipo}-${index}`} className={`cliente-solicitou-numero-row${invalido ? ' is-invalid' : ''}`}>
                       <span>{index + 1}</span>
-                      <div className="ported-number-input-wrap">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={numero}
-                          onChange={event => atualizarNumero(tipo, index, event.target.value)}
-                          maxLength={15}
-                          placeholder="(11) 99999-9999"
-                          className={invalido ? 'is-invalid' : undefined}
-                          title={invalido ? validacao.motivo : undefined}
-                        />
-                        {invalido && <span className="field-hint field-hint--error">{validacao.motivo}</span>}
-                      </div>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={numero}
+                        onChange={event => atualizarNumero(tipo, index, event.target.value)}
+                        maxLength={15}
+                        placeholder="(11) 99999-9999"
+                        title={invalido ? validacao.motivo : undefined}
+                      />
                     </label>
                   );
                 })}
