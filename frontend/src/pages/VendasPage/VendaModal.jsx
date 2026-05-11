@@ -2965,20 +2965,15 @@ function VendaModal({
                       </div>
                       {tipoBusca === 'cnpj' ? (
                         <>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={18}
-                            value={form[campo.name] ?? ''}
-                            onChange={e => atualizarCampo(campo.name, e.target.value)}
-                            placeholder="00.000.000/0000-00"
-                          />
-                          <div className="cnpj-lookup-row">
-                            {cnpjStatus.mensagem && (
-                              <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
-                                {cnpjStatus.mensagem}
-                              </span>
-                            )}
+                          <div className="cnpj-input-row">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={18}
+                              value={form[campo.name] ?? ''}
+                              onChange={e => atualizarCampo(campo.name, e.target.value)}
+                              placeholder="00.000.000/0000-00"
+                            />
                             <button
                               type="button"
                               className="btn btn-sm btn-ghost"
@@ -2988,6 +2983,11 @@ function VendaModal({
                               {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
                             </button>
                           </div>
+                          {cnpjStatus.mensagem && (
+                            <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
+                              {cnpjStatus.mensagem}
+                            </span>
+                          )}
                           <CnpjSugestoes
                             dados={cnpjDados}
                             sugestoes={cnpjSugestoes}
