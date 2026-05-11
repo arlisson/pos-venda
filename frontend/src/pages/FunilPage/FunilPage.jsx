@@ -1113,6 +1113,14 @@ function FunilPage() {
         validas.filter(st => (st.ordem ?? 0) === maxOrdem).forEach(st => etapasFinaisIds.add(st.id));
       }
     }
+    console.log('[FUNIL-OCULTAR] etapasFinaisIds:', [...etapasFinaisIds]);
+    console.log('[FUNIL-OCULTAR] agora:', new Date(agora).toISOString());
+    sales.forEach(s => {
+      if (etapasFinaisIds.has(s.stage)) {
+        const diff = agora - s.updated.getTime();
+        console.log(`[FUNIL-OCULTAR] venda ${s.id} stage=${s.stage} updated=${s.updated.toISOString()} diff=${Math.round(diff/1000)}s limite=${SEIS_MESES_MS/1000}s ocultar=${diff > SEIS_MESES_MS}`);
+      }
+    });
     const filtered = sales.filter(s => {
       if (s.stage === 'retorno') return false;
       if (!mostrarArquivadas
