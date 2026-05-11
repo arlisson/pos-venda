@@ -28,7 +28,7 @@ import {
   verificarProblemaVenda,
   visualizarArquivoVenda
 } from '../../services/venda.service';
-import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
+import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj, sanitizarCpf } from '../../services/cnpj.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -219,7 +219,6 @@ const CAMPOS = [
   { name: 'razao_social', label: 'Razão Social' },
   { name: 'telefone', label: 'Celular' },
   { name: 'fixo_ddd', label: 'Telefone fixo' },
-  { name: 'operadora_atual_id', label: 'Operadora atual', type: 'operator' },
   { section: 'Representante Legal (RL)' },
   { name: 'nome_representante_legal', label: 'Nome RL' },
   { name: 'cpf_representante_legal', label: 'CPF RL' },
@@ -244,12 +243,13 @@ const CAMPOS = [
   { name: 'qc_feito_por', label: 'QC feito por' },
 
   { section: 'Produto e valores' },
+  { name: 'operadora_atual_id', label: 'Operadora atual', type: 'operator' },
   { name: 'operadora_id', label: 'Vai para operadora:', type: 'operator', required: true },
   { name: 'servico_id', label: 'Produto', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
-  { name: 'cliente_solicitou_servicos', label: 'Cliente solicitou', type: 'clientRequested', span: true },
+  { name: 'cliente_solicitou_servicos', label: 'Cliente solicitou', type: 'clientRequested', span: true, required: true },
   { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitários', type: 'chips', span: true },
   { name: 'numeros_ativados', label: 'Números ativados', type: 'activatedNumbers', span: true },
   { name: 'numeros_portados', label: 'Números a serem portados', type: 'portedNumbers', span: true },
@@ -1290,7 +1290,7 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
   const digitosDuplicados = new Set(Object.keys(contagemDigitos).filter(d => contagemDigitos[d] > 1));
 
   return (
-    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="modal cliente-solicitou-numeros-modal">
         <div className="modal-header">
           <div className="modal-header-row">
@@ -1317,20 +1317,22 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
                   const validacao = naoVazio ? validarNumeroTelefone(numero) : null;
                   const invalido = validacao && !validacao.valido;
                   const duplicado = naoVazio && !invalido && digitosDuplicados.has(digitos);
+                  const erro = invalido ? validacao.motivo : duplicado ? 'Número já adicionado' : null;
                   const classe = `cliente-solicitou-numero-row${invalido ? ' is-invalid' : duplicado ? ' is-duplicate' : ''}`;
-                  const titulo = invalido ? validacao.motivo : duplicado ? 'Número já adicionado' : undefined;
                   return (
                     <label key={`${tipo}-${index}`} className={classe}>
                       <span>{index + 1}</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={numero}
-                        onChange={event => atualizarNumero(tipo, index, event.target.value)}
-                        maxLength={15}
-                        placeholder="(11) 99999-9999"
-                        title={titulo}
-                      />
+                      <div className="cs-numero-wrap">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={numero}
+                          onChange={event => atualizarNumero(tipo, index, event.target.value)}
+                          maxLength={15}
+                          placeholder="(11) 99999-9999"
+                        />
+                        {erro && <span className="cs-numero-erro">{erro}</span>}
+                      </div>
                     </label>
                   );
                 })}
@@ -2180,6 +2182,7 @@ function VendaModal({
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
+  const [tipoBusca, setTipoBusca] = useState(() => sanitizarCpf(form.cnpj).length === 11 ? 'cpf' : 'cnpj');
   const [clienteSolicitouQuantidadeAberta, setClienteSolicitouQuantidadeAberta] = useState(false);
   const [clienteSolicitouNumerosAberto, setClienteSolicitouNumerosAberto] = useState(false);
   const [clienteSolicitouServicosDraft, setClienteSolicitouServicosDraft] = useState([]);
@@ -2508,6 +2511,14 @@ function VendaModal({
     }
   }
 
+  function alterarTipoBusca(tipo) {
+    setTipoBusca(tipo);
+    setForm(prev => ({ ...prev, cnpj: '' }));
+    setCnpjStatus({ tipo: '', mensagem: '' });
+    setCnpjDados(null);
+    setCnpjSugestoes({});
+  }
+
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (abaAtiva === 'arquivos' && !podeVerDocumentosVenda) {
@@ -2519,6 +2530,7 @@ function VendaModal({
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     if (somenteVisualizacao) return;
+    if (tipoBusca !== 'cnpj') return;
 
     const cnpj = sanitizarCnpj(form.cnpj);
 
@@ -2681,6 +2693,32 @@ function VendaModal({
         return;
       }
 
+      if (tipoBusca === 'cnpj') {
+        const cnpjDigitos = sanitizarCnpj(form.cnpj);
+        if (cnpjDigitos.length > 0 && cnpjDigitos.length < 14) {
+          setErro('CNPJ incompleto.');
+          setSalvando(false);
+          return;
+        }
+        if (cnpjDigitos.length === 14 && !validarDigitosCnpj(cnpjDigitos)) {
+          setErro('CNPJ inválido.');
+          setSalvando(false);
+          return;
+        }
+      } else {
+        const cpfDigitos = sanitizarCpf(form.cnpj);
+        if (cpfDigitos.length > 0 && cpfDigitos.length < 11) {
+          setErro('CPF incompleto.');
+          setSalvando(false);
+          return;
+        }
+        if (cpfDigitos.length === 11 && !validarCpf(cpfDigitos)) {
+          setErro('CPF inválido.');
+          setSalvando(false);
+          return;
+        }
+      }
+
       const numerosPortados = montarNumerosPortados(form.numeros_portados);
       const numerosAtivados = montarNumerosAtivados(form.numeros_ativados);
       const quantidadeChips = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
@@ -2704,6 +2742,12 @@ function VendaModal({
       }
 
       const servicosSolicitados = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
+
+      if (servicosSolicitados.length === 0) {
+        setErro('Informe o que o cliente solicitou (Bloqueio, Cancelamento ou Nenhum serviço).');
+        setSalvando(false);
+        return;
+      }
       const solicitouNenhumServico = servicosSolicitados.includes('nenhum_servico');
       const solicitouBloqueio = servicosSolicitados.includes('bloqueio');
       const solicitouCancelamento = servicosSolicitados.includes('cancelamento');
@@ -2898,7 +2942,7 @@ function VendaModal({
 
               return (
                 <div key={campo.name} className={`form-field ${campo.span ? 'span-2' : ''} ${erroCpfCampo ? 'is-invalid' : ''}`}>
-                  {labelCampo && <label>{labelCampo}</label>}
+                  {labelCampo && <label>{labelCampo}{campo.required && <span className="field-required-mark"> *</span>}</label>}
                   {campo.type === 'client' ? (
                       <ClienteVendaSelect
                         value={form[campo.name] ?? ''}
@@ -2915,36 +2959,61 @@ function VendaModal({
                       />
                   ) : campo.type === 'cnpj' ? (
                     <>
-                      <input
-                        type="text"
-                        maxLength={getMaxLengthCampo(campo.name, campo.maxLength)}
-                        inputMode={getInputModeCampo(campo.name)}
-                        value={form[campo.name] ?? ''}
-                        onChange={e => atualizarCampo(campo.name, e.target.value)}
-                        placeholder="00.000.000/0000-00"
-                      />
-                      <div className="cnpj-lookup-row">
-                        {cnpjStatus.mensagem && (
-                          <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
-                            {cnpjStatus.mensagem}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          onClick={() => buscarDadosCnpj(true)}
-                          disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
-                        >
-                          {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
-                        </button>
+                      <div className="doc-tipo-toggle">
+                        <button type="button" className={`btn btn-sm${tipoBusca === 'cnpj' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => alterarTipoBusca('cnpj')}>CNPJ</button>
+                        <button type="button" className={`btn btn-sm${tipoBusca === 'cpf' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => alterarTipoBusca('cpf')}>CPF</button>
                       </div>
-                      <CnpjSugestoes
-                        dados={cnpjDados}
-                        sugestoes={cnpjSugestoes}
-                        labels={CNPJ_LABELS_VENDA}
-                        onAceitar={aceitarSugestaoCnpj}
-                        onRecusar={recusarSugestaoCnpj}
-                      />
+                      {tipoBusca === 'cnpj' ? (
+                        <>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={18}
+                            value={form[campo.name] ?? ''}
+                            onChange={e => atualizarCampo(campo.name, e.target.value)}
+                            placeholder="00.000.000/0000-00"
+                          />
+                          <div className="cnpj-lookup-row">
+                            {cnpjStatus.mensagem && (
+                              <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
+                                {cnpjStatus.mensagem}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => buscarDadosCnpj(true)}
+                              disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
+                            >
+                              {consultandoCnpj ? 'Buscando...' : cnpjStatus.tipo === 'erro' ? 'Tentar novamente' : 'Buscar dados'}
+                            </button>
+                          </div>
+                          <CnpjSugestoes
+                            dados={cnpjDados}
+                            sugestoes={cnpjSugestoes}
+                            labels={CNPJ_LABELS_VENDA}
+                            onAceitar={aceitarSugestaoCnpj}
+                            onRecusar={recusarSugestaoCnpj}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={14}
+                            value={form[campo.name] ?? ''}
+                            onChange={e => atualizarCampo(campo.name, formatarCpf(e.target.value))}
+                            placeholder="000.000.000-00"
+                          />
+                          {(() => {
+                            const digitos = sanitizarCpf(form[campo.name] || '');
+                            if (digitos.length > 0 && digitos.length < 11) return <span className="field-hint field-hint--error">CPF incompleto</span>;
+                            if (digitos.length === 11 && !validarCpf(digitos)) return <span className="field-hint field-hint--error">CPF inválido</span>;
+                            return null;
+                          })()}
+                        </>
+                      )}
                     </>
                   ) : campo.type === 'sellers' ? (
                     <VendedorasSelect
