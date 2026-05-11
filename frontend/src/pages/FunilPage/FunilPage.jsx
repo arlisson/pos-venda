@@ -801,7 +801,6 @@ function FunilPage() {
   const [copiandoEmail, setCopiandoEmail] = useState(false);
   const [mostrarArquivadas, setMostrarArquivadas] = useState(false);
   const [agora, setAgora] = useState(Date.now);
-  const [serverOffset, setServerOffset] = useState(0);
   const [baixandoXlsxId, setBaixandoXlsxId] = useState(null);
 
   async function handleBaixarXlsxClaro(venda) {
@@ -1064,18 +1063,11 @@ function FunilPage() {
       return;
     }
 
-    const clienteBefore = Date.now();
     const vendaAtualizada = await atualizarStatusVenda(saleId, {
       status_funil: novaFase,
       prioridade_funil: novaPrioridade,
       observacao
     });
-
-    const serverTs = new Date(vendaAtualizada.updated_at || vendaAtualizada.ultima_atividade_em).getTime();
-    if (!Number.isNaN(serverTs)) {
-      const trueNow = (clienteBefore + Date.now()) / 2;
-      setServerOffset(serverTs - trueNow);
-    }
 
     setSales(prev => prev.map(sale => {
       if (sale.id !== saleId) return sale;
@@ -1121,12 +1113,11 @@ function FunilPage() {
         validas.filter(st => (st.ordem ?? 0) === maxOrdem).forEach(st => etapasFinaisIds.add(st.id));
       }
     }
-    const agoraEfetivo = agora + serverOffset;
     const filtered = sales.filter(s => {
       if (s.stage === 'retorno') return false;
       if (!mostrarArquivadas
         && etapasFinaisIds.has(s.stage)
-        && (agoraEfetivo - s.updated.getTime()) > SEIS_MESES_MS) return false;
+        && (agora - s.updated.getTime()) > SEIS_MESES_MS) return false;
       if (filter !== 'todas' && s.operator !== filter) return false;
       if (!vendaCorrespondeBusca(s, busca)) return false;
       return true;
@@ -1134,10 +1125,10 @@ function FunilPage() {
     const archived = mostrarArquivadas ? 0 : sales.filter(s =>
       s.stage !== 'retorno'
         && etapasFinaisIds.has(s.stage)
-        && (agoraEfetivo - s.updated.getTime()) > SEIS_MESES_MS
+        && (agora - s.updated.getTime()) > SEIS_MESES_MS
     ).length;
     return { filtradas: filtered, arquivadas: archived, total: filtered.reduce((sum, s) => sum + s.value, 0) };
-  }, [sales, stagesVisiveis, mostrarArquivadas, filter, busca, agora, serverOffset]);
+  }, [sales, stagesVisiveis, mostrarArquivadas, filter, busca, agora]);
   const stageLabels = montarStageLabels(stagesVisiveis);
   const operators = useMemo(
     () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),

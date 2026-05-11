@@ -11,6 +11,7 @@ const db = knex({
     database: process.env.DB_NAME || 'pos_venda',
     port: process.env.DB_PORT || 3306,
     dateStrings: true,
+    timezone: '+00:00',
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
     ...(usarLoadInfile ? { flags: ['LOCAL_FILES'] } : {})

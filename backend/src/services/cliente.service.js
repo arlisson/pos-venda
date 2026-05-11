@@ -51,13 +51,13 @@ function formatarDateTimeSQL(data = new Date()) {
   const pad = (value) => String(value).padStart(2, '0');
 
   return [
-    data.getFullYear(),
-    pad(data.getMonth() + 1),
-    pad(data.getDate())
+    data.getUTCFullYear(),
+    pad(data.getUTCMonth() + 1),
+    pad(data.getUTCDate())
   ].join('-') + ' ' + [
-    pad(data.getHours()),
-    pad(data.getMinutes()),
-    pad(data.getSeconds())
+    pad(data.getUTCHours()),
+    pad(data.getUTCMinutes()),
+    pad(data.getUTCSeconds())
   ].join(':');
 }
 
