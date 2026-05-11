@@ -28,7 +28,7 @@ import {
   verificarProblemaVenda,
   visualizarArquivoVenda
 } from '../../services/venda.service';
-import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj, sanitizarCpf, formatarCpf, validarDigitosCpf } from '../../services/cnpj.service';
+import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj, sanitizarCpf } from '../../services/cnpj.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -2712,7 +2712,7 @@ function VendaModal({
           setSalvando(false);
           return;
         }
-        if (cpfDigitos.length === 11 && !validarDigitosCpf(cpfDigitos)) {
+        if (cpfDigitos.length === 11 && !validarCpf(cpfDigitos)) {
           setErro('CPF inválido.');
           setSalvando(false);
           return;
@@ -3009,7 +3009,7 @@ function VendaModal({
                           {(() => {
                             const digitos = sanitizarCpf(form[campo.name] || '');
                             if (digitos.length > 0 && digitos.length < 11) return <span className="field-hint field-hint--error">CPF incompleto</span>;
-                            if (digitos.length === 11 && !validarDigitosCpf(digitos)) return <span className="field-hint field-hint--error">CPF inválido</span>;
+                            if (digitos.length === 11 && !validarCpf(digitos)) return <span className="field-hint field-hint--error">CPF inválido</span>;
                             return null;
                           })()}
                         </>
