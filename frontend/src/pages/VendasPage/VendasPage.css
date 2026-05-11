@@ -1910,6 +1910,26 @@ input.is-invalid {
   background: var(--surface-2);
 }
 
+.range-pair--compact {
+  max-width: none;
+  flex: 1;
+  min-width: 220px;
+}
+
+.aceite-horario-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.aceite-horario-ou {
+  font-size: 12px;
+  color: var(--text-3);
+  font-style: italic;
+  flex-shrink: 0;
+}
+
 .range-pair__item {
   min-width: 0;
 }

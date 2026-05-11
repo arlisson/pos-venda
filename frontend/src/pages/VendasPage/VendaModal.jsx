@@ -113,6 +113,8 @@ const VENDA_VAZIA = {
   horario_aceite_fim: '',
   dia_aceite_inicio: '',
   dia_aceite_fim: '',
+  horario_aceite_fixo: '',
+  dia_aceite_fixo: '',
   protocolo: '',
   login: '',
   senha: '',
@@ -276,7 +278,7 @@ const CAMPOS = [
   { name: 'tipo_local_cpf', label: 'Tipo de local', type: 'tipoLocalCpf', span: true },
 
   { section: 'Aceite e recebimento' },
-  { name: 'horario_aceite_range', label: 'Janela do aceite', type: 'timeRange', nameDe: 'horario_aceite_inicio', nameAte: 'horario_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
+  { name: 'horario_aceite_range', label: 'Horário de fazer aceite', type: 'timeRange', nameDe: 'horario_aceite_inicio', nameAte: 'horario_aceite_fim', labelDe: 'De', labelAte: 'Até', nameFixoDia: 'dia_aceite_fixo', nameFixoHorario: 'horario_aceite_fixo', span: true },
   { name: 'dia_aceite_range', label: 'Dias para aceite', type: 'dayRange', nameDe: 'dia_aceite_inicio', nameAte: 'dia_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
   { name: 'protocolo', label: 'Protocolo do Cliente', span: true },
   { name: 'login', label: 'Login (portal do cliente)' },
@@ -3269,16 +3271,37 @@ function VendaModal({
                       idProtegido={vendedoras?.some(v => String(v.id) === String(usuarioLogado?.id)) ? usuarioLogado?.id : null}
                     />
                   ) : campo.type === 'timeRange' ? (
-                    <div className="range-pair">
-                      <div className="range-pair__item">
-                        <label className="range-pair__label">{campo.labelDe}</label>
-                        <input type="time" value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)} />
+                    <div className="aceite-horario-row">
+                      <div className="range-pair range-pair--compact">
+                        <div className="range-pair__item">
+                          <label className="range-pair__label">{campo.labelDe}</label>
+                          <input type="time" value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)} />
+                        </div>
+                        <div className="range-pair__sep">até</div>
+                        <div className="range-pair__item">
+                          <label className="range-pair__label">{campo.labelAte}</label>
+                          <input type="time" value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)} />
+                        </div>
                       </div>
-                      <div className="range-pair__sep">até</div>
-                      <div className="range-pair__item">
-                        <label className="range-pair__label">{campo.labelAte}</label>
-                        <input type="time" value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)} />
-                      </div>
+                      {campo.nameFixoDia && (
+                        <>
+                          <div className="aceite-horario-ou">ou</div>
+                          <div className="range-pair range-pair--compact">
+                            <div className="range-pair__item">
+                              <label className="range-pair__label">Dia fixo</label>
+                              <select value={form[campo.nameFixoDia] || ''} onChange={e => atualizarCampo(campo.nameFixoDia, e.target.value)}>
+                                <option value="">Selecione</option>
+                                {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                              </select>
+                            </div>
+                            <div className="range-pair__sep">às</div>
+                            <div className="range-pair__item">
+                              <label className="range-pair__label">Horário fixo</label>
+                              <input type="time" value={form[campo.nameFixoHorario] || ''} onChange={e => atualizarCampo(campo.nameFixoHorario, e.target.value)} />
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : campo.type === 'dayRange' ? (
                     <div className="range-pair">
