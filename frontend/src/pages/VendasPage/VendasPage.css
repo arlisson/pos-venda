@@ -2059,23 +2059,27 @@ input.is-invalid {
 .responsaveis-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.responsavel-row {
+  display: grid;
+  grid-template-columns: 30px minmax(138px, 180px) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
 }
 
-.responsavel-row {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 8px;
-  align-items: center;
-}
-
 .responsavel-row__num {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2088,13 +2092,42 @@ input.is-invalid {
 }
 
 .responsavel-row__campos {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(120px, 0.6fr);
   gap: 8px;
+  min-width: 0;
+}
+
+.responsavel-row select,
+.responsavel-row input {
+  min-height: 36px;
+}
+
+.responsavel-row__source {
+  position: absolute;
+  right: 8px;
+  top: -18px;
+  pointer-events: none;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.responsavel-row input[readonly] {
+  border-color: transparent;
+  background: var(--surface);
+  color: var(--text-2);
 }
 
 .responsaveis-add-btn {
   align-self: flex-start;
+  margin-left: 40px;
 }
 
 .trash-confirm-modal {
@@ -2211,11 +2244,21 @@ input.is-invalid {
   }
 
   .responsavel-row {
-    grid-template-columns: 24px minmax(0, 1fr);
-    align-items: start;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
   }
 
   .responsavel-row__campos {
+    grid-column: 1 / -1;
     grid-template-columns: 1fr;
+  }
+
+  .responsavel-row__source {
+    position: static;
+    justify-self: flex-start;
+    grid-row: 3;
+  }
+
+  .responsaveis-add-btn {
+    margin-left: 0;
   }
 }

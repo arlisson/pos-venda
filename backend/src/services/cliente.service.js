@@ -15,6 +15,7 @@ const CAMPOS = [
   'fixo_numero',
   'fidelidade_fim',
   'operadora_atual_id',
+  'valor_pago',
   'quantidade_chips'
 ];
 
@@ -80,6 +81,20 @@ function separarTelefone(valor) {
   };
 }
 
+function normalizarValorMonetario(valor) {
+  if (valor === undefined || valor === null || valor === '') return null;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+
+  const texto = String(valor).trim();
+  if (!texto) return null;
+
+  const normalizado = texto.includes(',')
+    ? texto.replace(/\./g, '').replace(',', '.')
+    : texto;
+  const numero = Number(normalizado);
+  return Number.isFinite(numero) ? numero : null;
+}
+
 function montarPayload(dados) {
   const dadosNormalizados = { ...dados };
 
@@ -123,6 +138,10 @@ function montarPayload(dados) {
 
   if (payload.quantidade_chips !== undefined && payload.quantidade_chips !== null) {
     payload.quantidade_chips = Number(payload.quantidade_chips);
+  }
+
+  if (payload.valor_pago !== undefined) {
+    payload.valor_pago = normalizarValorMonetario(payload.valor_pago);
   }
 
   if (payload.fidelidade_fim !== undefined) {
