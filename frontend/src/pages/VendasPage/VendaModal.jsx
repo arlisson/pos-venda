@@ -3003,7 +3003,7 @@ function VendaModal({
                             inputMode="numeric"
                             maxLength={14}
                             value={form[campo.name] ?? ''}
-                            onChange={e => atualizarCampo(campo.name, formatarCpf(e.target.value))}
+                            onChange={e => { if (!somenteVisualizacao && !vendaBloqueadaParaUsuario) setForm(prev => ({ ...prev, cnpj: formatarCpf(e.target.value) })); }}
                             placeholder="000.000.000-00"
                           />
                           {(() => {
