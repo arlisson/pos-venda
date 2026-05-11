@@ -219,7 +219,6 @@ const CAMPOS = [
   { name: 'razao_social', label: 'Razão Social' },
   { name: 'telefone', label: 'Celular' },
   { name: 'fixo_ddd', label: 'Telefone fixo' },
-  { name: 'operadora_atual_id', label: 'Operadora atual', type: 'operator' },
   { section: 'Representante Legal (RL)' },
   { name: 'nome_representante_legal', label: 'Nome RL' },
   { name: 'cpf_representante_legal', label: 'CPF RL' },
@@ -244,6 +243,7 @@ const CAMPOS = [
   { name: 'qc_feito_por', label: 'QC feito por' },
 
   { section: 'Produto e valores' },
+  { name: 'operadora_atual_id', label: 'Operadora atual', type: 'operator' },
   { name: 'operadora_id', label: 'Vai para operadora:', type: 'operator', required: true },
   { name: 'servico_id', label: 'Produto', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
@@ -1290,7 +1290,7 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
   const digitosDuplicados = new Set(Object.keys(contagemDigitos).filter(d => contagemDigitos[d] > 1));
 
   return (
-    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="modal cliente-solicitou-numeros-modal">
         <div className="modal-header">
           <div className="modal-header-row">
