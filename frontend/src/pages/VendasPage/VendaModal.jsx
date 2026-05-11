@@ -1317,20 +1317,22 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
                   const validacao = naoVazio ? validarNumeroTelefone(numero) : null;
                   const invalido = validacao && !validacao.valido;
                   const duplicado = naoVazio && !invalido && digitosDuplicados.has(digitos);
+                  const erro = invalido ? validacao.motivo : duplicado ? 'Número já adicionado' : null;
                   const classe = `cliente-solicitou-numero-row${invalido ? ' is-invalid' : duplicado ? ' is-duplicate' : ''}`;
-                  const titulo = invalido ? validacao.motivo : duplicado ? 'Número já adicionado' : undefined;
                   return (
                     <label key={`${tipo}-${index}`} className={classe}>
                       <span>{index + 1}</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={numero}
-                        onChange={event => atualizarNumero(tipo, index, event.target.value)}
-                        maxLength={15}
-                        placeholder="(11) 99999-9999"
-                        title={titulo}
-                      />
+                      <div className="cs-numero-wrap">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={numero}
+                          onChange={event => atualizarNumero(tipo, index, event.target.value)}
+                          maxLength={15}
+                          placeholder="(11) 99999-9999"
+                        />
+                        {erro && <span className="cs-numero-erro">{erro}</span>}
+                      </div>
                     </label>
                   );
                 })}

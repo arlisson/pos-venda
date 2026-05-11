@@ -1422,12 +1422,13 @@ input.is-invalid {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 8px;
-  align-items: center;
+  align-items: start;
 }
 
-.cliente-solicitou-numero-row span {
+.cliente-solicitou-numero-row > span {
   width: 28px;
   height: 28px;
+  margin-top: 5px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1438,14 +1439,17 @@ input.is-invalid {
   font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;
+  transition: border-color 120ms, color 120ms;
 }
 
-.cliente-solicitou-numero-row.is-invalid span {
-  border-color: #f87171;
-  color: #b91c1c;
+.cs-numero-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
-.cliente-solicitou-numero-row input {
+.cs-numero-wrap input {
   width: 100%;
   min-width: 0;
   padding: 8px 10px;
@@ -1455,21 +1459,41 @@ input.is-invalid {
   color: var(--text);
   outline: none;
   font-size: 13.5px;
+  transition: border-color 120ms, background 120ms;
 }
 
-.cliente-solicitou-numero-row.is-invalid input {
+.cs-numero-erro {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.cliente-solicitou-numero-row.is-invalid > span {
+  border-color: #f87171;
+  color: #b91c1c;
+}
+
+.cliente-solicitou-numero-row.is-invalid .cs-numero-wrap input {
   border-color: #f87171;
   background: #fff7f7;
 }
 
-.cliente-solicitou-numero-row.is-duplicate span {
+.cliente-solicitou-numero-row.is-invalid .cs-numero-erro {
+  color: #b91c1c;
+}
+
+.cliente-solicitou-numero-row.is-duplicate > span {
   border-color: #fbbf24;
   color: #92400e;
 }
 
-.cliente-solicitou-numero-row.is-duplicate input {
+.cliente-solicitou-numero-row.is-duplicate .cs-numero-wrap input {
   border-color: #fbbf24;
   background: #fffbeb;
+}
+
+.cliente-solicitou-numero-row.is-duplicate .cs-numero-erro {
+  color: #92400e;
 }
 
 .chip-items__aviso-minimo {
