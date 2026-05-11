@@ -122,6 +122,7 @@ const VENDA_VAZIA = {
   observacoes: '',
   // Referências
   operadora_id: '',
+  operadora_atual_id: '',
   vendedora_id: '',
   vendedoras: []
 };
@@ -186,6 +187,27 @@ const FECHOU_VENDA_OPCOES = [
 
 const CAMPOS_CPF_VENDA = ['cpf_representante_legal', 'cpf_administrador'];
 
+const DDDS_VALIDOS = new Set([
+  11, 12, 13, 14, 15, 16, 17, 18, 19,
+  21, 22, 24, 27, 28,
+  31, 32, 33, 34, 35, 37, 38,
+  41, 42, 43, 44, 45, 46, 47, 48, 49,
+  51, 53, 54, 55,
+  61, 62, 63, 64, 65, 66, 67, 68, 69,
+  71, 73, 74, 75, 77, 79,
+  81, 82, 83, 84, 85, 86, 87, 88, 89,
+  91, 92, 93, 94, 95, 96, 97, 98, 99
+]);
+
+function validarNumeroTelefone(valor) {
+  const digitos = (valor || '').replace(/\D/g, '');
+  if (digitos.length < 10) return { valido: false, motivo: 'Número muito curto' };
+  if (digitos.length > 11) return { valido: false, motivo: 'Número muito longo' };
+  const ddd = Number(digitos.substring(0, 2));
+  if (!DDDS_VALIDOS.has(ddd)) return { valido: false, motivo: `DDD ${ddd} inválido` };
+  return { valido: true, motivo: '' };
+}
+
 const CAMPOS = [
   { section: 'Cliente' },
   { name: 'cliente_id', label: 'Cliente', type: 'client', required: true, span: true },
@@ -197,6 +219,7 @@ const CAMPOS = [
   { name: 'razao_social', label: 'Razão Social' },
   { name: 'telefone', label: 'Celular' },
   { name: 'fixo_ddd', label: 'Telefone fixo' },
+  { name: 'operadora_atual_id', label: 'Operadora atual', type: 'operator' },
   { section: 'Representante Legal (RL)' },
   { name: 'nome_representante_legal', label: 'Nome RL' },
   { name: 'cpf_representante_legal', label: 'CPF RL' },
@@ -221,7 +244,7 @@ const CAMPOS = [
   { name: 'qc_feito_por', label: 'QC feito por' },
 
   { section: 'Produto e valores' },
-  { name: 'operadora_id', label: 'Operadora adquirida', type: 'operator', required: true },
+  { name: 'operadora_id', label: 'Vai para operadora:', type: 'operator', required: true },
   { name: 'servico_id', label: 'Produto', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
@@ -865,6 +888,11 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   }
 
   function removerItem(index) {
+    if (limite > 0) {
+      const quantidadeItem = Number(itens[index]?.quantidade || 0);
+      const totalSemEste = quantidadeTotal - quantidadeItem;
+      if (totalSemEste < limite && itens.length <= 1) return;
+    }
     const proximos = itens.filter((_, itemIndex) => itemIndex !== index);
     onChange(proximos.length > 0 ? proximos : [{ ...ITEM_CHIP_VAZIO }]);
   }
@@ -933,7 +961,13 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
                 ))}
               </select>
             )}
-            <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerItem(index)} title="Remover item">
+            <button
+              type="button"
+              className="btn btn-icon btn-ghost"
+              onClick={() => removerItem(index)}
+              title="Remover item"
+              disabled={limite > 0 && itens.length === 1 && quantidadeTotal <= limite}
+            >
               <I.Trash size={13} />
             </button>
           </div>
@@ -949,11 +983,16 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
           <strong>{formatarMoeda(total)}</strong>
         </div>
       </div>
+      {limite > 0 && quantidadeTotal < limite && (
+        <div className="chip-items__aviso-minimo">
+          Faltam {limite - quantidadeTotal} chip{limite - quantidadeTotal !== 1 ? 's' : ''} para atingir a quantidade de linhas contratadas
+        </div>
+      )}
     </div>
   );
 }
 
-function VendedorasSelect({ value = [], options = [], onChange }) {
+function VendedorasSelect({ value = [], options = [], onChange, idProtegido = null }) {
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const wrapperRef = useRef(null);
 
@@ -976,20 +1015,26 @@ function VendedorasSelect({ value = [], options = [], onChange }) {
   }
 
   function remover(id) {
+    if (idProtegido !== null && String(id) === String(idProtegido)) return;
     onChange(value.filter(v => v !== String(id)));
   }
 
   return (
     <div className="vendedoras-select" ref={wrapperRef}>
       <div className="vendedoras-chips">
-        {selecionadas.map(v => (
-          <span key={v.id} className="vendedoras-chip">
-            {v.nome}
-            <button type="button" onClick={() => remover(v.id)} title="Remover">
-              <I.Close size={11} />
-            </button>
-          </span>
-        ))}
+        {selecionadas.map(v => {
+          const protegida = idProtegido !== null && String(v.id) === String(idProtegido);
+          return (
+            <span key={v.id} className="vendedoras-chip">
+              {v.nome}
+              {!protegida && (
+                <button type="button" onClick={() => remover(v.id)} title="Remover">
+                  <I.Close size={11} />
+                </button>
+              )}
+            </span>
+          );
+        })}
         {disponiveis.length > 0 && (
           <button
             type="button"
@@ -1060,21 +1105,32 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao 
 
   return (
     <div className="ported-numbers">
-      {numeros.map((numero, index) => (
-        <div key={index} className="ported-number-row">
-          <input
-            type="text"
-            inputMode="numeric"
-            value={numero}
-            onChange={event => atualizarNumero(index, formatarTelefoneComDdd(event.target.value, true))}
-            placeholder="(11) 99999-9999"
-            maxLength={15}
-          />
-          <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerNumero(index)} title="Remover número">
-            <I.Trash size={13} />
-          </button>
-        </div>
-      ))}
+      {numeros.map((numero, index) => {
+        const naoVazio = !numeroLinhaTemApenasDddOuVazio(numero);
+        const validacao = naoVazio ? validarNumeroTelefone(numero) : null;
+        const invalido = validacao && !validacao.valido;
+
+        return (
+          <div key={index} className="ported-number-row">
+            <div className="ported-number-input-wrap">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={numero}
+                onChange={event => atualizarNumero(index, formatarTelefoneComDdd(event.target.value, true))}
+                placeholder="(11) 99999-9999"
+                maxLength={15}
+                className={invalido ? 'is-invalid' : undefined}
+                title={invalido ? validacao.motivo : undefined}
+              />
+              {invalido && <span className="field-hint field-hint--error">{validacao.motivo}</span>}
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerNumero(index)} title="Remover número">
+              <I.Trash size={13} />
+            </button>
+          </div>
+        );
+      })}
 
       <div className="ported-numbers__footer">
         <button type="button" className="btn btn-sm" onClick={adicionarNumero} disabled={limiteAtingido}>
@@ -1099,7 +1155,9 @@ function ClienteSolicitouInput({ form, onToggle, onOpenQuantidades }) {
   const nenhumSelecionado = servicos.includes('nenhum_servico');
   const selecionouAcao = CLIENTE_SOLICITOU_ACOES.some(acao => servicos.includes(acao));
   const numeros = parseClienteSolicitouNumeros(form.cliente_solicitou_numeros);
-  const totalNumeros = numeros.bloqueio.length + numeros.cancelamento.length;
+  const numerosBloqueioPreenchiodos = (numeros.bloqueio || []).filter(n => (n || '').replace(/\D/g, '').length > 2);
+  const numerosCancelamentoPreeenchidos = (numeros.cancelamento || []).filter(n => (n || '').replace(/\D/g, '').length > 2);
+  const totalNumeros = numerosBloqueioPreenchiodos.length + numerosCancelamentoPreeenchidos.length;
 
   return (
     <div className="cliente-solicitou">
@@ -1130,6 +1188,27 @@ function ClienteSolicitouInput({ form, onToggle, onOpenQuantidades }) {
           <button type="button" className="btn btn-sm" onClick={onOpenQuantidades}>
             <I.Edit size={13} /> Quantificar
           </button>
+        </div>
+      )}
+
+      {totalNumeros > 0 && (
+        <div className="cliente-solicitou__numeros-preview">
+          {numerosBloqueioPreenchiodos.length > 0 && (
+            <div className="cliente-solicitou__numeros-grupo">
+              <span className="cliente-solicitou__numeros-label cliente-solicitou__numeros-label--bloqueio">Bloqueio</span>
+              {numerosBloqueioPreenchiodos.map((n, i) => (
+                <span key={i} className="cliente-solicitou__numero-badge cliente-solicitou__numero-badge--bloqueio">{n}</span>
+              ))}
+            </div>
+          )}
+          {numerosCancelamentoPreeenchidos.length > 0 && (
+            <div className="cliente-solicitou__numeros-grupo">
+              <span className="cliente-solicitou__numeros-label cliente-solicitou__numeros-label--cancelamento">Cancelamento</span>
+              {numerosCancelamentoPreeenchidos.map((n, i) => (
+                <span key={i} className="cliente-solicitou__numero-badge cliente-solicitou__numero-badge--cancelamento">{n}</span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2057,7 +2136,14 @@ function VendaModal({
   sendToPosVendaLabel = 'Enviar para o pós-venda',
   onCreateClient
 }) {
-  const [form, setForm] = useState(venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) });
+  const [form, setForm] = useState(() => {
+    const base = venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) };
+    if (!venda && usuarioLogado?.id && vendedoras?.some(v => String(v.id) === String(usuarioLogado.id))) {
+      const idStr = String(usuarioLogado.id);
+      if (!base.vendedoras.includes(idStr)) base.vendedoras = [...base.vendedoras, idStr];
+    }
+    return base;
+  });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [cepStatus, setCepStatus] = useState('');
@@ -2190,6 +2276,7 @@ function VendaModal({
         nome_representante_legal: prev.nome_representante_legal || nomeRl,
         nome_administrador: prev.nome_administrador || nomeAdm,
         nome_fechou_venda: prev.nome_fechou_venda || fechouVenda,
+        operadora_atual_id: prev.operadora_atual_id || String(c?.operadora_atual_id || ''),
       };
     });
   }
@@ -2575,6 +2662,12 @@ function VendaModal({
         return;
       }
 
+      if (quantidadeLinhasFechadas > 0 && quantidadeChips < quantidadeLinhasFechadas) {
+        setErro(`A quantidade de chips (${quantidadeChips}) é menor que a quantidade de linhas contratadas (${quantidadeLinhasFechadas}).`);
+        setSalvando(false);
+        return;
+      }
+
       if (vendaPortabilidade && !numerosPortados) {
         setErro('Informe pelo menos um número a ser portado.');
         setSalvando(false);
@@ -2829,6 +2922,7 @@ function VendaModal({
                       value={form.vendedoras || []}
                       options={vendedoras}
                       onChange={atualizarVendedorasVenda}
+                      idProtegido={vendedoras?.some(v => String(v.id) === String(usuarioLogado?.id)) ? usuarioLogado?.id : null}
                     />
                   ) : campo.type === 'timeRange' ? (
                     <div className="range-pair">

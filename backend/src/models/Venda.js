@@ -90,6 +90,7 @@ class Venda extends Model {
         senha: { type: ['string', 'null'], maxLength: 255 },
         numero_cliente_contrato: { type: ['string', 'null'], maxLength: 120 },
         operadora_id: { type: ['integer', 'null'] },
+        operadora_atual_id: { type: ['integer', 'null'] },
         cliente_id: { type: ['integer', 'null'] },
         tipo_produto_id: { type: ['integer', 'null'] },
         tipo_venda_id: { type: ['integer', 'null'] },

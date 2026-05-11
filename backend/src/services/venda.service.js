@@ -84,6 +84,7 @@ const CAMPOS = [
   'senha',
   'numero_cliente_contrato',
   'operadora_id',
+  'operadora_atual_id',
   'vendedora_id',
   'status_funil',
   'prioridade_funil',

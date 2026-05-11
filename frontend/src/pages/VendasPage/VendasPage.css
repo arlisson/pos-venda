@@ -1276,7 +1276,14 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 32px;
   gap: 8px;
-  align-items: center;
+  align-items: start;
+}
+
+.ported-number-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .ported-number-row input {
@@ -1289,6 +1296,10 @@
   color: var(--text);
   outline: none;
   font-size: 13.5px;
+}
+
+.ported-number-row input.is-invalid {
+  border-color: #f87171;
 }
 
 .ported-numbers__footer {
@@ -1437,6 +1448,68 @@
   color: var(--text);
   outline: none;
   font-size: 13.5px;
+}
+
+.chip-items__aviso-minimo {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #d97706;
+  font-weight: 500;
+}
+
+.cliente-solicitou__numeros-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.cliente-solicitou__numeros-grupo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.cliente-solicitou__numeros-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  margin-right: 2px;
+}
+
+.cliente-solicitou__numeros-label--bloqueio {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.cliente-solicitou__numeros-label--cancelamento {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.cliente-solicitou__numero-badge {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.cliente-solicitou__numero-badge--bloqueio {
+  background: #fef9ec;
+  border-color: #fcd34d;
+  color: #78350f;
+}
+
+.cliente-solicitou__numero-badge--cancelamento {
+  background: #fff5f5;
+  border-color: #fca5a5;
+  color: #7f1d1d;
 }
 
 .protocolo-input-row {
