@@ -278,8 +278,7 @@ const CAMPOS = [
   { name: 'tipo_local_cpf', label: 'Tipo de local', type: 'tipoLocalCpf', span: true },
 
   { section: 'Aceite e recebimento' },
-  { name: 'horario_aceite_range', label: 'Horário de fazer aceite', type: 'timeRange', nameDe: 'horario_aceite_inicio', nameAte: 'horario_aceite_fim', labelDe: 'De', labelAte: 'Até', nameFixoDia: 'dia_aceite_fixo', nameFixoHorario: 'horario_aceite_fixo', span: true },
-  { name: 'dia_aceite_range', label: 'Dias para aceite', type: 'dayRange', nameDe: 'dia_aceite_inicio', nameAte: 'dia_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
+  { name: 'aceite_range', label: 'Disponibilidade para aceite', type: 'aceiteRange', span: true },
   { name: 'protocolo', label: 'Protocolo do Cliente', span: true },
   { name: 'login', label: 'Login (portal do cliente)' },
   { name: 'senha', label: 'Senha (portal do cliente)' },
@@ -2344,6 +2343,7 @@ function VendaModal({
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
   const [tipoBusca, setTipoBusca] = useState(() => sanitizarCnpj(form.cnpj).length === 11 ? 'cpf' : 'cnpj');
+  const [aceiteMode, setAceiteMode] = useState(() => (form.dia_aceite_fixo || form.horario_aceite_fixo) ? 'fixo' : 'janela');
   const [clienteSolicitouQuantidadeAberta, setClienteSolicitouQuantidadeAberta] = useState(false);
   const [clienteSolicitouNumerosAberto, setClienteSolicitouNumerosAberto] = useState(false);
   const [clienteSolicitouServicosDraft, setClienteSolicitouServicosDraft] = useState([]);
@@ -2708,6 +2708,15 @@ function VendaModal({
     setCnpjStatus({ tipo: '', mensagem: '' });
     setCnpjDados(null);
     setCnpjSugestoes({});
+  }
+
+  function alterarAceiteMode(modo) {
+    setAceiteMode(modo);
+    if (modo === 'fixo') {
+      setForm(prev => ({ ...prev, horario_aceite_inicio: '', horario_aceite_fim: '', dia_aceite_inicio: '', dia_aceite_fim: '' }));
+    } else {
+      setForm(prev => ({ ...prev, dia_aceite_fixo: '', horario_aceite_fixo: '' }));
+    }
   }
 
   useEffect(() => {
@@ -3270,56 +3279,47 @@ function VendaModal({
                       onChange={atualizarVendedorasVenda}
                       idProtegido={vendedoras?.some(v => String(v.id) === String(usuarioLogado?.id)) ? usuarioLogado?.id : null}
                     />
-                  ) : campo.type === 'timeRange' ? (
-                    <div className="aceite-horario-row">
-                      <div className="aceite-horario-group">
-                        <div className="range-pair__item">
-                          <label className="range-pair__label">{campo.labelDe}</label>
-                          <input type="time" value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)} />
-                        </div>
-                        <div className="range-pair__sep">até</div>
-                        <div className="range-pair__item">
-                          <label className="range-pair__label">{campo.labelAte}</label>
-                          <input type="time" value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)} />
-                        </div>
+                  ) : campo.type === 'aceiteRange' ? (
+                    <div className="aceite-bloco">
+                      <div className="aceite-bloco__toggle">
+                        <button type="button" className={`btn btn-sm${aceiteMode === 'janela' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => !somenteVisualizacao && !vendaBloqueadaParaUsuario && alterarAceiteMode('janela')}>Janela</button>
+                        <button type="button" className={`btn btn-sm${aceiteMode === 'fixo' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => !somenteVisualizacao && !vendaBloqueadaParaUsuario && alterarAceiteMode('fixo')}>Horário fixo</button>
                       </div>
-                      {campo.nameFixoDia && (
-                        <>
-                          <div className="aceite-horario-ou"><span>ou</span></div>
-                          <div className="aceite-horario-group aceite-horario-group--fixo">
-                            <div className="range-pair__item">
-                              <label className="range-pair__label">Dia fixo</label>
-                              <select value={form[campo.nameFixoDia] || ''} onChange={e => atualizarCampo(campo.nameFixoDia, e.target.value)}>
+                      {aceiteMode === 'janela' ? (
+                        <div className="aceite-bloco__janela">
+                          <div className="aceite-bloco__row">
+                            <span className="aceite-bloco__row-label">Dias</span>
+                            <div className="aceite-bloco__inputs">
+                              <select value={form.dia_aceite_inicio || ''} onChange={e => atualizarCampo('dia_aceite_inicio', e.target.value)}>
+                                <option value="">Selecione</option>
+                                {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                              </select>
+                              <span className="aceite-bloco__sep">até</span>
+                              <select value={form.dia_aceite_fim || ''} onChange={e => atualizarCampo('dia_aceite_fim', e.target.value)}>
                                 <option value="">Selecione</option>
                                 {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                               </select>
                             </div>
-                            <div className="range-pair__sep">às</div>
-                            <div className="range-pair__item">
-                              <label className="range-pair__label">Horário</label>
-                              <input type="time" value={form[campo.nameFixoHorario] || ''} onChange={e => atualizarCampo(campo.nameFixoHorario, e.target.value)} />
+                          </div>
+                          <div className="aceite-bloco__row">
+                            <span className="aceite-bloco__row-label">Horário</span>
+                            <div className="aceite-bloco__inputs">
+                              <input type="time" value={form.horario_aceite_inicio || ''} onChange={e => atualizarCampo('horario_aceite_inicio', e.target.value)} />
+                              <span className="aceite-bloco__sep">até</span>
+                              <input type="time" value={form.horario_aceite_fim || ''} onChange={e => atualizarCampo('horario_aceite_fim', e.target.value)} />
                             </div>
                           </div>
-                        </>
+                        </div>
+                      ) : (
+                        <div className="aceite-bloco__fixo">
+                          <select value={form.dia_aceite_fixo || ''} onChange={e => atualizarCampo('dia_aceite_fixo', e.target.value)}>
+                            <option value="">Selecione o dia</option>
+                            {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                          </select>
+                          <span className="aceite-bloco__sep">às</span>
+                          <input type="time" value={form.horario_aceite_fixo || ''} onChange={e => atualizarCampo('horario_aceite_fixo', e.target.value)} />
+                        </div>
                       )}
-                    </div>
-                  ) : campo.type === 'dayRange' ? (
-                    <div className="range-pair">
-                      <div className="range-pair__item">
-                        <label className="range-pair__label">{campo.labelDe}</label>
-                        <select value={form[campo.nameDe] || ''} onChange={e => atualizarCampo(campo.nameDe, e.target.value)}>
-                          <option value="">Selecione</option>
-                          {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                        </select>
-                      </div>
-                      <div className="range-pair__sep">até</div>
-                      <div className="range-pair__item">
-                        <label className="range-pair__label">{campo.labelAte}</label>
-                        <select value={form[campo.nameAte] || ''} onChange={e => atualizarCampo(campo.nameAte, e.target.value)}>
-                          <option value="">Selecione</option>
-                          {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                        </select>
-                      </div>
                     </div>
                   ) : campo.type === 'responsaveis' ? (
                     <ResponsaveisRecebimentoInput form={form} onChange={atualizarCampo} />
