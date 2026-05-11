@@ -2108,6 +2108,7 @@ function VendasPage() {
   const [tiposVenda, setTiposVenda] = useState([]);
   const [servicos, setServicos] = useState([]);
   const [statusFunilFiltros, setStatusFunilFiltros] = useState(STATUS_FUNIL_FILTROS);
+  const [etapasFunil, setEtapasFunil] = useState([]);
   const [busca, setBusca] = useState('');
   const [vendedoraId, setVendedoraId] = useState('');
   const [operadoraId, setOperadoraId] = useState('');
@@ -2185,6 +2186,11 @@ function VendasPage() {
   ].filter(v => v !== '').length;
 
   const vendasPorCliente = useMemo(() => contarVendasPorCliente(vendasReferencia), [vendasReferencia]);
+  const vendasEmAndamentoPorCliente = useMemo(() => {
+    const codigosFinais = new Set(etapasFunil.filter(e => e.etapa_final).map(e => e.codigo));
+    const ativas = vendasReferencia.filter(v => !codigosFinais.has(v.status_funil));
+    return contarVendasPorCliente(ativas);
+  }, [vendasReferencia, etapasFunil]);
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -2225,6 +2231,7 @@ function VendasPage() {
       setTiposVenda(tiposVendaData);
       setServicos(servicosData);
       setStatusFunilFiltros(normalizarStatusFunilFiltros(etapasFunilData));
+      setEtapasFunil(etapasFunilData || []);
       setUsuariosProblema(usuariosProblemaData || []);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar vendas.');
@@ -2473,6 +2480,7 @@ function VendasPage() {
           tiposVenda={tiposVenda}
           servicos={servicos}
           vendasPorCliente={vendasPorCliente}
+          vendasEmAndamentoPorCliente={vendasEmAndamentoPorCliente}
           podeEditarVenda={podeEditarVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
           usuarioLogado={usuarioLogado}

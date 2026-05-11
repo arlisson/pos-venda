@@ -1289,7 +1289,7 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
   );
 }
 
-function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, onCreateClient }) {
+function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, vendasEmAndamento = 0, onChange, onCreateClient }) {
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
   const [busca, setBusca] = useState('');
@@ -1467,11 +1467,19 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
             <I.Close size={13} />
           </button>
         </div>
-        {vendasRegistradas > 0 && (
+        {vendasEmAndamento > 0 && (
+          <div className="venda-cliente-repeat-alert venda-cliente-repeat-alert--andamento">
+            <I.AlertTriangle size={13} />
+            <span>
+              Este cliente possui {vendasEmAndamento} {vendasEmAndamento === 1 ? 'venda em andamento' : 'vendas em andamento'}.
+            </span>
+          </div>
+        )}
+        {vendasRegistradas - vendasEmAndamento > 0 && (
           <div className="venda-cliente-repeat-alert">
             <I.AlertTriangle size={13} />
             <span>
-              Este cliente já possui {vendasRegistradas} {vendasRegistradas === 1 ? 'venda registrada' : 'vendas registradas'}.
+              {(() => { const n = vendasRegistradas - vendasEmAndamento; return `Este cliente possui ${n} ${n === 1 ? 'venda concluída' : 'vendas concluídas'}.`; })()}
             </span>
           </div>
         )}
@@ -2027,6 +2035,7 @@ function VendaModal({
   tiposVenda,
   servicos,
   vendasPorCliente,
+  vendasEmAndamentoPorCliente = new Map(),
   podeEditarVenda,
   podeVerDocumentosVenda,
   usuarioLogado,
@@ -2071,6 +2080,10 @@ function VendaModal({
   const vendasRegistradasClienteSelecionado = venda?.id
     ? Math.max(totalVendasClienteSelecionado - 1, 0)
     : totalVendasClienteSelecionado;
+  const totalEmAndamentoClienteSelecionado = chaveClienteSelecionado ? (vendasEmAndamentoPorCliente.get(chaveClienteSelecionado) || 0) : 0;
+  const vendasEmAndamentoClienteSelecionado = venda?.id
+    ? Math.max(totalEmAndamentoClienteSelecionado - 1, 0)
+    : totalEmAndamentoClienteSelecionado;
   const quantidadeLinhasFechadas = Number(form.quantidade_linhas || 0);
   const quantidadeChipsVenda = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
   const quantidadeNumerosAtivados = quantidadeChipsVenda || quantidadeLinhasFechadas;
@@ -2761,6 +2774,7 @@ function VendaModal({
                         value={form[campo.name] ?? ''}
                         clientes={clientes}
                         vendasRegistradas={vendasRegistradasClienteSelecionado}
+                        vendasEmAndamento={vendasEmAndamentoClienteSelecionado}
                         onChange={atualizarClienteVenda}
                         onCreateClient={async () => {
                           const clienteCriado = await onCreateClient?.();

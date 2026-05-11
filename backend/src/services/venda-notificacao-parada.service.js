@@ -4,7 +4,7 @@ const Usuario = require('../models/Usuario');
 const db = require('../database/connection');
 
 const TIPO_NOTIFICACAO = 'venda_parada_funil';
-const DIAS_UTEIS_LIMITE = 5;
+const HORAS_LIMITE = 5 * 24; // 5 dias corridos em horas
 
 function parsePermissoes(permissoes) {
   if (!permissoes) return [];
@@ -37,23 +37,9 @@ function usuarioTemPermissao(usuario, permissao) {
   ].includes(permissao);
 }
 
-function contarDiasUteis(dataInicio, dataFim) {
+function horasDecorridas(dataInicio, dataFim) {
   if (!dataInicio || !dataFim) return 0;
-
-  const inicio = new Date(dataInicio);
-  const fim = new Date(dataFim);
-  let diasUteis = 0;
-  const atual = new Date(inicio);
-
-  while (atual < fim) {
-    const diaSemana = atual.getDay();
-    if (diaSemana !== 0 && diaSemana !== 6) {
-      diasUteis++;
-    }
-    atual.setDate(atual.getDate() + 1);
-  }
-
-  return diasUteis;
+  return (new Date(dataFim) - new Date(dataInicio)) / (1000 * 60 * 60);
 }
 
 async function registrarEntradaEstagio(vendaId, etapaCodigo, dataEntrada = new Date(), trx = null) {
@@ -131,23 +117,24 @@ async function sincronizarVendasParadas() {
       );
 
     for (const venda of vendas) {
-      const diasUteis = contarDiasUteis(venda.data_entrada_etapa, agora);
+      const horas = horasDecorridas(venda.data_entrada_etapa, agora);
 
-      if (diasUteis >= DIAS_UTEIS_LIMITE) {
+      if (horas >= HORAS_LIMITE) {
+        const dias = Math.floor(horas / 24);
         const sourceKey = `${TIPO_NOTIFICACAO}:${venda.id}:${venda.etapa_codigo}`;
         const dados = {
           venda_id: venda.id,
           venda_nome: venda.nome,
           etapa_codigo: venda.etapa_codigo,
           etapa_nome: venda.etapa_nome,
-          dias_uteis: diasUteis,
+          horas: Math.floor(horas),
           data_entrada: venda.data_entrada_etapa
         };
 
         const payload = {
           tipo: TIPO_NOTIFICACAO,
           titulo: 'Venda parada no funil',
-          mensagem: `A venda "${venda.nome}" está parada na etapa "${venda.etapa_nome}" há ${diasUteis} dias úteis.`,
+          mensagem: `A venda "${venda.nome}" está parada na etapa "${venda.etapa_nome}" há ${dias} ${dias === 1 ? 'dia' : 'dias'}.`,
           nivel: 'warn',
           entidade: 'vendas',
           entidade_id: venda.id,
@@ -228,8 +215,8 @@ async function obterDestinatariosVenda(venda) {
 
 module.exports = {
   TIPO_NOTIFICACAO,
-  DIAS_UTEIS_LIMITE,
-  contarDiasUteis,
+  HORAS_LIMITE,
+  horasDecorridas,
   registrarEntradaEstagio,
   desativarNotificacaoVendaParada,
   sincronizarVendasParadas,

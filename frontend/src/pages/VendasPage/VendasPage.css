@@ -1121,6 +1121,12 @@
   font-weight: 600;
 }
 
+.venda-cliente-repeat-alert--andamento {
+  border-color: #fbbf24;
+  background: #fffbeb;
+  color: #92400e;
+}
+
 .vendas-table-name {
   display: flex;
   flex-direction: column;
