@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../../services/auth.service';
+import logo from '../../assets/LogoClaraSemFundo.png';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -28,7 +29,9 @@ function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-logo">SISTEMA POS-VENDA</div>
+        <div className="login-logo">
+          <img src={logo} alt="Logo da empresa" style={{ maxWidth: '100%', maxHeight: '80px', objectFit: 'contain' }} />
+        </div>
         <h1>Entrar no sistema</h1>
         <p className="sub">Acesse com sua conta da empresa</p>
         

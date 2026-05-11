@@ -607,17 +607,9 @@ input, select, textarea { font-family: inherit; }
   box-shadow: var(--shadow-md);
 }
 .login-logo {
-  height: 56px;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-3);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  background: var(--surface-2);
   margin-bottom: 20px;
 }
 .login-card h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
