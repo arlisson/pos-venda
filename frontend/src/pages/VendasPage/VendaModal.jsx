@@ -1283,6 +1283,12 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
     (numeros[tipo] || []).filter(numero => apenasDigitos(numero).length > 2).length !== Number(quantidades[tipo] || 0)
   ));
 
+  const digitosPreenchidos = selecionados.flatMap(tipo =>
+    (numeros[tipo] || []).map(n => apenasDigitos(n)).filter(d => d.length > 2)
+  );
+  const contagemDigitos = digitosPreenchidos.reduce((acc, d) => { acc[d] = (acc[d] || 0) + 1; return acc; }, {});
+  const digitosDuplicados = new Set(Object.keys(contagemDigitos).filter(d => contagemDigitos[d] > 1));
+
   return (
     <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
       <div className="modal cliente-solicitou-numeros-modal">
@@ -1306,11 +1312,15 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
                   {tipo === 'bloqueio' ? 'Bloqueio' : 'Cancelamento'} ({Number(quantidades[tipo] || 0)})
                 </div>
                 {(numeros[tipo] || []).map((numero, index) => {
-                  const naoVazio = apenasDigitos(numero).length > 2;
+                  const digitos = apenasDigitos(numero);
+                  const naoVazio = digitos.length > 2;
                   const validacao = naoVazio ? validarNumeroTelefone(numero) : null;
                   const invalido = validacao && !validacao.valido;
+                  const duplicado = naoVazio && !invalido && digitosDuplicados.has(digitos);
+                  const classe = `cliente-solicitou-numero-row${invalido ? ' is-invalid' : duplicado ? ' is-duplicate' : ''}`;
+                  const titulo = invalido ? validacao.motivo : duplicado ? 'Número já adicionado' : undefined;
                   return (
-                    <label key={`${tipo}-${index}`} className={`cliente-solicitou-numero-row${invalido ? ' is-invalid' : ''}`}>
+                    <label key={`${tipo}-${index}`} className={classe}>
                       <span>{index + 1}</span>
                       <input
                         type="text"
@@ -1319,7 +1329,7 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
                         onChange={event => atualizarNumero(tipo, index, event.target.value)}
                         maxLength={15}
                         placeholder="(11) 99999-9999"
-                        title={invalido ? validacao.motivo : undefined}
+                        title={titulo}
                       />
                     </label>
                   );
@@ -1331,7 +1341,7 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
 
         <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose}>Voltar</button>
-          <button type="button" className="btn btn-primary" onClick={onConfirm} disabled={faltando}>
+          <button type="button" className="btn btn-primary" onClick={onConfirm} disabled={faltando || digitosDuplicados.size > 0}>
             Confirmar números
           </button>
         </div>

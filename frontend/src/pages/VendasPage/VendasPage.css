@@ -1462,6 +1462,16 @@ input.is-invalid {
   background: #fff7f7;
 }
 
+.cliente-solicitou-numero-row.is-duplicate span {
+  border-color: #fbbf24;
+  color: #92400e;
+}
+
+.cliente-solicitou-numero-row.is-duplicate input {
+  border-color: #fbbf24;
+  background: #fffbeb;
+}
+
 .chip-items__aviso-minimo {
   margin-top: 6px;
   font-size: 12px;
