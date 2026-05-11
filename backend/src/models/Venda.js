@@ -73,6 +73,8 @@ class Venda extends Model {
         horario_aceite_fim: { type: ['string', 'null'], maxLength: 10 },
         dia_aceite_inicio: { type: ['string', 'null'], maxLength: 20 },
         dia_aceite_fim: { type: ['string', 'null'], maxLength: 20 },
+        dia_aceite_fixo: { type: ['string', 'null'], maxLength: 20 },
+        horario_aceite_fixo: { type: ['string', 'null'], maxLength: 10 },
         responsavel_recebimento: { type: ['string', 'null'], maxLength: 240 },
         rg_responsavel_recebimento: { type: ['string', 'null'], maxLength: 40 },
         responsavel_recebimento_2: { type: ['string', 'null'], maxLength: 240 },

@@ -62,6 +62,15 @@ function juntarValores(valores, separador = ', ') {
   return texto || '-';
 }
 
+function formatarHorarioAceite(venda) {
+  const partes = [];
+  const range = [venda.horario_aceite_inicio, venda.horario_aceite_fim].filter(Boolean);
+  if (range.length) partes.push(range.join(' até '));
+  const fixoParts = [venda.dia_aceite_fixo, venda.horario_aceite_fixo].filter(Boolean);
+  if (fixoParts.length) partes.push(fixoParts.join(' às '));
+  return partes.join(' ou ') || '-';
+}
+
 function nomesVendedoras(venda) {
   const nomes = (venda.vendedoras || []).map(item => item.nome).filter(Boolean);
   return nomes.length > 0 ? nomes.join(', ') : valor(venda.vendedora?.nome);
@@ -195,7 +204,7 @@ function ResumoTab({ dossie }) {
     { label: 'Venda CPF: local', value: valor(venda.tipo_local_cpf) },
     { section: 'Operacional' },
     { label: 'QC feito por', value: valor(venda.qc_feito_por) },
-    { label: 'Janela do aceite', value: juntarValores([venda.horario_aceite_inicio, venda.horario_aceite_fim], ' até ') },
+    { label: 'Horário de fazer aceite', value: formatarHorarioAceite(venda) },
     { label: 'Dias para aceite', value: juntarValores([venda.dia_aceite_inicio, venda.dia_aceite_fim], ' até ') },
     { label: 'Promessa ao cliente', value: valor(venda.promessa_cliente) },
     { label: 'Promessa cumprida', value: valor(venda.promessa_cumprida) },

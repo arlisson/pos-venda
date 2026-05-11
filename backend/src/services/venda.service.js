@@ -67,6 +67,8 @@ const CAMPOS = [
   'horario_aceite_fim',
   'dia_aceite_inicio',
   'dia_aceite_fim',
+  'dia_aceite_fixo',
+  'horario_aceite_fixo',
   'responsavel_recebimento',
   'rg_responsavel_recebimento',
   'responsavel_recebimento_2',
