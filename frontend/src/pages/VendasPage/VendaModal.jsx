@@ -71,6 +71,7 @@ const VENDA_VAZIA = {
   numeros_ativados: [],
   gb: '',
   valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' }],
+  tipos_servico: ['novo'],
   valor_total: '',
   cliente_solicitou_servicos: [],
   cliente_solicitou_bloqueio_qtd: '',
@@ -260,6 +261,7 @@ const CAMPOS = [
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
+  { name: 'tipos_servico', label: 'Serviço', type: 'serviceType', span: true },
   { name: 'cliente_solicitou_servicos', label: 'Cliente solicitou', type: 'clientRequested', span: true, required: true },
   { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitários', type: 'chips', span: true },
   { name: 'numeros_ativados', label: 'Números ativados', type: 'activatedNumbers', span: true },
@@ -645,6 +647,16 @@ function formatarTipoLinhaChipLabel(tipo) {
   return normalizarTipoLinhaChip(tipo) === 'portabilidade' ? 'Portabilidade' : 'Novo';
 }
 
+function inferirTiposServicoDeChips(itens = []) {
+  const tipos = new Set(
+    normalizarItensChipsInput(itens).map(item =>
+      normalizarTipoLinhaChip(item.tipo_linha || item.tipo || item.categoria)
+    )
+  );
+  const resultado = [...tipos].filter(Boolean);
+  return resultado.length > 0 ? resultado : ['novo'];
+}
+
 function resumirTiposLinhaItensChips(itens = []) {
   const tipos = normalizarItensChipsInput(itens)
     .map(item => formatarTipoLinhaChipLabel(item.tipo_linha || item.tipo || item.categoria))
@@ -919,6 +931,9 @@ function normalizarVenda(venda) {
     data_ativacao: toInputDate(venda.data_ativacao),
     valor_total: venda.valor_total ?? '',
     valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips, venda.gb, tipoLinhaPadrao),
+    tipos_servico: Array.isArray(venda.tipos_servico) && venda.tipos_servico.length > 0
+      ? venda.tipos_servico
+      : inferirTiposServicoDeChips(parseItensChips(venda.valores_unitarios_chips, venda.gb, tipoLinhaPadrao)),
     numeros_portados: parseNumerosPortados(venda.numeros_portados),
     numeros_ativados: parseNumerosAtivados(venda.numeros_ativados),
     cliente_solicitou_servicos: parseClienteSolicitouServicos(venda.cliente_solicitou_servicos),
@@ -940,10 +955,47 @@ function normalizarVenda(venda) {
   };
 }
 
-function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 0 }) {
+function TiposServicoInput({ value, onChange }) {
+  const selecionados = Array.isArray(value) && value.length > 0 ? value : ['novo'];
+  const opcoes = [
+    { value: 'novo', label: 'Novo' },
+    { value: 'portabilidade', label: 'Portabilidade' }
+  ];
+
+  function toggleTipo(tipo) {
+    if (selecionados.includes(tipo)) {
+      const proximos = selecionados.filter(t => t !== tipo);
+      if (proximos.length === 0) return;
+      onChange(proximos);
+    } else {
+      onChange([...selecionados, tipo]);
+    }
+  }
+
+  return (
+    <div className="tipos-servico-input">
+      {opcoes.map(opcao => (
+        <label
+          key={opcao.value}
+          className={`tipos-servico-opcao${selecionados.includes(opcao.value) ? ' tipos-servico-opcao--ativo' : ''}`}
+        >
+          <input
+            type="checkbox"
+            checked={selecionados.includes(opcao.value)}
+            onChange={() => toggleTipo(opcao.value)}
+          />
+          <span>{opcao.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 0, tiposServico = ['novo'] }) {
   const itens = Array.isArray(value) && value.length > 0 ? value : [{ ...ITEM_CHIP_VAZIO }];
   const total = calcularTotalItensChips(itens);
   const mostrarVendedora = vendedoras.length > 1;
+  const mostrarTipoLinha = Array.isArray(tiposServico) && tiposServico.length > 1;
   const limite = Number(limiteQuantidade || 0);
   const quantidadeTotal = somarQuantidadeItensChips(itens);
   const limiteAtingido = limite > 0 && quantidadeTotal >= limite;
@@ -968,7 +1020,8 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
 
   function adicionarItem() {
     if (limiteAtingido) return;
-    onChange([...itens, { ...ITEM_CHIP_VAZIO }]);
+    const tipo_linha = mostrarTipoLinha ? 'novo' : (tiposServico[0] || 'novo');
+    onChange([...itens, { ...ITEM_CHIP_VAZIO, tipo_linha }]);
   }
 
   function removerItem(index) {
@@ -982,11 +1035,11 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   }
 
   return (
-    <div className={`chip-items${mostrarVendedora ? ' chip-items--com-vendedora' : ''}`}>
+    <div className={`chip-items${mostrarVendedora ? ' chip-items--com-vendedora' : ''}${!mostrarTipoLinha ? ' chip-items--sem-tipo' : ''}`}>
       <div className="chip-items__head">
         <span>Qtd.</span>
         <span>GB</span>
-        <span>Tipo</span>
+        {mostrarTipoLinha && <span>Tipo</span>}
         <span>Valor unit.</span>
         <span>Subtotal</span>
         {mostrarVendedora && <span>Vendedora</span>}
@@ -1018,14 +1071,16 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
               onChange={e => atualizarItem(index, 'gb', formatarCampoVenda('gb', e.target.value))}
               placeholder="20"
             />
-            <select
-              value={item.tipo_linha || 'novo'}
-              onChange={e => atualizarItem(index, 'tipo_linha', e.target.value)}
-            >
-              {TIPOS_LINHA_CHIP.map(tipo => (
-                <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
-              ))}
-            </select>
+            {mostrarTipoLinha && (
+              <select
+                value={item.tipo_linha || 'novo'}
+                onChange={e => atualizarItem(index, 'tipo_linha', e.target.value)}
+              >
+                {TIPOS_LINHA_CHIP.map(tipo => (
+                  <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
+                ))}
+              </select>
+            )}
             <input
               type="text"
               inputMode="decimal"
@@ -2430,6 +2485,16 @@ function VendaModal({
         );
       }
 
+      if (campo === 'tipos_servico') {
+        const tipos = Array.isArray(valorFormatado) ? valorFormatado : ['novo'];
+        if (tipos.length === 1) {
+          proximo.valores_unitarios_chips = (prev.valores_unitarios_chips || []).map(chip => ({
+            ...chip,
+            tipo_linha: tipos[0]
+          }));
+        }
+      }
+
       return proximo;
     });
   }
@@ -3350,12 +3415,18 @@ function VendaModal({
                         <option key={item.id} value={item.id}>{item.nome}</option>
                       ))}
                     </select>
+                  ) : campo.type === 'serviceType' ? (
+                    <TiposServicoInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                    />
                   ) : campo.type === 'chips' ? (
                     <ItensChipsInput
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
                       vendedoras={vendedoras.filter(v => (form.vendedoras || []).includes(String(v.id)))}
                       limiteQuantidade={form.quantidade_linhas}
+                      tiposServico={form.tipos_servico}
                     />
                   ) : campo.type === 'clientRequested' ? (
                     <ClienteSolicitouInput

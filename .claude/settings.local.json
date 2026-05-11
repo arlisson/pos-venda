@@ -15,7 +15,9 @@
       "Bash(xargs grep -l \"feriado\\\\|holiday\")",
       "Bash(xargs grep -l \"cliente\")",
       "Bash(xargs grep -l \"2024\\\\|2025\\\\|2026\\\\|natal\\\\|páscoa\\\\|corpus\\\\|carnaval\\\\|independencia\\\\|tiradentes\\\\|trabalho\\\\|nossa\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem -Recurse -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src\" -Filter \"*.jsx\" -o -Filter \"*.js\")",
+      "Bash(Select-Object -First 30)"
     ]
   }
 }
