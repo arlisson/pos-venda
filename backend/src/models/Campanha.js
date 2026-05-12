@@ -1,6 +1,6 @@
 const db = require('../database/connection');
 
-const PERIODOS_VALIDOS = ['diaria', 'semanal'];
+const PERIODOS_VALIDOS = ['diaria', 'semanal', 'mensal'];
 const CATEGORIAS_VALIDAS = ['registro_cliente', 'chip_novo', 'portabilidade', 'internet'];
 
 function montarTipo(periodo, categoria) {

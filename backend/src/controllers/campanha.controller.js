@@ -52,6 +52,19 @@ function getCiclo(periodo, baseDate = new Date()) {
     };
   }
 
+  if (periodo === 'mensal') {
+    const inicio = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+    const fim = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 1);
+
+    return {
+      periodo: 'mensal',
+      inicio,
+      fim,
+      inicioStr: toDateStr(inicio),
+      fimStr: toDateStr(fim)
+    };
+  }
+
   const inicio = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
   const fim = new Date(inicio);
   fim.setDate(inicio.getDate() + 1);
@@ -337,17 +350,21 @@ class CampanhaController {
       const vendedoraId = req.usuario.id;
       const cicloDiario = getCiclo('diaria');
       const cicloSemanal = getCiclo('semanal');
+      const cicloMensal = getCiclo('mensal');
       const campanhas = await Campanha.findAll();
       const campanhasDiarias = campanhas.filter(campanha => (campanha.periodo || 'diaria') === 'diaria');
       const campanhasSemanais = campanhas.filter(campanha => campanha.periodo === 'semanal');
+      const campanhasMensais = campanhas.filter(campanha => campanha.periodo === 'mensal');
 
-      const [progressoDiario, progressoSemanal] = await Promise.all([
+      const [progressoDiario, progressoSemanal, progressoMensal] = await Promise.all([
         calcularProgresso(vendedoraId, cicloDiario, campanhasDiarias),
         calcularProgresso(vendedoraId, cicloSemanal, campanhasSemanais),
+        calcularProgresso(vendedoraId, cicloMensal, campanhasMensais),
       ]);
 
       const diaria = progressoDiario.geral;
       const semanal = progressoSemanal.geral;
+      const mensal = progressoMensal.geral;
       const resgates = await knex('campanha_resgates')
         .where('usuario_id', vendedoraId)
         .where(builder => {
@@ -357,6 +374,9 @@ class CampanhaController {
             })
             .orWhere(query => {
               query.where('periodo', 'semanal').where('periodo_inicio', cicloSemanal.inicioStr);
+            })
+            .orWhere(query => {
+              query.where('periodo', 'mensal').where('periodo_inicio', cicloMensal.inicioStr);
             });
         })
         .pluck('campanha_id');
@@ -370,9 +390,14 @@ class CampanhaController {
         semanal_chip_novo: semanal.chip_novo,
         semanal_portabilidade: semanal.portabilidade,
         semanal_internet: semanal.internet,
+        mensal_registro_cliente: mensal.registro_cliente,
+        mensal_chip_novo: mensal.chip_novo,
+        mensal_portabilidade: mensal.portabilidade,
+        mensal_internet: mensal.internet,
         campanhas: {
           ...progressoDiario.campanhas,
-          ...progressoSemanal.campanhas
+          ...progressoSemanal.campanhas,
+          ...progressoMensal.campanhas
         },
         resgatadas: resgates.map(Number),
       });
@@ -386,10 +411,12 @@ class CampanhaController {
     try {
       const cicloDiario = getCiclo('diaria');
       const cicloSemanal = getCiclo('semanal');
+      const cicloMensal = getCiclo('mensal');
       const campanhas = await Campanha.findAll();
       const campanhasGift = campanhas.filter(campanhaEhGift);
       const campanhasDiarias = campanhasGift.filter(campanha => (campanha.periodo || 'diaria') === 'diaria');
       const campanhasSemanais = campanhasGift.filter(campanha => campanha.periodo === 'semanal');
+      const campanhasMensais = campanhasGift.filter(campanha => campanha.periodo === 'mensal');
       const usuarios = await knex('usuarios as u')
         .leftJoin('roles as r', 'u.role_id', 'r.id')
         .select(
@@ -413,6 +440,9 @@ class CampanhaController {
               })
               .orWhere(query => {
                 query.where('periodo', 'semanal').where('periodo_inicio', cicloSemanal.inicioStr);
+              })
+              .orWhere(query => {
+                query.where('periodo', 'mensal').where('periodo_inicio', cicloMensal.inicioStr);
               });
           })
           .select('usuario_id', 'campanha_id')
@@ -420,13 +450,15 @@ class CampanhaController {
       const resgatesPorUsuario = agruparResgatesPorUsuario(resgates);
 
       const usuariosComProgresso = await Promise.all(usuarios.map(async (usuario) => {
-        const [progressoDiario, progressoSemanal] = await Promise.all([
+        const [progressoDiario, progressoSemanal, progressoMensal] = await Promise.all([
           calcularProgresso(usuario.id, cicloDiario, campanhasDiarias),
-          calcularProgresso(usuario.id, cicloSemanal, campanhasSemanais)
+          calcularProgresso(usuario.id, cicloSemanal, campanhasSemanais),
+          calcularProgresso(usuario.id, cicloMensal, campanhasMensais)
         ]);
         const progressoCampanhas = {
           ...progressoDiario.campanhas,
-          ...progressoSemanal.campanhas
+          ...progressoSemanal.campanhas,
+          ...progressoMensal.campanhas
         };
         const campanhasUsuario = campanhasGift.map((campanha) => {
           const current = progressoCampanhas[campanha.id] || 0;
@@ -478,6 +510,10 @@ class CampanhaController {
           semanal: {
             inicio: cicloSemanal.inicioStr,
             fim: cicloSemanal.fimStr
+          },
+          mensal: {
+            inicio: cicloMensal.inicioStr,
+            fim: cicloMensal.fimStr
           }
         },
         usuarios: usuariosComProgresso
