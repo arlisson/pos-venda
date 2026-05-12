@@ -19,8 +19,23 @@ const ACAO_LABELS = {
   'venda.retorno_corrigido': 'Retorno corrigido',
   'venda.enviada_lixeira': 'Venda enviada para lixeira',
   'venda.restaurada': 'Venda restaurada',
-  'venda.excluida_definitivamente': 'Venda excluída definitivamente'
+  'venda.excluida_definitivamente': 'Venda excluída definitivamente',
+  'venda.enviada_pos_venda': 'Venda enviada para pós-venda',
 };
+
+const FUNIL_STAGES = [
+  { id: 'aprovacao', name: 'Aprovação' },
+  { id: 'ativacao', name: 'Ativação' },
+  { id: 'envio', name: 'Envio' },
+  { id: 'entrega', name: 'Entrega' },
+  { id: 'confirmacao', name: 'Confirmação' },
+  { id: 'concluido', name: 'Concluído' },
+];
+
+const FUNIL_STAGE_IDS = FUNIL_STAGES.map(s => s.id);
+
+const STAGE_NAMES_MAP = Object.fromEntries(FUNIL_STAGES.map(s => [s.id, s.name]));
+STAGE_NAMES_MAP.retorno = 'Retorno';
 
 function parseDados(dados) {
   if (!dados) return {};
@@ -188,6 +203,117 @@ function HistoricoItem({ log, selecionado, compacto, onClick }) {
   );
 }
 
+function buildStageProgression(logs) {
+  const sorted = [...logs].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  const reached = new Map();
+  let currentStage = null;
+  let hasRetorno = false;
+
+  for (const log of sorted) {
+    const dados = parseDados(log.dados);
+    const usuario = log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema');
+
+    if (log.acao === 'venda.criada') {
+      if (!reached.has('aprovacao')) {
+        reached.set('aprovacao', { data: log.created_at, usuario, log });
+      }
+      currentStage = 'aprovacao';
+    } else if (log.acao === 'venda.status_atualizado') {
+      const stage = dados.alteracoes?.status_funil;
+      if (stage === 'retorno') {
+        hasRetorno = true;
+      } else if (stage && FUNIL_STAGE_IDS.includes(stage)) {
+        if (!reached.has(stage)) {
+          reached.set(stage, { data: log.created_at, usuario, log });
+        }
+        currentStage = stage;
+      }
+    }
+  }
+
+  if (!currentStage) currentStage = 'aprovacao';
+
+  const stages = FUNIL_STAGES.map((stage, idx) => {
+    const stageData = reached.get(stage.id);
+    const isCurrent = stage.id === currentStage;
+    const isReached = reached.has(stage.id);
+
+    let status;
+    if (isCurrent) {
+      status = 'current';
+    } else if (isReached) {
+      status = 'done';
+    } else {
+      const hasBefore = FUNIL_STAGE_IDS.slice(0, idx).some(id => reached.has(id));
+      const hasAfter = FUNIL_STAGE_IDS.slice(idx + 1).some(id => reached.has(id));
+      status = (hasBefore && hasAfter) ? 'skipped' : 'pending';
+    }
+
+    return { ...stage, status, data: stageData?.data, usuario: stageData?.usuario, log: stageData?.log };
+  });
+
+  return { stages, hasRetorno, currentStage };
+}
+
+function getConnectorType(stageA, stageB) {
+  if (stageA.status === 'skipped' || stageB.status === 'skipped') return 'skip';
+  if (
+    (stageA.status === 'done' || stageA.status === 'current') &&
+    (stageB.status === 'done' || stageB.status === 'current')
+  ) return 'done';
+  return 'pending';
+}
+
+function FunilTracker({ progression, logSelecionado, onClickLog }) {
+  const { stages, hasRetorno } = progression;
+
+  return (
+    <div className="funil-tracker" role="list" aria-label="Progresso no funil">
+      {stages.map((stage, idx) => {
+        const isClickable = !!stage.log;
+        const isSelected = stage.log && logSelecionado?.id === stage.log.id;
+        const connectorType = idx < stages.length - 1
+          ? getConnectorType(stage, stages[idx + 1])
+          : null;
+
+        return (
+          <div
+            key={stage.id}
+            className={`funil-stage funil-stage--${stage.status}`}
+            role="listitem"
+            data-connector={connectorType}
+          >
+            <button
+              type="button"
+              className={`funil-stage__btn${isSelected ? ' selected' : ''}`}
+              onClick={() => isClickable && onClickLog(stage.log)}
+              disabled={!isClickable}
+              title={stage.status === 'skipped' ? `Etapa pulada: ${stage.name}` : stage.name}
+            >
+              <div className="funil-stage__dot">
+                {stage.status === 'done' && <I.Check size={10} />}
+                {stage.status === 'current' && <span className="funil-stage__inner" />}
+                {stage.status === 'skipped' && <I.AlertTriangle size={10} />}
+              </div>
+              <span className="funil-stage__name">{stage.name}</span>
+              {stage.data && (
+                <span className="funil-stage__date">{formatarData(stage.data)}</span>
+              )}
+            </button>
+          </div>
+        );
+      })}
+      {hasRetorno && (
+        <div className="funil-retorno-flag" title="Esta venda teve retorno registrado">
+          <I.AlertTriangle size={10} />
+          <span>Retorno</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function getGrupoVendaId(log) {
   if (log.entidade_id) return String(log.entidade_id);
 
@@ -219,53 +345,72 @@ function agruparLogsVenda(logs = []) {
 }
 
 function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
-  const pulos = grupo.logs.reduce((total, log) => total + (log.etapasPuladas?.length || 0), 0);
+  const [expandido, setExpandido] = useState(false);
+  const progression = buildStageProgression(grupo.logs);
+  const currentStageName = STAGE_NAMES_MAP[progression.currentStage] || progression.currentStage;
+  const skippedCount = progression.stages.filter(s => s.status === 'skipped').length;
 
   return (
-    <div className={`history-sale-row ${pulos > 0 ? 'history-sale-row--has-skips' : ''}`}>
+    <div className="history-sale-row">
       <div className="history-sale-row__head">
         <strong>Venda #{grupo.vendaId}</strong>
-        <span>{grupo.logs.length} ações</span>
-        {pulos > 0 && (
-          <em>
-            <I.AlertTriangle size={11} />
-            {pulos} etapa{pulos === 1 ? '' : 's'} pulada{pulos === 1 ? '' : 's'}
-          </em>
+        <span className="history-sale-row__stage-badge">{currentStageName}</span>
+        {skippedCount > 0 && (
+          <span className="history-sale-row__tag tag-skipped">
+            <I.AlertTriangle size={9} /> {skippedCount} pulada{skippedCount > 1 ? 's' : ''}
+          </span>
         )}
+        {progression.hasRetorno && (
+          <span className="history-sale-row__tag tag-retorno">
+            <I.AlertTriangle size={9} /> Retorno
+          </span>
+        )}
+        <button
+          type="button"
+          className={`history-sale-row__events-toggle${expandido ? ' open' : ''}`}
+          onClick={() => setExpandido(v => !v)}
+          title={expandido ? 'Ocultar eventos' : 'Ver eventos'}
+        >
+          <I.ChevronDown size={12} />
+          <span>{grupo.logs.length} eventos</span>
+        </button>
       </div>
 
-      <div className="history-sale-row__scroll" role="list" aria-label={`Histórico da venda ${grupo.vendaId}`}>
-        {grupo.logs.map((log, index) => {
-          const tipo = getTipo(log);
-          const usuario = log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema');
-          const selecionado = logSelecionado?.id === log.id;
-          const temPulo = log.etapasPuladas?.length > 0;
+      <div className="history-sale-row__body">
+        <FunilTracker
+          progression={progression}
+          logSelecionado={logSelecionado}
+          onClickLog={onClick}
+        />
 
-          return (
-            <button
-              key={log.id}
-              type="button"
-              className={`history-sale-step ${tipo} ${temPulo ? 'skipped' : ''} ${selecionado ? 'selected' : ''}`}
-              onClick={() => onClick(log)}
-              role="listitem"
-              title={temPulo ? `Pulou: ${log.etapasPuladas.map(etapa => etapa.nome).join(', ')}` : undefined}
-            >
-              <span className="history-sale-step__marker">
-                {temPulo || tipo === 'danger' ? <I.AlertTriangle size={11} /> : <I.Check size={11} />}
-              </span>
-              <span className="history-sale-step__body">
-                <strong>{formatarAcao(log.acao)}</strong>
-                <small>{usuario} · {formatarData(log.created_at)}</small>
-                {temPulo && (
-                  <small className="history-sale-step__skip">
-                    Pulou {log.etapasPuladas.map(etapa => etapa.nome).join(', ')}
-                  </small>
-                )}
-              </span>
-              {index < grupo.logs.length - 1 && <span className="history-sale-step__line" aria-hidden="true" />}
-            </button>
-          );
-        })}
+        {expandido && (
+          <div className="history-sale-row__scroll" role="list" aria-label={`Eventos da venda ${grupo.vendaId}`}>
+            {grupo.logs.map((log, index) => {
+              const tipo = getTipo(log);
+              const usuario = log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema');
+              const selecionado = logSelecionado?.id === log.id;
+
+              return (
+                <button
+                  key={log.id}
+                  type="button"
+                  className={`history-sale-step ${tipo} ${selecionado ? 'selected' : ''}`}
+                  onClick={() => onClick(log)}
+                  role="listitem"
+                >
+                  <span className="history-sale-step__marker">
+                    {tipo === 'danger' ? <I.AlertTriangle size={11} /> : <I.Check size={11} />}
+                  </span>
+                  <span className="history-sale-step__body">
+                    <strong>{formatarAcao(log.acao)}</strong>
+                    <small>{usuario} · {formatarData(log.created_at)}</small>
+                  </span>
+                  {index < grupo.logs.length - 1 && <span className="history-sale-step__line" aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -273,6 +418,9 @@ function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
 
 function DetalheCard({ log, onClose }) {
   const dados = parseDados(log.dados);
+  const stageDe = dados.alteracoes?.status_funil
+    ? STAGE_NAMES_MAP[dados.alteracoes?.status_funil]
+    : null;
 
   return (
     <div className="history-detail-card">
@@ -282,42 +430,56 @@ function DetalheCard({ log, onClose }) {
           ×
         </button>
       </div>
-      
+
       <div className="history-detail-body">
         <div className="history-detail-row">
           <span className="history-detail-label">Ação:</span>
           <span className="history-detail-value">{formatarAcao(log.acao)}</span>
         </div>
-        
+
+        {stageDe && (
+          <div className="history-detail-row">
+            <span className="history-detail-label">Etapa do funil:</span>
+            <span className="history-detail-value">{stageDe}</span>
+          </div>
+        )}
+
+        {dados.alteracoes?.observacao && (
+          <div className="history-detail-row">
+            <span className="history-detail-label">Observação:</span>
+            <span className="history-detail-value">{dados.alteracoes.observacao}</span>
+          </div>
+        )}
+
         <div className="history-detail-row">
           <span className="history-detail-label">Usuário:</span>
           <span className="history-detail-value">
             {log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema')}
           </span>
         </div>
-        
+
         <div className="history-detail-row">
           <span className="history-detail-label">Data/Hora:</span>
           <span className="history-detail-value">{formatarData(log.created_at)}</span>
         </div>
-        
+
         <div className="history-detail-row">
           <span className="history-detail-label">Método:</span>
           <span className="history-detail-value">{log.metodo || 'API'}</span>
         </div>
-        
+
         <div className="history-detail-row">
           <span className="history-detail-label">Rota:</span>
           <span className="history-detail-value">{log.rota || 'N/A'}</span>
         </div>
-        
+
         {log.entidade && (
           <div className="history-detail-row">
             <span className="history-detail-label">Entidade:</span>
             <span className="history-detail-value">{log.entidade}</span>
           </div>
         )}
-        
+
         {log.entidade_id && (
           <div className="history-detail-row">
             <span className="history-detail-label">ID da Entidade:</span>
