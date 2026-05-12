@@ -1,16 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { DEFAULT_OPERATORS as OPERATORS, STAGES as FALLBACK_STAGES } from '../../config/constants';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import ClienteModal from '../Clientes/ClienteModal';
+import VendaModal from '../VendasPage/VendaModal';
 import {
   atualizarEtapaFunil,
   criarEtapaFunil,
   excluirEtapaFunil,
   listarEtapasFunil,
-  listarEtapasFunilAdmin
+  listarEtapasFunilAdmin,
+  listarOperadoras,
+  listarServicos,
+  listarTiposVenda
 } from '../../services/config.service';
-import { atualizarStatusVenda, baixarXlsxClaro, gerarEmailVenda, listarVendas } from '../../services/venda.service';
+import { listarClientes } from '../../services/cliente.service';
+import {
+  atualizarStatusVenda,
+  atualizarVenda,
+  baixarXlsxClaro,
+  buscarVendaPorId,
+  enviarVendaParaPosVenda,
+  gerarEmailVenda,
+  listarVendas,
+  listarVendedoras
+} from '../../services/venda.service';
+import '../VendasPage/VendasPage.css';
 
 const formatBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -199,6 +215,26 @@ function vendaCorrespondeBusca(sale, busca) {
   return termos.every(termo => texto.includes(termo));
 }
 
+function getChaveClienteVenda(venda = {}) {
+  if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
+  if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
+
+  const cnpj = String(venda.cnpj || venda.cliente?.cnpj || '').replace(/\D/g, '');
+  if (cnpj) return `cnpj:${cnpj}`;
+
+  const nome = normalizarBusca(venda.nome || venda.cliente?.nome || venda.razao_social || venda.cliente?.razao_social || '');
+  return nome ? `nome:${nome}` : '';
+}
+
+function contarVendasPorCliente(vendas = []) {
+  return vendas.reduce((acc, venda) => {
+    const chave = getChaveClienteVenda(venda);
+    if (!chave) return acc;
+    acc.set(chave, (acc.get(chave) || 0) + 1);
+    return acc;
+  }, new Map());
+}
+
 function SellerAvatar({ seller, className = 'mini-avatar' }) {
   return (
     <span className={className}>
@@ -338,7 +374,7 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
   };
 }
 
-function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
+function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFullSale, openingFullSale }) {
   const [tab, setTab] = useState('info');
   const [novaFase, setNovaFase] = useState(sale.stage);
   const [novaPrioridade, setNovaPrioridade] = useState(sale.priority || 'media');
@@ -577,6 +613,11 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
         </div>
 
         <div className="modal-footer">
+          {onOpenFullSale && (
+            <button type="button" className="btn btn-primary" onClick={onOpenFullSale} disabled={saving || openingFullSale}>
+              <I.External size={13} /> {openingFullSale ? 'Abrindo...' : 'Abrir venda completa'}
+            </button>
+          )}
           <button type="button" className="btn" onClick={onClose} disabled={saving}>Fechar</button>
         </div>
       </div>
@@ -789,9 +830,31 @@ const NOVA_ETAPA = {
   etapa_final: false
 };
 
+const DADOS_MODAL_VENDA_INICIAIS = {
+  loaded: false,
+  clientes: [],
+  vendas: [],
+  vendedoras: [],
+  operadoras: [],
+  tiposVenda: [],
+  servicos: [],
+  etapasFunil: []
+};
+
 function FunilPage() {
   const usuario = getUsuarioLocal();
   const podeGerenciarEtapas = temPermissao(usuario, 'crud_funil_etapas');
+  const podeAbrirVendaCompleta = temPermissao(usuario, [
+    'vendas',
+    'vendas_ver_proprias',
+    'vendas_ver_todas',
+    'vendas_criar',
+    'vendas_editar',
+    'vendas_excluir'
+  ]);
+  const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
+  const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
+  const podeListarClientes = temPermissao(usuario, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const [sales, setSales] = useState([]);
   const [stages, setStages] = useState(FALLBACK_STAGES);
   const [adminStages, setAdminStages] = useState([]);
@@ -816,6 +879,130 @@ function FunilPage() {
   const [mostrarArquivadas, setMostrarArquivadas] = useState(false);
   const [agora, setAgora] = useState(Date.now);
   const [baixandoXlsxId, setBaixandoXlsxId] = useState(null);
+  const [vendaCompleta, setVendaCompleta] = useState(null);
+  const [dadosModalVenda, setDadosModalVenda] = useState(DADOS_MODAL_VENDA_INICIAIS);
+  const [abrindoVendaCompletaId, setAbrindoVendaCompletaId] = useState(null);
+  const [modalVendaModoEdicao, setModalVendaModoEdicao] = useState(false);
+  const [clienteRapidoAberto, setClienteRapidoAberto] = useState(false);
+  const [clienteRapidoInicial, setClienteRapidoInicial] = useState(null);
+  const resolverClienteRapidoRef = useRef(null);
+
+  const vendasPorCliente = useMemo(() => contarVendasPorCliente(dadosModalVenda.vendas), [dadosModalVenda.vendas]);
+  const vendasEmAndamentoPorCliente = useMemo(() => {
+    const codigosFinais = new Set(dadosModalVenda.etapasFunil.filter(etapa => etapa.etapa_final).map(etapa => etapa.codigo));
+    const ativas = dadosModalVenda.vendas.filter(venda => !codigosFinais.has(venda.status_funil));
+    return contarVendasPorCliente(ativas);
+  }, [dadosModalVenda.vendas, dadosModalVenda.etapasFunil]);
+
+  async function carregarDadosModalVenda({ force = false } = {}) {
+    if (dadosModalVenda.loaded && !force) {
+      return dadosModalVenda;
+    }
+
+    const [
+      vendasData,
+      clientesData,
+      vendedorasData,
+      operadorasData,
+      tiposVendaData,
+      servicosData,
+      etapasFunilData
+    ] = await Promise.all([
+      listarVendas(),
+      podeListarClientes ? listarClientes() : Promise.resolve([]),
+      listarVendedoras(),
+      listarOperadoras(),
+      listarTiposVenda(),
+      listarServicos(),
+      listarEtapasFunil()
+    ]);
+
+    const dados = {
+      loaded: true,
+      clientes: clientesData || [],
+      vendas: vendasData || [],
+      vendedoras: vendedorasData || [],
+      operadoras: operadorasData || [],
+      tiposVenda: tiposVendaData || [],
+      servicos: servicosData || [],
+      etapasFunil: etapasFunilData || []
+    };
+
+    setDadosModalVenda(dados);
+    return dados;
+  }
+
+  async function abrirVendaCompleta(sale) {
+    if (!podeAbrirVendaCompleta || !sale?.id) return;
+
+    setAbrindoVendaCompletaId(sale.id);
+    setStageFeedback({ type: '', message: '' });
+
+    try {
+      const [venda] = await Promise.all([
+        buscarVendaPorId(sale.id),
+        carregarDadosModalVenda()
+      ]);
+      setVendaCompleta(venda);
+      setModalVendaModoEdicao(false);
+      setSelectedSaleId(null);
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: err.message || 'Erro ao abrir venda completa.' });
+    } finally {
+      setAbrindoVendaCompletaId(null);
+    }
+  }
+
+  function fecharVendaCompleta() {
+    setVendaCompleta(null);
+    setModalVendaModoEdicao(false);
+  }
+
+  async function salvarVendaCompleta(dados) {
+    if (!vendaCompleta?.id) return;
+
+    await atualizarVenda(vendaCompleta.id, dados);
+    fecharVendaCompleta();
+    await carregarDadosModalVenda({ force: true });
+    await carregarVendas();
+    setStageFeedback({ type: 'success', message: 'Venda atualizada com sucesso.' });
+  }
+
+  async function enviarPosVendaCompleta(venda) {
+    const resultado = await enviarVendaParaPosVenda(venda.id);
+    fecharVendaCompleta();
+    await carregarDadosModalVenda({ force: true });
+    await carregarVendas();
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    setStageFeedback({
+      type: 'success',
+      message: resultado?.status === 'pendente'
+        ? (resultado.message || 'Solicitacao enviada para aprovacao do ADM.')
+        : 'Venda enviada para o pos-venda.'
+    });
+  }
+
+  function abrirClienteRapido(clienteInicial = null) {
+    return new Promise(resolve => {
+      resolverClienteRapidoRef.current = resolve;
+      setClienteRapidoInicial(clienteInicial);
+      setClienteRapidoAberto(true);
+    });
+  }
+
+  function fecharClienteRapido(cliente = null) {
+    setClienteRapidoAberto(false);
+    setClienteRapidoInicial(null);
+    resolverClienteRapidoRef.current?.(cliente);
+    resolverClienteRapidoRef.current = null;
+  }
+
+  async function salvarClienteRapido(clienteCriado) {
+    const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
+    setDadosModalVenda(prev => ({ ...prev, clientes: clientesAtualizados }));
+    fecharClienteRapido(clienteCriado);
+    return clienteCriado;
+  }
 
   async function handleBaixarXlsxClaro(venda) {
     if (!venda?.id) return;
@@ -926,11 +1113,11 @@ function FunilPage() {
     }
   }
 
-  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     carregarVendas();
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     const id = setInterval(() => setAgora(Date.now()), 30_000);
@@ -1159,6 +1346,38 @@ function FunilPage() {
           stageLabels={stageLabels}
           onClose={() => setSelectedSaleId(null)}
           onUpdateSale={handleUpdateSale}
+          onOpenFullSale={podeAbrirVendaCompleta ? () => abrirVendaCompleta(selectedSale) : null}
+          openingFullSale={abrindoVendaCompletaId === selectedSale.id}
+        />
+      )}
+      {vendaCompleta && (
+        <VendaModal
+          venda={vendaCompleta}
+          clientes={dadosModalVenda.clientes}
+          vendas={dadosModalVenda.vendas}
+          vendedoras={dadosModalVenda.vendedoras}
+          operadoras={dadosModalVenda.operadoras}
+          tiposVenda={dadosModalVenda.tiposVenda}
+          servicos={dadosModalVenda.servicos}
+          vendasPorCliente={vendasPorCliente}
+          vendasEmAndamentoPorCliente={vendasEmAndamentoPorCliente}
+          podeEditarVenda={podeEditarVenda}
+          podeVerDocumentosVenda={podeVerDocumentosVenda}
+          usuarioLogado={usuario}
+          modoEdicao={modalVendaModoEdicao}
+          onStartEdit={() => setModalVendaModoEdicao(true)}
+          onClose={fecharVendaCompleta}
+          onSave={salvarVendaCompleta}
+          onSendToPosVenda={enviarPosVendaCompleta}
+          onCreateClient={abrirClienteRapido}
+        />
+      )}
+      {clienteRapidoAberto && (
+        <ClienteModal
+          cliente={clienteRapidoInicial}
+          operadoras={dadosModalVenda.operadoras}
+          onClose={() => fecharClienteRapido(null)}
+          onSave={salvarClienteRapido}
         />
       )}
       {stageToDelete && (

@@ -7,6 +7,7 @@ import * as I from '../../components/Icons';
 const PERIODOS = [
   { value: 'diaria', label: 'Diária' },
   { value: 'semanal', label: 'Semanal' },
+  { value: 'mensal', label: 'Mensal' },
 ];
 
 const CATEGORIAS = [

@@ -26,6 +26,7 @@ const formatGoalValue = (campanha, value) => (
 const PERIOD_LABELS = {
   diaria: 'Diária',
   semanal: 'Semanal',
+  mensal: 'Mensal',
 };
 
 const CATEGORY_LABELS = {
