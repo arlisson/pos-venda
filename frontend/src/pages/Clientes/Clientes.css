@@ -613,6 +613,14 @@
   background: var(--surface-2);
 }
 
+.clientes-page tbody tr.clientes-trash-row td {
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.clientes-page tbody tr.clientes-trash-row:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--border-strong);
+}
+
 .clientes-page tbody tr.clickable-row {
   cursor: pointer;
 }
@@ -650,6 +658,16 @@
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.clientes-restore-action:hover:not(:disabled) {
+  color: var(--success);
+  border-color: #bbf7d0;
+  background: var(--success-bg);
+}
+
+.clientes-trash-delete {
+  color: var(--danger);
 }
 
 .cliente-note-status-btn {
