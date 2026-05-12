@@ -154,6 +154,14 @@ function formatarDataHora(valor) {
   });
 }
 
+function formatarParaDatetimeLocal(valor) {
+  if (!valor) return '';
+  const d = new Date(String(valor).replace(' ', 'T'));
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // ─── Modal: registrar venda ───────────────────────────────────────────────────
 
 function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }) {
@@ -695,15 +703,130 @@ function LeadsRecebidosView() {
   );
 }
 
+// ─── Modal: detalhe do futuro cliente ────────────────────────────────────────
+
+function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVenda }) {
+  const [etapa, setEtapa] = useState('ver'); // 'ver' | 'venda'
+  const [notas, setNotas] = useState(linha.futuro_cliente_notas || '');
+  const [retorno, setRetorno] = useState(formatarParaDatetimeLocal(linha.futuro_cliente_retorno));
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const usuario = useMemo(() => getUsuarioLocal(), []);
+
+  const camposLead = useMemo(() => {
+    const dados = linha.dados_json || {};
+    return Object.entries(dados)
+      .filter(([chave]) => !chave.endsWith(' (atualizado)'))
+      .map(([chave, valor]) => ({
+        label: chave,
+        valor: dados[`${chave} (atualizado)`] ?? valor
+      }));
+  }, [linha]);
+
+  async function salvar(event) {
+    event.preventDefault();
+    setSalvando(true);
+    setErro('');
+    try {
+      const resultado = await marcarFuturoClienteLead(linha.id, { notas, retorno: retorno || null });
+      onAtualizado(resultado.linha);
+    } catch (error) {
+      setErro(error.message || 'Erro ao salvar.');
+      setSalvando(false);
+    }
+  }
+
+  if (etapa === 'venda') {
+    return (
+      <RegistrarVendaLeadModal
+        linha={linha}
+        colunas={[]}
+        usuario={usuario}
+        onClose={onClose}
+        onConfirm={onRegistrarVenda}
+      />
+    );
+  }
+
+  return (
+    <div className="modal-overlay" onClick={event => !salvando && event.target === event.currentTarget && onClose()}>
+      <form className="modal adicionar-lead-modal" onSubmit={salvar}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Futuro cliente</div>
+              <div className="modal-sub">{linha.envio?.nome || 'Lead'}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={salvando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          {camposLead.length > 0 && (
+            <div className="adicionar-lead-dados">
+              {camposLead.map(({ label, valor }) => (
+                <div key={label} className="adicionar-lead-campo">
+                  <span className="adicionar-lead-campo__label">{label}</span>
+                  <span className="adicionar-lead-campo__valor">{valor || '-'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="futuro-cliente-form">
+            <div className="form-field">
+              <label>Observações</label>
+              <textarea
+                rows={3}
+                value={notas}
+                onChange={event => setNotas(event.target.value)}
+                placeholder="Observações, interesses, histórico..."
+                disabled={salvando}
+              />
+            </div>
+            <div className="form-field">
+              <label>Data de retorno</label>
+              <input
+                type="datetime-local"
+                value={retorno}
+                onChange={event => setRetorno(event.target.value)}
+                disabled={salvando}
+              />
+            </div>
+          </div>
+
+          {erro && <div className="alert-error" style={{ marginTop: 8 }}>{erro}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={() => setEtapa('venda')} disabled={salvando}>
+            <I.Chart size={14} /> Registrar venda
+          </button>
+          <div style={{ flex: 1 }} />
+          <button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={salvando}>
+            {salvando ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ─── Aba: futuros clientes ────────────────────────────────────────────────────
 
 function FuturosClientesMainView() {
+  const navigate = useNavigate();
   const [linhas, setLinhas] = useState([]);
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [linhaAtiva, setLinhaAtiva] = useState(null);
 
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -734,8 +857,33 @@ function FuturosClientesMainView() {
 
   const totalPaginas = Math.max(1, Math.ceil(total / 50));
 
+  function handleAtualizado(linhaAtualizada) {
+    setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
+    setLinhaAtiva(null);
+  }
+
+  function handleRegistrarVenda(vendaPreenchida) {
+    navigate('/vendas?nova=1', {
+      state: {
+        vendaPreenchida,
+        origemLead: {
+          linha_id: linhaAtiva?.id,
+          envio: linhaAtiva?.envio?.nome || ''
+        }
+      }
+    });
+  }
+
   return (
     <div className="futuros-clientes-view">
+      {linhaAtiva && (
+        <FuturoClienteDetalheModal
+          linha={linhaAtiva}
+          onClose={() => setLinhaAtiva(null)}
+          onAtualizado={handleAtualizado}
+          onRegistrarVenda={handleRegistrarVenda}
+        />
+      )}
       <div className="clientes-leads-toolbar">
         <div className="clientes-toolbar__meta">{total} futuro(s) cliente(s)</div>
         <div className="clientes-leads-actions">
@@ -781,7 +929,7 @@ function FuturosClientesMainView() {
                 linhas.map(linha => {
                   const dados = linha.dados_json || {};
                   return (
-                    <tr key={linha.id}>
+                    <tr key={linha.id} style={{ cursor: 'pointer' }} onClick={() => setLinhaAtiva(linha)}>
                       <td><span className="tag">{linha.envio?.nome || '-'}</span></td>
                       <td>
                         <span

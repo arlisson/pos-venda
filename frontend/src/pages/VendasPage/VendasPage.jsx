@@ -1556,43 +1556,47 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
 
         {mostrarLista && (
           <div className="venda-cliente-options" id="cliente-options" role="listbox">
-            {clientesFiltrados.length > 0 ? (
-              clientesFiltrados.map((cliente, index) => {
-                const selecionado = String(cliente.id) === String(value);
-                const ativo = index === indiceAtivo;
+            <div className="venda-cliente-options__list">
+              {clientesFiltrados.length > 0 ? (
+                clientesFiltrados.map((cliente, index) => {
+                  const selecionado = String(cliente.id) === String(value);
+                  const ativo = index === indiceAtivo;
 
-                return (
-                  <button
-                    key={cliente.id}
-                    id={`cliente-option-${cliente.id}`}
-                    type="button"
-                    className={`venda-cliente-option ${ativo ? 'is-active' : ''} ${selecionado ? 'is-selected' : ''}`}
-                    onMouseEnter={() => setIndiceAtivo(index)}
-                    onMouseDown={event => event.preventDefault()}
-                    onClick={() => selecionarCliente(cliente)}
-                    role="option"
-                    aria-selected={selecionado}
-                  >
-                    <span className="venda-cliente-option__main">
-                      <strong>{cliente.nome || 'Cliente sem nome'}</strong>
-                      <span>{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
-                    </span>
-                    <span className="venda-cliente-option__meta">
-                      <span>{cliente.email || cliente.responsavel_nome || 'Sem contato principal'}</span>
-                      <span>{cliente.operadoraAtual?.nome || 'Sem operadora'} - {cliente.quantidade_chips ?? 0} chips</span>
-                    </span>
-                    {selecionado && <I.Check size={14} />}
-                  </button>
-                );
-              })
-            ) : (
-              <div className="venda-cliente-no-results">
-                <span>Nenhum cliente encontrado.</span>
-                <button type="button" className="btn btn-sm" onMouseDown={event => event.preventDefault()} onClick={onCreateClient}>
-                  <I.Plus size={13} /> Cadastrar cliente
-                </button>
-              </div>
-            )}
+                  return (
+                    <button
+                      key={cliente.id}
+                      id={`cliente-option-${cliente.id}`}
+                      type="button"
+                      className={`venda-cliente-option ${ativo ? 'is-active' : ''} ${selecionado ? 'is-selected' : ''}`}
+                      onMouseEnter={() => setIndiceAtivo(index)}
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => selecionarCliente(cliente)}
+                      role="option"
+                      aria-selected={selecionado}
+                    >
+                      <span className="venda-cliente-option__main">
+                        <strong>{cliente.nome || 'Cliente sem nome'}</strong>
+                        <span>{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
+                      </span>
+                      <span className="venda-cliente-option__meta">
+                        <span>{cliente.email || cliente.responsavel_nome || 'Sem contato principal'}</span>
+                        <span>{cliente.operadoraAtual?.nome || 'Sem operadora'} - {cliente.quantidade_chips ?? 0} chips</span>
+                      </span>
+                      {selecionado && <I.Check size={14} />}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="venda-cliente-no-results">
+                  <span>Nenhum cliente encontrado.</span>
+                </div>
+              )}
+            </div>
+            <div className="venda-cliente-options__footer">
+              <button type="button" className="btn btn-sm" onMouseDown={event => event.preventDefault()} onClick={onCreateClient}>
+                <I.Plus size={13} /> Cadastrar cliente
+              </button>
+            </div>
           </div>
         )}
       </div>

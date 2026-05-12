@@ -27,7 +27,9 @@
       "Bash(grep -E \"README|CLAUDE|\\\\.md$\")",
       "Bash(xargs grep -l \"CAMPOS_VENDA_LEAD\")",
       "Bash(xargs grep \"export.*CAMPOS\\\\|export.*FIELD.*VENDA\")",
-      "Bash(grep -E \"\\\\.\\(js|jsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(js|jsx\\)$\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src\" -Recurse -Filter \"*.tsx\" -o Name)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src\\\\pages\\\\VendasPage\\\\\" | Format-Table Name, @{Name=\"Type\"; Expression={if\\($_.PSIsContainer\\){\"Directory\"}else{\"File\"}}})"
     ]
   }
 }
