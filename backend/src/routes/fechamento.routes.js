@@ -11,6 +11,7 @@ router.use(exigirPermissao('vendas_fechamento_mensal'));
 router.get('/resumo', fechamentoController.resumo);
 router.get('/detalhes', fechamentoController.detalhes);
 router.get('/detalhes-chips', fechamentoController.detalhesChips);
+router.get('/exportar-vendas', fechamentoController.exportarVendas);
 router.get('/vendas/:id/dossie', fechamentoController.dossieVenda);
 
 module.exports = router;

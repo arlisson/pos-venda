@@ -3082,7 +3082,7 @@ function VendasPage() {
                       <td>{venda.dia_vencimento || '-'}</td>
                       <td>{formatarData(venda.data_venda)}</td>
                       <td>{formatarData(venda.data_ativacao)}</td>
-                      <td><span className="tag">{venda.vendedora?.nome || '-'}</span></td>
+                      <td><span className="tag">{obterVendedorasMensagem(venda)}</span></td>
                       <td className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
                         <div className="vendas-contact-actions">
                           <button

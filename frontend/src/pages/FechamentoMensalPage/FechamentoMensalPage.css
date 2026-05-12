@@ -27,6 +27,14 @@
   height: 34px;
 }
 
+.fechamento-export-btn {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
 .fechamento-painel {
   background: var(--surface);
   border: 1px solid var(--border);
