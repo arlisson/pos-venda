@@ -45,9 +45,23 @@ async function dossieVenda(req, res) {
   }
 }
 
+async function exportarVendas(req, res) {
+  try {
+    const { buffer, nome } = await fechamentoService.gerarXlsxVendasPeriodo(req.query);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
+    return res.send(buffer);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao exportar vendas do periodo.' });
+  }
+}
+
 module.exports = {
   resumo,
   detalhes,
   detalhesChips,
-  dossieVenda
+  dossieVenda,
+  exportarVendas
 };

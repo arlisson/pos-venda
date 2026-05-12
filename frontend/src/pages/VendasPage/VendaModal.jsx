@@ -999,6 +999,15 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   const limite = Number(limiteQuantidade || 0);
   const quantidadeTotal = somarQuantidadeItensChips(itens);
   const limiteAtingido = limite > 0 && quantidadeTotal >= limite;
+  const vendedorasUsadas = new Set(
+    itens
+      .filter(item => Number(item.quantidade || 0) > 0)
+      .map(item => String(item.vendedora_id || ''))
+      .filter(Boolean)
+  );
+  const vendedorasSemChips = mostrarVendedora
+    ? vendedoras.filter(vendedora => !vendedorasUsadas.has(String(vendedora.id)))
+    : [];
 
   function atualizarItem(index, campo, novoValor) {
     let valor = novoValor;
@@ -1125,6 +1134,11 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
       {limite > 0 && quantidadeTotal < limite && (
         <div className="chip-items__aviso-minimo">
           Faltam {limite - quantidadeTotal} chip{limite - quantidadeTotal !== 1 ? 's' : ''} para atingir a quantidade de linhas contratadas
+        </div>
+      )}
+      {vendedorasSemChips.length > 0 && (
+        <div className="chip-items__aviso-minimo">
+          Falta atribuir chip para: {vendedorasSemChips.map(v => v.nome).join(', ')}
         </div>
       )}
     </div>
@@ -3093,6 +3107,15 @@ function VendaModal({
       const numerosPortados = montarNumerosPortados(form.numeros_portados);
       const numerosAtivados = montarNumerosAtivados(form.numeros_ativados);
       const quantidadeChips = somarQuantidadeItensChips(form.valores_unitarios_chips || []);
+      const vendedorasUsadasNosChips = new Set(
+        (form.valores_unitarios_chips || [])
+          .filter(item => Number(item.quantidade || 0) > 0)
+          .map(item => String(item.vendedora_id || ''))
+          .filter(Boolean)
+      );
+      const vendedorasSemChips = vendedorasIds.length > 1
+        ? vendedorasIds.filter(id => !vendedorasUsadasNosChips.has(String(id)))
+        : [];
 
       if (quantidadeLinhasFechadas > 0 && quantidadeChips > quantidadeLinhasFechadas) {
         setErro('A quantidade de chips não pode ser maior que a quantidade de linhas fechadas.');
@@ -3102,6 +3125,16 @@ function VendaModal({
 
       if (quantidadeLinhasFechadas > 0 && quantidadeChips < quantidadeLinhasFechadas) {
         setErro(`A quantidade de chips (${quantidadeChips}) é menor que a quantidade de linhas contratadas (${quantidadeLinhasFechadas}).`);
+        setSalvando(false);
+        return;
+      }
+
+      if (vendedorasSemChips.length > 0) {
+        const nomes = vendedorasSemChips
+          .map(id => vendedoras.find(v => Number(v.id) === Number(id))?.nome)
+          .filter(Boolean)
+          .join(', ');
+        setErro(`Atribua pelo menos um chip para cada vendedora da venda${nomes ? `: ${nomes}` : '.'}`);
         setSalvando(false);
         return;
       }

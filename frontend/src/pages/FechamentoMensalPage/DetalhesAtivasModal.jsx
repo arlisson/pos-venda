@@ -159,6 +159,10 @@ function criarOpcoes(linhas, obterValor, obterLabel = obterValor) {
 }
 
 function valoresBuscaLinha(linha) {
+  const vendedorasLinha = Array.isArray(linha.vendedoras) && linha.vendedoras.length > 0
+    ? linha.vendedoras
+    : [linha.vendedora].filter(Boolean);
+
   return [
     linha.venda_id,
     `#${linha.venda_id}`,
@@ -189,8 +193,8 @@ function valoresBuscaLinha(linha) {
     fmtData(linha.data_ativacao),
     linha.data_venda,
     fmtData(linha.data_venda),
-    linha.vendedora?.nome,
-    linha.vendedora?.email,
+    vendedorasLinha.map(item => item?.nome).filter(Boolean).join(' '),
+    vendedorasLinha.map(item => item?.email).filter(Boolean).join(' '),
     linha.cliente?.nome,
     linha.cliente?.razao_social,
     linha.cliente?.cnpj,
@@ -239,27 +243,56 @@ function valoresBuscaLinha(linha) {
   ].map(valor => normalizarBusca(valor)).join(' ');
 }
 
+function vendedorasComissaoLinha(linha) {
+  if (linha.vendedora?.id) return [linha.vendedora];
+  return Array.isArray(linha.vendedoras) ? linha.vendedoras.filter(item => item?.id) : [];
+}
+
+function nomesVendedorasLinha(linha) {
+  if (linha.vendedora?.nome) {
+    return linha.vendedora.nome;
+  }
+
+  const lista = Array.isArray(linha.vendedoras) && linha.vendedoras.length > 0
+    ? linha.vendedoras
+    : [linha.vendedora].filter(Boolean);
+
+  return lista.map(item => item?.nome).filter(Boolean).join(' / ') || '-';
+}
+
 function calcularTotais(linhas) {
   const totaisVendedora = new Map();
 
   linhas.forEach(linha => {
-    if (linha.comissao === null || !linha.vendedora) return;
-    const chave = linha.vendedora.id || 'sem_vendedora';
-    const atual = totaisVendedora.get(chave) || {
-      vendedora_id: linha.vendedora.id || null,
-      vendedora_nome: linha.vendedora.nome || 'Sem vendedora',
-      total_ugrs: 0,
-      total_comissao: 0
-    };
+    if (linha.comissao === null) return;
+    const vendedorasLinha = vendedorasComissaoLinha(linha);
+    if (vendedorasLinha.length === 0) return;
 
-    atual.total_ugrs += 1;
-    atual.total_comissao += Number(linha.comissao || 0);
-    totaisVendedora.set(chave, atual);
+    const comissaoPorVendedora = Number(linha.comissao || 0) / vendedorasLinha.length;
+    const ugrPorVendedora = 1 / vendedorasLinha.length;
+
+    vendedorasLinha.forEach(vendedora => {
+      const chave = vendedora.id || 'sem_vendedora';
+      const atual = totaisVendedora.get(chave) || {
+        vendedora_id: vendedora.id || null,
+        vendedora_nome: vendedora.nome || 'Sem vendedora',
+        total_ugrs: 0,
+        total_comissao: 0
+      };
+
+      atual.total_ugrs += ugrPorVendedora;
+      atual.total_comissao += comissaoPorVendedora;
+      totaisVendedora.set(chave, atual);
+    });
   });
 
   return {
     totais_por_vendedora: Array.from(totaisVendedora.values())
-      .map(item => ({ ...item, total_comissao: Number(item.total_comissao.toFixed(2)) }))
+      .map(item => ({
+        ...item,
+        total_ugrs: Number(item.total_ugrs.toFixed(2)),
+        total_comissao: Number(item.total_comissao.toFixed(2))
+      }))
       .sort((a, b) => b.total_comissao - a.total_comissao),
     total_geral: {
       chips: linhas.length,
@@ -313,7 +346,11 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
   const linhasBase = useMemo(() => (Array.isArray(dados.linhas) ? dados.linhas : []), [dados.linhas]);
 
   const opcoesFiltro = useMemo(() => ({
-    vendedoras: criarOpcoes(linhasBase, linha => linha.vendedora?.id || linha.vendedora?.nome, linha => linha.vendedora?.nome),
+    vendedoras: criarOpcoes(
+      linhasBase.flatMap(linha => Array.isArray(linha.vendedoras) && linha.vendedoras.length > 0 ? linha.vendedoras : [linha.vendedora].filter(Boolean)),
+      item => item?.id || item?.nome,
+      item => item?.nome
+    ),
     operadoras: criarOpcoes(linhasBase, linha => linha.operadora?.id || linha.operadora?.nome, linha => linha.operadora?.nome),
     etapas: criarOpcoes(linhasBase, linha => linha.status_funil, linha => fmtEtapaFunil(linha.status_funil)),
     tiposVenda: criarOpcoes(linhasBase, linha => linha.tipo_venda),
@@ -351,7 +388,12 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
         ].map(valor => normalizarBusca(valor)).join(' ');
         if (!alvoVenda.includes(textoVenda)) return false;
       }
-      if (filtros.vendedora && chaveOpcao(linha.vendedora?.id || linha.vendedora?.nome) !== filtros.vendedora) return false;
+      if (filtros.vendedora) {
+        const vendedorasLinha = Array.isArray(linha.vendedoras) && linha.vendedoras.length > 0
+          ? linha.vendedoras
+          : [linha.vendedora].filter(Boolean);
+        if (!vendedorasLinha.some(item => chaveOpcao(item?.id || item?.nome) === filtros.vendedora)) return false;
+      }
       if (filtros.operadora && chaveOpcao(linha.operadora?.id || linha.operadora?.nome) !== filtros.operadora) return false;
       if (filtros.etapa && chaveOpcao(linha.status_funil) !== filtros.etapa) return false;
       if (filtros.tipoVenda && chaveOpcao(linha.tipo_venda) !== filtros.tipoVenda) return false;
@@ -604,7 +646,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                         <td>{fmtData(linha.data_ativacao)}</td>
                         <td>{fmtData(linha.data_venda)}</td>
                         <td>{fmtTexto(linha.prioridade_funil)}</td>
-                        <td>{linha.vendedora?.nome || '-'}</td>
+                        <td>{nomesVendedorasLinha(linha)}</td>
                         <td>{linha.cliente?.nome || linha.cliente?.razao_social || '-'}</td>
                         <td>{fmtTexto(linha.nome)}</td>
                         <td>{fmtTexto(linha.razao_social)}</td>

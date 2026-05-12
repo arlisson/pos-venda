@@ -1,6 +1,7 @@
 const Venda = require('../models/Venda');
 const FunilEtapa = require('../models/FunilEtapa');
 const RegraComissao = require('../models/RegraComissao');
+const ExcelJS = require('exceljs');
 const vendaService = require('./venda.service');
 
 const STATUS_FINAL_FALLBACK = 'concluido';
@@ -82,7 +83,8 @@ function parseChips(rawChips) {
       tipo_linha: (item.tipo_linha || item.tipo || item.categoria)
         ? tipoVendaNormalizado(item.tipo_linha || item.tipo || item.categoria) || 'novo'
         : null,
-      valor_unitario: Number(item.valor_unitario || 0)
+      valor_unitario: Number(item.valor_unitario || 0),
+      vendedora_id: item.vendedora_id ? Number(item.vendedora_id) : null
     }))
     .filter(item => item.quantidade > 0);
 }
@@ -208,6 +210,91 @@ async function listarEtapasPainel() {
 function nomeEtapa(etapas, codigo) {
   if (codigo === 'retorno') return 'Retorno';
   return etapas.find(etapa => etapa.codigo === codigo)?.nome || codigo || 'Sem etapa';
+}
+
+function valorTexto(valor) {
+  return valor === null || valor === undefined ? '' : String(valor).trim();
+}
+
+function dataParaExcel(valor) {
+  const data = normalizarData(valor);
+  if (!data) return null;
+  const [ano, mes, dia] = data.split('-').map(Number);
+  return new Date(ano, mes - 1, dia);
+}
+
+function nomeArquivoSeguro(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 80);
+}
+
+function normalizarVendedorasVenda(venda = {}) {
+  const vinculadas = Array.isArray(venda.vendedoras) ? venda.vendedoras : [];
+  const lista = vinculadas
+    .map(item => ({
+      id: item.id ? Number(item.id) : null,
+      nome: item.nome || 'Sem vendedora',
+      email: item.email || ''
+    }))
+    .filter(item => item.id);
+
+  if (lista.length > 0) {
+    return lista;
+  }
+
+  return venda.vendedora_id ? [{
+    id: Number(venda.vendedora_id),
+    nome: venda.vendedora_nome || 'Sem vendedora',
+    email: venda.vendedora_email || ''
+  }] : [];
+}
+
+function vendedorasComissaoLinha(linha) {
+  if (linha.vendedora?.id) {
+    return [linha.vendedora];
+  }
+
+  return Array.isArray(linha.vendedoras) && linha.vendedoras.length > 0
+    ? linha.vendedoras
+    : [];
+}
+
+async function anexarVendedorasVendas(vendas = []) {
+  const ids = vendas.map(venda => Number(venda.id)).filter(Boolean);
+  if (ids.length === 0) return vendas;
+
+  const linhas = await Venda.knex()('venda_vendedoras as vv')
+    .join('usuarios as u', 'vv.usuario_id', 'u.id')
+    .whereIn('vv.venda_id', ids)
+    .orderBy('vv.ordem', 'asc')
+    .select(
+      'vv.venda_id',
+      'u.id',
+      'u.nome',
+      'u.email'
+    );
+
+  const porVenda = new Map();
+  linhas.forEach(linha => {
+    const vendaId = Number(linha.venda_id);
+    const atual = porVenda.get(vendaId) || [];
+    atual.push({
+      id: Number(linha.id),
+      nome: linha.nome,
+      email: linha.email || ''
+    });
+    porVenda.set(vendaId, atual);
+  });
+
+  return vendas.map(venda => ({
+    ...venda,
+    vendedoras: porVenda.get(Number(venda.id)) || normalizarVendedorasVenda(venda)
+  }));
 }
 
 function encontrarRegraComissao(regras, valorUnitario) {
@@ -375,14 +462,16 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro', opcoe
     query.whereRaw(`${dataReferencia} <= ?`, [fim]);
   }
 
+  const vendas = await query;
+
   return {
-    vendas: await query,
+    vendas: await anexarVendedorasVendas(vendas),
     statusFinal
   };
 }
 
 async function carregarVendaFechamentoPorId(id) {
-  return Venda.query()
+  const venda = await Venda.query()
     .alias('v')
     .leftJoin('operadoras as o', 'v.operadora_id', 'o.id')
     .leftJoin('tipos_venda as tv', 'v.tipo_venda_id', 'tv.id')
@@ -483,6 +572,11 @@ async function carregarVendaFechamentoPorId(id) {
       'oc.nome as cliente_operadora_atual_nome'
     )
     .first();
+
+  if (!venda) return null;
+
+  const [comVendedoras] = await anexarVendedorasVendas([venda]);
+  return comVendedoras;
 }
 
 function classificarSecao(statusFunil, statusFinal = STATUS_FINAL_FALLBACK) {
@@ -861,7 +955,8 @@ function montarLinhasChips(vendas, regrasComissao = []) {
           numero_portado: numerosPortados[i] || null,
           gb: gigasFallback[i] || '',
           tipo_linha: tipoVendaNormalizado(venda.tipo_venda_nome) || 'novo',
-          valor_unitario: valorFallback
+          valor_unitario: valorFallback,
+          vendedora_id: null
         }));
       }
       return;
@@ -878,7 +973,8 @@ function montarLinhasChips(vendas, regrasComissao = []) {
           numero_portado: numerosPortados[chipNumero - 1] || null,
           gb: gigas[i] || '',
           tipo_linha: item.tipo_linha,
-          valor_unitario: item.valor_unitario
+          valor_unitario: item.valor_unitario,
+          vendedora_id: item.vendedora_id
         }));
         chipNumero += 1;
       }
@@ -898,24 +994,37 @@ function montarRespostaLinhasChips(linhasOrdenadas) {
   const totaisVendedora = new Map();
 
   linhasOrdenadas.forEach(linha => {
-    if (linha.comissao === null || !linha.vendedora) return;
-    const chave = linha.vendedora.id || 'sem_vendedora';
-    const atual = totaisVendedora.get(chave) || {
-      vendedora_id: linha.vendedora.id || null,
-      vendedora_nome: linha.vendedora.nome || 'Sem vendedora',
-      total_ugrs: 0,
-      total_comissao: 0
-    };
+    if (linha.comissao === null) return;
 
-    atual.total_ugrs += 1;
-    atual.total_comissao += linha.comissao;
-    totaisVendedora.set(chave, atual);
+    const vendedorasLinha = vendedorasComissaoLinha(linha);
+    if (vendedorasLinha.length === 0) return;
+
+    const comissaoPorVendedora = Number(linha.comissao || 0) / vendedorasLinha.length;
+    const ugrPorVendedora = 1 / vendedorasLinha.length;
+
+    vendedorasLinha.forEach(vendedora => {
+      const chave = vendedora.id || 'sem_vendedora';
+      const atual = totaisVendedora.get(chave) || {
+        vendedora_id: vendedora.id || null,
+        vendedora_nome: vendedora.nome || 'Sem vendedora',
+        total_ugrs: 0,
+        total_comissao: 0
+      };
+
+      atual.total_ugrs += ugrPorVendedora;
+      atual.total_comissao += comissaoPorVendedora;
+      totaisVendedora.set(chave, atual);
+    });
   });
 
   return {
     linhas: linhasOrdenadas,
     totais_por_vendedora: Array.from(totaisVendedora.values())
-      .map(item => ({ ...item, total_comissao: Number(item.total_comissao.toFixed(2)) }))
+      .map(item => ({
+        ...item,
+        total_ugrs: Number(item.total_ugrs.toFixed(2)),
+        total_comissao: Number(item.total_comissao.toFixed(2))
+      }))
       .sort((a, b) => b.total_comissao - a.total_comissao),
     total_geral: {
       chips: linhasOrdenadas.length,
@@ -930,6 +1039,10 @@ function montarLinhaChip(venda, chip) {
   const operadoraVendaId = venda.operadora_id ? Number(venda.operadora_id) : null;
   const operadoraAtualClienteId = venda.cliente_operadora_atual_id ? Number(venda.cliente_operadora_atual_id) : null;
   const clienteBaseOperadora = Boolean(operadoraVendaId && operadoraAtualClienteId && operadoraVendaId === operadoraAtualClienteId);
+  const vendedoras = normalizarVendedorasVenda(venda);
+  const vendedoraChip = chip.vendedora_id
+    ? vendedoras.find(item => Number(item.id) === Number(chip.vendedora_id))
+    : null;
 
   return {
     venda_id: venda.id,
@@ -1009,11 +1122,8 @@ function montarLinhaChip(venda, chip) {
     retornou_em: venda.retornou_em || null,
     corrigido_em: venda.corrigido_em || null,
     operadora: venda.operadora_id ? { id: venda.operadora_id, nome: venda.operadora_nome } : null,
-    vendedora: venda.vendedora_id ? {
-      id: venda.vendedora_id,
-      nome: venda.vendedora_nome,
-      email: venda.vendedora_email
-    } : null,
+    vendedora: vendedoraChip || (vendedoras.length === 1 ? vendedoras[0] : null),
+    vendedoras,
     cliente: venda.cliente_id ? {
       id: venda.cliente_id,
       nome: venda.cliente_nome,
@@ -1067,9 +1177,204 @@ async function obterDossieVenda(id, filtros = {}, usuarioId) {
   };
 }
 
+function montarLinhaExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FINAL_FALLBACK, grupo = null) {
+  const quantidade = grupo ? grupo.quantidade : quantidadeChipsVenda(venda);
+  const chipsNovos = grupo ? grupo.novo : quantidadeChipsPorTipo(venda, 'novo');
+  const chipsPortabilidade = grupo ? grupo.portabilidade : quantidadeChipsPorTipo(venda, 'portabilidade');
+  const status = nomeEtapa(etapas, venda.status_funil);
+  const categoria = categoriaServico(venda.servico_nome);
+  const vendedoras = normalizarVendedorasVenda(venda);
+  const vendedoraGrupo = grupo?.vendedora_id
+    ? vendedoras.find(item => Number(item.id) === Number(grupo.vendedora_id))
+    : null;
+  const valorTotal = grupo ? Number(grupo.valor_total || 0) : Number(venda.valor_total || 0);
+
+  return {
+    id: venda.id,
+    razao_social: valorTexto(venda.razao_social || venda.cliente_razao_social || venda.nome || venda.cliente_nome),
+    cnpj: valorTexto(venda.cnpj || venda.cliente_cnpj),
+    cidade: valorTexto(venda.municipio),
+    uf: valorTexto(venda.uf),
+    quantidade,
+    servico: valorTexto(venda.servico_nome),
+    gigas: valorTexto(grupo?.gigas || venda.gb),
+    categoria: categoria || 'outros',
+    valor_total: Number(valorTotal.toFixed(2)),
+    novo: chipsNovos,
+    portabilidade: chipsPortabilidade,
+    vendedora: vendedoraGrupo?.nome || vendedoras.map(item => item.nome).join(' / ') || valorTexto(venda.vendedora_nome),
+    operadora: valorTexto(venda.operadora_nome),
+    data_venda: dataParaExcel(venda.data_venda || venda.created_at),
+    data_input: dataParaExcel(venda.criado_em || venda.created_at),
+    data_ativacao: dataParaExcel(venda.data_ativacao),
+    status,
+    status_funil: valorTexto(venda.status_funil),
+    etapa_final: venda.status_funil === statusFinal ? 'Sim' : 'Nao',
+    protocolo: valorTexto(venda.protocolo),
+    numero_cliente_contrato: valorTexto(venda.numero_cliente_contrato),
+    telefone: valorTexto(venda.telefone),
+    email: valorTexto(venda.email),
+    representante_legal: valorTexto(venda.nome_representante_legal),
+    administrador: valorTexto(venda.nome_administrador),
+    numeros_portados: valorTexto(venda.numeros_portados),
+    numeros_ativados: valorTexto(venda.numeros_ativados),
+    promessa_cliente: valorTexto(venda.promessa_cliente),
+    promessa_cumprida: valorTexto(venda.promessa_cumprida),
+    observacoes: valorTexto(venda.observacoes),
+    motivo_retorno: valorTexto(venda.motivo_retorno)
+  };
+}
+
+function montarLinhasExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FINAL_FALLBACK) {
+  const chips = parseChips(venda.valores_unitarios_chips);
+  const vendedoras = normalizarVendedorasVenda(venda);
+
+  if (chips.length === 0 || vendedoras.length <= 1) {
+    return [montarLinhaExportacaoVenda(venda, etapas, statusFinal)];
+  }
+
+  const grupos = new Map();
+  chips.forEach(chip => {
+    const chave = chip.vendedora_id ? String(chip.vendedora_id) : 'sem_vendedora';
+    const atual = grupos.get(chave) || {
+      vendedora_id: chip.vendedora_id || null,
+      quantidade: 0,
+      valor_total: 0,
+      novo: 0,
+      portabilidade: 0,
+      gigasSet: new Set()
+    };
+    const quantidade = Number(chip.quantidade || 0);
+    const tipoLinha = chip.tipo_linha === 'portabilidade' ? 'portabilidade' : 'novo';
+
+    atual.quantidade += quantidade;
+    atual.valor_total += quantidade * Number(chip.valor_unitario || 0);
+    atual.novo += tipoLinha === 'novo' ? quantidade : 0;
+    atual.portabilidade += tipoLinha === 'portabilidade' ? quantidade : 0;
+    if (chip.gb) atual.gigasSet.add(chip.gb);
+    grupos.set(chave, atual);
+  });
+
+  return Array.from(grupos.values()).map(grupo => montarLinhaExportacaoVenda(venda, etapas, statusFinal, {
+    ...grupo,
+    valor_total: Number(grupo.valor_total.toFixed(2)),
+    gigas: Array.from(grupo.gigasSet).join(', ')
+  }));
+}
+
+function aplicarEstiloCabecalho(worksheet) {
+  const header = worksheet.getRow(1);
+  header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  header.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF1F2937' }
+  };
+  header.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+  header.height = 26;
+  header.eachCell(cell => {
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+      left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+      bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+      right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+    };
+  });
+}
+
+function aplicarEstiloPlanilha(worksheet) {
+  worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+  worksheet.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: worksheet.columnCount }
+  };
+  aplicarEstiloCabecalho(worksheet);
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    row.eachCell(cell => {
+      cell.alignment = { vertical: 'middle', wrapText: false };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+      };
+    });
+  });
+}
+
+async function gerarXlsxVendasPeriodo(filtros = {}) {
+  const { vendas, statusFinal } = await carregarVendasNoPeriodo(filtros, 'registro', { incluirRetornos: true });
+  const etapas = [
+    ...(await listarEtapasPainel()),
+    { codigo: 'retorno', nome: 'Retorno', etapa_final: false }
+  ];
+  const inicio = normalizarData(filtros.data_inicio);
+  const fim = normalizarData(filtros.data_fim);
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Vendas');
+
+  workbook.creator = 'Sistema Pos Venda';
+  workbook.created = new Date();
+
+  worksheet.columns = [
+    { header: 'ID', key: 'id', width: 10 },
+    { header: 'RAZAO SOCIAL', key: 'razao_social', width: 34 },
+    { header: 'CNPJ', key: 'cnpj', width: 20 },
+    { header: 'CIDADE', key: 'cidade', width: 18 },
+    { header: 'UF', key: 'uf', width: 8 },
+    { header: 'QUANTIDADE', key: 'quantidade', width: 13 },
+    { header: 'SERVICO', key: 'servico', width: 18 },
+    { header: 'GIGAS', key: 'gigas', width: 14 },
+    { header: 'CATEGORIA', key: 'categoria', width: 14 },
+    { header: 'VALOR TOTAL', key: 'valor_total', width: 14, style: { numFmt: 'R$ #,##0.00' } },
+    { header: 'NOVO', key: 'novo', width: 10 },
+    { header: 'PORTABILIDADE', key: 'portabilidade', width: 16 },
+    { header: 'VENDEDORA', key: 'vendedora', width: 22 },
+    { header: 'OPERADORA', key: 'operadora', width: 18 },
+    { header: 'DATA DA VENDA', key: 'data_venda', width: 16 },
+    { header: 'DATA INPUT', key: 'data_input', width: 16 },
+    { header: 'DATA ATIVACAO', key: 'data_ativacao', width: 16 },
+    { header: 'STATUS', key: 'status', width: 20 },
+    { header: 'CODIGO STATUS', key: 'status_funil', width: 16 },
+    { header: 'ETAPA FINAL', key: 'etapa_final', width: 13 },
+    { header: 'PROTOCOLO', key: 'protocolo', width: 18 },
+    { header: 'CLIENTE/CONTRATO', key: 'numero_cliente_contrato', width: 20 },
+    { header: 'TELEFONE', key: 'telefone', width: 18 },
+    { header: 'EMAIL', key: 'email', width: 28 },
+    { header: 'REPRESENTANTE LEGAL', key: 'representante_legal', width: 26 },
+    { header: 'ADMINISTRADOR', key: 'administrador', width: 24 },
+    { header: 'NUMEROS PORTADOS', key: 'numeros_portados', width: 28 },
+    { header: 'NUMEROS ATIVADOS', key: 'numeros_ativados', width: 28 },
+    { header: 'PROMESSA CLIENTE', key: 'promessa_cliente', width: 26 },
+    { header: 'PROMESSA CUMPRIDA', key: 'promessa_cumprida', width: 18 },
+    { header: 'OBS', key: 'observacoes', width: 34 },
+    { header: 'MOTIVO RETORNO', key: 'motivo_retorno', width: 28 }
+  ];
+
+  vendas
+    .flatMap(venda => montarLinhasExportacaoVenda(venda, etapas, statusFinal))
+    .sort((a, b) => (a.data_venda?.getTime?.() || 0) - (b.data_venda?.getTime?.() || 0) || Number(a.id) - Number(b.id))
+    .forEach(linha => worksheet.addRow(linha));
+
+  aplicarEstiloPlanilha(worksheet);
+
+  worksheet.getColumn('valor_total').numFmt = 'R$ #,##0.00';
+  ['data_venda', 'data_input', 'data_ativacao'].forEach(key => {
+    worksheet.getColumn(key).numFmt = 'dd/mm/yyyy';
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const nome = `vendas-${nomeArquivoSeguro(inicio || 'inicio')}-a-${nomeArquivoSeguro(fim || 'fim')}.xlsx`;
+
+  return { buffer, nome };
+}
+
 module.exports = {
   obterResumo,
   obterDetalhes,
   obterDetalhesChips,
-  obterDossieVenda
+  obterDossieVenda,
+  gerarXlsxVendasPeriodo
 };

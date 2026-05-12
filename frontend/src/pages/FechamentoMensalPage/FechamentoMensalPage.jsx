@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { getResumo } from '../../services/fechamento.service';
+import { exportarVendasPeriodo, getResumo } from '../../services/fechamento.service';
 import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import {
@@ -16,6 +16,7 @@ import VendaModal from '../VendasPage/VendaModal';
 import DetalhesAtivasModal from './DetalhesAtivasModal';
 import FechamentoSecao from './FechamentoSecao';
 import PainelGerencial from './PainelGerencial';
+import { TableSheet } from '../../components/Icons';
 import './FechamentoMensalPage.css';
 
 function dataISO(data) {
@@ -70,6 +71,7 @@ function FechamentoMensalPage() {
   const [resumo, setResumo] = useState({ total: [], tratando: [], ativas: [] });
   const [painel, setPainel] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
   const [erro, setErro] = useState('');
   const [modalDetalhes, setModalDetalhes] = useState(null);
   const [detalhesReloadKey, setDetalhesReloadKey] = useState(0);
@@ -221,6 +223,24 @@ function FechamentoMensalPage() {
     }
   }
 
+  async function exportarVendas() {
+    if (!dataValida(periodoConsulta.data_inicio) || !dataValida(periodoConsulta.data_fim)) {
+      setErro('Informe um periodo valido para exportar.');
+      return;
+    }
+
+    setErro('');
+    setExportando(true);
+
+    try {
+      await exportarVendasPeriodo(periodoConsulta);
+    } catch (error) {
+      setErro(error.message || 'Erro ao exportar vendas do periodo.');
+    } finally {
+      setExportando(false);
+    }
+  }
+
   return (
     <LayoutPrivado>
       <div className="fechamento-page">
@@ -241,6 +261,16 @@ function FechamentoMensalPage() {
               onChange={event => atualizarPeriodo('data_fim', event.target.value)}
             />
           </div>
+          <button
+            type="button"
+            className="btn fechamento-export-btn"
+            onClick={exportarVendas}
+            disabled={exportando || loading}
+            title="Exportar vendas do periodo em Excel"
+          >
+            <TableSheet size={16} />
+            <span>{exportando ? 'Exportando...' : 'Exportar Excel'}</span>
+          </button>
         </div>
 
         {erro && <div className="alert-error" style={{ marginBottom: 16 }}>{erro}</div>}

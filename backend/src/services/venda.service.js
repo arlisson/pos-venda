@@ -280,7 +280,8 @@ function normalizarItensChips(valor) {
         quantidade: Number(item.quantidade || 0),
         gb: normalizarGigas(item.gb),
         tipo_linha: normalizarTipoLinhaChip(item.tipo_linha || item.tipo || item.categoria),
-        valor_unitario: parseValorMonetario(item.valor_unitario)
+        valor_unitario: parseValorMonetario(item.valor_unitario),
+        ...(item.vendedora_id ? { vendedora_id: Number(item.vendedora_id) } : {})
       }))
       .filter(item => item.quantidade > 0 && item.valor_unitario > 0);
   }
@@ -348,6 +349,29 @@ function normalizarIdsVendedoras(vendedoras) {
       .filter(Number.isInteger)
       .filter(id => id > 0)
   ));
+}
+
+function validarVendedorasNosChips(payload, vendedorasIds = []) {
+  if (vendedorasIds.length <= 1) return;
+  if (payload.valores_unitarios_chips === undefined) return;
+
+  const itens = normalizarItensChips(payload.valores_unitarios_chips);
+  const vendedorasSet = new Set(vendedorasIds.map(id => Number(id)));
+  const usadas = new Set();
+
+  itens.forEach(item => {
+    if (!item.vendedora_id) return;
+    if (!vendedorasSet.has(Number(item.vendedora_id))) {
+      throw new Error('Cada chip deve ser atribuido a uma das vendedoras selecionadas na venda.');
+    }
+    usadas.add(Number(item.vendedora_id));
+  });
+
+  const faltantes = vendedorasIds.filter(id => !usadas.has(Number(id)));
+
+  if (faltantes.length > 0) {
+    throw new Error('Atribua pelo menos um chip para cada vendedora da venda.');
+  }
 }
 
 const CLIENTE_SOLICITOU_SERVICOS = ['bloqueio', 'cancelamento', 'nenhum_servico'];
@@ -680,6 +704,7 @@ async function validarProtocoloCliente(payload, usuarioId, vendaAtual = null) {
 
 function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
   const campo = (nome) => alias ? `${alias}.${nome}` : nome;
+  const tabelaVendas = alias || 'vendas';
 
   if (escopo.podeVerTodas) {
     return query;
@@ -693,7 +718,14 @@ function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
   query.where((builder) => {
     builder
       .where(campo('criado_por_id'), usuarioId)
-      .orWhere(campo('vendedora_id'), usuarioId);
+      .orWhere(campo('vendedora_id'), usuarioId)
+      .orWhereExists(
+        Venda.knex()
+          .select(1)
+          .from('venda_vendedoras as vv_scope')
+          .whereRaw(`vv_scope.venda_id = ${tabelaVendas}.id`)
+          .where('vv_scope.usuario_id', usuarioId)
+      );
   });
 
   return query;
@@ -1001,8 +1033,17 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
 
   const venda = await query;
 
-  return Number(venda?.criado_por_id) === Number(usuarioId)
-    || Number(venda?.vendedora_id) === Number(usuarioId);
+  if (Number(venda?.criado_por_id) === Number(usuarioId)
+    || Number(venda?.vendedora_id) === Number(usuarioId)) {
+    return true;
+  }
+
+  const vinculo = await Venda.knex()('venda_vendedoras')
+    .where('venda_id', id)
+    .where('usuario_id', usuarioId)
+    .first();
+
+  return Boolean(vinculo);
 }
 
 async function listarVendas(filtros = {}, usuarioId) {
@@ -1037,7 +1078,18 @@ async function listarVendas(filtros = {}, usuarioId) {
   }
 
   if (filtros.vendedora_id) {
-    query.where('vendedora_id', Number(filtros.vendedora_id));
+    const vendedoraId = Number(filtros.vendedora_id);
+    query.where(builder => {
+      builder
+        .where('vendedora_id', vendedoraId)
+        .orWhereExists(
+          Venda.knex()
+            .select(1)
+            .from('venda_vendedoras as vv_filter')
+            .whereRaw('vv_filter.venda_id = vendas.id')
+            .where('vv_filter.usuario_id', vendedoraId)
+        );
+    });
   }
 
   if (filtros.operadora_id) {
@@ -1329,6 +1381,8 @@ async function criarVenda(dados, usuarioId) {
     throw new Error('Selecione pelo menos uma vendedora para cadastrar a venda.');
   }
 
+  validarVendedorasNosChips(payload, vendedorasIds);
+
   if (payload.cliente_id) {
     const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
 
@@ -1417,6 +1471,10 @@ async function atualizarVenda(id, dados, usuarioId) {
 
   if (payload.vendedora_id !== undefined && payload.vendedora_id !== null && (!Number.isInteger(payload.vendedora_id) || payload.vendedora_id <= 0)) {
     throw new Error('Selecione pelo menos uma vendedora valida para atualizar a venda.');
+  }
+
+  if (vendedorasIds && vendedorasIds.length > 0) {
+    validarVendedorasNosChips(payload, vendedorasIds);
   }
 
   if (payload.cliente_id) {
