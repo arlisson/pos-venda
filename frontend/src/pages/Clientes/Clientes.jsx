@@ -497,29 +497,18 @@ function Clientes() {
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     setClienteIdFiltro(clienteIdParam);
-    if (clienteIdParam) {
-      setAbaAtiva('clientes');
-    }
   }, [clienteIdParam]);
 
   useEffect(() => {
     setFidelidade(fidelidadeParam);
-    if (fidelidadeParam) {
-      setAbaAtiva('clientes');
-    }
   }, [fidelidadeParam]);
 
   useEffect(() => {
     setRetorno(retornoParam);
-    if (retornoParam) {
-      setAbaAtiva('clientes');
-    }
   }, [retornoParam]);
 
   useEffect(() => {
     if (!novoClienteParam) return;
-
-    setAbaAtiva('clientes');
 
     if (podeCriar) {
       setClienteModal(null);
@@ -810,7 +799,7 @@ function Clientes() {
                 </button>
                 {isAdmin && (
                   <button className="btn btn-danger" type="button" onClick={() => setLimparBaseModalAberto(true)}>
-                    <I.Trash size={14} /> Limpar clientes da base
+                    <I.Trash size={14} /> Apagar base anterior
                   </button>
                 )}
                 <button className="btn btn-primary" type="button" onClick={abrirNovoCliente}>
