@@ -173,6 +173,16 @@ const PERMISSOES = [
     chave: 'gerenciar_leads',
     nome: 'Gerenciar leads',
     descricao: 'Permite importar planilhas, filtrar e distribuir leads entre vendedores.'
+  },
+  {
+    chave: 'futuros_clientes_ver',
+    nome: 'Futuros clientes: visualizar',
+    descricao: 'Permite acessar a pagina de futuros clientes e ver leads marcados como futuro cliente.'
+  },
+  {
+    chave: 'futuros_clientes_registrar',
+    nome: 'Futuros clientes: registrar',
+    descricao: 'Permite marcar um lead recebido como futuro cliente com notas e data de retorno.'
   }
 ];
 
