@@ -232,10 +232,21 @@ function ClienteFormPage() {
     const config = CNPJ_SUGESTOES_CLIENTE[campoApi];
     if (!config || !String(valor || '').trim()) return;
 
-    setForm(prev => ({
-      ...prev,
-      [config.campo]: campoApi === 'telefone' ? formatarTelefoneComDdd(valor, true) : valor
-    }));
+    setForm(prev => {
+      if (campoApi === 'telefone') {
+        const digitos = apenasDigitos(valor, 11);
+        const campoTelefone = digitos.length > 10 ? 'whatsapp' : 'fixo';
+        return {
+          ...prev,
+          [campoTelefone]: formatarTelefoneComDdd(valor, digitos.length > 10)
+        };
+      }
+
+      return {
+        ...prev,
+        [config.campo]: valor
+      };
+    });
 
     setCnpjSugestoes(prev => {
       const proximo = { ...prev };
@@ -253,9 +264,6 @@ function ClienteFormPage() {
   }
 
   async function buscarDadosCnpj(manual = false) {
-    // Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
-    return;
-
     const cnpj = sanitizarCnpj(form.cnpj);
 
     if (cnpj.length !== 14) {
@@ -318,7 +326,12 @@ function ClienteFormPage() {
       setCnpjStatus({ tipo: '', mensagem: '' });
       setCnpjDados(null);
       setCnpjSugestoes({});
-      // Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
+
+      const timeout = setTimeout(() => {
+        buscarDadosCnpj(false);
+      }, 450);
+
+      return () => clearTimeout(timeout);
     }
   }, [form.cnpj]);
 
@@ -418,7 +431,15 @@ function ClienteFormPage() {
                         maxLength={18}
                         required
                       />
-                      {/* Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes. */}
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => buscarDadosCnpj(true)}
+                        disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
+                        style={{ marginTop: 8, alignSelf: 'flex-start' }}
+                      >
+                        {consultandoCnpj ? 'Buscando...' : 'Buscar dados do CNPJ'}
+                      </button>
                       {cnpjStatus.mensagem && (
                         <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
                           {cnpjStatus.mensagem}
@@ -437,6 +458,14 @@ function ClienteFormPage() {
                     </div>
 
                   </div>
+
+                  <CnpjSugestoes
+                    dados={cnpjDados}
+                    sugestoes={cnpjSugestoes}
+                    labels={CNPJ_LABELS_CLIENTE}
+                    onAceitar={aceitarSugestaoCnpj}
+                    onRecusar={recusarSugestaoCnpj}
+                  />
                 </section>
 
                 <section className="cliente-form-section">

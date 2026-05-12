@@ -44,32 +44,22 @@ function horasDecorridas(dataInicio, dataFim) {
 
 async function registrarEntradaEstagio(vendaId, etapaCodigo, dataEntrada = new Date(), trx = null) {
   try {
-    const query = db('venda_notificacao_parada')
-      .where('venda_id', vendaId)
-      .where('etapa_codigo', etapaCodigo);
+    const executor = trx || db;
+    const agora = new Date();
 
-    if (trx) {
-      query.transacting(trx);
-    }
-
-    const existente = await query.first();
-
-    if (existente) {
-      await db('venda_notificacao_parada')
-        .where('id', existente.id)
-        .update({
-          data_entrada_etapa: dataEntrada,
-          updated_at: new Date()
-        });
-    } else {
-      await db('venda_notificacao_parada').insert({
+    await executor('venda_notificacao_parada')
+      .insert({
         venda_id: vendaId,
         etapa_codigo: etapaCodigo,
         data_entrada_etapa: dataEntrada,
-        created_at: new Date(),
-        updated_at: new Date()
+        created_at: agora,
+        updated_at: agora
+      })
+      .onConflict(['venda_id', 'etapa_codigo'])
+      .merge({
+        data_entrada_etapa: dataEntrada,
+        updated_at: agora
       });
-    }
   } catch (erro) {
     console.error('Erro ao registrar entrada no estágio:', erro);
   }

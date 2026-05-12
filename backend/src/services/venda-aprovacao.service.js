@@ -266,14 +266,9 @@ async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
   }
 
   if (atual?.status === STATUS_RECUSADA) {
-    return {
-      status: 'recusada',
-      venda,
-      solicitacao: atual,
-      message: atual.observacao_decisao
-        ? `Solicitacao recusada pelo ADM: ${atual.observacao_decisao}`
-        : 'Solicitacao recusada pelo ADM.'
-    };
+    await obsoletarSolicitacoes(venda.id, trx);
+    await desativarNotificacaoSolicitacao(atual.id, trx);
+    return criarSolicitacaoPendente(venda, motivos, usuarioId, trx);
   }
 
   if (atual?.status === STATUS_PENDENTE) {

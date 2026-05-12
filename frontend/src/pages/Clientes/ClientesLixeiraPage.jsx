@@ -11,6 +11,45 @@ function formatarData(value) {
   return new Date(value).toLocaleDateString('pt-BR');
 }
 
+function ConfirmarExclusaoDefinitivaModal({ cliente, excluindo, onClose, onConfirm }) {
+  if (!cliente) return null;
+
+  return (
+    <div className="modal-overlay" onClick={event => !excluindo && event.target === event.currentTarget && onClose()}>
+      <div className="modal trash-confirm-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Excluir cliente definitivamente?</div>
+              <div className="modal-sub">{cliente.nome} - #{cliente.id}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={excluindo}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="trash-warning">
+            <I.AlertTriangle size={20} />
+            <div>
+              <strong>Esta exclusão não pode ser desfeita.</strong>
+              <span>O cliente será removido permanentemente da lixeira.</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={excluindo}>Cancelar</button>
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={excluindo}>
+            {excluindo ? 'Excluindo...' : 'Excluir definitivamente'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ClientesLixeiraPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -19,7 +58,9 @@ function ClientesLixeiraPage() {
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [processandoId, setProcessandoId] = useState(null);
+  const [clienteParaExcluir, setClienteParaExcluir] = useState(null);
 
   const filtros = useMemo(() => ({ busca }), [busca]);
 
@@ -28,6 +69,12 @@ function ClientesLixeiraPage() {
     const timer = setTimeout(() => setErro(''), 6000);
     return () => clearTimeout(timer);
   }, [erro]);
+
+  useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
 
   async function carregarClientes(proximosFiltros = filtros) {
     setErro('');
@@ -56,10 +103,12 @@ function ClientesLixeiraPage() {
   async function handleRestaurar(cliente) {
     setProcessandoId(cliente.id);
     setErro('');
+    setSucesso('');
 
     try {
       await restaurarCliente(cliente.id);
       setClientes(prev => prev.filter(item => item.id !== cliente.id));
+      setSucesso('Cliente restaurado com sucesso.');
     } catch (error) {
       setErro(error.message || 'Erro ao restaurar cliente.');
     } finally {
@@ -67,17 +116,18 @@ function ClientesLixeiraPage() {
     }
   }
 
-  async function handleExcluirDefinitivo(cliente) {
-    const confirmado = window.confirm('Excluir este cliente definitivamente? Essa ação não pode ser desfeita.');
+  async function confirmarExclusaoDefinitiva() {
+    if (!clienteParaExcluir) return;
 
-    if (!confirmado) return;
-
-    setProcessandoId(cliente.id);
+    setProcessandoId(clienteParaExcluir.id);
     setErro('');
+    setSucesso('');
 
     try {
-      await excluirClienteDefinitivo(cliente.id);
-      setClientes(prev => prev.filter(item => item.id !== cliente.id));
+      await excluirClienteDefinitivo(clienteParaExcluir.id);
+      setClientes(prev => prev.filter(item => item.id !== clienteParaExcluir.id));
+      setClienteParaExcluir(null);
+      setSucesso('Cliente excluído definitivamente.');
     } catch (error) {
       setErro(error.message || 'Erro ao excluir cliente definitivamente.');
     } finally {
@@ -87,6 +137,13 @@ function ClientesLixeiraPage() {
 
   return (
     <LayoutPrivado>
+      <ConfirmarExclusaoDefinitivaModal
+        cliente={clienteParaExcluir}
+        excluindo={processandoId === clienteParaExcluir?.id}
+        onClose={() => setClienteParaExcluir(null)}
+        onConfirm={confirmarExclusaoDefinitiva}
+      />
+
       <div className="clientes-page">
         <div className="clientes-toolbar">
           <div className="clientes-toolbar__meta">{clientes.length} clientes na lixeira</div>
@@ -107,6 +164,7 @@ function ClientesLixeiraPage() {
           </div>
         </div>
 
+        {sucesso && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucesso}</div>}
         {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>
@@ -168,7 +226,7 @@ function ClientesLixeiraPage() {
                               className="btn btn-sm btn-ghost"
                               style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
                               disabled={processandoId === cliente.id}
-                              onClick={() => handleExcluirDefinitivo(cliente)}
+                              onClick={() => setClienteParaExcluir(cliente)}
                             >
                               <I.Trash size={13} /> Excluir
                             </button>

@@ -16,6 +16,45 @@ function formatarMoeda(value) {
   return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function ConfirmarExclusaoDefinitivaModal({ venda, excluindo, onClose, onConfirm }) {
+  if (!venda) return null;
+
+  return (
+    <div className="modal-overlay" onClick={event => !excluindo && event.target === event.currentTarget && onClose()}>
+      <div className="modal trash-confirm-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Excluir venda definitivamente?</div>
+              <div className="modal-sub">{venda.cliente?.nome || venda.nome || `Venda #${venda.id}`}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={excluindo}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="trash-warning">
+            <I.AlertTriangle size={20} />
+            <div>
+              <strong>Esta exclusão não pode ser desfeita.</strong>
+              <span>A venda será removida permanentemente da lixeira.</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={excluindo}>Cancelar</button>
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={excluindo}>
+            {excluindo ? 'Excluindo...' : 'Excluir definitivamente'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function VendasLixeiraPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -24,7 +63,9 @@ function VendasLixeiraPage() {
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [processandoId, setProcessandoId] = useState(null);
+  const [vendaParaExcluir, setVendaParaExcluir] = useState(null);
 
   const filtros = useMemo(() => ({ busca }), [busca]);
 
@@ -33,6 +74,12 @@ function VendasLixeiraPage() {
     const timer = setTimeout(() => setErro(''), 6000);
     return () => clearTimeout(timer);
   }, [erro]);
+
+  useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
 
   async function carregarDados(proximosFiltros = filtros) {
     setErro('');
@@ -61,10 +108,12 @@ function VendasLixeiraPage() {
   async function handleRestaurar(venda) {
     setProcessandoId(venda.id);
     setErro('');
+    setSucesso('');
 
     try {
       await restaurarVenda(venda.id);
       setVendas(prev => prev.filter(item => item.id !== venda.id));
+      setSucesso('Venda restaurada com sucesso.');
     } catch (error) {
       setErro(error.message || 'Erro ao restaurar venda.');
     } finally {
@@ -72,17 +121,18 @@ function VendasLixeiraPage() {
     }
   }
 
-  async function handleExcluirDefinitivo(venda) {
-    const confirmado = window.confirm('Excluir esta venda definitivamente? Essa ação não pode ser desfeita.');
+  async function confirmarExclusaoDefinitiva() {
+    if (!vendaParaExcluir) return;
 
-    if (!confirmado) return;
-
-    setProcessandoId(venda.id);
+    setProcessandoId(vendaParaExcluir.id);
     setErro('');
+    setSucesso('');
 
     try {
-      await deletarVendaDefinitivo(venda.id);
-      setVendas(prev => prev.filter(item => item.id !== venda.id));
+      await deletarVendaDefinitivo(vendaParaExcluir.id);
+      setVendas(prev => prev.filter(item => item.id !== vendaParaExcluir.id));
+      setVendaParaExcluir(null);
+      setSucesso('Venda excluída definitivamente.');
     } catch (error) {
       setErro(error.message || 'Erro ao excluir venda definitivamente.');
     } finally {
@@ -92,6 +142,13 @@ function VendasLixeiraPage() {
 
   return (
     <LayoutPrivado>
+      <ConfirmarExclusaoDefinitivaModal
+        venda={vendaParaExcluir}
+        excluindo={processandoId === vendaParaExcluir?.id}
+        onClose={() => setVendaParaExcluir(null)}
+        onConfirm={confirmarExclusaoDefinitiva}
+      />
+
       <div className="vendas-page">
         <div className="vendas-toolbar vendas-toolbar--trash">
           <form className="search-box" onSubmit={handleBuscar}>
@@ -112,6 +169,7 @@ function VendasLixeiraPage() {
           {vendas.length} vendas na lixeira
         </div>
 
+        {sucesso && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucesso}</div>}
         {erro && <div className="alert-error alert-timed alert-timed--error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         <div className="list-table" style={{ margin: 0 }}>
@@ -168,7 +226,7 @@ function VendasLixeiraPage() {
                             <button
                               className="btn btn-sm btn-ghost vendas-trash-delete"
                               disabled={processandoId === venda.id}
-                              onClick={() => handleExcluirDefinitivo(venda)}
+                              onClick={() => setVendaParaExcluir(venda)}
                             >
                               <I.Trash size={13} /> Excluir
                             </button>

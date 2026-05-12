@@ -26,10 +26,12 @@ function parsePermissoes(permissoes) {
   return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
 }
 
-function ModalPermissoes({ usuarioId, onClose, onSave }) {
+function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   const [usuario, setUsuario] = useState(null);
   const [permissoes, setPermissoes] = useState([]);
   const [selecionadas, setSelecionadas] = useState([]);
+  const [usuarioOrigemId, setUsuarioOrigemId] = useState('');
+  const [avisoCopia, setAvisoCopia] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -56,6 +58,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
   }, [usuarioId]);
 
   function toggle(chave, opcoes = {}) {
+    setAvisoCopia('');
     setSelecionadas(prev => {
       const selecionada = prev.includes(chave);
 
@@ -66,6 +69,30 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
 
       return selecionada ? prev.filter(c => c !== chave) : [...prev, chave];
     });
+  }
+
+  function getPermissoesCopiaveis(usuarioOrigem) {
+    const chavesDisponiveis = permissoes.map(permissao => permissao.chave);
+
+    if (usuarioOrigem?.role?.nome === 'admin') {
+      return chavesDisponiveis;
+    }
+
+    const chavesOrigem = new Set(parsePermissoes(usuarioOrigem?.permissoes));
+    return chavesDisponiveis.filter(chave => chavesOrigem.has(chave));
+  }
+
+  function copiarPermissoes() {
+    const usuarioOrigem = usuarios.find(item => String(item.id) === String(usuarioOrigemId));
+
+    if (!usuarioOrigem) {
+      setAvisoCopia('');
+      return;
+    }
+
+    const proximasPermissoes = getPermissoesCopiaveis(usuarioOrigem);
+    setSelecionadas(proximasPermissoes);
+    setAvisoCopia(`Permissões de ${usuarioOrigem.nome} copiadas. Revise e salve para aplicar.`);
   }
 
   async function handleSave() {
@@ -84,6 +111,7 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
   const isAdmin = usuario?.role?.nome === 'admin';
   const gruposPermissoesCompartilhados = montarGruposPermissoesCompartilhados(permissoes);
   const totalSelecionadas = selecionadas.length;
+  const usuariosOrigem = usuarios.filter(item => Number(item.id) !== Number(usuarioId));
 
   return (
     <div
@@ -118,6 +146,25 @@ function ModalPermissoes({ usuarioId, onClose, onSave }) {
             </div>
           ) : (
             <>
+              <div className="permissions-copy">
+                <div className="permissions-copy__field">
+                  <label>Copiar permissões de</label>
+                  <select value={usuarioOrigemId} onChange={event => setUsuarioOrigemId(event.target.value)}>
+                    <option value="">Selecione um usuário</option>
+                    {usuariosOrigem.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.nome} - {item.role?.nome || 'Sem perfil'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button className="btn" type="button" onClick={copiarPermissoes} disabled={!usuarioOrigemId}>
+                  <I.Users size={14} /> Copiar
+                </button>
+              </div>
+
+              {avisoCopia && <div className="permissions-copy__notice">{avisoCopia}</div>}
+
               <div className="permissions-grid">
                 {gruposPermissoesCompartilhados.map(grupo => (
                   <PermissaoGrupoCompartilhado
@@ -232,6 +279,7 @@ function Usuarios() {
       {gerenciandoId !== null && (
         <ModalPermissoes
           usuarioId={gerenciandoId}
+          usuarios={usuarios}
           onClose={() => setGerenciandoId(null)}
           onSave={handleSavePermissoes}
         />

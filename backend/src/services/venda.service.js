@@ -1638,6 +1638,8 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
         trx
       });
 
+      await vendaNotificacaoParadaService.desativarNotificacaoVendaParada(id, statusAnterior, trx);
+
       return atualizada;
     });
 
