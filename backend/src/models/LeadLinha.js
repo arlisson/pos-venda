@@ -21,6 +21,9 @@ class LeadLinha extends Model {
         futuro_cliente_retorno: { type: ['string', 'object', 'null'] },
         futuro_cliente_marcado_em: { type: ['string', 'object', 'null'] },
         futuro_cliente_marcado_por_id: { type: ['integer', 'null'] },
+        futuro_cliente_excluido_em: { type: ['string', 'object', 'null'] },
+        futuro_cliente_excluir_definitivo_em: { type: ['string', 'object', 'null'] },
+        futuro_cliente_excluido_por_id: { type: ['integer', 'null'] },
         created_at: { type: ['string', 'object'] },
         updated_at: { type: ['string', 'object'] }
       }
@@ -54,6 +57,14 @@ class LeadLinha extends Model {
         modelClass: Usuario,
         join: {
           from: 'lead_linhas.atribuido_para_id',
+          to: 'usuarios.id'
+        }
+      },
+      futuroClienteExcluidoPor: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Usuario,
+        join: {
+          from: 'lead_linhas.futuro_cliente_excluido_por_id',
           to: 'usuarios.id'
         }
       }

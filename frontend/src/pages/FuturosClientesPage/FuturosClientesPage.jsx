@@ -5,10 +5,14 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   atualizarCampoLeadRecebido,
+  excluirFuturoCliente,
+  excluirFuturoClienteDefinitivo,
   listarFuturosClientesLeads,
+  listarFuturosClientesLixeira,
   listarMeusLeadEnvios,
   listarMinhasLeadLinhas,
-  marcarFuturoClienteLead
+  marcarFuturoClienteLead,
+  restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
 import './FuturosClientesPage.css';
 
@@ -166,6 +170,47 @@ function formatarDataHora(valor) {
     day: '2-digit', month: '2-digit', year: '2-digit',
     hour: '2-digit', minute: '2-digit'
   });
+}
+
+function formatarData(valor) {
+  if (!valor) return '-';
+  const d = new Date(String(valor).replace(' ', 'T'));
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('pt-BR');
+}
+
+function isFuturoClienteNaLixeira(linha) {
+  return Boolean(linha?.futuro_cliente && linha?.futuro_cliente_excluido_em);
+}
+
+function isFuturoClienteAtivo(linha) {
+  return Boolean(linha?.futuro_cliente && !linha?.futuro_cliente_excluido_em);
+}
+
+function renderLeadStatus(linha) {
+  if (isFuturoClienteNaLixeira(linha)) {
+    return (
+      <span className="lead-status-cell">
+        <span className="pill lead-status-pill muted">Na lixeira</span>
+      </span>
+    );
+  }
+
+  if (isFuturoClienteAtivo(linha)) {
+    return (
+      <span className="lead-status-cell">
+        <span className="pill success lead-status-pill">
+          <span className="pill-dot"></span>
+          Futuro cliente
+        </span>
+        {linha.futuro_cliente_retorno && (
+          <span className="lead-status-return">Retorno: {formatarDataHora(linha.futuro_cliente_retorno)}</span>
+        )}
+      </span>
+    );
+  }
+
+  return <span className="muted">-</span>;
 }
 
 function formatarParaDatetimeLocal(valor) {
@@ -532,6 +577,8 @@ function LeadsRecebidosView() {
   }, [enviosSelecionados, linhas]);
 
   const totalPaginas = Math.max(1, Math.ceil(totalLinhas / 200));
+  const totalColunasTabela = colunas.length + 2 + ((podeRegistrarVenda || podeRegistrarFuturo) ? 1 : 0);
+  const totalFuturosClientesAtivos = linhas.filter(isFuturoClienteAtivo).length;
 
   function toggleEnvio(id) {
     setSelecionados(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -653,7 +700,10 @@ function LeadsRecebidosView() {
 
       <div className="clientes-leads-toolbar">
         <div className="clientes-toolbar__meta">
-          {totalLinhas} lead(s) recebidos
+          <span>{totalLinhas} lead(s) recebidos</span>
+          <span className="clientes-toolbar__meta-secondary">
+            {totalFuturosClientesAtivos} futuro(s) cliente(s)
+          </span>
         </div>
         <div className="clientes-leads-actions">
           <form className="clientes-search" onSubmit={event => event.preventDefault()}>
@@ -672,27 +722,30 @@ function LeadsRecebidosView() {
             <thead>
               <tr>
                 <th>Envio</th>
+                <th>Status</th>
                 {(podeRegistrarVenda || podeRegistrarFuturo) && <th>Adicionar</th>}
                 {colunas.map(coluna => <th key={getColunaKeyLeadRecebido(coluna)}>{getLabelColunaLeadRecebido(coluna)}</th>)}
               </tr>
             </thead>
             <tbody>
               {carregando ? (
-                <tr><td colSpan={colunas.length + 2} className="muted" style={{ textAlign: 'center', padding: 40 }}>Carregando leads...</td></tr>
+                <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Carregando leads...</td></tr>
               ) : linhas.length === 0 ? (
-                <tr><td colSpan={colunas.length + 2} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
+                <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
               ) : (
                 linhas.map(linha => (
-                  <tr key={linha.id} className={linha.futuro_cliente ? 'lead-row-futuro' : ''}>
+                  <tr key={linha.id} className={isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : ''}>
                     <td><span className="tag">{linha.envio?.nome || '-'}</span></td>
+                    <td>{renderLeadStatus(linha)}</td>
                     {(podeRegistrarVenda || podeRegistrarFuturo) && (
                       <td>
                         <button
                           type="button"
-                          className="lead-register-sale-btn"
+                          className={`lead-register-sale-btn ${isFuturoClienteNaLixeira(linha) ? 'is-disabled' : ''}`}
+                          disabled={isFuturoClienteNaLixeira(linha)}
                           onClick={() => setModalAdicionar(linha)}
                         >
-                          {linha.futuro_cliente ? 'Futuro cliente' : 'Adicionar'}
+                          {isFuturoClienteNaLixeira(linha) ? 'Na lixeira' : isFuturoClienteAtivo(linha) ? 'Ver futuro cliente' : 'Adicionar'}
                         </button>
                       </td>
                     )}
@@ -860,6 +913,51 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
 
 // ─── Aba: futuros clientes ────────────────────────────────────────────────────
 
+function ConfirmarFuturoClienteLixeiraModal({ linha, tipo, processando, onClose, onConfirm }) {
+  if (!linha || !tipo) return null;
+
+  const definitivo = tipo === 'definitivo';
+  const titulo = definitivo ? 'Excluir definitivamente?' : 'Enviar futuro cliente para lixeira?';
+  const texto = definitivo
+    ? 'Este futuro cliente sera removido da lista permanentemente. A linha original do lead sera preservada.'
+    : 'Este futuro cliente ficara na lixeira por 30 dias antes da exclusao definitiva.';
+
+  return (
+    <div className="modal-overlay" onClick={event => !processando && event.target === event.currentTarget && onClose()}>
+      <div className="modal trash-confirm-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">{titulo}</div>
+              <div className="modal-sub">{linha.envio?.nome || 'Lead'} - #{linha.id}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={processando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="trash-warning">
+            <I.AlertTriangle size={20} />
+            <div>
+              <strong>{definitivo ? 'Esta acao nao pode ser desfeita.' : 'O item podera ser restaurado pela lixeira.'}</strong>
+              <span>{texto}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={processando}>Cancelar</button>
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={processando}>
+            {processando ? 'Processando...' : definitivo ? 'Excluir definitivamente' : 'Enviar para lixeira'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FuturosClientesMainView() {
   const navigate = useNavigate();
   const [linhas, setLinhas] = useState([]);
@@ -868,13 +966,21 @@ function FuturosClientesMainView() {
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [linhaAtiva, setLinhaAtiva] = useState(null);
+  const [modoLixeira, setModoLixeira] = useState(false);
+  const [processandoId, setProcessandoId] = useState(null);
+  const [confirmacaoLixeira, setConfirmacaoLixeira] = useState(null);
 
-  /* eslint-disable react-hooks/exhaustive-deps */
+  const usuario = useMemo(() => getUsuarioLocal(), []);
+  const podeGerenciar = temPermissao(usuario, 'futuros_clientes_registrar');
+
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     let cancelado = false;
     setCarregando(true);
-    listarFuturosClientesLeads({ page: pagina, page_size: 50, busca })
+    const listar = modoLixeira ? listarFuturosClientesLixeira : listarFuturosClientesLeads;
+    listar({ page: pagina, page_size: 50, busca })
       .then(data => {
         if (!cancelado) {
           setLinhas(data.data || []);
@@ -884,8 +990,20 @@ function FuturosClientesMainView() {
       .catch(error => setErro(error.message || 'Erro ao carregar futuros clientes.'))
       .finally(() => !cancelado && setCarregando(false));
     return () => { cancelado = true; };
-  }, [pagina, busca]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+  }, [pagina, busca, modoLixeira]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
+  useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
 
   const colunasDados = useMemo(() => {
     const mapa = new Map();
@@ -898,10 +1016,78 @@ function FuturosClientesMainView() {
   }, [linhas]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / 50));
+  const totalColunasTabela = colunasDados.length + 4 + (modoLixeira ? 2 : 0) + (podeGerenciar ? 1 : 0);
 
   function handleAtualizado(linhaAtualizada) {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
     setLinhaAtiva(null);
+  }
+
+  function alternarModoLixeira(proximoModo) {
+    setModoLixeira(proximoModo);
+    setPagina(1);
+    setLinhaAtiva(null);
+    setErro('');
+    setSucesso('');
+  }
+
+  async function confirmarMoverParaLixeira() {
+    const linha = confirmacaoLixeira?.linha;
+    if (!linha) return;
+
+    setProcessandoId(linha.id);
+    setErro('');
+    setSucesso('');
+
+    try {
+      await excluirFuturoCliente(linha.id);
+      setLinhas(prev => prev.filter(item => item.id !== linha.id));
+      setTotal(prev => Math.max(0, prev - 1));
+      setConfirmacaoLixeira(null);
+      setSucesso('Futuro cliente enviado para a lixeira.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao enviar futuro cliente para a lixeira.');
+    } finally {
+      setProcessandoId(null);
+    }
+  }
+
+  async function handleRestaurar(linha) {
+    setProcessandoId(linha.id);
+    setErro('');
+    setSucesso('');
+
+    try {
+      await restaurarFuturoCliente(linha.id);
+      setLinhas(prev => prev.filter(item => item.id !== linha.id));
+      setTotal(prev => Math.max(0, prev - 1));
+      setSucesso('Futuro cliente restaurado.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao restaurar futuro cliente.');
+    } finally {
+      setProcessandoId(null);
+    }
+  }
+
+  async function confirmarExclusaoDefinitiva() {
+    const linha = confirmacaoLixeira?.linha;
+    if (!linha) return;
+
+    setProcessandoId(linha.id);
+    setErro('');
+    setSucesso('');
+
+    try {
+      await excluirFuturoClienteDefinitivo(linha.id);
+      setLinhas(prev => prev.filter(item => item.id !== linha.id));
+      setTotal(prev => Math.max(0, prev - 1));
+      setConfirmacaoLixeira(null);
+      setSucesso('Futuro cliente excluido definitivamente.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao excluir futuro cliente definitivamente.');
+    } finally {
+      setProcessandoId(null);
+    }
   }
 
   function handleRegistrarVenda(vendaPreenchida) {
@@ -919,6 +1105,14 @@ function FuturosClientesMainView() {
 
   return (
     <div className="futuros-clientes-view">
+      <ConfirmarFuturoClienteLixeiraModal
+        linha={confirmacaoLixeira?.linha}
+        tipo={confirmacaoLixeira?.tipo}
+        processando={processandoId === confirmacaoLixeira?.linha?.id}
+        onClose={() => setConfirmacaoLixeira(null)}
+        onConfirm={confirmacaoLixeira?.tipo === 'definitivo' ? confirmarExclusaoDefinitiva : confirmarMoverParaLixeira}
+      />
+
       {linhaAtiva && (
         <FuturoClienteDetalheModal
           linha={linhaAtiva}
@@ -928,19 +1122,31 @@ function FuturosClientesMainView() {
         />
       )}
       <div className="clientes-leads-toolbar">
-        <div className="clientes-toolbar__meta">{total} futuro(s) cliente(s)</div>
+        <form className="clientes-search" onSubmit={event => event.preventDefault()}>
+          <I.Search size={14} />
+          <input
+            value={busca}
+            onChange={event => { setBusca(event.target.value); setPagina(1); }}
+            placeholder={modoLixeira ? 'Buscar na lixeira...' : 'Buscar futuros clientes...'}
+          />
+        </form>
         <div className="clientes-leads-actions">
-          <form className="clientes-search" onSubmit={event => event.preventDefault()}>
-            <I.Search size={14} />
-            <input
-              value={busca}
-              onChange={event => { setBusca(event.target.value); setPagina(1); }}
-              placeholder="Buscar futuros clientes..."
-            />
-          </form>
+          <div className="clientes-toolbar__meta">
+            {total} {modoLixeira ? 'na lixeira' : 'futuro(s) cliente(s)'}
+          </div>
+          {modoLixeira ? (
+            <button type="button" className="btn" onClick={() => alternarModoLixeira(false)}>
+              <I.Return size={14} /> Futuros clientes
+            </button>
+          ) : podeGerenciar ? (
+            <button type="button" className="btn btn-danger" onClick={() => alternarModoLixeira(true)}>
+              <I.Trash size={14} /> Lixeira
+            </button>
+          ) : null}
         </div>
       </div>
 
+      {sucesso && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 4 }}>{sucesso}</div>}
       {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
 
       <div className="list-table futuros-clientes-table" style={{ margin: 0 }}>
@@ -951,28 +1157,39 @@ function FuturosClientesMainView() {
                 <th>Envio</th>
                 <th>Notas</th>
                 <th>Retorno</th>
-                <th>Marcado em</th>
+                <th>{modoLixeira ? 'Enviado para lixeira' : 'Marcado em'}</th>
+                {modoLixeira && (
+                  <>
+                    <th>Exclusao definitiva</th>
+                    <th>Enviado por</th>
+                  </>
+                )}
                 {colunasDados.map(chave => <th key={chave}>{chave}</th>)}
+                {podeGerenciar && <th>{modoLixeira ? 'Acoes' : 'Excluir'}</th>}
               </tr>
             </thead>
             <tbody>
               {carregando ? (
                 <tr>
-                  <td colSpan={colunasDados.length + 4} className="muted" style={{ textAlign: 'center', padding: 40 }}>
-                    Carregando futuros clientes...
+                  <td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    {modoLixeira ? 'Carregando lixeira...' : 'Carregando futuros clientes...'}
                   </td>
                 </tr>
               ) : linhas.length === 0 ? (
                 <tr>
-                  <td colSpan={colunasDados.length + 4} className="muted" style={{ textAlign: 'center', padding: 40 }}>
-                    Nenhum futuro cliente cadastrado.
+                  <td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    {modoLixeira ? 'Nenhum futuro cliente na lixeira.' : 'Nenhum futuro cliente cadastrado.'}
                   </td>
                 </tr>
               ) : (
                 linhas.map(linha => {
                   const dados = linha.dados_json || {};
                   return (
-                    <tr key={linha.id} style={{ cursor: 'pointer' }} onClick={() => setLinhaAtiva(linha)}>
+                    <tr
+                      key={linha.id}
+                      style={{ cursor: modoLixeira ? 'default' : 'pointer' }}
+                      onClick={() => !modoLixeira && setLinhaAtiva(linha)}
+                    >
                       <td><span className="tag">{linha.envio?.nome || '-'}</span></td>
                       <td>
                         <span
@@ -990,11 +1207,64 @@ function FuturosClientesMainView() {
                           </span>
                         ) : '-'}
                       </td>
-                      <td>{formatarDataHora(linha.futuro_cliente_marcado_em)}</td>
+                      <td>{formatarDataHora(modoLixeira ? linha.futuro_cliente_excluido_em : linha.futuro_cliente_marcado_em)}</td>
+                      {modoLixeira && (
+                        <>
+                          <td>{formatarData(linha.futuro_cliente_excluir_definitivo_em)}</td>
+                          <td><span className="tag">{linha.futuroClienteExcluidoPor?.nome || '-'}</span></td>
+                        </>
+                      )}
                       {colunasDados.map(chave => {
                         const valor = dados[`${chave} (atualizado)`] ?? dados[chave] ?? '';
                         return <td key={chave}>{valor || '-'}</td>;
                       })}
+                      {podeGerenciar && (
+                        <td className="futuros-clientes-delete-col">
+                          <div className="futuros-clientes-actions">
+                            {modoLixeira ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  disabled={processandoId === linha.id}
+                                  onClick={event => {
+                                    event.stopPropagation();
+                                    handleRestaurar(linha);
+                                  }}
+                                >
+                                  <I.Return size={13} /> Restaurar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-icon btn-ghost btn-danger-icon"
+                                  title="Excluir definitivamente"
+                                  disabled={processandoId === linha.id}
+                                  onClick={event => {
+                                    event.stopPropagation();
+                                    setConfirmacaoLixeira({ linha, tipo: 'definitivo' });
+                                  }}
+                                >
+                                  <I.Trash size={13} />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-icon btn-ghost btn-danger-icon"
+                                title="Enviar para lixeira"
+                                aria-label="Enviar para lixeira"
+                                disabled={processandoId === linha.id}
+                                onClick={event => {
+                                  event.stopPropagation();
+                                  setConfirmacaoLixeira({ linha, tipo: 'lixeira' });
+                                }}
+                              >
+                                <I.Trash size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })
