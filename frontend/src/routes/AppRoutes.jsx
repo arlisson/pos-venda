@@ -19,6 +19,7 @@ import Clientes from '../pages/Clientes/Clientes';
 import ClienteFormPage from '../pages/Clientes/ClienteFormPage';
 import ClientesLixeiraPage from '../pages/Clientes/ClientesLixeiraPage';
 import AdminLeadsPage from '../pages/AdminLeadsPage/AdminLeadsPage';
+import FuturosClientesPage from '../pages/FuturosClientesPage/FuturosClientesPage';
 import FechamentoMensalPage from '../pages/FechamentoMensalPage/FechamentoMensalPage';
 import '../pages/HistoricoPage/HistoricoPage.css';
 
@@ -89,6 +90,11 @@ function AppRoutes() {
       <Route
         path="/admin/leads"
         element={<PrivateRoute permission="gerenciar_leads"><AdminLeadsPage /></PrivateRoute>}
+      />
+
+      <Route
+        path="/futuros-clientes"
+        element={<PrivateRoute permission={['futuros_clientes_ver']}><FuturosClientesPage /></PrivateRoute>}
       />
 
       <Route path="/retornos" element={<PrivateRoute><RetornosPage /></PrivateRoute>} />

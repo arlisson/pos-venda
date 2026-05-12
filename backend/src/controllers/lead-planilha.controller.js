@@ -183,6 +183,25 @@ async function exportarMinhas(req, res) {
   }
 }
 
+async function marcarFuturoCliente(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarComoFuturoCliente(req.params.id, req.usuario.id, req.body || {}));
+  } catch (error) {
+    console.error(error);
+    const statusCode = error.statusCode || 400;
+    return res.status(statusCode).json({ message: error.message || 'Erro ao marcar futuro cliente.' });
+  }
+}
+
+async function listarFuturosClientes(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.listarFuturosClientes(req.query, req.usuario.id));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar futuros clientes.' });
+  }
+}
+
 module.exports = {
   index,
   store,
@@ -200,5 +219,7 @@ module.exports = {
   meusEnvios,
   minhasLinhas,
   atualizarMeuCampo,
-  exportarMinhas
+  exportarMinhas,
+  marcarFuturoCliente,
+  listarFuturosClientes
 };

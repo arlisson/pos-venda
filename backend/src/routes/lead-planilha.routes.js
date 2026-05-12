@@ -10,7 +10,24 @@ router.use(authMiddleware);
 
 router.get('/me/envios', leadPlanilhaController.meusEnvios);
 router.get('/me/linhas', leadPlanilhaController.minhasLinhas);
+router.get('/me/futuros-clientes', exigirUmaPermissao(['futuros_clientes_ver']), leadPlanilhaController.listarFuturosClientes);
 router.post('/me/exportar', leadPlanilhaController.exportarMinhas);
+router.post(
+  '/me/linhas/:id/futuro-cliente',
+  exigirUmaPermissao(['futuros_clientes_registrar']),
+  auditar({
+    acao: 'lead_linha.futuro_cliente_marcado',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: (req, resultado) => ({
+      linha_id: req.params.id,
+      notas: req.body?.notas,
+      retorno: req.body?.retorno,
+      usuario_id: req.usuario?.id
+    })
+  }),
+  leadPlanilhaController.marcarFuturoCliente
+);
 router.put(
   '/me/linhas/:id/campo-atualizado',
   auditar({

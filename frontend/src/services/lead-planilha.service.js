@@ -121,3 +121,11 @@ export function exportarMinhasLeadLinhas(dados = {}) {
 export function atualizarCampoLeadRecebido(linhaId, dados) {
   return apiPut(`/lead-planilhas/me/linhas/${linhaId}/campo-atualizado`, dados);
 }
+
+export function marcarFuturoClienteLead(linhaId, dados) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/futuro-cliente`, dados);
+}
+
+export function listarFuturosClientesLeads(filtros = {}) {
+  return apiGet(`/lead-planilhas/me/futuros-clientes${montarQuery(filtros)}`);
+}

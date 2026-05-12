@@ -36,6 +36,7 @@ const routeConfigs = [
   { path: '/admin/campanhas', title: 'Campanhas', sub: 'Configure desafios e recompensas do time', id: 'campanhas' },
   { path: '/admin/fechamento-mensal', title: 'Fechamento Mensal', sub: 'Consolide contratos, UGRs e comissões do período', id: 'fechamento-mensal' },
   { path: '/admin/leads', title: 'Planilhas de leads', sub: 'Importe, filtre e distribua leads para vendedores', id: 'leads' },
+  { path: '/futuros-clientes', title: 'Futuros Clientes', sub: 'Leads marcados para acompanhamento futuro', id: 'futuros-clientes', end: true },
 ];
 
 function getRouteConfig(pathname) {
@@ -121,6 +122,7 @@ function LayoutPrivado({ children }) {
       dashboard: '/',
       vendas: '/vendas',
       clientes: '/clientes',
+      'futuros-clientes': '/futuros-clientes',
       funil: '/funil',
       aprovacoes: '/vendas/aprovacoes',
       retornos: '/retornos',

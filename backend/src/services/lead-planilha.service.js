@@ -1108,6 +1108,63 @@ async function exportarCsv(filtros, res, opcoes = {}) {
   res.end();
 }
 
+async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
+  const linha = await LeadLinha.query().findById(linhaId);
+  if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
+
+  if (Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Você não pode atualizar este lead.');
+  }
+
+  const notas = String(dados.notas || '').trim() || null;
+  const retorno = dados.retorno ? new Date(dados.retorno) : null;
+  if (retorno && isNaN(retorno.getTime())) throw criarHttpError(400, 'Data de retorno inválida.');
+
+  await LeadLinha.query().patchAndFetchById(linhaId, {
+    futuro_cliente: true,
+    futuro_cliente_notas: notas,
+    futuro_cliente_retorno: retorno ? retorno.toISOString() : null,
+    futuro_cliente_marcado_em: new Date().toISOString(),
+    futuro_cliente_marcado_por_id: usuarioId
+  });
+
+  const atualizada = await LeadLinha.query()
+    .findById(linhaId)
+    .withGraphFetched('[planilha, envio, atribuidoPara]')
+    .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
+
+  return { linha: formatarLinha(atualizada) };
+}
+
+async function listarFuturosClientes(filtros = {}, usuarioId) {
+  const page = Math.max(1, Number(filtros.page || 1));
+  const pageSize = Math.min(500, Math.max(1, Number(filtros.page_size || 50)));
+  const busca = String(filtros.busca || '').trim();
+
+  let query = LeadLinha.query()
+    .where('atribuido_para_id', usuarioId)
+    .where('futuro_cliente', true);
+
+  if (busca) {
+    query = query.whereRaw(`LOWER(dados_json) LIKE ?`, [`%${busca.toLowerCase()}%`]);
+  }
+
+  const total = await query.clone().resultSize();
+  const linhas = await query
+    .withGraphFetched('[planilha, envio]')
+    .orderBy('futuro_cliente_marcado_em', 'desc')
+    .orderBy('id', 'desc')
+    .offset((page - 1) * pageSize)
+    .limit(pageSize);
+
+  return {
+    data: linhas.map(formatarLinha),
+    total,
+    page,
+    page_size: pageSize
+  };
+}
+
 module.exports = {
   listarPlanilhas,
   buscarStatus,
@@ -1123,5 +1180,7 @@ module.exports = {
   listarEnviosDoUsuario,
   listarTodosEnvios,
   dividirLeads,
-  exportarCsv
+  exportarCsv,
+  marcarComoFuturoCliente,
+  listarFuturosClientes
 };

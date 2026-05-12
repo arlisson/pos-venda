@@ -16,6 +16,11 @@ class LeadLinha extends Model {
         dados_json: { type: ['object', 'string'] },
         atribuido_para_id: { type: ['integer', 'null'] },
         envio_id: { type: ['integer', 'null'] },
+        futuro_cliente: { type: ['boolean', 'integer'] },
+        futuro_cliente_notas: { type: ['string', 'null'] },
+        futuro_cliente_retorno: { type: ['string', 'object', 'null'] },
+        futuro_cliente_marcado_em: { type: ['string', 'object', 'null'] },
+        futuro_cliente_marcado_por_id: { type: ['integer', 'null'] },
         created_at: { type: ['string', 'object'] },
         updated_at: { type: ['string', 'object'] }
       }
