@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getCampanhas, getProgresso, getProgressoUsuarios, resgatarCampanha } from '../../services/campanha.service';
-import { obterResumoVendas } from '../../services/venda.service';
+import { listarVendas, obterResumoVendas } from '../../services/venda.service';
 import { listarNotificacoes, marcarNotificacaoLida } from '../../services/notificacao.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import * as I from '../../components/Icons';
@@ -212,6 +212,33 @@ function getRetornoPrazo(notificacao) {
   return formatarRetornoResumo(notificacao);
 }
 
+function getVendaRetornoTimestamp(venda) {
+  const valor = venda?.retornou_em || venda?.updated_at || venda?.ultima_atividade_em;
+  const data = new Date(String(valor || '').replace(' ', 'T'));
+
+  return Number.isNaN(data.getTime()) ? 0 : data.getTime();
+}
+
+function formatarDataRetornoVenda(venda) {
+  const timestamp = getVendaRetornoTimestamp(venda);
+  if (!timestamp) return 'Retorno registrado';
+
+  return new Date(timestamp).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function getVendaRetornoTitulo(venda) {
+  return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
+}
+
+function getVendaRetornoDescricao(venda) {
+  return venda?.motivo_retorno || 'Sem motivo informado';
+}
+
 function DashboardPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -226,6 +253,7 @@ function DashboardPage() {
   const [usuarioCampanhaFiltro, setUsuarioCampanhaFiltro] = useState('');
   const [usuarioCampanhaBusca, setUsuarioCampanhaBusca] = useState('');
   const [notificacoes, setNotificacoes] = useState([]);
+  const [vendasRetorno, setVendasRetorno] = useState([]);
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
   const podeVerRetornos = temPermissao(usuario, ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']);
   const podeVerCampanhasUsuarios = temPermissao(usuario, 'campanhas_ver_usuarios');
@@ -242,6 +270,12 @@ function DashboardPage() {
 
     if (podeVerResumoVendas || podeVerRetornos) {
       obterResumoVendas().then(setStats).catch(console.error);
+    }
+
+    if (podeVerRetornos) {
+      listarVendas({ status_funil: 'retorno' })
+        .then(data => setVendasRetorno(Array.isArray(data) ? data : []))
+        .catch(console.error);
     }
 
     getProgresso()
@@ -320,6 +354,9 @@ function DashboardPage() {
   const notificacoesRetorno = notificacoes
     .filter(notificacao => TIPOS_RETORNO_NOTA.includes(notificacao.tipo))
     .sort((a, b) => getRetornoTimestamp(a) - getRetornoTimestamp(b));
+  const retornosVenda = vendasRetorno
+    .slice()
+    .sort((a, b) => getVendaRetornoTimestamp(b) - getVendaRetornoTimestamp(a));
   const notificacoesProblema = notificacoes
     .filter(notificacao => TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo))
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
@@ -328,13 +365,16 @@ function DashboardPage() {
       key: 'retornos',
       title: 'Retornos',
       subtitle: 'Chips devolvidos',
-      count: notificacoesRetorno.length,
+      count: retornosVenda.length,
       variant: 'danger',
       icon: <I.AlertTriangle size={15} />,
-      items: notificacoesRetorno.slice(0, 3),
-      metric: notificacao => notificacao.tipo === 'nota_retorno_due' ? 'Retorno vencido' : getRetornoPrazo(notificacao),
+      items: retornosVenda.slice(0, 3),
+      getTitle: getVendaRetornoTitulo,
+      getDescription: getVendaRetornoDescricao,
+      metric: formatarDataRetornoVenda,
       actionLabel: 'Ver todos os retornos',
-      onAction: () => navigate('/retornos')
+      onAction: () => navigate('/retornos'),
+      onItemClick: () => navigate('/retornos')
     },
     {
       key: 'fidelidade',
@@ -344,9 +384,33 @@ function DashboardPage() {
       variant: 'warn',
       icon: <I.History size={15} />,
       items: notificacoesFidelidade.slice(0, 3),
+      getTitle: getNotificacaoTitulo,
+      getDescription: getNotificacaoDescricao,
       metric: getFidelidadePrazo,
       actionLabel: 'Iniciar abordagem de renovação',
-      onAction: () => navigate('/clientes?fidelidade=alerta')
+      onAction: () => navigate('/clientes?fidelidade=alerta'),
+      onItemClick: handleReadNotification
+    },
+    {
+      key: 'ligacoes',
+      title: 'Ligacoes marcadas',
+      subtitle: 'Retornos de contato',
+      count: notificacoesRetorno.length,
+      variant: 'contact',
+      icon: <I.Whatsapp size={15} />,
+      items: notificacoesRetorno.slice(0, 3),
+      getTitle: getNotificacaoTitulo,
+      getDescription: getNotificacaoDescricao,
+      metric: notificacao => notificacao.tipo === 'nota_retorno_due' ? 'Ligacao vencida' : getRetornoPrazo(notificacao),
+      actionLabel: 'Ver contatos marcados',
+      onAction: () => {
+        if (notificacoesRetorno[0]) {
+          handleReadNotification(notificacoesRetorno[0]);
+          return;
+        }
+        navigate('/vendas');
+      },
+      onItemClick: handleReadNotification
     },
     {
       key: 'problemas',
@@ -356,6 +420,8 @@ function DashboardPage() {
       variant: 'info',
       icon: <I.AlertTriangle size={15} />,
       items: notificacoesProblema.slice(0, 3),
+      getTitle: getNotificacaoTitulo,
+      getDescription: getNotificacaoDescricao,
       metric: notificacao => formatarPrazoRelativo(notificacao.updated_at),
       actionLabel: 'Resolver pendências',
       onAction: () => {
@@ -364,7 +430,8 @@ function DashboardPage() {
           return;
         }
         navigate('/vendas');
-      }
+      },
+      onItemClick: handleReadNotification
     }
   ];
   const proximaFidelidade = notificacoesFidelidade[0];
@@ -441,7 +508,7 @@ function DashboardPage() {
           </div>
         )}
 
-        {(notificacoesFidelidade.length > 0 || notificacoesRetorno.length > 0 || notificacoesProblema.length > 0) && (
+        {(notificacoesFidelidade.length > 0 || retornosVenda.length > 0 || notificacoesRetorno.length > 0 || notificacoesProblema.length > 0) && (
           <section className="home-notifications">
             <div className="home-notifications__header">
               <div>
@@ -469,11 +536,11 @@ function DashboardPage() {
                       <button
                         type="button"
                         key={notificacao.destinatario_id || notificacao.id}
-                        className={`home-notification-card__item ${notificacao.lida ? '' : 'is-unread'}`}
-                        onClick={() => handleReadNotification(notificacao)}
+                        className={`home-notification-card__item ${notificacao.lida === false ? 'is-unread' : ''}`}
+                        onClick={() => card.onItemClick(notificacao)}
                       >
-                        <strong>{getNotificacaoTitulo(notificacao)}</strong>
-                        <span>{getNotificacaoDescricao(notificacao)}</span>
+                        <strong>{card.getTitle(notificacao)}</strong>
+                        <span>{card.getDescription(notificacao)}</span>
                         <em>{card.metric(notificacao)}</em>
                       </button>
                     ))}

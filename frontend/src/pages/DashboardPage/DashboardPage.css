@@ -45,7 +45,7 @@
 
 .home-notifications__list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -69,13 +69,28 @@
 }
 
 .home-notification-card--warn {
-  --card-color: var(--warn);
-  --card-soft: var(--warn-bg);
+  --card-color: #e87900;
+  --card-soft: #fff1bf;
+}
+
+.home-notification-card--warn .home-notification-card__icon,
+.home-notification-card--warn .home-notification-card__count,
+.home-notification-card--warn .home-notification-card__item em {
+  color: #d97706;
+}
+
+.home-notification-card--warn .home-notification-card__action {
+  color: #fff;
 }
 
 .home-notification-card--info {
   --card-color: #2563eb;
   --card-soft: #dbeafe;
+}
+
+.home-notification-card--contact {
+  --card-color: #0891b2;
+  --card-soft: #cffafe;
 }
 
 .home-notification-card__top {
