@@ -34,8 +34,8 @@
 
 .lead-doc-card {
   position: relative;
-  width: 132px;
-  min-width: 132px;
+  width: 148px;
+  min-width: 148px;
   min-height: 150px;
   padding: 8px;
   border: 1px solid transparent;
@@ -128,7 +128,6 @@
 .lead-doc-preview {
   width: 70px;
   height: 92px;
-  margin-right: 30px;
   padding: 12px 10px;
   border: 1px solid var(--border-strong);
   background: var(--surface);
