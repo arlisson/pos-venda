@@ -2366,7 +2366,9 @@ function VendasPage() {
   const [copiandoEmail, setCopiandoEmail] = useState(false);
   const [copiandoWhatsapp, setCopiandoWhatsapp] = useState(false);
   const [clienteRapidoAberto, setClienteRapidoAberto] = useState(false);
+  const [clienteRapidoInicial, setClienteRapidoInicial] = useState(null);
   const [, setResolverClienteRapido] = useState(null);
+  const [clientePreenchidoLead] = useState(() => location.state?.clientePreenchido || null);
   const usuarioLogado = getUsuarioLocal();
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, ['vendas_editar', 'pos_venda']);
@@ -2485,9 +2487,10 @@ function VendasPage() {
     return () => window.removeEventListener('pos-venda:vendas-atualizadas', handleVendasAtualizadas);
   }, []);
 
-  function abrirClienteRapido() {
+  function abrirClienteRapido(clienteInicial = null) {
     return new Promise(resolve => {
       setResolverClienteRapido(() => resolve);
+      setClienteRapidoInicial(clienteInicial);
       setClienteRapidoAberto(true);
     });
   }
@@ -2781,12 +2784,13 @@ function VendasPage() {
           onSave={salvarVenda}
           onSendToPosVenda={enviarPosVenda}
           onCreateClient={abrirClienteRapido}
+          clientePreenchido={clientePreenchidoLead}
         />
       )}
 
       {clienteRapidoAberto && (
         <ClienteModal
-          cliente={null}
+          cliente={clienteRapidoInicial}
           operadoras={operadoras}
           onClose={() => fecharClienteRapido(null)}
           onSave={salvarClienteRapido}

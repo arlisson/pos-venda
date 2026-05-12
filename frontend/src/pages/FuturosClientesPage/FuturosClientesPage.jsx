@@ -130,6 +130,20 @@ const CAMPOS_VENDA_LEAD = [
   { name: 'responsavel_nome', label: 'Responsável', aliases: ['responsavel', 'responsável', 'contato', 'rep'] }
 ];
 
+function montarClientePreenchido(vendaPreenchida) {
+  if (!vendaPreenchida) return null;
+  const nome = vendaPreenchida.nome || vendaPreenchida.razao_social || '';
+  const cnpj = vendaPreenchida.cnpj || '';
+  if (!nome && !cnpj) return null;
+  return {
+    nome,
+    cnpj,
+    razao_social: vendaPreenchida.razao_social || '',
+    whatsapp: vendaPreenchida.telefone || '',
+    email: vendaPreenchida.email || '',
+  };
+}
+
 function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
   const payload = usuario?.id ? { vendedora_id: String(usuario.id) } : {};
 
@@ -554,6 +568,7 @@ function LeadsRecebidosView() {
     navigate('/vendas?nova=1', {
       state: {
         vendaPreenchida,
+        clientePreenchido: montarClientePreenchido(vendaPreenchida),
         origemLead: {
           linha_id: modalAdicionar?.id,
           envio: modalAdicionar?.envio?.nome || ''
@@ -866,6 +881,7 @@ function FuturosClientesMainView() {
     navigate('/vendas?nova=1', {
       state: {
         vendaPreenchida,
+        clientePreenchido: montarClientePreenchido(vendaPreenchida),
         origemLead: {
           linha_id: linhaAtiva?.id,
           envio: linhaAtiva?.envio?.nome || ''

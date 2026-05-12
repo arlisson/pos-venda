@@ -2453,7 +2453,8 @@ function VendaModal({
   onSave,
   onSendToPosVenda,
   sendToPosVendaLabel = 'Enviar para o pós-venda',
-  onCreateClient
+  onCreateClient,
+  clientePreenchido = null
 }) {
   const [form, setForm] = useState(() => {
     const base = venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) };
@@ -2620,6 +2621,16 @@ function VendaModal({
       };
     });
   }
+
+  useEffect(() => {
+    if (!clientePreenchido?.cnpj || clientes.length === 0) return;
+    const cnpjDigitos = String(clientePreenchido.cnpj).replace(/\D/g, '');
+    if (!cnpjDigitos) return;
+    const clienteExistente = clientes.find(c => String(c.cnpj || '').replace(/\D/g, '') === cnpjDigitos);
+    if (clienteExistente && !form.cliente_id) {
+      atualizarClienteVenda(String(clienteExistente.id));
+    }
+  }, [clientes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function atualizarVendedorasVenda(ids) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
@@ -3382,7 +3393,7 @@ function VendaModal({
                         vendasEmAndamento={vendasEmAndamentoClienteSelecionado}
                         onChange={atualizarClienteVenda}
                         onCreateClient={async () => {
-                          const clienteCriado = await onCreateClient?.();
+                          const clienteCriado = await onCreateClient?.(clientePreenchido);
                           if (clienteCriado?.id) {
                             atualizarClienteVenda(String(clienteCriado.id));
                           }
