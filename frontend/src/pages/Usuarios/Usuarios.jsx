@@ -380,7 +380,7 @@ function Usuarios() {
                               </button>
                             </>
                           ) : podeExcluirUsuarios && Number(usuarioLogado?.id) !== Number(u.id) && (usuarioLogadoEhAdmin || u.role?.nome !== 'admin') ? (
-                            <button className="btn btn-icon btn-ghost" title="Excluir" onClick={() => handleDelete(u)}>
+                            <button className="btn btn-icon btn-ghost btn-danger-icon" title="Excluir" onClick={() => handleDelete(u)}>
                               <I.Trash size={13} />
                             </button>
                           ) : null}

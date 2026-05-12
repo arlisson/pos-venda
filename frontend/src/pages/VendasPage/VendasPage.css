@@ -354,9 +354,9 @@
 }
 
 .vendas-trash-delete:hover {
-  color: #dc2626;
-  border-color: #dc2626;
-  background: #fee2e2;
+  color: var(--danger);
+  border-color: #fecaca;
+  background: var(--danger-bg);
 }
 
 .filter-field {

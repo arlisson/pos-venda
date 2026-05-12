@@ -212,6 +212,16 @@
   height: 30px;
 }
 
+.config-edit {
+  color: var(--text-2);
+}
+
+.config-edit:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
 .config-danger {
   color: var(--danger);
 }

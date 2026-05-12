@@ -1075,7 +1075,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
                 ))}
               </select>
             )}
-            <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerItem(index)} title="Remover item">
+            <button type="button" className="btn btn-icon btn-ghost btn-danger-icon" onClick={() => removerItem(index)} title="Remover item">
               <I.Trash size={13} />
             </button>
           </div>
@@ -1212,7 +1212,7 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao 
             placeholder="(11) 99999-9999"
             maxLength={15}
           />
-          <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerNumero(index)} title="Remover número">
+          <button type="button" className="btn btn-icon btn-ghost btn-danger-icon" onClick={() => removerNumero(index)} title="Remover número">
             <I.Trash size={13} />
           </button>
         </div>
@@ -1423,7 +1423,7 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
             />
           </div>
           {linhasVisiveis > 1 && (
-            <button type="button" className="btn btn-icon btn-ghost" onClick={() => removerLinha(index)} title="Remover responsável">
+            <button type="button" className="btn btn-icon btn-ghost btn-danger-icon" onClick={() => removerLinha(index)} title="Remover responsável">
               <I.Trash size={13} />
             </button>
           )}

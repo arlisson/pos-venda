@@ -296,7 +296,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
                   <div className="note-card__actions">
                     <button
                       type="button"
-                      className="btn btn-icon btn-ghost"
+                      className="btn btn-icon btn-ghost btn-danger-icon"
                       title="Remover nota"
                       onClick={() => removerPendente(idx)}
                     >
@@ -374,7 +374,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
                       <button type="button" className="btn btn-icon btn-ghost" title="Editar nota" onClick={() => iniciarEdicao(nota)} disabled={salvando}>
                         <I.Edit size={13} />
                       </button>
-                      <button type="button" className="btn btn-icon btn-ghost" title="Excluir nota" onClick={() => removerNota(nota)} disabled={salvando}>
+                      <button type="button" className="btn btn-icon btn-ghost btn-danger-icon" title="Excluir nota" onClick={() => removerNota(nota)} disabled={salvando}>
                         <I.Trash size={13} />
                       </button>
                     </div>
