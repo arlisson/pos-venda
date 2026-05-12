@@ -18,6 +18,7 @@ class Cliente extends Model {
         nome: { type: 'string', minLength: 1, maxLength: 240 },
         razao_social: { type: ['string', 'null'], maxLength: 240 },
         cnpj: { type: ['string', 'null'], maxLength: 20 },
+        cnpj_digitos: { type: ['string', 'null'], maxLength: 14 },
         responsavel_tipo: { type: 'string', enum: ['adm', 'rl'] },
         responsavel_nome: { type: ['string', 'null'], maxLength: 240 },
         email: { type: ['string', 'null'], maxLength: 160 },

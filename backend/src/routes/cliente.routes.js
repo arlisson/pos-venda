@@ -4,7 +4,7 @@ const router = express.Router();
 const clienteController = require('../controllers/cliente.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { auditar } = require('../middlewares/audit.middleware');
-const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
+const { exigirAdmin, exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 
 router.use(authMiddleware);
 
@@ -25,6 +25,17 @@ router.post(
     dados: (req, resultado) => resultado
   }),
   clienteController.importarBaseAnterior
+);
+router.delete(
+  '/base-anterior',
+  exigirAdmin,
+  auditar({
+    acao: 'clientes.base_anterior_limpa',
+    entidade: 'clientes',
+    entidade_id: null,
+    dados: (req, resultado) => resultado
+  }),
+  clienteController.limparBaseAnterior
 );
 router.get('/:id', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), clienteController.show);
 router.post(

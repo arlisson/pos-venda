@@ -117,6 +117,19 @@ function formatarCnpj(valor) {
   return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
 }
 
+function normalizarCnpjObrigatorio(valor) {
+  const digitos = sanitizarCnpj(valor);
+
+  if (digitos.length !== 14) {
+    throw criarHttpError(400, 'Informe um CNPJ com 14 digitos.');
+  }
+
+  return {
+    cnpj: formatarCnpj(digitos),
+    cnpj_digitos: digitos
+  };
+}
+
 function textoCelula(valor) {
   if (valor === null || valor === undefined) return '';
   if (valor instanceof Date) return valor.toISOString().slice(0, 10);
@@ -403,6 +416,7 @@ function montarPayloadImportacao(dados, clienteExistente = null) {
     complementarCampo(payload, clienteExistente, 'nome', nome);
     complementarCampo(payload, clienteExistente, 'razao_social', dados.razao_social);
     complementarCampo(payload, clienteExistente, 'cnpj', dados.cnpj);
+    complementarCampo(payload, clienteExistente, 'cnpj_digitos', dados.cnpj_digitos);
     complementarCampo(payload, clienteExistente, 'responsavel_nome', dados.responsavel_nome);
     complementarCampo(payload, clienteExistente, 'email', dados.email);
     complementarCampo(payload, clienteExistente, 'whatsapp_ddd', telefoneWhatsapp.ddd);
@@ -418,6 +432,7 @@ function montarPayloadImportacao(dados, clienteExistente = null) {
     nome,
     razao_social: dados.razao_social || null,
     cnpj: dados.cnpj,
+    cnpj_digitos: dados.cnpj_digitos,
     responsavel_tipo: 'rl',
     responsavel_nome: dados.responsavel_nome || null,
     email: dados.email || null,
@@ -504,6 +519,12 @@ function montarPayload(dados) {
     payload.nome = String(payload.nome).trim();
   }
 
+  if (payload.cnpj !== undefined) {
+    const cnpjNormalizado = normalizarCnpjObrigatorio(payload.cnpj);
+    payload.cnpj = cnpjNormalizado.cnpj;
+    payload.cnpj_digitos = cnpjNormalizado.cnpj_digitos;
+  }
+
   if (!payload.responsavel_tipo) {
     payload.responsavel_tipo = 'rl';
   }
@@ -533,6 +554,29 @@ function montarPayload(dados) {
   }
 
   return payload;
+}
+
+async function buscarClienteDuplicadoPorCnpj(cnpjDigitos, ignorarId = null, trx = null) {
+  if (!cnpjDigitos) return null;
+
+  const query = Cliente.query(trx)
+    .select('id', 'nome', 'razao_social', 'cnpj', 'excluido_em')
+    .where('cnpj_digitos', cnpjDigitos);
+
+  if (ignorarId) {
+    query.whereNot('id', Number(ignorarId));
+  }
+
+  return query.first();
+}
+
+function lancarErroCnpjDuplicado(cliente) {
+  const nome = cliente.razao_social || cliente.nome || `#${cliente.id}`;
+  const sufixo = cliente.excluido_em
+    ? ' O cliente esta na lixeira; restaure-o para usar este CNPJ.'
+    : '';
+
+  throw criarHttpError(409, `Ja existe um cliente cadastrado com este CNPJ (${nome}).${sufixo}`);
 }
 
 function parsePermissoes(permissoes) {
@@ -680,6 +724,24 @@ async function adicionarResumoNotasClientes(clientes, usuarioId) {
   }));
 }
 
+function aplicarBuscaClientes(query, termo) {
+  const busca = `%${termo}%`;
+  const cnpjDigitos = sanitizarCnpj(termo);
+
+  query.where((builder) => {
+    builder
+      .where('nome', 'like', busca)
+      .orWhere('razao_social', 'like', busca)
+      .orWhere('cnpj', 'like', busca)
+      .orWhere('email', 'like', busca)
+      .orWhere('responsavel_nome', 'like', busca);
+
+    if (cnpjDigitos) {
+      builder.orWhere('cnpj_digitos', 'like', `%${cnpjDigitos}%`);
+    }
+  });
+}
+
 async function listarClientes(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoClientes(usuarioId);
   const query = Cliente.query()
@@ -694,16 +756,7 @@ async function listarClientes(filtros = {}, usuarioId) {
   }
 
   if (filtros.busca) {
-    const busca = `%${filtros.busca}%`;
-
-    query.where((builder) => {
-      builder
-        .where('nome', 'like', busca)
-        .orWhere('razao_social', 'like', busca)
-        .orWhere('cnpj', 'like', busca)
-        .orWhere('email', 'like', busca)
-        .orWhere('responsavel_nome', 'like', busca);
-    });
+    aplicarBuscaClientes(query, filtros.busca);
   }
 
   if (filtros.operadora_atual_id) {
@@ -800,8 +853,15 @@ async function usuarioPodeAcessarCliente(id, usuarioId, opcoes = {}) {
 }
 
 async function criarCliente(dados, usuarioId) {
+  const payload = montarPayload(dados);
+  const duplicado = await buscarClienteDuplicadoPorCnpj(payload.cnpj_digitos);
+
+  if (duplicado) {
+    lancarErroCnpjDuplicado(duplicado);
+  }
+
   const cliente = await Cliente.query().insertAndFetch({
-    ...montarPayload(dados),
+    ...payload,
     criado_por_id: usuarioId
   });
 
@@ -817,8 +877,15 @@ async function atualizarCliente(id, dados, usuarioId) {
     return null;
   }
 
+  const payload = montarPayload(dados);
+  const duplicado = await buscarClienteDuplicadoPorCnpj(payload.cnpj_digitos, id);
+
+  if (duplicado) {
+    lancarErroCnpjDuplicado(duplicado);
+  }
+
   const cliente = await Cliente.query().patchAndFetchById(id, {
-    ...montarPayload(dados),
+    ...payload,
     updated_at: new Date()
   });
 
@@ -869,16 +936,7 @@ async function listarClientesLixeira(filtros = {}, usuarioId) {
   aplicarEscopoClientes(query, usuarioId, escopo);
 
   if (filtros.busca) {
-    const busca = `%${filtros.busca}%`;
-
-    query.where((builder) => {
-      builder
-        .where('nome', 'like', busca)
-        .orWhere('razao_social', 'like', busca)
-        .orWhere('cnpj', 'like', busca)
-        .orWhere('email', 'like', busca)
-        .orWhere('responsavel_nome', 'like', busca);
-    });
+    aplicarBuscaClientes(query, filtros.busca);
   }
 
   return (await query).map(formatarCliente);
@@ -921,6 +979,67 @@ async function excluirClienteDefinitivo(id, usuarioId) {
     .delete();
 }
 
+async function limparClientesBaseAnterior() {
+  return Cliente.transaction(async trx => {
+    const clientes = await Cliente.query(trx)
+      .select('id')
+      .where('base_anterior_sistema', true);
+    const clienteIds = clientes.map(cliente => Number(cliente.id)).filter(Boolean);
+
+    if (clienteIds.length === 0) {
+      return { excluidos: 0 };
+    }
+
+    const notas = await trx('entidade_notas')
+      .select('id')
+      .where('entidade_tipo', 'cliente')
+      .whereIn('entidade_id', clienteIds);
+    const notaIds = notas.map(nota => Number(nota.id)).filter(Boolean);
+    const sourceKeys = clienteIds.map(id => `cliente_fidelidade:${id}`);
+
+    notaIds.forEach(id => {
+      sourceKeys.push(`nota_retorno_pre:${id}`);
+      sourceKeys.push(`nota_retorno_due:${id}`);
+    });
+
+    const notificacoesQuery = trx('notificacoes')
+      .select('id')
+      .where(builder => {
+        builder
+          .where(function () {
+            this.where('entidade', 'clientes').whereIn('entidade_id', clienteIds);
+          });
+
+        if (sourceKeys.length > 0) {
+          builder.orWhereIn('source_key', sourceKeys);
+        }
+      });
+    const notificacoes = await notificacoesQuery;
+    const notificacaoIds = notificacoes.map(notificacao => Number(notificacao.id)).filter(Boolean);
+
+    if (notificacaoIds.length > 0) {
+      await trx('notificacao_destinatarios')
+        .whereIn('notificacao_id', notificacaoIds)
+        .delete();
+      await trx('notificacoes')
+        .whereIn('id', notificacaoIds)
+        .delete();
+    }
+
+    if (notaIds.length > 0) {
+      await trx('entidade_notas')
+        .whereIn('id', notaIds)
+        .delete();
+    }
+
+    const excluidos = await Cliente.query(trx)
+      .whereIn('id', clienteIds)
+      .delete();
+
+    return { excluidos };
+  });
+}
+
 module.exports = {
   listarClientes,
   listarClientesLixeira,
@@ -930,6 +1049,7 @@ module.exports = {
   excluirCliente,
   restaurarCliente,
   excluirClienteDefinitivo,
+  limparClientesBaseAnterior,
   usuarioPodeAcessarCliente,
   previewImportacaoBaseAnterior,
   importarBaseAnterior

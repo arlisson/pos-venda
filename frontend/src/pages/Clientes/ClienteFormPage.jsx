@@ -325,6 +325,20 @@ function ClienteFormPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');
+
+    const cnpj = sanitizarCnpj(form.cnpj);
+    if (cnpj.length !== 14) {
+      setErro('Informe um CNPJ com 14 digitos.');
+      setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 digitos.' });
+      return;
+    }
+
+    if (!validarDigitosCnpj(cnpj)) {
+      setErro('CNPJ invalido.');
+      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+      return;
+    }
+
     setSalvando(true);
 
     try {
@@ -402,6 +416,7 @@ function ClienteFormPage() {
                         placeholder="00.000.000/0000-00"
                         inputMode="numeric"
                         maxLength={18}
+                        required
                       />
                       {/* Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes. */}
                       {cnpjStatus.mensagem && (

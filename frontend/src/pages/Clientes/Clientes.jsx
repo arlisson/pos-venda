@@ -7,6 +7,7 @@ import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   excluirCliente,
   importarBaseAnterior,
+  limparClientesBaseAnterior,
   listarClientes,
   previewImportacaoBaseAnterior
 } from '../../services/cliente.service';
@@ -670,6 +671,45 @@ function ConfirmarLixeiraModal({ cliente, excluindo, onClose, onConfirm }) {
   );
 }
 
+function ConfirmarLimpezaBaseModal({ aberto, limpando, onClose, onConfirm }) {
+  if (!aberto) return null;
+
+  return (
+    <div className="modal-overlay" onClick={event => !limpando && event.target === event.currentTarget && onClose()}>
+      <div className="modal trash-confirm-modal">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Limpar clientes da base?</div>
+              <div className="modal-sub">Clientes marcados como base anterior serao apagados.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={limpando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="trash-warning">
+            <I.AlertTriangle size={20} />
+            <div>
+              <strong>Esta acao apaga permanentemente os clientes da base anterior.</strong>
+              <span>As vendas vinculadas deixarao de apontar para esses clientes.</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={limpando}>Cancelar</button>
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={limpando}>
+            {limpando ? 'Limpando...' : 'Limpar clientes da base'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NotasClienteReadOnlyModal({ cliente, notas, carregando, erro, onClose }) {
   if (!cliente) return null;
 
@@ -911,6 +951,7 @@ function Clientes() {
   const podeCriar = temPermissao(usuario, 'clientes_criar');
   const podeEditar = temPermissao(usuario, 'clientes_editar');
   const podeExcluir = temPermissao(usuario, 'clientes_excluir');
+  const isAdmin = usuario?.role?.nome === 'admin';
 
   const [clientes, setClientes] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
@@ -931,8 +972,10 @@ function Clientes() {
   const [clienteModal, setClienteModal] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [importModalAberto, setImportModalAberto] = useState(false);
+  const [limparBaseModalAberto, setLimparBaseModalAberto] = useState(false);
   const [clienteParaLixeira, setClienteParaLixeira] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [limpandoBase, setLimpandoBase] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState('clientes');
   const [clienteNotasModal, setClienteNotasModal] = useState(null);
@@ -1139,6 +1182,22 @@ function Clientes() {
     }
   }
 
+  async function confirmarLimpezaBaseAnterior() {
+    setLimpandoBase(true);
+    setErro('');
+
+    try {
+      const resultado = await limparClientesBaseAnterior();
+      setLimparBaseModalAberto(false);
+      await carregarClientes(filtros);
+      setSucesso(`${resultado.excluidos || 0} cliente(s) da base anterior apagado(s).`);
+    } catch (error) {
+      setErro(error.message || 'Erro ao limpar clientes da base anterior.');
+    } finally {
+      setLimpandoBase(false);
+    }
+  }
+
   async function abrirNotasCliente(cliente) {
     setClienteNotasModal(cliente);
     setNotasCliente([]);
@@ -1178,6 +1237,13 @@ function Clientes() {
         excluindo={excluindo}
         onClose={() => setClienteParaLixeira(null)}
         onConfirm={confirmarExclusaoCliente}
+      />
+
+      <ConfirmarLimpezaBaseModal
+        aberto={limparBaseModalAberto}
+        limpando={limpandoBase}
+        onClose={() => setLimparBaseModalAberto(false)}
+        onConfirm={confirmarLimpezaBaseAnterior}
       />
 
       <NotasClienteReadOnlyModal
@@ -1293,7 +1359,7 @@ function Clientes() {
               <input
                 value={busca}
                 onChange={event => setBusca(event.target.value)}
-                placeholder="Buscar por nome, CNPJ, e-mail..."
+                placeholder="Buscar por nome, CNPJ sem pontos, e-mail..."
               />
             </form>
 
@@ -1307,6 +1373,11 @@ function Clientes() {
                 <button className="btn" type="button" onClick={() => setImportModalAberto(true)}>
                   <I.TableSheet size={14} /> Importar base
                 </button>
+                {isAdmin && (
+                  <button className="btn btn-danger" type="button" onClick={() => setLimparBaseModalAberto(true)}>
+                    <I.Trash size={14} /> Limpar clientes da base
+                  </button>
+                )}
                 <button className="btn btn-primary" type="button" onClick={abrirNovoCliente}>
                   <I.Plus size={14} /> Novo cliente
                 </button>

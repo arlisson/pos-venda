@@ -292,6 +292,21 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
       return;
     }
 
+    const cnpj = sanitizarCnpj(form.cnpj);
+    if (cnpj.length !== 14) {
+      setErro('Informe um CNPJ com 14 digitos.');
+      setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 digitos.' });
+      setAbaAtiva('cliente');
+      return;
+    }
+
+    if (!validarDigitosCnpj(cnpj)) {
+      setErro('CNPJ invalido.');
+      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+      setAbaAtiva('cliente');
+      return;
+    }
+
     setSalvando(true);
 
     try {
@@ -384,6 +399,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
                 placeholder="00.000.000/0000-00"
                 inputMode="numeric"
                 maxLength={18}
+                required
               />
               <button
                 type="button"

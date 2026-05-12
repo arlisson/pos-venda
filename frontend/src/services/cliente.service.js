@@ -52,6 +52,10 @@ export async function importarBaseAnterior(arquivo, mapeamento) {
   });
 }
 
+export async function limparClientesBaseAnterior() {
+  return apiDelete('/clientes/base-anterior');
+}
+
 export async function atualizarCliente(id, dados) {
   return apiPut(`/clientes/${id}`, dados);
 }

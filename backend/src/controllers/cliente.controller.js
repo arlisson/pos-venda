@@ -169,6 +169,19 @@ async function destroyDefinitivo(req, res) {
   }
 }
 
+async function limparBaseAnterior(req, res) {
+  try {
+    const resultado = await clienteService.limparClientesBaseAnterior();
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: error.message || 'Erro ao limpar clientes da base anterior.'
+    });
+  }
+}
+
 module.exports = {
   index,
   show,
@@ -179,5 +192,6 @@ module.exports = {
   destroy,
   lixeira,
   restore,
-  destroyDefinitivo
+  destroyDefinitivo,
+  limparBaseAnterior
 };

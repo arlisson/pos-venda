@@ -103,6 +103,28 @@ async function usuarioEhAdmin(usuarioId) {
   return usuario?.role?.nome === 'admin';
 }
 
+function exigirAdmin(req, res, next) {
+  return Promise.resolve()
+    .then(async () => {
+      const solicitanteEhAdmin = await usuarioEhAdmin(req.usuario?.id);
+
+      if (!solicitanteEhAdmin) {
+        return res.status(403).json({
+          message: 'Apenas administradores podem executar esta acao.'
+        });
+      }
+
+      return next();
+    })
+    .catch((error) => {
+      console.error(error);
+
+      return res.status(500).json({
+        message: 'Erro ao validar permissoes.'
+      });
+    });
+}
+
 function exigirAdminParaAlterarAdmin(req, res, next) {
   return Promise.resolve()
     .then(async () => {
@@ -161,6 +183,7 @@ function exigirGerenciamentoPermissoesSeNecessario(req, res, next) {
 }
 
 module.exports = {
+  exigirAdmin,
   exigirPermissao,
   exigirUmaPermissao,
   exigirAdminParaAlterarAdmin,
