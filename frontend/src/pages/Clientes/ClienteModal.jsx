@@ -158,7 +158,7 @@ function normalizarClienteForm(cliente) {
   };
 }
 
-function ClienteModal({ cliente, operadoras, onClose, onSave }) {
+function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'cliente' }) {
   const [form, setForm] = useState(() => normalizarClienteForm(cliente));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -166,7 +166,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
-  const [abaAtiva, setAbaAtiva] = useState('cliente');
+  const [abaAtiva, setAbaAtiva] = useState(initialTab);
   const [pendingNotas, setPendingNotas] = useState([]);
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
   const editando = Boolean(cliente);

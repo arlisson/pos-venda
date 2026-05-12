@@ -17,6 +17,7 @@ module.exports = {
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'pos_venda',
       dateStrings: true,
+      timezone: '+00:00',
       enableKeepAlive: true,
       keepAliveInitialDelay: 0
     },
@@ -39,6 +40,7 @@ module.exports = {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       dateStrings: true,
+      timezone: '+00:00',
       enableKeepAlive: true,
       keepAliveInitialDelay: 0
     },

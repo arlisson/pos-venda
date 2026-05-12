@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getCampanhas, getProgresso, getProgressoUsuarios, resgatarCampanha } from '../../services/campanha.service';
-import { listarVendas, obterResumoVendas } from '../../services/venda.service';
+import { buscarVendaPorId, enviarVendaParaPosVenda, listarVendas, listarVendedoras, obterResumoVendas } from '../../services/venda.service';
+import { buscarClientePorId, listarClientes } from '../../services/cliente.service';
+import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarNotificacoes, marcarNotificacaoLida } from '../../services/notificacao.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import ClienteModal from '../Clientes/ClienteModal';
+import VendaModal from '../VendasPage/VendaModal';
 import * as I from '../../components/Icons';
 import './DashboardPage.css';
 
@@ -239,6 +243,38 @@ function getVendaRetornoDescricao(venda) {
   return venda?.motivo_retorno || 'Sem motivo informado';
 }
 
+function sanitizarChave(valor) {
+  return String(valor || '').replace(/\D/g, '');
+}
+
+function normalizarChaveTexto(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function getChaveClienteVenda(venda = {}) {
+  if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
+  if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
+
+  const cnpj = sanitizarChave(venda.cnpj || venda.cliente?.cnpj || '');
+  if (cnpj) return `cnpj:${cnpj}`;
+
+  const nome = normalizarChaveTexto(venda.nome || venda.cliente?.nome || venda.razao_social || venda.cliente?.razao_social || '');
+  return nome ? `nome:${nome}` : '';
+}
+
+function contarVendasPorCliente(vendas = []) {
+  return vendas.reduce((acc, venda) => {
+    const chave = getChaveClienteVenda(venda);
+    if (!chave) return acc;
+    acc.set(chave, (acc.get(chave) || 0) + 1);
+    return acc;
+  }, new Map());
+}
+
 function DashboardPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -254,8 +290,22 @@ function DashboardPage() {
   const [usuarioCampanhaBusca, setUsuarioCampanhaBusca] = useState('');
   const [notificacoes, setNotificacoes] = useState([]);
   const [vendasRetorno, setVendasRetorno] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [vendas, setVendas] = useState([]);
+  const [vendedoras, setVendedoras] = useState([]);
+  const [operadoras, setOperadoras] = useState([]);
+  const [tiposVenda, setTiposVenda] = useState([]);
+  const [servicos, setServicos] = useState([]);
+  const [etapasFunil, setEtapasFunil] = useState([]);
+  const [clienteModal, setClienteModal] = useState(null);
+  const [clienteModalAba, setClienteModalAba] = useState('cliente');
+  const [vendaModal, setVendaModal] = useState(null);
+  const [vendaModalAba, setVendaModalAba] = useState('venda');
+  const [vendaModalProblemaId, setVendaModalProblemaId] = useState(null);
   const podeVerResumoVendas = temPermissao(usuario, 'dashboard_resumo_vendas');
   const podeVerRetornos = temPermissao(usuario, ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']);
+  const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
+  const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
   const podeVerCampanhasUsuarios = temPermissao(usuario, 'campanhas_ver_usuarios');
   const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
 
@@ -285,6 +335,36 @@ function DashboardPage() {
       })
       .catch(console.error);
   }, [podeVerResumoVendas, podeVerRetornos]);
+
+  useEffect(() => {
+    if (!podeVerNotificacoes) return undefined;
+
+    Promise.all([
+      listarClientes().catch(() => []),
+      listarVendas({}).catch(() => []),
+      listarVendedoras().catch(() => []),
+      listarOperadoras().catch(() => []),
+      listarTiposVenda().catch(() => []),
+      listarServicos().catch(() => []),
+      listarEtapasFunil().catch(() => [])
+    ]).then(([
+      clientesData,
+      vendasData,
+      vendedorasData,
+      operadorasData,
+      tiposVendaData,
+      servicosData,
+      etapasData
+    ]) => {
+      setClientes(Array.isArray(clientesData) ? clientesData : []);
+      setVendas(Array.isArray(vendasData) ? vendasData : []);
+      setVendedoras(Array.isArray(vendedorasData) ? vendedorasData : []);
+      setOperadoras(Array.isArray(operadorasData) ? operadorasData : []);
+      setTiposVenda(Array.isArray(tiposVendaData) ? tiposVendaData : []);
+      setServicos(Array.isArray(servicosData) ? servicosData : []);
+      setEtapasFunil(Array.isArray(etapasData) ? etapasData : []);
+    }).catch(console.error);
+  }, [podeVerNotificacoes]);
 
   useEffect(() => {
     if (!podeVerCampanhasUsuarios) return undefined;
@@ -320,6 +400,83 @@ function DashboardPage() {
     }
   }
 
+  async function marcarNotificacaoComoLidaLocal(notificacao) {
+    if (!notificacao?.id || notificacao.lida) return;
+
+    await marcarNotificacaoLida(notificacao.id);
+    setNotificacoes(prev => prev.map(item => (
+      item.id === notificacao.id ? { ...item, lida: true } : item
+    )));
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+  }
+
+  async function abrirClienteNoDashboard(clienteId, aba = 'cliente') {
+    if (!clienteId) return;
+
+    const clienteLocal = clientes.find(item => String(item.id) === String(clienteId));
+    const cliente = clienteLocal || await buscarClientePorId(clienteId);
+    setClienteModal(cliente);
+    setClienteModalAba(aba);
+  }
+
+  async function abrirVendaNoDashboard(vendaId, aba = 'venda', problemaId = null) {
+    if (!vendaId) return;
+
+    const vendaLocal = vendas.find(item => String(item.id) === String(vendaId))
+      || vendasRetorno.find(item => String(item.id) === String(vendaId));
+    const venda = vendaLocal || await buscarVendaPorId(vendaId);
+    setVendaModal(venda);
+    setVendaModalAba(aba);
+    setVendaModalProblemaId(problemaId);
+  }
+
+  async function abrirNotificacaoNoDashboard(notificacao) {
+    await marcarNotificacaoComoLidaLocal(notificacao);
+
+    if (notificacao.tipo === 'cliente_fidelidade' || notificacao.entidade === 'clientes') {
+      const aba = TIPOS_RETORNO_NOTA.includes(notificacao.tipo) ? 'notas' : 'cliente';
+      await abrirClienteNoDashboard(notificacao.entidade_id || notificacao.dados?.entidade_id, aba);
+      return;
+    }
+
+    if (notificacao.entidade === 'vendas') {
+      const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id || notificacao.dados?.entidade_id;
+      const aba = TIPOS_RETORNO_NOTA.includes(notificacao.tipo)
+        ? 'notas'
+        : TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo)
+          ? 'problema'
+          : 'venda';
+      await abrirVendaNoDashboard(vendaId, aba, notificacao.dados?.problema_id || null);
+    }
+  }
+
+  async function salvarClienteDashboard(clienteSalvo) {
+    setClienteModal(null);
+    setClientes(prev => {
+      const existe = prev.some(item => String(item.id) === String(clienteSalvo.id));
+      return existe
+        ? prev.map(item => String(item.id) === String(clienteSalvo.id) ? clienteSalvo : item)
+        : [clienteSalvo, ...prev];
+    });
+  }
+
+  async function salvarVendaDashboard(vendaSalva) {
+    setVendaModal(null);
+    setVendaModalAba('venda');
+    setVendaModalProblemaId(null);
+    setVendas(prev => {
+      const existe = prev.some(item => String(item.id) === String(vendaSalva.id));
+      return existe
+        ? prev.map(item => String(item.id) === String(vendaSalva.id) ? vendaSalva : item)
+        : [vendaSalva, ...prev];
+    });
+    setVendasRetorno(prev => vendaSalva.status_funil === 'retorno'
+      ? (prev.some(item => String(item.id) === String(vendaSalva.id))
+        ? prev.map(item => String(item.id) === String(vendaSalva.id) ? vendaSalva : item)
+        : [vendaSalva, ...prev])
+      : prev.filter(item => String(item.id) !== String(vendaSalva.id)));
+  }
+
   const buscaUsuarioCampanhaNormalizada = usuarioCampanhaBusca.trim().toLowerCase();
   const progressoUsuariosFiltrados = progressoUsuarios.filter(item => {
     if (usuarioCampanhaFiltro && String(item.id) !== String(usuarioCampanhaFiltro)) {
@@ -346,6 +503,11 @@ function DashboardPage() {
   const doneCount = campanhasComProgresso.filter(m => m.achieved).length;
   const totalCount = campanhasComProgresso.length;
   const overallPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
+  const vendasPorCliente = useMemo(() => contarVendasPorCliente(vendas), [vendas]);
+  const vendasEmAndamentoPorCliente = useMemo(() => {
+    const codigosFinais = new Set(etapasFunil.filter(etapa => etapa.etapa_final).map(etapa => etapa.codigo));
+    return contarVendasPorCliente(vendas.filter(venda => !codigosFinais.has(venda.status_funil)));
+  }, [vendas, etapasFunil]);
 
   const firstName = usuario?.nome?.split(' ')[0] || 'você';
   const notificacoesFidelidade = notificacoes
@@ -374,7 +536,7 @@ function DashboardPage() {
       metric: formatarDataRetornoVenda,
       actionLabel: 'Ver todos os retornos',
       onAction: () => navigate('/retornos'),
-      onItemClick: () => navigate('/retornos')
+      onItemClick: venda => abrirVendaNoDashboard(venda.id)
     },
     {
       key: 'fidelidade',
@@ -389,7 +551,7 @@ function DashboardPage() {
       metric: getFidelidadePrazo,
       actionLabel: 'Iniciar abordagem de renovação',
       onAction: () => navigate('/clientes?fidelidade=alerta'),
-      onItemClick: handleReadNotification
+      onItemClick: abrirNotificacaoNoDashboard
     },
     {
       key: 'ligacoes',
@@ -405,12 +567,12 @@ function DashboardPage() {
       actionLabel: 'Ver contatos marcados',
       onAction: () => {
         if (notificacoesRetorno[0]) {
-          handleReadNotification(notificacoesRetorno[0]);
+          abrirNotificacaoNoDashboard(notificacoesRetorno[0]);
           return;
         }
         navigate('/vendas');
       },
-      onItemClick: handleReadNotification
+      onItemClick: abrirNotificacaoNoDashboard
     },
     {
       key: 'problemas',
@@ -426,12 +588,12 @@ function DashboardPage() {
       actionLabel: 'Resolver pendências',
       onAction: () => {
         if (notificacoesProblema[0]) {
-          handleReadNotification(notificacoesProblema[0]);
+          abrirNotificacaoNoDashboard(notificacoesProblema[0]);
           return;
         }
         navigate('/vendas');
       },
-      onItemClick: handleReadNotification
+      onItemClick: abrirNotificacaoNoDashboard
     }
   ];
   const proximaFidelidade = notificacoesFidelidade[0];
@@ -470,6 +632,51 @@ function DashboardPage() {
 
   return (
     <LayoutPrivado>
+      {clienteModal && (
+        <ClienteModal
+          cliente={clienteModal}
+          operadoras={operadoras}
+          initialTab={clienteModalAba}
+          onClose={() => {
+            setClienteModal(null);
+            setClienteModalAba('cliente');
+          }}
+          onSave={salvarClienteDashboard}
+        />
+      )}
+
+      {vendaModal && (
+        <VendaModal
+          venda={vendaModal}
+          clientes={clientes}
+          vendas={vendas}
+          vendedoras={vendedoras}
+          operadoras={operadoras}
+          tiposVenda={tiposVenda}
+          servicos={servicos}
+          vendasPorCliente={vendasPorCliente}
+          vendasEmAndamentoPorCliente={vendasEmAndamentoPorCliente}
+          podeEditarVenda={podeEditarVenda}
+          podeVerDocumentosVenda={podeVerDocumentosVenda}
+          usuarioLogado={usuario}
+          initialTab={vendaModalAba}
+          initialProblemaId={vendaModalProblemaId}
+          modoEdicao={podeEditarVenda}
+          onStartEdit={() => {}}
+          onClose={() => {
+            setVendaModal(null);
+            setVendaModalAba('venda');
+            setVendaModalProblemaId(null);
+          }}
+          onSave={salvarVendaDashboard}
+          onSendToPosVenda={async venda => {
+            await enviarVendaParaPosVenda(venda.id);
+            setVendaModal(null);
+            window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+          }}
+        />
+      )}
+
       <div className="dashboard-container">
         <RewardModal gift={selectedReward} onClose={() => setSelectedReward(null)} />
         {feedback && (
