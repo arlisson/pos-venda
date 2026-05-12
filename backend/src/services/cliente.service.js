@@ -1,5 +1,8 @@
 const Cliente = require('../models/Cliente');
 const Usuario = require('../models/Usuario');
+const Operadora = require('../models/Operadora');
+const Busboy = require('busboy');
+const ExcelJS = require('exceljs');
 const notificacaoService = require('./notificacao.service');
 
 const CAMPOS = [
@@ -16,7 +19,8 @@ const CAMPOS = [
   'fidelidade_fim',
   'operadora_atual_id',
   'valor_pago',
-  'quantidade_chips'
+  'quantidade_chips',
+  'base_anterior_sistema'
 ];
 
 function limparValor(valor) {
@@ -95,6 +99,382 @@ function normalizarValorMonetario(valor) {
   return Number.isFinite(numero) ? numero : null;
 }
 
+function normalizarTexto(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function sanitizarCnpj(valor) {
+  return String(valor || '').replace(/\D/g, '').slice(0, 14);
+}
+
+function formatarCnpj(valor) {
+  const digitos = sanitizarCnpj(valor);
+  if (digitos.length !== 14) return String(valor || '').trim();
+  return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
+}
+
+function textoCelula(valor) {
+  if (valor === null || valor === undefined) return '';
+  if (valor instanceof Date) return valor.toISOString().slice(0, 10);
+  if (typeof valor !== 'object') return String(valor).trim();
+  if (Array.isArray(valor.richText)) {
+    return valor.richText.map(item => item.text || '').join('').trim();
+  }
+  if (valor.text) return String(valor.text).trim();
+  if (valor.result !== undefined) return textoCelula(valor.result);
+  if (valor.hyperlink && valor.text) return String(valor.text).trim();
+  return String(valor).trim();
+}
+
+function obterValorLinha(row, headerMap, coluna) {
+  if (!coluna) return '';
+  const index = headerMap.get(coluna);
+  if (!index) return '';
+  return textoCelula(row.getCell(index).value);
+}
+
+function somarNumero(valor) {
+  const numero = normalizarValorMonetario(valor);
+  return numero === null ? 0 : numero;
+}
+
+function normalizarInteiro(valor) {
+  const numero = Number(String(valor || '').replace(/\D/g, ''));
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+function escolherTexto(...valores) {
+  return valores.find(valor => String(valor || '').trim()) || '';
+}
+
+function complementarCampo(payload, cliente, campo, valor) {
+  if (cliente[campo] === null || cliente[campo] === undefined || cliente[campo] === '') {
+    payload[campo] = valor || null;
+  }
+}
+
+function criarHttpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function lerArquivoMultipart(req) {
+  return new Promise((resolve, reject) => {
+    const busboy = Busboy({ headers: req.headers });
+    const partes = {};
+    const chunks = [];
+    let arquivo = null;
+
+    busboy.on('field', (name, value) => {
+      partes[name] = value;
+    });
+
+    busboy.on('file', (name, file, info) => {
+      arquivo = {
+        fieldname: name,
+        filename: info.filename,
+        mimeType: info.mimeType
+      };
+
+      file.on('data', chunk => chunks.push(chunk));
+      file.on('limit', () => reject(criarHttpError(400, 'Arquivo excede o limite permitido.')));
+    });
+
+    busboy.on('error', reject);
+    busboy.on('finish', () => {
+      if (!arquivo || chunks.length === 0) {
+        reject(criarHttpError(400, 'Envie uma planilha XLSX.'));
+        return;
+      }
+
+      const filename = String(arquivo.filename || '').toLowerCase();
+      if (!filename.endsWith('.xlsx')) {
+        reject(criarHttpError(400, 'Envie um arquivo .xlsx.'));
+        return;
+      }
+
+      resolve({
+        arquivo: {
+          ...arquivo,
+          buffer: Buffer.concat(chunks)
+        },
+        campos: partes
+      });
+    });
+
+    req.pipe(busboy);
+  });
+}
+
+async function lerWorkbook(buffer) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) {
+    throw criarHttpError(400, 'A planilha nao possui abas.');
+  }
+  return worksheet;
+}
+
+function obterCabecalhos(worksheet) {
+  const headerRow = worksheet.getRow(1);
+  const colunas = [];
+
+  for (let col = 1; col <= worksheet.columnCount; col += 1) {
+    const nome = textoCelula(headerRow.getCell(col).value);
+    if (nome) {
+      colunas.push({ nome, index: col });
+    }
+  }
+
+  if (colunas.length === 0) {
+    throw criarHttpError(400, 'Nao foi possivel identificar cabecalhos na primeira linha.');
+  }
+
+  return colunas;
+}
+
+function sugerirMapeamento(colunas) {
+  const porTexto = new Map(colunas.map(coluna => [normalizarTexto(coluna.nome), coluna.nome]));
+
+  function achar(...termos) {
+    const termosNorm = termos.map(normalizarTexto);
+    for (const [texto, nome] of porTexto.entries()) {
+      if (termosNorm.some(termo => texto === termo || texto.includes(termo))) {
+        return nome;
+      }
+    }
+    return '';
+  }
+
+  const razaoSocial = achar('razao social', 'razão social');
+
+  return {
+    cnpj: achar('cnpj'),
+    nome: razaoSocial,
+    razao_social: razaoSocial,
+    responsavel_nome: achar('rl', 'responsavel', 'responsável'),
+    email: achar('e-mail', 'email'),
+    whatsapp: achar('numero whatsapp', 'número whatsapp', 'whatsapp'),
+    fixo: achar('fixo', 'telefone fixo'),
+    quantidade_chips: achar('quantidade', 'qtd'),
+    valor_pago: achar('receita contratada', 'valor'),
+    operadora_atual: achar('operadora')
+  };
+}
+
+function montarAmostras(worksheet, colunas) {
+  const amostras = [];
+  const limite = Math.min(worksheet.rowCount, 6);
+
+  for (let rowIndex = 2; rowIndex <= limite; rowIndex += 1) {
+    const row = worksheet.getRow(rowIndex);
+    const dados = {};
+    colunas.forEach(coluna => {
+      dados[coluna.nome] = textoCelula(row.getCell(coluna.index).value);
+    });
+    amostras.push({ row_index: rowIndex, dados });
+  }
+
+  return amostras;
+}
+
+async function previewImportacaoBaseAnterior(req) {
+  const { arquivo } = await lerArquivoMultipart(req);
+  const worksheet = await lerWorkbook(arquivo.buffer);
+  const colunas = obterCabecalhos(worksheet);
+
+  return {
+    arquivo: arquivo.filename,
+    aba: worksheet.name,
+    total_linhas: Math.max(worksheet.rowCount - 1, 0),
+    colunas,
+    sugestoes: sugerirMapeamento(colunas),
+    amostras: montarAmostras(worksheet, colunas)
+  };
+}
+
+async function montarMapaOperadoras(trx = null) {
+  const operadoras = await Operadora.query(trx).select('id', 'nome');
+  return new Map(operadoras.map(operadora => [normalizarTexto(operadora.nome), operadora]));
+}
+
+function consolidarLinhasImportacao(worksheet, mapeamento, operadorasPorNome) {
+  const colunas = obterCabecalhos(worksheet);
+  const headerMap = new Map(colunas.map(coluna => [coluna.nome, coluna.index]));
+  const resultado = {
+    linhas_lidas: Math.max(worksheet.rowCount - 1, 0),
+    linhas_ignoradas: 0,
+    cnpjs_unicos: 0,
+    operadoras_nao_encontradas: [],
+    erros: []
+  };
+  const porCnpj = new Map();
+  const operadorasNaoEncontradas = new Set();
+
+  for (let rowIndex = 2; rowIndex <= worksheet.rowCount; rowIndex += 1) {
+    const row = worksheet.getRow(rowIndex);
+    const cnpjDigitos = sanitizarCnpj(obterValorLinha(row, headerMap, mapeamento.cnpj));
+
+    if (cnpjDigitos.length !== 14) {
+      resultado.linhas_ignoradas += 1;
+      resultado.erros.push({
+        row_index: rowIndex,
+        message: 'Linha ignorada por CNPJ ausente ou incompleto.'
+      });
+      continue;
+    }
+
+    const atual = porCnpj.get(cnpjDigitos) || {
+      cnpj_digitos: cnpjDigitos,
+      cnpj: formatarCnpj(cnpjDigitos),
+      nome: '',
+      razao_social: '',
+      responsavel_nome: '',
+      email: '',
+      whatsapp: '',
+      fixo: '',
+      quantidade_chips: 0,
+      valor_pago: 0,
+      operadora_atual_id: null
+    };
+
+    atual.nome = escolherTexto(atual.nome, obterValorLinha(row, headerMap, mapeamento.nome));
+    atual.razao_social = escolherTexto(atual.razao_social, obterValorLinha(row, headerMap, mapeamento.razao_social));
+    atual.responsavel_nome = escolherTexto(atual.responsavel_nome, obterValorLinha(row, headerMap, mapeamento.responsavel_nome));
+    atual.email = escolherTexto(atual.email, obterValorLinha(row, headerMap, mapeamento.email));
+    atual.whatsapp = escolherTexto(atual.whatsapp, obterValorLinha(row, headerMap, mapeamento.whatsapp));
+    atual.fixo = escolherTexto(atual.fixo, obterValorLinha(row, headerMap, mapeamento.fixo));
+    atual.quantidade_chips += normalizarInteiro(obterValorLinha(row, headerMap, mapeamento.quantidade_chips));
+    atual.valor_pago += somarNumero(obterValorLinha(row, headerMap, mapeamento.valor_pago));
+
+    if (!atual.operadora_atual_id) {
+      const operadoraTexto = obterValorLinha(row, headerMap, mapeamento.operadora_atual);
+      if (operadoraTexto) {
+        const operadora = operadorasPorNome.get(normalizarTexto(operadoraTexto));
+        if (operadora) {
+          atual.operadora_atual_id = operadora.id;
+        } else {
+          operadorasNaoEncontradas.add(operadoraTexto);
+        }
+      }
+    }
+
+    porCnpj.set(cnpjDigitos, atual);
+  }
+
+  resultado.cnpjs_unicos = porCnpj.size;
+  resultado.operadoras_nao_encontradas = Array.from(operadorasNaoEncontradas);
+  return { clientes: Array.from(porCnpj.values()), resultado };
+}
+
+function parseMapeamento(valor) {
+  if (!valor) return {};
+  if (typeof valor === 'object') return valor;
+  try {
+    return JSON.parse(valor);
+  } catch {
+    return {};
+  }
+}
+
+function montarPayloadImportacao(dados, clienteExistente = null) {
+  const telefoneWhatsapp = separarTelefone(dados.whatsapp);
+  const telefoneFixo = separarTelefone(dados.fixo);
+  const nome = escolherTexto(dados.nome, dados.razao_social, dados.cnpj);
+  const payload = {
+    base_anterior_sistema: true
+  };
+
+  if (dados.quantidade_chips > 0) {
+    payload.quantidade_chips = dados.quantidade_chips;
+  }
+
+  if (dados.valor_pago > 0) {
+    payload.valor_pago = Number(dados.valor_pago.toFixed(2));
+  }
+
+  if (clienteExistente) {
+    complementarCampo(payload, clienteExistente, 'nome', nome);
+    complementarCampo(payload, clienteExistente, 'razao_social', dados.razao_social);
+    complementarCampo(payload, clienteExistente, 'cnpj', dados.cnpj);
+    complementarCampo(payload, clienteExistente, 'responsavel_nome', dados.responsavel_nome);
+    complementarCampo(payload, clienteExistente, 'email', dados.email);
+    complementarCampo(payload, clienteExistente, 'whatsapp_ddd', telefoneWhatsapp.ddd);
+    complementarCampo(payload, clienteExistente, 'whatsapp_numero', telefoneWhatsapp.numero);
+    complementarCampo(payload, clienteExistente, 'fixo_ddd', telefoneFixo.ddd);
+    complementarCampo(payload, clienteExistente, 'fixo_numero', telefoneFixo.numero);
+    complementarCampo(payload, clienteExistente, 'operadora_atual_id', dados.operadora_atual_id);
+    return payload;
+  }
+
+  return {
+    ...payload,
+    nome,
+    razao_social: dados.razao_social || null,
+    cnpj: dados.cnpj,
+    responsavel_tipo: 'rl',
+    responsavel_nome: dados.responsavel_nome || null,
+    email: dados.email || null,
+    whatsapp_ddd: telefoneWhatsapp.ddd,
+    whatsapp_numero: telefoneWhatsapp.numero,
+    fixo_ddd: telefoneFixo.ddd,
+    fixo_numero: telefoneFixo.numero,
+    operadora_atual_id: dados.operadora_atual_id || null
+  };
+}
+
+async function importarBaseAnterior(req, usuarioId) {
+  const { arquivo, campos } = await lerArquivoMultipart(req);
+  const mapeamento = parseMapeamento(campos.mapeamento);
+
+  if (!mapeamento.cnpj) {
+    throw criarHttpError(400, 'Selecione a coluna de CNPJ.');
+  }
+
+  const worksheet = await lerWorkbook(arquivo.buffer);
+
+  return Cliente.transaction(async trx => {
+    const operadorasPorNome = await montarMapaOperadoras(trx);
+    const { clientes, resultado } = consolidarLinhasImportacao(worksheet, mapeamento, operadorasPorNome);
+    const existentes = await Cliente.query(trx).whereNotNull('cnpj');
+    const existentesPorCnpj = new Map(existentes.map(cliente => [sanitizarCnpj(cliente.cnpj), cliente]));
+
+    resultado.criados = 0;
+    resultado.atualizados = 0;
+
+    for (const dados of clientes) {
+      const existente = existentesPorCnpj.get(dados.cnpj_digitos);
+      if (existente) {
+        await Cliente.query(trx).patchAndFetchById(existente.id, {
+          ...montarPayloadImportacao(dados, existente),
+          updated_at: new Date()
+        });
+        resultado.atualizados += 1;
+        continue;
+      }
+
+      const criado = await Cliente.query(trx).insertAndFetch({
+        ...montarPayloadImportacao(dados),
+        criado_por_id: usuarioId
+      });
+      existentesPorCnpj.set(dados.cnpj_digitos, criado);
+      resultado.criados += 1;
+    }
+
+    return {
+      arquivo: arquivo.filename,
+      aba: worksheet.name,
+      ...resultado
+    };
+  });
+}
+
 function montarPayload(dados) {
   const dadosNormalizados = { ...dados };
 
@@ -142,6 +522,10 @@ function montarPayload(dados) {
 
   if (payload.valor_pago !== undefined) {
     payload.valor_pago = normalizarValorMonetario(payload.valor_pago);
+  }
+
+  if (payload.base_anterior_sistema !== undefined) {
+    payload.base_anterior_sistema = Boolean(payload.base_anterior_sistema);
   }
 
   if (payload.fidelidade_fim !== undefined) {
@@ -336,6 +720,14 @@ async function listarClientes(filtros = {}, usuarioId) {
 
   if (filtros.chips_max) {
     query.where('quantidade_chips', '<=', Number(filtros.chips_max));
+  }
+
+  if (filtros.base_anterior_sistema === 'true' || filtros.base_anterior_sistema === '1') {
+    query.where('base_anterior_sistema', true);
+  }
+
+  if (filtros.base_anterior_sistema === 'false' || filtros.base_anterior_sistema === '0') {
+    query.where('base_anterior_sistema', false);
   }
 
   const clientes = await adicionarResumoNotasClientes((await query).map(formatarCliente), usuarioId);
@@ -538,5 +930,7 @@ module.exports = {
   excluirCliente,
   restaurarCliente,
   excluirClienteDefinitivo,
-  usuarioPodeAcessarCliente
+  usuarioPodeAcessarCliente,
+  previewImportacaoBaseAnterior,
+  importarBaseAnterior
 };

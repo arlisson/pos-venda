@@ -10,6 +10,22 @@ router.use(authMiddleware);
 
 router.get('/lixeira', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), clienteController.lixeira);
 router.get('/', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), clienteController.index);
+router.post(
+  '/importar-base-anterior/preview',
+  exigirUmaPermissao(['clientes_criar']),
+  clienteController.previewImportacaoBaseAnterior
+);
+router.post(
+  '/importar-base-anterior',
+  exigirUmaPermissao(['clientes_criar']),
+  auditar({
+    acao: 'clientes.base_anterior_importada',
+    entidade: 'clientes',
+    entidade_id: null,
+    dados: (req, resultado) => resultado
+  }),
+  clienteController.importarBaseAnterior
+);
 router.get('/:id', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), clienteController.show);
 router.post(
   '/',

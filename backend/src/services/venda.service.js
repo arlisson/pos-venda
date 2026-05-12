@@ -675,29 +675,7 @@ async function validarProtocoloCliente(payload, usuarioId, vendaAtual = null) {
     }
   }
 
-  const clienteId = payload.cliente_id || vendaAtual?.cliente_id;
-
-  if (!clienteId || !protocoloAtual) {
-    return;
-  }
-
-  const vendaComProtocolo = await Venda.query()
-    .where('cliente_id', clienteId)
-    .whereNotNull('protocolo')
-    .whereRaw("TRIM(protocolo) <> ''")
-    .whereNull('excluido_em')
-    .modify(query => {
-      if (vendaAtual?.id) {
-        query.whereNot('id', vendaAtual.id);
-      }
-    })
-    .first();
-
-  if (vendaComProtocolo) {
-    const error = new Error('Este cliente ja possui um protocolo cadastrado em outra venda.');
-    error.statusCode = 400;
-    throw error;
-  }
+  // Protocolo pertence a venda. Outras vendas do mesmo cliente podem ter protocolos próprios.
 }
 
 function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {

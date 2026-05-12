@@ -49,6 +49,30 @@ async function store(req, res) {
   }
 }
 
+async function previewImportacaoBaseAnterior(req, res) {
+  try {
+    const preview = await clienteService.previewImportacaoBaseAnterior(req);
+    return res.json(preview);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao ler planilha.'
+    });
+  }
+}
+
+async function importarBaseAnterior(req, res) {
+  try {
+    const resultado = await clienteService.importarBaseAnterior(req, req.usuario.id);
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao importar base anterior.'
+    });
+  }
+}
+
 async function update(req, res) {
   try {
     const cliente = await clienteService.atualizarCliente(req.params.id, req.body, req.usuario.id);
@@ -149,6 +173,8 @@ module.exports = {
   index,
   show,
   store,
+  previewImportacaoBaseAnterior,
+  importarBaseAnterior,
   update,
   destroy,
   lixeira,

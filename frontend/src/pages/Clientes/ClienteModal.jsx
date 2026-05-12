@@ -27,8 +27,6 @@ const FORM_INICIAL = {
 const CNPJ_SUGESTOES_CLIENTE = {
   nomeFantasia: { campo: 'nome', label: 'Nome fantasia' },
   razaoSocial: { campo: 'razao_social', label: 'Razão social' },
-  email: { campo: 'email', label: 'Email' },
-  telefone: { campo: 'whatsapp', label: 'Whatsapp' }
 };
 
 const CNPJ_LABELS_CLIENTE = Object.fromEntries(
@@ -213,9 +211,6 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   }
 
   async function buscarDadosCnpj(manual = false) {
-    // Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
-    return;
-
     const cnpj = sanitizarCnpj(form.cnpj);
 
     if (cnpj.length !== 14) {
@@ -278,7 +273,12 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
       setCnpjStatus({ tipo: '', mensagem: '' });
       setCnpjDados(null);
       setCnpjSugestoes({});
-      // Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
+
+      const timeout = setTimeout(() => {
+        buscarDadosCnpj(false);
+      }, 450);
+
+      return () => clearTimeout(timeout);
     }
   }, [form.cnpj]);
 
@@ -385,7 +385,15 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
                 inputMode="numeric"
                 maxLength={18}
               />
-              {/* Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes. */}
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={() => buscarDadosCnpj(true)}
+                disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
+                style={{ marginTop: 8, alignSelf: 'flex-start' }}
+              >
+                {consultandoCnpj ? 'Buscando...' : 'Buscar nome e razao social'}
+              </button>
               {cnpjStatus.mensagem && (
                 <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
                   {cnpjStatus.mensagem}
@@ -464,6 +472,15 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
             </div>
           </div>
 
+          <CnpjSugestoes
+            dados={cnpjDados}
+            sugestoes={cnpjSugestoes}
+            labels={CNPJ_LABELS_CLIENTE}
+            onAceitar={aceitarSugestaoCnpj}
+            onRecusar={recusarSugestaoCnpj}
+          />
+
+          {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
           </>
           )}
         </div>
