@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { listarAuditLogs } from '../../services/audit-log.service';
+import { listarEtapasFunil } from '../../services/config.service';
 
 const ACAO_LABELS = {
   'auth.login': 'Login realizado',
@@ -13,6 +14,9 @@ const ACAO_LABELS = {
   'venda.criada': 'Venda criada',
   'venda.atualizada': 'Venda atualizada',
   'venda.status_atualizado': 'Status da venda atualizado',
+  'venda.enviada_pos_venda': 'Venda enviada ao pós-venda',
+  'venda.retorno_registrado': 'Venda em retorno',
+  'venda.retorno_corrigido': 'Retorno corrigido',
   'venda.enviada_lixeira': 'Venda enviada para lixeira',
   'venda.restaurada': 'Venda restaurada',
   'venda.excluida_definitivamente': 'Venda excluída definitivamente'
@@ -43,6 +47,72 @@ function formatarData(valor) {
 
 function formatarAcao(acao) {
   return ACAO_LABELS[acao] || acao.replaceAll('.', ' ');
+}
+
+function normalizarEtapas(etapas = []) {
+  return etapas
+    .map((etapa, index) => ({
+      id: etapa.codigo || etapa.id,
+      nome: etapa.nome || etapa.name || etapa.codigo || etapa.id,
+      ordem: Number(etapa.ordem ?? index),
+      etapaFinal: Boolean(etapa.etapa_final || etapa.etapaFinal)
+    }))
+    .filter(etapa => etapa.id)
+    .sort((a, b) => a.ordem - b.ordem);
+}
+
+function getMovimentacaoHistorico(log) {
+  const dados = parseDados(log.dados);
+  const movimentacao = dados?.movimentacao || {};
+
+  return {
+    statusAnterior: movimentacao.status_anterior
+      || dados?.status_anterior
+      || dados?.alteracoes?.status_anterior
+      || null,
+    statusNovo: movimentacao.status_novo
+      || dados?.status_funil
+      || dados?.alteracoes?.status_funil
+      || dados?.payload?.status_funil
+      || dados?.venda?.status_funil
+      || null
+  };
+}
+
+function calcularEtapasPuladas(statusAnterior, statusNovo, etapas = []) {
+  if (!statusAnterior || !statusNovo || statusAnterior === statusNovo) return [];
+  if (statusAnterior === 'retorno' || statusNovo === 'retorno') return [];
+
+  const origem = etapas.findIndex(etapa => etapa.id === statusAnterior);
+  const destino = etapas.findIndex(etapa => etapa.id === statusNovo);
+
+  if (origem < 0 || destino < 0 || destino <= origem + 1) return [];
+
+  return etapas.slice(origem + 1, destino);
+}
+
+function enriquecerGrupoComPulos(grupo, etapas = []) {
+  const primeiraEtapa = etapas[0]?.id || null;
+  let statusAtual = null;
+
+  const logs = grupo.logs.map(log => {
+    const { statusAnterior, statusNovo } = getMovimentacaoHistorico(log);
+    const origem = statusAnterior || statusAtual || (statusNovo ? primeiraEtapa : null);
+    const etapasPuladas = calcularEtapasPuladas(origem, statusNovo, etapas);
+
+    if (statusNovo) {
+      statusAtual = statusNovo;
+    }
+
+    return {
+      ...log,
+      statusAnteriorInferido: origem,
+      statusNovoInferido: statusNovo,
+      etapasPuladas
+    };
+  });
+
+  return { ...grupo, logs };
 }
 
 function montarDetalhe(log) {
@@ -149,11 +219,19 @@ function agruparLogsVenda(logs = []) {
 }
 
 function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
+  const pulos = grupo.logs.reduce((total, log) => total + (log.etapasPuladas?.length || 0), 0);
+
   return (
-    <div className="history-sale-row">
+    <div className={`history-sale-row ${pulos > 0 ? 'history-sale-row--has-skips' : ''}`}>
       <div className="history-sale-row__head">
         <strong>Venda #{grupo.vendaId}</strong>
         <span>{grupo.logs.length} ações</span>
+        {pulos > 0 && (
+          <em>
+            <I.AlertTriangle size={11} />
+            {pulos} etapa{pulos === 1 ? '' : 's'} pulada{pulos === 1 ? '' : 's'}
+          </em>
+        )}
       </div>
 
       <div className="history-sale-row__scroll" role="list" aria-label={`Histórico da venda ${grupo.vendaId}`}>
@@ -161,21 +239,28 @@ function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
           const tipo = getTipo(log);
           const usuario = log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema');
           const selecionado = logSelecionado?.id === log.id;
+          const temPulo = log.etapasPuladas?.length > 0;
 
           return (
             <button
               key={log.id}
               type="button"
-              className={`history-sale-step ${tipo} ${selecionado ? 'selected' : ''}`}
+              className={`history-sale-step ${tipo} ${temPulo ? 'skipped' : ''} ${selecionado ? 'selected' : ''}`}
               onClick={() => onClick(log)}
               role="listitem"
+              title={temPulo ? `Pulou: ${log.etapasPuladas.map(etapa => etapa.nome).join(', ')}` : undefined}
             >
               <span className="history-sale-step__marker">
-                {tipo === 'danger' ? <I.AlertTriangle size={11} /> : <I.Check size={11} />}
+                {temPulo || tipo === 'danger' ? <I.AlertTriangle size={11} /> : <I.Check size={11} />}
               </span>
               <span className="history-sale-step__body">
                 <strong>{formatarAcao(log.acao)}</strong>
                 <small>{usuario} · {formatarData(log.created_at)}</small>
+                {temPulo && (
+                  <small className="history-sale-step__skip">
+                    Pulou {log.etapasPuladas.map(etapa => etapa.nome).join(', ')}
+                  </small>
+                )}
               </span>
               {index < grupo.logs.length - 1 && <span className="history-sale-step__line" aria-hidden="true" />}
             </button>
@@ -239,6 +324,16 @@ function DetalheCard({ log, onClose }) {
             <span className="history-detail-value">#{log.entidade_id}</span>
           </div>
         )}
+
+        {log.etapasPuladas?.length > 0 && (
+          <div className="history-detail-section history-detail-section--warning">
+            <h4>Etapas puladas no funil</h4>
+            <div className="history-skipped-detail">
+              <I.AlertTriangle size={15} />
+              <span>{log.etapasPuladas.map(etapa => etapa.nome).join(', ')}</span>
+            </div>
+          </div>
+        )}
         
         {dados && Object.keys(dados).length > 0 && (
           <div className="history-detail-section">
@@ -260,6 +355,7 @@ function HistoricoPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [logSelecionado, setLogSelecionado] = useState(null);
+  const [etapasFunil, setEtapasFunil] = useState([]);
 
   useEffect(() => {
     async function carregar() {
@@ -267,8 +363,12 @@ function HistoricoPage() {
       setErro('');
 
       try {
-        const dados = await listarAuditLogs({ busca, limite: 160 });
+        const [dados, etapas] = await Promise.all([
+          listarAuditLogs({ busca, limite: 160 }),
+          listarEtapasFunil().catch(() => [])
+        ]);
         setLogs(dados);
+        setEtapasFunil(normalizarEtapas(etapas));
       } catch (error) {
         setErro(error.message || 'Erro ao carregar historico.');
       } finally {
@@ -295,8 +395,10 @@ function HistoricoPage() {
 
   const modoVendasCompacto = filtro === 'vendas';
   const gruposVenda = useMemo(() => (
-    modoVendasCompacto ? agruparLogsVenda(logsFiltrados) : []
-  ), [modoVendasCompacto, logsFiltrados]);
+    modoVendasCompacto
+      ? agruparLogsVenda(logsFiltrados).map(grupo => enriquecerGrupoComPulos(grupo, etapasFunil))
+      : []
+  ), [modoVendasCompacto, logsFiltrados, etapasFunil]);
 
   return (
     <LayoutPrivado>

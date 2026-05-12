@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
+import * as I from '../../components/Icons';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   atualizarLinkExterno,
@@ -23,6 +24,7 @@ import {
   listarServicosAdmin,
   listarTiposVendaAdmin
 } from '../../services/config.service';
+import './ConfiguracoesPage.css';
 
 const FORM_SIMPLES = {
   nome: '',
@@ -55,6 +57,56 @@ function fmtMoeda(valor) {
 function valorForm(valor) {
   if (valor === null || valor === undefined || valor === '') return '';
   return String(valor).replace('.', ',');
+}
+
+function StatusPill({ ativo }) {
+  return (
+    <span className={`config-status ${ativo ? 'is-active' : 'is-inactive'}`}>
+      <span />
+      {ativo ? 'Ativo' : 'Inativo'}
+    </span>
+  );
+}
+
+function ConfirmarExclusaoConfigModal({ item, tipo, excluindo, onClose, onConfirm }) {
+  if (!item) return null;
+
+  const nomeItem = item.nome || item.chave || `#${item.id}`;
+
+  return (
+    <div className="modal-overlay" onClick={event => !excluindo && event.target === event.currentTarget && onClose()}>
+      <div className="modal config-delete-modal" role="dialog" aria-modal="true" aria-labelledby="config-delete-title">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div id="config-delete-title" className="modal-client">Excluir configuração?</div>
+              <div className="modal-sub">{tipo} - {nomeItem}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={excluindo} title="Fechar">
+              <I.Close size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="modal-body">
+          <div className="config-delete-warning">
+            <div className="config-delete-icon">
+              <I.AlertTriangle size={22} />
+            </div>
+            <div>
+              <strong>Essa ação remove o cadastro das configurações.</strong>
+              <p>Confira se este item não está em uso antes de confirmar. Depois da exclusão, ele deixará de aparecer nas listas do sistema.</p>
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={excluindo}>Cancelar</button>
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={excluindo}>
+            <I.Trash size={13} /> {excluindo ? 'Excluindo...' : 'Excluir'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ConfiguracoesPage() {
@@ -93,6 +145,8 @@ function ConfiguracoesPage() {
   const [linkForm, setLinkForm] = useState(LINK_VAZIO);
   const [regraComissaoForm, setRegraComissaoForm] = useState(REGRA_COMISSAO_VAZIA);
   const [editandoId, setEditandoId] = useState(null);
+  const [itemParaExcluir, setItemParaExcluir] = useState(null);
+  const [excluindoId, setExcluindoId] = useState(null);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(true);
@@ -145,6 +199,7 @@ function ConfiguracoesPage() {
 
   function mudarAba(id) {
     setAba(id);
+    setItemParaExcluir(null);
     resetarForms();
   }
 
@@ -180,6 +235,39 @@ function ConfiguracoesPage() {
       ordem: item.ordem || 0,
       ativo: Boolean(item.ativo)
     });
+  }
+
+  function renderFormHeader(tituloAdicionar, tituloEditar, subtitulo) {
+    return (
+      <div className="config-form-header">
+        <div>
+          <span className="config-kicker">{editandoId ? 'Editando cadastro' : 'Novo cadastro'}</span>
+          <h2>{editandoId ? tituloEditar : tituloAdicionar}</h2>
+          <p>{subtitulo}</p>
+        </div>
+        {editandoId && (
+          <button className="btn btn-ghost" type="button" onClick={resetarForms}>
+            <I.Close size={14} /> Cancelar edição
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  function renderFormActions(salvandoLabel = 'Salvar alterações', adicionandoLabel = 'Adicionar') {
+    return (
+      <div className="config-form-actions">
+        <button className="btn btn-primary" type="submit">
+          {editandoId ? <I.Check size={14} /> : <I.Plus size={14} />}
+          {editandoId ? salvandoLabel : adicionandoLabel}
+        </button>
+        {editandoId && (
+          <button className="btn" type="button" onClick={resetarForms}>
+            Limpar
+          </button>
+        )}
+      </div>
+    );
   }
 
   async function salvarSimples(event) {
@@ -255,7 +343,13 @@ function ConfiguracoesPage() {
     }
   }
 
-  async function removerItem(id) {
+  function solicitarExclusao(item) {
+    setItemParaExcluir(item);
+  }
+
+  async function confirmarExclusao() {
+    if (!itemParaExcluir) return;
+
     const mapa = {
       operadoras: excluirOperadora,
       tiposVenda: excluirTipoVenda,
@@ -265,18 +359,27 @@ function ConfiguracoesPage() {
     };
 
     try {
-      await mapa[aba](id);
+      setExcluindoId(itemParaExcluir.id);
+      await mapa[aba](itemParaExcluir.id);
+      if (editandoId === itemParaExcluir.id) {
+        resetarForms();
+      }
+      setItemParaExcluir(null);
       await carregarDados();
       setSucesso('Item excluido com sucesso.');
     } catch (error) {
       setErro(error.message || 'Erro ao excluir item.');
+    } finally {
+      setExcluindoId(null);
     }
   }
 
   function renderLinks(listaAtual) {
     return (
       <>
-        <form className="form-grid" onSubmit={salvarLink}>
+        <form className="config-form" onSubmit={salvarLink}>
+          {renderFormHeader('Adicionar link externo', 'Editar link externo', 'Defina os atalhos exibidos no topo do sistema.')}
+          <div className="config-form-grid config-form-grid--links">
           <div className="form-field">
             <label>Chave</label>
             <input value={linkForm.chave} onChange={e => setLinkForm({ ...linkForm, chave: e.target.value })} required />
@@ -297,17 +400,22 @@ function ConfiguracoesPage() {
             <label>Ordem</label>
             <input type="number" value={linkForm.ordem} onChange={e => setLinkForm({ ...linkForm, ordem: e.target.value })} />
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label className="config-toggle">
             <input type="checkbox" checked={linkForm.ativo} onChange={e => setLinkForm({ ...linkForm, ativo: e.target.checked })} />
             Ativo
           </label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className="btn btn-primary" type="submit">{editandoId ? 'Salvar' : 'Adicionar'}</button>
-            {editandoId && <button className="btn" type="button" onClick={resetarForms}>Cancelar</button>}
           </div>
+          {renderFormActions('Salvar link', 'Adicionar link')}
         </form>
 
-        <div className="list-table">
+        <div className="config-list-header">
+          <div>
+            <h3>Links cadastrados</h3>
+            <p>{listaAtual.length} item(ns) encontrado(s)</p>
+          </div>
+        </div>
+
+        <div className="list-table config-table">
           <table>
             <thead><tr><th>Nome</th><th>URL</th><th>Marcador</th><th>Status</th><th></th></tr></thead>
             <tbody>
@@ -316,10 +424,10 @@ function ConfiguracoesPage() {
                   <td>{item.nome}</td>
                   <td className="muted">{item.url}</td>
                   <td>{item.dot}</td>
-                  <td>{item.ativo ? 'Ativo' : 'Inativo'}</td>
+                  <td><StatusPill ativo={item.ativo} /></td>
                   <td className="row-actions">
-                    <button type="button" className="btn btn-sm" onClick={() => editarItem(item)}>Editar</button>
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => removerItem(item.id)}>Excluir</button>
+                    <button type="button" className="btn btn-sm" onClick={() => editarItem(item)}><I.Edit size={13} /> Editar</button>
+                    <button type="button" className="btn btn-sm btn-ghost config-danger" onClick={() => solicitarExclusao(item)}><I.Trash size={13} /> Excluir</button>
                   </td>
                 </tr>
               ))}
@@ -333,7 +441,9 @@ function ConfiguracoesPage() {
   function renderRegrasComissao(listaAtual) {
     return (
       <>
-        <form className="form-grid" onSubmit={salvarRegraComissao}>
+        <form className="config-form" onSubmit={salvarRegraComissao}>
+          {renderFormHeader('Adicionar regra de comissão', 'Editar regra de comissão', 'Organize faixas de valor e comissão para vendas novas e clientes da base.')}
+          <div className="config-form-grid config-form-grid--commission">
           <div className="form-field">
             <label>Valor inicial</label>
             <input
@@ -382,17 +492,22 @@ function ConfiguracoesPage() {
             <label>Ordem</label>
             <input type="number" value={regraComissaoForm.ordem} onChange={e => setRegraComissaoForm({ ...regraComissaoForm, ordem: e.target.value })} />
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label className="config-toggle">
             <input type="checkbox" checked={regraComissaoForm.ativo} onChange={e => setRegraComissaoForm({ ...regraComissaoForm, ativo: e.target.checked })} />
             Ativo
           </label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className="btn btn-primary" type="submit">{editandoId ? 'Salvar' : 'Adicionar'}</button>
-            {editandoId && <button className="btn" type="button" onClick={resetarForms}>Cancelar</button>}
           </div>
+          {renderFormActions('Salvar regra', 'Adicionar regra')}
         </form>
 
-        <div className="list-table">
+        <div className="config-list-header">
+          <div>
+            <h3>Regras cadastradas</h3>
+            <p>{listaAtual.length} faixa(s) encontrada(s)</p>
+          </div>
+        </div>
+
+        <div className="list-table config-table">
           <table>
             <thead><tr><th>Faixa</th><th>Integral</th><th>Cliente da base</th><th>Ordem</th><th>Status</th><th></th></tr></thead>
             <tbody>
@@ -402,10 +517,10 @@ function ConfiguracoesPage() {
                   <td>{fmtMoeda(item.valor_comissao)}</td>
                   <td>{fmtMoeda(item.valor_comissao_base ?? item.valor_comissao)}</td>
                   <td>{item.ordem}</td>
-                  <td>{item.ativo ? 'Ativo' : 'Inativo'}</td>
+                  <td><StatusPill ativo={item.ativo} /></td>
                   <td className="row-actions">
-                    <button type="button" className="btn btn-sm" onClick={() => editarItem(item)}>Editar</button>
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => removerItem(item.id)}>Excluir</button>
+                    <button type="button" className="btn btn-sm" onClick={() => editarItem(item)}><I.Edit size={13} /> Editar</button>
+                    <button type="button" className="btn btn-sm btn-ghost config-danger" onClick={() => solicitarExclusao(item)}><I.Trash size={13} /> Excluir</button>
                   </td>
                 </tr>
               ))}
@@ -417,9 +532,13 @@ function ConfiguracoesPage() {
   }
 
   function renderSimples(listaAtual) {
+    const labelAtual = abas.find(item => item.id === aba)?.label || 'item';
+
     return (
       <>
-        <form className="form-grid" onSubmit={salvarSimples}>
+        <form className="config-form" onSubmit={salvarSimples}>
+          {renderFormHeader(`Adicionar ${labelAtual.toLowerCase()}`, `Editar ${labelAtual.toLowerCase()}`, 'Cadastre o nome, defina a ordem de exibição e controle se o item fica disponível no sistema.')}
+          <div className="config-form-grid config-form-grid--simple">
           <div className="form-field">
             <label>Nome</label>
             <input value={formSimples.nome} onChange={e => setFormSimples({ ...formSimples, nome: e.target.value })} required />
@@ -428,17 +547,22 @@ function ConfiguracoesPage() {
             <label>Ordem</label>
             <input type="number" value={formSimples.ordem} onChange={e => setFormSimples({ ...formSimples, ordem: e.target.value })} />
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label className="config-toggle">
             <input type="checkbox" checked={formSimples.ativo} onChange={e => setFormSimples({ ...formSimples, ativo: e.target.checked })} />
             Ativo
           </label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className="btn btn-primary" type="submit">{editandoId ? 'Salvar' : 'Adicionar'}</button>
-            {editandoId && <button className="btn" type="button" onClick={resetarForms}>Cancelar</button>}
           </div>
+          {renderFormActions('Salvar alterações', 'Adicionar')}
         </form>
 
-        <div className="list-table">
+        <div className="config-list-header">
+          <div>
+            <h3>{labelAtual} cadastrados</h3>
+            <p>{listaAtual.length} item(ns) encontrado(s)</p>
+          </div>
+        </div>
+
+        <div className="list-table config-table">
           <table>
             <thead><tr><th>Nome</th><th>Ordem</th><th>Status</th><th></th></tr></thead>
             <tbody>
@@ -446,10 +570,10 @@ function ConfiguracoesPage() {
                 <tr key={item.id}>
                   <td>{item.nome}</td>
                   <td>{item.ordem}</td>
-                  <td>{item.ativo ? 'Ativo' : 'Inativo'}</td>
+                  <td><StatusPill ativo={item.ativo} /></td>
                   <td className="row-actions">
-                    <button type="button" className="btn btn-sm" onClick={() => editarItem(item)}>Editar</button>
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => removerItem(item.id)}>Excluir</button>
+                    <button type="button" className="btn btn-sm" onClick={() => editarItem(item)}><I.Edit size={13} /> Editar</button>
+                    <button type="button" className="btn btn-sm btn-ghost config-danger" onClick={() => solicitarExclusao(item)}><I.Trash size={13} /> Excluir</button>
                   </td>
                 </tr>
               ))}
@@ -461,28 +585,43 @@ function ConfiguracoesPage() {
   }
 
   const listaAtual = dados[aba] || [];
+  const abaAtual = abas.find(item => item.id === aba);
 
   return (
     <LayoutPrivado>
-      <div className="users-page">
+      <div className="users-page configuracoes-page">
+        <ConfirmarExclusaoConfigModal
+          item={itemParaExcluir}
+          tipo={abaAtual?.label || 'Configuração'}
+          excluindo={excluindoId === itemParaExcluir?.id}
+          onClose={() => setItemParaExcluir(null)}
+          onConfirm={confirmarExclusao}
+        />
+
         {sucesso && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucesso}</div>}
         {erro && <div className="alert-error alert-timed alert-timed--error" style={{ marginBottom: 16 }}>{erro}</div>}
 
         {abas.length === 0 ? (
           <div className="empty">Você não tem permissão para gerenciar configurações.</div>
         ) : (
-          <div className="panel">
-            <div className="panel-header" style={{ justifyContent: 'flex-start', gap: 8 }}>
-              {abas.map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`filter-chip ${aba === item.id ? 'active' : ''}`}
-                  onClick={() => mudarAba(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
+          <div className="panel config-panel">
+            <div className="panel-header config-panel-header">
+              <div className="config-tabs">
+                {abas.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`filter-chip ${aba === item.id ? 'active' : ''}`}
+                    onClick={() => mudarAba(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <div className="config-panel-summary">
+                <strong>{abaAtual?.label}</strong>
+                <span>{listaAtual.length} cadastrado(s)</span>
+              </div>
             </div>
 
             <div className="panel-body">
