@@ -940,7 +940,9 @@ function AdminLeadsPage() {
                     setErroExclusao('');
                     setModalExcluir(planilha);
                   }}
-                />
+                >
+                  <I.Trash size={14} />
+                </button>
                 <div className="lead-doc-preview">
                   <span></span><span></span><span></span><span></span>
                 </div>
