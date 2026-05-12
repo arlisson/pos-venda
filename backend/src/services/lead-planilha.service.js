@@ -236,6 +236,23 @@ function parseDataHoraRetorno(valor) {
   return formatarDateTimeSQL(data);
 }
 
+function adicionarDias(data, dias) {
+  const resultado = new Date(data);
+  resultado.setDate(resultado.getDate() + dias);
+  return resultado;
+}
+
+function aplicarBuscaFuturosClientes(query, busca) {
+  const termo = String(busca || '').trim().toLowerCase();
+  if (!termo) return query;
+
+  return query.where(builder => {
+    builder
+      .whereRaw('LOWER(dados_json) LIKE ?', [`%${termo}%`])
+      .orWhereRaw('LOWER(COALESCE(futuro_cliente_notas, "")) LIKE ?', [`%${termo}%`]);
+  });
+}
+
 function parseJson(valor, fallback) {
   if (valor === null || valor === undefined) return fallback;
   if (typeof valor !== 'string') return valor;
@@ -1165,17 +1182,17 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
 }
 
 async function listarFuturosClientes(filtros = {}, usuarioId) {
+  await limparFuturosClientesVencidosDaLixeira(usuarioId);
+
   const page = Math.max(1, Number(filtros.page || 1));
   const pageSize = Math.min(500, Math.max(1, Number(filtros.page_size || 50)));
-  const busca = String(filtros.busca || '').trim();
 
   let query = LeadLinha.query()
     .where('atribuido_para_id', usuarioId)
-    .where('futuro_cliente', true);
+    .where('futuro_cliente', true)
+    .whereNull('futuro_cliente_excluido_em');
 
-  if (busca) {
-    query = query.whereRaw(`LOWER(dados_json) LIKE ?`, [`%${busca.toLowerCase()}%`]);
-  }
+  query = aplicarBuscaFuturosClientes(query, filtros.busca);
 
   const total = await query.clone().resultSize();
   const linhas = await query
@@ -1191,6 +1208,116 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
     page,
     page_size: pageSize
   };
+}
+
+async function limparFuturosClientesVencidosDaLixeira(usuarioId = null) {
+  const query = db('lead_linhas')
+    .where('futuro_cliente', true)
+    .whereNotNull('futuro_cliente_excluido_em')
+    .where('futuro_cliente_excluir_definitivo_em', '<=', formatarDateTimeSQL());
+
+  if (usuarioId) {
+    query.where('atribuido_para_id', Number(usuarioId));
+  }
+
+  return query.update({
+    futuro_cliente: false,
+    futuro_cliente_notas: null,
+    futuro_cliente_retorno: null,
+    futuro_cliente_marcado_em: null,
+    futuro_cliente_marcado_por_id: null,
+    futuro_cliente_excluido_em: null,
+    futuro_cliente_excluir_definitivo_em: null,
+    futuro_cliente_excluido_por_id: null,
+    updated_at: formatarDateTimeSQL()
+  });
+}
+
+async function listarFuturosClientesLixeira(filtros = {}, usuarioId) {
+  await limparFuturosClientesVencidosDaLixeira(usuarioId);
+
+  const page = Math.max(1, Number(filtros.page || 1));
+  const pageSize = Math.min(500, Math.max(1, Number(filtros.page_size || 50)));
+
+  let query = LeadLinha.query()
+    .withGraphFetched('[planilha, envio, futuroClienteExcluidoPor]')
+    .modifyGraph('futuroClienteExcluidoPor', builder => builder.select('id', 'nome', 'email'))
+    .where('atribuido_para_id', usuarioId)
+    .where('futuro_cliente', true)
+    .whereNotNull('futuro_cliente_excluido_em');
+
+  query = aplicarBuscaFuturosClientes(query, filtros.busca);
+
+  const total = await query.clone().resultSize();
+  const linhas = await query
+    .orderBy('futuro_cliente_excluido_em', 'desc')
+    .orderBy('id', 'desc')
+    .offset((page - 1) * pageSize)
+    .limit(pageSize);
+
+  return {
+    data: linhas.map(formatarLinha),
+    total,
+    page,
+    page_size: pageSize
+  };
+}
+
+async function enviarFuturoClienteParaLixeira(linhaId, usuarioId) {
+  const agora = new Date();
+
+  return db('lead_linhas')
+    .where('id', Number(linhaId))
+    .where('atribuido_para_id', Number(usuarioId))
+    .where('futuro_cliente', true)
+    .whereNull('futuro_cliente_excluido_em')
+    .update({
+      futuro_cliente_excluido_em: formatarDateTimeSQL(agora),
+      futuro_cliente_excluir_definitivo_em: formatarDateTimeSQL(adicionarDias(agora, 30)),
+      futuro_cliente_excluido_por_id: usuarioId,
+      updated_at: formatarDateTimeSQL(agora)
+    });
+}
+
+async function restaurarFuturoCliente(linhaId, usuarioId) {
+  const atualizados = await db('lead_linhas')
+    .where('id', Number(linhaId))
+    .where('atribuido_para_id', Number(usuarioId))
+    .where('futuro_cliente', true)
+    .whereNotNull('futuro_cliente_excluido_em')
+    .update({
+      futuro_cliente_excluido_em: null,
+      futuro_cliente_excluir_definitivo_em: null,
+      futuro_cliente_excluido_por_id: null,
+      updated_at: formatarDateTimeSQL()
+    });
+
+  if (!atualizados) return null;
+
+  const atualizada = await LeadLinha.query()
+    .findById(linhaId)
+    .withGraphFetched('[planilha, envio]');
+
+  return formatarLinha(atualizada);
+}
+
+async function excluirFuturoClienteDefinitivo(linhaId, usuarioId) {
+  return db('lead_linhas')
+    .where('id', Number(linhaId))
+    .where('atribuido_para_id', Number(usuarioId))
+    .where('futuro_cliente', true)
+    .whereNotNull('futuro_cliente_excluido_em')
+    .update({
+      futuro_cliente: false,
+      futuro_cliente_notas: null,
+      futuro_cliente_retorno: null,
+      futuro_cliente_marcado_em: null,
+      futuro_cliente_marcado_por_id: null,
+      futuro_cliente_excluido_em: null,
+      futuro_cliente_excluir_definitivo_em: null,
+      futuro_cliente_excluido_por_id: null,
+      updated_at: formatarDateTimeSQL()
+    });
 }
 
 module.exports = {
@@ -1210,5 +1337,9 @@ module.exports = {
   dividirLeads,
   exportarCsv,
   marcarComoFuturoCliente,
-  listarFuturosClientes
+  listarFuturosClientes,
+  listarFuturosClientesLixeira,
+  enviarFuturoClienteParaLixeira,
+  restaurarFuturoCliente,
+  excluirFuturoClienteDefinitivo
 };

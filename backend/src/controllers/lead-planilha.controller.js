@@ -202,6 +202,63 @@ async function listarFuturosClientes(req, res) {
   }
 }
 
+async function listarFuturosClientesLixeira(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.listarFuturosClientesLixeira(req.query, req.usuario.id));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar lixeira de futuros clientes.' });
+  }
+}
+
+async function excluirFuturoCliente(req, res) {
+  try {
+    const total = await leadPlanilhaService.enviarFuturoClienteParaLixeira(req.params.id, req.usuario.id);
+
+    if (!total) {
+      return res.status(404).json({ message: 'Futuro cliente nÃ£o encontrado.' });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({ message: error.message || 'Erro ao enviar futuro cliente para lixeira.' });
+  }
+}
+
+async function restaurarFuturoCliente(req, res) {
+  try {
+    const linha = await leadPlanilhaService.restaurarFuturoCliente(req.params.id, req.usuario.id);
+
+    if (!linha) {
+      return res.status(404).json({ message: 'Futuro cliente nÃ£o encontrado na lixeira.' });
+    }
+
+    return res.json(linha);
+  } catch (error) {
+    console.error(error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({ message: error.message || 'Erro ao restaurar futuro cliente.' });
+  }
+}
+
+async function excluirFuturoClienteDefinitivo(req, res) {
+  try {
+    const total = await leadPlanilhaService.excluirFuturoClienteDefinitivo(req.params.id, req.usuario.id);
+
+    if (!total) {
+      return res.status(404).json({ message: 'Futuro cliente nÃ£o encontrado na lixeira.' });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({ message: error.message || 'Erro ao excluir futuro cliente definitivamente.' });
+  }
+}
+
 module.exports = {
   index,
   store,
@@ -221,5 +278,9 @@ module.exports = {
   atualizarMeuCampo,
   exportarMinhas,
   marcarFuturoCliente,
-  listarFuturosClientes
+  listarFuturosClientes,
+  listarFuturosClientesLixeira,
+  excluirFuturoCliente,
+  restaurarFuturoCliente,
+  excluirFuturoClienteDefinitivo
 };

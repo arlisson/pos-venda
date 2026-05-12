@@ -129,3 +129,19 @@ export function marcarFuturoClienteLead(linhaId, dados) {
 export function listarFuturosClientesLeads(filtros = {}) {
   return apiGet(`/lead-planilhas/me/futuros-clientes${montarQuery(filtros)}`);
 }
+
+export function listarFuturosClientesLixeira(filtros = {}) {
+  return apiGet(`/lead-planilhas/me/futuros-clientes/lixeira${montarQuery(filtros)}`);
+}
+
+export function excluirFuturoCliente(linhaId) {
+  return apiDelete(`/lead-planilhas/me/futuros-clientes/${linhaId}`);
+}
+
+export function restaurarFuturoCliente(linhaId) {
+  return apiPost(`/lead-planilhas/me/futuros-clientes/${linhaId}/restaurar`, {});
+}
+
+export function excluirFuturoClienteDefinitivo(linhaId) {
+  return apiDelete(`/lead-planilhas/me/futuros-clientes/${linhaId}/definitivo`);
+}
