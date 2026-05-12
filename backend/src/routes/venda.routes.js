@@ -9,6 +9,22 @@ const authMiddleware = require('../middlewares/auth.middleware');
 const { auditar } = require('../middlewares/audit.middleware');
 const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 
+function obterMovimentacaoStatus(venda) {
+  const historico = Array.isArray(venda?.historico) ? venda.historico : [];
+  const movimentacao = historico.find(item => item.status_novo || item.status_anterior);
+
+  if (!movimentacao) {
+    return null;
+  }
+
+  return {
+    acao: movimentacao.acao,
+    status_anterior: movimentacao.status_anterior || null,
+    status_novo: movimentacao.status_novo || null,
+    observacao: movimentacao.observacao || null
+  };
+}
+
 router.use(authMiddleware);
 
 router.get('/vendedoras', exigirUmaPermissao(['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'relatorios_visualizar']), vendaController.vendedoras);
@@ -47,8 +63,10 @@ router.post(
     acao: 'venda.enviada_pos_venda',
     entidade: 'vendas',
     entidade_id: req => req.params.id,
-    dados: req => ({
-      id: req.params.id
+    dados: (req, venda) => ({
+      id: req.params.id,
+      status_funil: venda?.status_funil || null,
+      movimentacao: obterMovimentacaoStatus(venda)
     })
   }),
   vendaController.enviarPosVenda
@@ -93,9 +111,11 @@ router.patch(
     acao: 'venda.status_atualizado',
     entidade: 'vendas',
     entidade_id: req => req.params.id,
-    dados: req => ({
+    dados: (req, venda) => ({
       id: req.params.id,
-      alteracoes: req.body
+      alteracoes: req.body,
+      status_funil: venda?.status_funil || null,
+      movimentacao: obterMovimentacaoStatus(venda)
     })
   }),
   vendaController.updateStatus
