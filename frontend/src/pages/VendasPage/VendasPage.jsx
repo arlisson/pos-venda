@@ -1557,7 +1557,8 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
         {mostrarLista && (
           <div className="venda-cliente-options" id="cliente-options" role="listbox">
             {clientesFiltrados.length > 0 ? (
-              clientesFiltrados.map((cliente, index) => {
+              <>
+              {clientesFiltrados.map((cliente, index) => {
                 const selecionado = String(cliente.id) === String(value);
                 const ativo = index === indiceAtivo;
 
@@ -1584,7 +1585,13 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
                     {selecionado && <I.Check size={14} />}
                   </button>
                 );
-              })
+              })}
+              <div className="venda-cliente-options__footer">
+                <button type="button" className="btn btn-sm" onMouseDown={event => event.preventDefault()} onClick={onCreateClient}>
+                  <I.Plus size={13} /> Cadastrar cliente
+                </button>
+              </div>
+            </>
             ) : (
               <div className="venda-cliente-no-results">
                 <span>Nenhum cliente encontrado.</span>

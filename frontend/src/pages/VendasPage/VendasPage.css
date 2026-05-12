@@ -1215,6 +1215,15 @@ input.is-invalid {
   font-size: 12px;
 }
 
+.venda-cliente-options__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
 .venda-cliente-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
