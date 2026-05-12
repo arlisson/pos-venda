@@ -27,6 +27,8 @@ const FORM_INICIAL = {
 const CNPJ_SUGESTOES_CLIENTE = {
   nomeFantasia: { campo: 'nome', label: 'Nome fantasia' },
   razaoSocial: { campo: 'razao_social', label: 'Razão social' },
+  email: { campo: 'email', label: 'E-mail' },
+  telefone: { campo: 'telefone', label: 'Telefone' },
 };
 
 const CNPJ_LABELS_CLIENTE = Object.fromEntries(
@@ -190,10 +192,21 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
     const config = CNPJ_SUGESTOES_CLIENTE[campoApi];
     if (!config || !String(valor || '').trim()) return;
 
-    setForm(prev => ({
-      ...prev,
-      [config.campo]: campoApi === 'telefone' ? formatarTelefoneComDdd(valor, true) : valor
-    }));
+    setForm(prev => {
+      if (campoApi === 'telefone') {
+        const digitos = apenasDigitos(valor, 11);
+        const campoTelefone = digitos.length > 10 ? 'whatsapp' : 'fixo';
+        return {
+          ...prev,
+          [campoTelefone]: formatarTelefoneComDdd(valor, digitos.length > 10)
+        };
+      }
+
+      return {
+        ...prev,
+        [config.campo]: valor
+      };
+    });
 
     setCnpjSugestoes(prev => {
       const proximo = { ...prev };
@@ -408,7 +421,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
                 disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
                 style={{ marginTop: 8, alignSelf: 'flex-start' }}
               >
-                {consultandoCnpj ? 'Buscando...' : 'Buscar nome e razao social'}
+                {consultandoCnpj ? 'Buscando...' : 'Buscar dados do CNPJ'}
               </button>
               {cnpjStatus.mensagem && (
                 <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>

@@ -351,7 +351,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
     || novaPrioridade !== (sale.priority || 'media')
     || observacao.trim() !== '';
 
-  async function submitStatus(status, statusObservacao = observacao.trim(), motivoRetorno = '') {
+  async function submitStatus(status, statusObservacao = observacao.trim(), motivoRetorno = '', options = {}) {
     setSaving(true);
     setError('');
 
@@ -361,6 +361,9 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
     } catch (err) {
       setError(err.message || 'Erro ao atualizar status.');
       setSaving(false);
+      if (options.rethrow) {
+        throw err;
+      }
     }
   }
 
@@ -369,7 +372,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale }) {
   }
 
   function handleConfirmRetorno({ motivo, observacao: observacaoRetorno }) {
-    return submitStatus('retorno', observacaoRetorno, motivo);
+    return submitStatus('retorno', observacaoRetorno, motivo, { rethrow: true });
   }
 
   return (
@@ -588,14 +591,21 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    const observacaoNormalizada = observacao.trim();
+    const motivoFinal = motivo || observacaoNormalizada;
 
-    if (!motivo) {
-      setError('Selecione o motivo do retorno.');
+    if (!motivoFinal) {
+      setError('Selecione um motivo ou descreva o retorno na observacao.');
       return;
     }
 
     setError('');
-    await onConfirm({ motivo, observacao: observacao.trim() });
+
+    try {
+      await onConfirm({ motivo: motivoFinal, observacao: observacaoNormalizada });
+    } catch (err) {
+      setError(err.message || 'Erro ao marcar retorno.');
+    }
   }
 
   return (
@@ -652,7 +662,7 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
 
         <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose} disabled={saving}>Cancelar</button>
-          <button type="submit" className="btn btn-primary" disabled={saving || !motivo}>
+          <button type="submit" className="btn btn-primary" disabled={saving || (!motivo && !observacao.trim())}>
             {saving ? 'Salvando...' : 'Confirmar retorno'}
           </button>
         </div>
@@ -1063,6 +1073,7 @@ function FunilPage() {
         observacao
       });
 
+      setSelectedSaleId(null);
       setSales(prev => prev.filter(sale => sale.id !== saleId));
       return;
     }
