@@ -107,3 +107,9 @@
   gap: 8px;
   margin-top: 4px;
 }
+
+/* ── Detalhe futuro cliente ── */
+
+.futuros-clientes-table tbody tr:hover {
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
+}
