@@ -1,7 +1,7 @@
 const PERMISSAO = {
   chave: 'notificacoes_vendas_paradas',
   nome: 'Notificações: vendas paradas no funil',
-  descricao: 'Permite receber notificações de vendas paradas por 5+ dias úteis no mesmo estágio do funil.'
+  descricao: 'Permite receber notificações de vendas paradas por 5+ dias corridos no mesmo estágio do funil.'
 };
 
 exports.up = async function (knex) {

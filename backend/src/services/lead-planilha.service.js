@@ -7,6 +7,7 @@ const LeadPlanilha = require('../models/LeadPlanilha');
 const LeadLinha = require('../models/LeadLinha');
 const LeadEnvio = require('../models/LeadEnvio');
 const LeadEnvioUsuario = require('../models/LeadEnvioUsuario');
+const db = require('../database/connection');
 
 const IMPORT_DIR = process.env.LEAD_IMPORT_DIR
   ? path.resolve(process.env.LEAD_IMPORT_DIR)
@@ -207,6 +208,32 @@ function criarHttpError(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+}
+
+function formatarDateTimeSQL(data = new Date()) {
+  const pad = value => String(value).padStart(2, '0');
+
+  return [
+    data.getUTCFullYear(),
+    pad(data.getUTCMonth() + 1),
+    pad(data.getUTCDate())
+  ].join('-') + ' ' + [
+    pad(data.getUTCHours()),
+    pad(data.getUTCMinutes()),
+    pad(data.getUTCSeconds())
+  ].join(':');
+}
+
+function parseDataHoraRetorno(valor) {
+  if (!valor) return null;
+
+  const data = new Date(String(valor).trim().replace(' ', 'T'));
+
+  if (Number.isNaN(data.getTime())) {
+    throw criarHttpError(400, 'Data de retorno invalida.');
+  }
+
+  return formatarDateTimeSQL(data);
 }
 
 function parseJson(valor, fallback) {
@@ -1117,16 +1144,17 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
   }
 
   const notas = String(dados.notas || '').trim() || null;
-  const retorno = dados.retorno ? new Date(dados.retorno) : null;
-  if (retorno && isNaN(retorno.getTime())) throw criarHttpError(400, 'Data de retorno inválida.');
+  const retorno = parseDataHoraRetorno(dados.retorno);
 
-  await LeadLinha.query().patchAndFetchById(linhaId, {
-    futuro_cliente: true,
-    futuro_cliente_notas: notas,
-    futuro_cliente_retorno: retorno ? retorno.toISOString() : null,
-    futuro_cliente_marcado_em: new Date().toISOString(),
-    futuro_cliente_marcado_por_id: usuarioId
-  });
+  await db('lead_linhas')
+    .where({ id: Number(linhaId) })
+    .update({
+      futuro_cliente: true,
+      futuro_cliente_notas: notas,
+      futuro_cliente_retorno: retorno,
+      futuro_cliente_marcado_em: formatarDateTimeSQL(),
+      futuro_cliente_marcado_por_id: usuarioId
+    });
 
   const atualizada = await LeadLinha.query()
     .findById(linhaId)

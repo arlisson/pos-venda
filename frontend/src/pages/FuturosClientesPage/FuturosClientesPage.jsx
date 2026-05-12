@@ -176,6 +176,13 @@ function formatarParaDatetimeLocal(valor) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function datetimeRetornoParaIso(valor) {
+  if (!valor) return null;
+
+  const data = new Date(valor);
+  return isNaN(data.getTime()) ? null : data.toISOString();
+}
+
 // ─── Modal: registrar venda ───────────────────────────────────────────────────
 
 function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }) {
@@ -330,7 +337,17 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
     setErro('');
 
     try {
-      const resultado = await marcarFuturoClienteLead(linha.id, { notas, retorno: retorno || null });
+      const retornoIso = datetimeRetornoParaIso(retorno);
+      if (retorno && !retornoIso) {
+        setErro('Informe uma data e hora de retorno validas.');
+        setSalvando(false);
+        return;
+      }
+
+      const resultado = await marcarFuturoClienteLead(linha.id, {
+        notas,
+        retorno: retornoIso
+      });
       onFuturoClienteSalvo(resultado.linha);
     } catch (error) {
       setErro(error.message || 'Erro ao registrar futuro cliente.');
@@ -744,7 +761,17 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
     setSalvando(true);
     setErro('');
     try {
-      const resultado = await marcarFuturoClienteLead(linha.id, { notas, retorno: retorno || null });
+      const retornoIso = datetimeRetornoParaIso(retorno);
+      if (retorno && !retornoIso) {
+        setErro('Informe uma data e hora de retorno validas.');
+        setSalvando(false);
+        return;
+      }
+
+      const resultado = await marcarFuturoClienteLead(linha.id, {
+        notas,
+        retorno: retornoIso
+      });
       onAtualizado(resultado.linha);
     } catch (error) {
       setErro(error.message || 'Erro ao salvar.');
