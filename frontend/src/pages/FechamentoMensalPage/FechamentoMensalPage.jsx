@@ -284,7 +284,7 @@ function FechamentoMensalPage() {
 
         <FechamentoSecao
           titulo="Total de vendas"
-          subtitulo="Todos os status do funil, exceto retornos"
+          subtitulo="Todos os status do funil, incluindo retornos"
           linhas={resumo.total || []}
           secao="total"
           loading={loading}

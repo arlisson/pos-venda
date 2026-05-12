@@ -47,6 +47,15 @@ function fmtTexto(valor) {
   return String(valor || '').trim() || '-';
 }
 
+function linhaTeveRetorno(linha = {}) {
+  return linha.status_funil !== 'retorno' && Boolean(linha.retornou_em || linha.motivo_retorno || linha.status_anterior_retorno);
+}
+
+function fmtRetornoBadge(linha = {}) {
+  if (linha.retornou_em) return `Ja retornou em ${fmtData(linha.retornou_em)}`;
+  return 'Ja retornou';
+}
+
 function fmtLista(valor) {
   if (!valor) return '-';
   if (Array.isArray(valor)) return valor.length ? valor.join(', ') : '-';
@@ -231,6 +240,10 @@ function valoresBuscaLinha(linha) {
     linha.horario_aceite_fixo,
     linha.motivo_retorno,
     linha.status_anterior_retorno,
+    linha.retornou_em,
+    fmtData(linha.retornou_em),
+    linha.corrigido_em,
+    fmtData(linha.corrigido_em),
     linha.valor_unitario,
     fmtMoeda(linha.valor_unitario),
     linha.regra_comissao?.valor_min,
@@ -638,6 +651,11 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                             <span className={`fechamento-etapa-badge ${classeEtapaFunil(linha.status_funil)}`}>
                               {fmtEtapaFunil(linha.status_funil)}
                             </span>
+                            {linhaTeveRetorno(linha) && (
+                              <span className="fechamento-etapa-badge is-return" title={fmtTexto(linha.motivo_retorno)}>
+                                {fmtRetornoBadge(linha)}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td>{fmtTexto(linha.protocolo)}</td>

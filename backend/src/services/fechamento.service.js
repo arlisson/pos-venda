@@ -5,6 +5,7 @@ const ExcelJS = require('exceljs');
 const vendaService = require('./venda.service');
 
 const STATUS_FINAL_FALLBACK = 'concluido';
+const CODIGO_RETORNO_HISTORICO = '__retorno_historico';
 
 const CATEGORIA_POR_SERVICO = {
   'telefonia movel': 'movel',
@@ -208,8 +209,17 @@ async function listarEtapasPainel() {
 }
 
 function nomeEtapa(etapas, codigo) {
+  if (codigo === CODIGO_RETORNO_HISTORICO) return 'Ja retornou';
   if (codigo === 'retorno') return 'Retorno';
   return etapas.find(etapa => etapa.codigo === codigo)?.nome || codigo || 'Sem etapa';
+}
+
+function vendaTeveRetorno(venda = {}) {
+  return Boolean(venda.retornou_em || venda.motivo_retorno || venda.status_anterior_retorno);
+}
+
+function vendaTeveRetornoCorrigido(venda = {}) {
+  return venda.status_funil !== 'retorno' && vendaTeveRetorno(venda);
 }
 
 function valorTexto(valor) {
@@ -633,6 +643,27 @@ function somarEtapaLinha(linha, venda, chips, etapasBase = [], statusFinal = STA
   etapa.ugrs += chips;
 }
 
+function somarRetornoHistoricoLinha(linha, venda, chips) {
+  if (!vendaTeveRetornoCorrigido(venda)) return;
+
+  let etapa = linha.etapas_funil.find(item => item.codigo === CODIGO_RETORNO_HISTORICO);
+
+  if (!etapa) {
+    etapa = {
+      codigo: CODIGO_RETORNO_HISTORICO,
+      nome: nomeEtapa([], CODIGO_RETORNO_HISTORICO),
+      vendas: 0,
+      ugrs: 0,
+      retorno: true,
+      etapa_final: false
+    };
+    linha.etapas_funil.push(etapa);
+  }
+
+  etapa.vendas += 1;
+  etapa.ugrs += chips;
+}
+
 function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapasBase = []) {
   const total = new Map();
   const tratando = new Map();
@@ -667,6 +698,7 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
       linha.portabilidade += chipsPortabilidade;
       linha.receita += valor;
       somarEtapaLinha(linha, venda, chips, etapasBase, statusFinal);
+      somarRetornoHistoricoLinha(linha, venda, chips);
     };
 
     aplicar(inicializa(total));
@@ -738,6 +770,7 @@ async function montarPainelGerencial(vendas, statusFinal = STATUS_FINAL_FALLBACK
     const chips = quantidadeChipsVenda(venda);
     const ehAtiva = venda.status_funil === statusFinal;
     const ehRetorno = venda.status_funil === 'retorno';
+    const teveRetornoCorrigido = vendaTeveRetornoCorrigido(venda);
     const ehTratando = venda.status_funil && !ehAtiva && !ehRetorno;
 
     linha.total_vendas += 1;
@@ -752,7 +785,9 @@ async function montarPainelGerencial(vendas, statusFinal = STATUS_FINAL_FALLBACK
       linha.ugrs_ativas += chips;
     } else if (ehRetorno) {
       linha.retornos += 1;
-    } else if (ehTratando) {
+    }
+
+    if (!ehAtiva && !ehRetorno && ehTratando) {
       linha.tratando += 1;
     }
 
@@ -772,6 +807,25 @@ async function montarPainelGerencial(vendas, statusFinal = STATUS_FINAL_FALLBACK
 
     if (!etapaExistente) {
       linha.etapas_funil.push(etapa);
+    }
+
+    if (teveRetornoCorrigido) {
+      const retornoHistoricoExistente = linha.etapas_funil.find(item => item.codigo === CODIGO_RETORNO_HISTORICO);
+      const retornoHistorico = retornoHistoricoExistente || {
+        codigo: CODIGO_RETORNO_HISTORICO,
+        nome: nomeEtapa([], CODIGO_RETORNO_HISTORICO),
+        vendas: 0,
+        ugrs: 0,
+        retorno: true,
+        etapa_final: false
+      };
+
+      retornoHistorico.vendas += 1;
+      retornoHistorico.ugrs += chips;
+
+      if (!retornoHistoricoExistente) {
+        linha.etapas_funil.push(retornoHistorico);
+      }
     }
   });
 
@@ -800,7 +854,7 @@ async function montarPainelGerencial(vendas, statusFinal = STATUS_FINAL_FALLBACK
 }
 
 async function obterResumo(filtros = {}) {
-  const { vendas: vendasRegistro, statusFinal } = await carregarVendasNoPeriodo(filtros, 'registro');
+  const { vendas: vendasRegistro, statusFinal } = await carregarVendasNoPeriodo(filtros, 'registro', { incluirRetornos: true });
   const { vendas: vendasPainel } = await carregarVendasNoPeriodo(filtros, 'registro', { incluirRetornos: true });
   const { vendas: vendasAtivacao } = await carregarVendasNoPeriodo(filtros, 'ativacao');
   const etapasBase = await listarEtapasPainel();
@@ -845,6 +899,10 @@ function montarVendaResumo(venda, statusFinal = STATUS_FINAL_FALLBACK) {
       ? (venda.data_ativacao || venda.data_venda || venda.created_at || null)
       : (venda.data_venda || venda.created_at || null),
     status_funil: venda.status_funil,
+    motivo_retorno: venda.motivo_retorno || null,
+    status_anterior_retorno: venda.status_anterior_retorno || null,
+    retornou_em: venda.retornou_em || null,
+    corrigido_em: venda.corrigido_em || null,
     valor_total: Number(venda.valor_total || 0),
     quantidade_linhas: Number(venda.quantidade_linhas || 0),
     chips_total: quantidadeChipsVenda(venda),
@@ -878,7 +936,9 @@ function montarVendaResumo(venda, statusFinal = STATUS_FINAL_FALLBACK) {
 
 async function obterDetalhes(filtros = {}) {
   const criterioData = filtros.secao === 'ativas' ? 'ativacao' : 'registro';
-  const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, criterioData);
+  const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, criterioData, {
+    incluirRetornos: filtros.secao === 'total'
+  });
   const vendasSecao = filtrarPorSecao(todasVendas, filtros.secao, statusFinal);
 
   const filtradas = filtros.operadora_id
@@ -896,7 +956,9 @@ async function obterDetalhes(filtros = {}) {
 
 async function obterDetalhesChips(filtros = {}) {
   const criterioData = filtros.secao === 'ativas' ? 'ativacao' : 'registro';
-  const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, criterioData);
+  const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, criterioData, {
+    incluirRetornos: filtros.secao === 'total'
+  });
   const regrasComissao = await carregarRegrasComissaoAtivas();
   const vendasSecao = filtrarPorSecao(todasVendas, filtros.secao, statusFinal);
   const filtradas = filtros.operadora_id

@@ -14,6 +14,15 @@ function fmtData(valor) {
   return `${dia}/${mes}/${ano}`;
 }
 
+function vendaTeveRetorno(venda = {}) {
+  return venda.status_funil !== 'retorno' && Boolean(venda.retornou_em || venda.motivo_retorno || venda.status_anterior_retorno);
+}
+
+function fmtRetornoBadge(venda = {}) {
+  if (venda.retornou_em) return `Ja retornou em ${fmtData(venda.retornou_em)}`;
+  return 'Ja retornou';
+}
+
 const STATUS_LABEL = {
   aprovacao: 'Aprovação',
   ativacao: 'Ativação',
@@ -125,7 +134,18 @@ function DetalhesModal({ secao, periodo, onClose }) {
                       <td className="num">{fmtMoeda(venda.valor_total)}</td>
                       <td className="num">{venda.dia_vencimento ?? '—'}</td>
                       <td>{fmtData(venda.cliente?.fidelidade_fim)}</td>
-                      <td>{STATUS_LABEL[venda.status_funil] || venda.status_funil}</td>
+                      <td>
+                        <div className="fechamento-venda-etapa">
+                          <span className={`fechamento-etapa-badge ${venda.status_funil === 'retorno' ? 'is-return' : venda.status_funil === 'concluido' ? 'is-final' : ''}`}>
+                            {STATUS_LABEL[venda.status_funil] || venda.status_funil}
+                          </span>
+                          {vendaTeveRetorno(venda) && (
+                            <span className="fechamento-etapa-badge is-return" title={venda.motivo_retorno || ''}>
+                              {fmtRetornoBadge(venda)}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
