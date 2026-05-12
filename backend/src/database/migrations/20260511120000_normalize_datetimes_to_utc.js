@@ -13,7 +13,7 @@ const TABELAS = [
   { tabela: 'audit_logs',                 colunas: ['created_at'] },
   { tabela: 'funil_etapas',              colunas: ['created_at', 'updated_at'] },
   { tabela: 'venda_historicos',           colunas: ['created_at'] },
-  { tabela: 'entidade_notas',             colunas: ['created_at', 'updated_at', 'retorno_agendado_em'] },
+  { tabela: 'entidade_notas',             colunas: ['created_at', 'updated_at', 'retorno_agendado_para'] },
   { tabela: 'venda_notificacao_parada',   colunas: ['data_entrada_etapa', 'created_at', 'updated_at'] },
   { tabela: 'venda_aprovacao_solicitacoes', colunas: ['created_at', 'updated_at', 'respondido_em'] },
   { tabela: 'cnpj_consultas_cache',       colunas: ['created_at', 'updated_at'] },

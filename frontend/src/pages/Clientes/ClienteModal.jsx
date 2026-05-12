@@ -4,6 +4,8 @@ import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
 import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/CnpjSugestoes';
 import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
+import { criarCliente, atualizarCliente } from '../../services/cliente.service';
+import { criarNotaEntidade } from '../../services/nota.service';
 import './Clientes.css';
 
 
@@ -165,6 +167,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
   const [abaAtiva, setAbaAtiva] = useState('cliente');
+  const [pendingNotas, setPendingNotas] = useState([]);
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
   const editando = Boolean(cliente);
 
@@ -282,10 +285,33 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');
+
+    if (!form.nome.trim()) {
+      setErro('Preencha o nome do cliente.');
+      setAbaAtiva('cliente');
+      return;
+    }
+
     setSalvando(true);
 
     try {
-      await onSave(montarPayloadCliente(form));
+      const payload = montarPayloadCliente(form);
+      let saved;
+
+      if (cliente?.id) {
+        saved = await atualizarCliente(cliente.id, payload);
+      } else {
+        saved = await criarCliente(payload);
+        for (const nota of pendingNotas) {
+          try {
+            await criarNotaEntidade('cliente', saved.id, nota);
+          } catch {
+            // best effort
+          }
+        }
+      }
+
+      await onSave(saved);
     } catch (error) {
       setErro(error.message || 'Erro ao salvar cliente.');
       setSalvando(false);
@@ -320,13 +346,19 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
             className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
             onClick={() => setAbaAtiva('notas')}
           >
-            <I.Note size={14} /> Notas
+            <I.Note size={14} /> Notas{!cliente?.id && pendingNotas.length > 0 && ` (${pendingNotas.length})`}
           </button>
         </div>
 
         <div className="modal-body">
+          {erro && <div className="alert-error" style={{ marginBottom: 12 }}>{erro}</div>}
           {abaAtiva === 'notas' ? (
-            <NotasEntidadeTab tipo="cliente" entidadeId={cliente?.id} />
+            <NotasEntidadeTab
+              tipo="cliente"
+              entidadeId={cliente?.id}
+              pendingNotas={pendingNotas}
+              onPendingNotasChange={setPendingNotas}
+            />
           ) : (
           <>
             <div className="cliente-form-grid">
@@ -432,13 +464,12 @@ function ClienteModal({ cliente, operadoras, onClose, onSave }) {
             </div>
           </div>
 
-          {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
           </>
           )}
         </div>
 
         <div className="modal-footer">
-          {abaAtiva === 'notas' ? (
+          {abaAtiva === 'notas' && cliente?.id ? (
             <button type="button" className="btn" onClick={onClose}>Fechar</button>
           ) : (
             <>

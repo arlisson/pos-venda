@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getResumo } from '../../services/fechamento.service';
 import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
-import { criarCliente, listarClientes } from '../../services/cliente.service';
+import { listarClientes } from '../../services/cliente.service';
 import {
   atualizarVenda,
   buscarVendaPorId,
@@ -206,8 +206,7 @@ function FechamentoMensalPage() {
     });
   }
 
-  async function salvarClienteRapido(dados) {
-    const clienteCriado = await criarCliente(dados);
+  async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
     setClientes(clientesAtualizados || []);
     fecharClienteRapido(clienteCriado);

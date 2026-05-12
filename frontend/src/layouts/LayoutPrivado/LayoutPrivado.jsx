@@ -6,7 +6,7 @@ import * as I from '../../components/Icons';
 import { buscarPerfil, getUsuarioLocal, logout, temPermissao } from '../../services/auth.service';
 import VendaModal from '../../pages/VendasPage/VendaModal';
 import ClienteModal from '../../pages/Clientes/ClienteModal';
-import { criarCliente, listarClientes } from '../../services/cliente.service';
+import { listarClientes } from '../../services/cliente.service';
 import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { criarVenda, listarVendas, listarVendedoras } from '../../services/venda.service';
 import {
@@ -194,8 +194,7 @@ function LayoutPrivado({ children }) {
     });
   }
 
-  async function salvarClienteRapido(dados) {
-    const clienteCriado = await criarCliente(dados);
+  async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
     setClientesNovaVenda(clientesAtualizados);
     fecharClienteRapido(clienteCriado);

@@ -33,7 +33,7 @@ import {
 } from '../../services/venda.service';
 import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
-import { criarCliente, listarClientes } from '../../services/cliente.service';
+import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import './VendasPage.css';
 
@@ -2496,8 +2496,7 @@ function VendasPage() {
     });
   }
 
-  async function salvarClienteRapido(dados) {
-    const clienteCriado = await criarCliente(dados);
+  async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
     setClientes(clientesAtualizados);
     fecharClienteRapido(clienteCriado);

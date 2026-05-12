@@ -43,7 +43,7 @@ function montarDraftNota(nota = NOTA_VAZIA) {
   };
 }
 
-function NotaEditor({ value, salvando, onChange, onCancel, onSave }) {
+function NotaEditor({ value, salvando, onChange, onCancel, onSave, saveLabel = 'Salvar' }) {
   const podeSalvar = String(value.titulo || '').trim() || String(value.conteudo || '').trim();
   const retornoAtivo = value.retorno_agendado_para !== null && value.retorno_agendado_para !== undefined;
 
@@ -98,14 +98,14 @@ function NotaEditor({ value, salvando, onChange, onCancel, onSave }) {
           onClick={onSave}
           disabled={salvando || !podeSalvar || (retornoAtivo && !value.retorno_agendado_para)}
         >
-          {salvando ? 'Salvando...' : 'Salvar'}
+          {salvando ? 'Salvando...' : saveLabel}
         </button>
       </div>
     </div>
   );
 }
 
-function NotasEntidadeTab({ tipo, entidadeId }) {
+function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasChange = () => {} }) {
   const [notas, setNotas] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
@@ -147,6 +147,16 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
     setEditandoId(nota.id);
     setDraftEdicao(montarDraftNota(nota));
     setCriando(false);
+  }
+
+  function adicionarPendente() {
+    onPendingNotasChange([...pendingNotas, { ...draftNova }]);
+    setCriando(false);
+    setDraftNova(NOTA_VAZIA);
+  }
+
+  function removerPendente(idx) {
+    onPendingNotasChange(pendingNotas.filter((_, i) => i !== idx));
   }
 
   async function salvarNovaNota() {
@@ -222,12 +232,70 @@ function NotasEntidadeTab({ tipo, entidadeId }) {
     }
   }
 
+  // Modo offline: cliente/venda ainda não foi salvo
   if (!entidadeId) {
     return (
-      <div className="notes-empty">
-        <I.Note size={22} />
-        <strong>Salve este {labelEntidade} primeiro.</strong>
-        <span>Depois de salvar, você poderá criar anotações individuais aqui.</span>
+      <div className="notes-tab">
+        <div className="notes-toolbar">
+          <div>
+            <strong>Minhas notas</strong>
+            <span>{pendingNotas.length} anotação(ões)</span>
+          </div>
+          {!criando && (
+            <button type="button" className="btn btn-sm btn-primary" onClick={iniciarNovaNota}>
+              <I.Plus size={13} /> Nova nota
+            </button>
+          )}
+        </div>
+
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-3)' }}>
+          As notas serão salvas automaticamente ao salvar o {labelEntidade}.
+        </p>
+
+        {criando && (
+          <NotaEditor
+            value={draftNova}
+            salvando={false}
+            onChange={setDraftNova}
+            onCancel={() => { setCriando(false); setDraftNova(NOTA_VAZIA); }}
+            onSave={adicionarPendente}
+            saveLabel="Adicionar"
+          />
+        )}
+
+        {pendingNotas.length === 0 && !criando ? (
+          <div className="notes-empty notes-empty--compact">
+            <I.Note size={20} />
+            <strong>Nenhuma nota ainda.</strong>
+            <span>Crie uma nota para guardar lembretes sobre este {labelEntidade}.</span>
+          </div>
+        ) : (
+          <div className="notes-list">
+            {pendingNotas.map((nota, idx) => (
+              <article key={idx} className="note-card">
+                <div className="note-card__head">
+                  <div>
+                    <strong>{nota.titulo || 'Sem título'}</strong>
+                    {nota.retorno_agendado_para && (
+                      <span><I.Calendar size={12} /> Retorno: {formatarDataNota(nota.retorno_agendado_para)}</span>
+                    )}
+                  </div>
+                  <div className="note-card__actions">
+                    <button
+                      type="button"
+                      className="btn btn-icon btn-ghost"
+                      title="Remover nota"
+                      onClick={() => removerPendente(idx)}
+                    >
+                      <I.Trash size={13} />
+                    </button>
+                  </div>
+                </div>
+                {nota.conteudo && <p>{nota.conteudo}</p>}
+              </article>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

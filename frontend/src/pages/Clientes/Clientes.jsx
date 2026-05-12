@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import ClienteModal from './ClienteModal';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
-import { atualizarCliente, criarCliente, excluirCliente, listarClientes } from '../../services/cliente.service';
+import { excluirCliente, listarClientes } from '../../services/cliente.service';
 import { listarNotasEntidade } from '../../services/nota.service';
 import { listarEtapasFunil, listarOperadoras } from '../../services/config.service';
 import { listarVendas } from '../../services/venda.service';
@@ -904,16 +903,9 @@ function Clientes() {
     setModalAberto(true);
   }
 
-  async function salvarCliente(dados) {
+  async function salvarCliente(clienteSalvo) {
     setErro('');
     const editando = Boolean(clienteModal);
-
-    if (clienteModal) {
-      await atualizarCliente(clienteModal.id, dados);
-    } else {
-      await criarCliente(dados);
-    }
-
     setModalAberto(false);
     setClienteModal(null);
     await carregarClientes(filtros);
