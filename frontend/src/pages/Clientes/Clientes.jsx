@@ -1039,6 +1039,32 @@ function Clientes() {
   }, [filtros]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
+  useEffect(() => {
+    function handleNotasAtualizar({ detail }) {
+      const { clienteId, notas } = detail;
+      setClientes(prev => prev.map(c => {
+        if (Number(c.id) !== Number(clienteId)) return c;
+        const comRetorno = notas.filter(n => n.retorno_agendado_para);
+        const agendadas = comRetorno.map(n => n.retorno_agendado_para).sort();
+        const agora = new Date().toISOString();
+        const vencidas = agendadas.filter(d => d <= agora);
+        return {
+          ...c,
+          notas_resumo: {
+            notas_total: notas.length,
+            notas_com_retorno_total: comRetorno.length,
+            notas_retorno_vencido_total: vencidas.length,
+            proximo_retorno_agendado_para: agendadas[0] || null,
+            proximo_retorno_vencido_para: vencidas[0] || null
+          }
+        };
+      }));
+    }
+
+    window.addEventListener('pos-venda:notas-cliente-atualizar', handleNotasAtualizar);
+    return () => window.removeEventListener('pos-venda:notas-cliente-atualizar', handleNotasAtualizar);
+  }, []);
+
   const clientesComAviso = useMemo(() => (
     clientes.filter(cliente => cliente.aviso_fidelidade?.deve_avisar).length
   ), [clientes]);

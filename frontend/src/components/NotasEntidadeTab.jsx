@@ -159,16 +159,26 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
     onPendingNotasChange(pendingNotas.filter((_, i) => i !== idx));
   }
 
+  function notificarAtualizar(notasAtualizadas) {
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    if (tipo === 'cliente' && entidadeId) {
+      window.dispatchEvent(new CustomEvent('pos-venda:notas-cliente-atualizar', {
+        detail: { clienteId: Number(entidadeId), notas: notasAtualizadas }
+      }));
+    }
+  }
+
   async function salvarNovaNota() {
     setSalvando(true);
     setErro('');
 
     try {
       const nota = await criarNotaEntidade(tipo, entidadeId, draftNova);
-      setNotas(prev => [nota, ...prev]);
+      const novasNotas = [nota, ...notas];
+      setNotas(novasNotas);
       setCriando(false);
       setDraftNova(NOTA_VAZIA);
-      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+      notificarAtualizar(novasNotas);
     } catch (error) {
       setErro(error.message || 'Erro ao criar nota.');
     } finally {
@@ -184,10 +194,11 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
 
     try {
       const nota = await atualizarNota(editandoId, draftEdicao);
-      setNotas(prev => prev.map(item => item.id === nota.id ? nota : item));
+      const novasNotas = notas.map(item => item.id === nota.id ? nota : item);
+      setNotas(novasNotas);
       setEditandoId(null);
       setDraftEdicao(NOTA_VAZIA);
-      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+      notificarAtualizar(novasNotas);
     } catch (error) {
       setErro(error.message || 'Erro ao atualizar nota.');
     } finally {
@@ -204,8 +215,9 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
 
     try {
       await excluirNota(nota.id);
-      setNotas(prev => prev.filter(item => item.id !== nota.id));
-      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+      const novasNotas = notas.filter(item => item.id !== nota.id);
+      setNotas(novasNotas);
+      notificarAtualizar(novasNotas);
     } catch (error) {
       setErro(error.message || 'Erro ao excluir nota.');
     } finally {
@@ -223,8 +235,9 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
         conteudo: nota.conteudo || '',
         retorno_agendado_para: null
       });
-      setNotas(prev => prev.map(item => item.id === notaAtualizada.id ? notaAtualizada : item));
-      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+      const novasNotas = notas.map(item => item.id === notaAtualizada.id ? notaAtualizada : item);
+      setNotas(novasNotas);
+      notificarAtualizar(novasNotas);
     } catch (error) {
       setErro(error.message || 'Erro ao remover retorno.');
     } finally {
