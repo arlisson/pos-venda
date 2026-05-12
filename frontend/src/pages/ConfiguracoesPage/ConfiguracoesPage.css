@@ -202,14 +202,22 @@
   white-space: nowrap;
 }
 
-.config-table .row-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
+.config-table td.row-actions {
+  display: table-cell;
+  min-height: 0;
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .config-table .row-actions .btn {
-  height: 30px;
+  height: 32px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.config-table .row-actions .btn + .btn {
+  margin-left: 6px;
 }
 
 .config-edit {
