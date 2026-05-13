@@ -67,6 +67,7 @@ function VendasAprovacoesPage() {
   const usuario = getUsuarioLocal();
   const podeDecidir = temPermissao(usuario, 'vendas_aprovacoes_decidir');
   const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
+  const podeCompartilharVenda = temPermissao(usuario, 'compartilhar_venda');
   const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
   const [status, setStatus] = useState(searchParams.get('status') || 'pendente');
   const [solicitacoes, setSolicitacoes] = useState([]);
@@ -421,6 +422,7 @@ function VendasAprovacoesPage() {
           servicos={servicos}
           vendasPorCliente={new Map()}
           podeEditarVenda={podeEditarVenda}
+          podeCompartilharVenda={podeCompartilharVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
           usuarioLogado={usuario}
           initialTab="venda"

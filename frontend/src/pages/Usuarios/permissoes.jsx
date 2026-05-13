@@ -60,6 +60,11 @@ export const GRUPOS_PERMISSOES = [
             descricao: 'Permite editar vendas acessíveis.'
           },
           {
+            chave: 'compartilhar_venda',
+            nome: 'Compartilhar vendas',
+            descricao: 'Permite vincular outras vendedoras a uma venda.'
+          },
+          {
             chave: 'vendas_excluir',
             nome: 'Excluir vendas',
             descricao: 'Permite enviar vendas para a lixeira e excluir definitivamente.'
@@ -72,7 +77,22 @@ export const GRUPOS_PERMISSOES = [
         ]
       },
       {
-        titulo: 'Pós-venda e operação',
+        titulo: 'Vendas compartilhadas',
+        itens: [
+          {
+            chave: 'ver_vendas_compartilhadas',
+            nome: 'Ver compartilhadas',
+            descricao: 'Mostra apenas vendas compartilhadas em que o usuario esta como vendedor.'
+          },
+          {
+            chave: 'editar_vendas_compartilhadas',
+            nome: 'Editar compartilhadas',
+            descricao: 'Permite editar vendas compartilhadas em que o usuario esta como vendedor.'
+          }
+        ]
+      },
+      {
+        titulo: 'Pos-venda e operacao',
         itens: [
           {
             chave: 'pos_venda',

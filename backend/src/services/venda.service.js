@@ -2,6 +2,7 @@ const Venda = require('../models/Venda');
 const VendaHistorico = require('../models/VendaHistorico');
 const Usuario = require('../models/Usuario');
 const FunilEtapa = require('../models/FunilEtapa');
+const Cliente = require('../models/Cliente');
 const clienteService = require('./cliente.service');
 const vendaArquivoService = require('./venda-arquivo.service');
 const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
@@ -374,6 +375,39 @@ function validarVendedorasNosChips(payload, vendedorasIds = []) {
   }
 }
 
+function conjuntosIguais(a = [], b = []) {
+  const setA = new Set(a.map(Number));
+  const setB = new Set(b.map(Number));
+
+  if (setA.size !== setB.size) return false;
+  return Array.from(setA).every(item => setB.has(item));
+}
+
+async function validarPermissaoCompartilharVenda({ usuarioId, vendedorasIds = [], vendaId = null }) {
+  if (!Array.isArray(vendedorasIds)) return;
+
+  const podeCompartilhar = await usuarioTemPermissao(usuarioId, 'compartilhar_venda');
+  if (podeCompartilhar) return;
+
+  if (vendaId) {
+    const atuais = await Venda.knex()('venda_vendedoras')
+      .where('venda_id', vendaId)
+      .pluck('usuario_id');
+
+    if (conjuntosIguais(atuais, vendedorasIds)) {
+      return;
+    }
+  }
+
+  const idsDiferentesDoUsuario = vendedorasIds.filter(id => Number(id) !== Number(usuarioId));
+
+  if (idsDiferentesDoUsuario.length > 0) {
+    const error = new Error('Voce nao tem permissao para compartilhar vendas com outras vendedoras.');
+    error.statusCode = 403;
+    throw error;
+  }
+}
+
 const CLIENTE_SOLICITOU_SERVICOS = ['bloqueio', 'cancelamento', 'nenhum_servico'];
 const CLIENTE_SOLICITOU_ACOES = ['bloqueio', 'cancelamento'];
 
@@ -641,8 +675,21 @@ async function buscarEscopoVendas(usuarioId) {
 
   return {
     podeVerTodas: permissoes.includes('vendas_ver_todas'),
-    podeVerProprias: permissoes.includes('vendas_ver_proprias')
+    podeVerProprias: permissoes.includes('vendas_ver_proprias'),
+    podeVerCompartilhadas: permissoes.includes('ver_vendas_compartilhadas')
   };
+}
+
+async function buscarClienteParaPayloadVenda(clienteId, usuarioId, vendaAtual = null) {
+  if (!clienteId) return null;
+
+  if (vendaAtual && Number(vendaAtual.cliente_id) === Number(clienteId)) {
+    return Cliente.query()
+      .findById(clienteId)
+      .whereNull('excluido_em');
+  }
+
+  return clienteService.buscarClientePorId(clienteId, usuarioId);
 }
 
 async function buscarPermissoesUsuario(usuarioId) {
@@ -710,22 +757,28 @@ function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
     return query;
   }
 
-  if (!escopo.podeVerProprias) {
+  if (!escopo.podeVerProprias && !escopo.podeVerCompartilhadas) {
     query.whereRaw('1 = 0');
     return query;
   }
 
   query.where((builder) => {
-    builder
-      .where(campo('criado_por_id'), usuarioId)
-      .orWhere(campo('vendedora_id'), usuarioId)
-      .orWhereExists(
+    if (escopo.podeVerProprias) {
+      builder
+        .where(campo('criado_por_id'), usuarioId)
+        .orWhere(campo('vendedora_id'), usuarioId);
+    }
+
+    if (escopo.podeVerCompartilhadas) {
+      const metodo = escopo.podeVerProprias ? 'orWhereExists' : 'whereExists';
+      builder[metodo](
         Venda.knex()
           .select(1)
           .from('venda_vendedoras as vv_scope')
           .whereRaw(`vv_scope.venda_id = ${tabelaVendas}.id`)
           .where('vv_scope.usuario_id', usuarioId)
       );
+    }
   });
 
   return query;
@@ -1019,7 +1072,7 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
     return true;
   }
 
-  if (!escopo.podeVerProprias) {
+  if (!escopo.podeVerProprias && !escopo.podeVerCompartilhadas) {
     return false;
   }
 
@@ -1033,9 +1086,53 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
 
   const venda = await query;
 
-  if (Number(venda?.criado_por_id) === Number(usuarioId)
-    || Number(venda?.vendedora_id) === Number(usuarioId)) {
+  if (escopo.podeVerProprias && (
+    Number(venda?.criado_por_id) === Number(usuarioId)
+    || Number(venda?.vendedora_id) === Number(usuarioId)
+  )) {
     return true;
+  }
+
+  if (!escopo.podeVerCompartilhadas) {
+    return false;
+  }
+
+  const vinculo = await Venda.knex()('venda_vendedoras')
+    .where('venda_id', id)
+    .where('usuario_id', usuarioId)
+    .first();
+
+  return Boolean(vinculo);
+}
+
+async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
+  const permissoes = await buscarPermissoesUsuario(usuarioId);
+
+  if (permissoes.admin) {
+    return true;
+  }
+
+  const venda = await Venda.query()
+    .findById(id)
+    .select('id', 'criado_por_id', 'vendedora_id', 'excluido_em');
+
+  if (!venda || (!opcoes.incluirLixeira && venda.excluido_em)) {
+    return false;
+  }
+
+  if (
+    permissoes.permissoes.includes('vendas_editar')
+    && (
+      permissoes.permissoes.includes('vendas_ver_todas')
+      || Number(venda.criado_por_id) === Number(usuarioId)
+      || Number(venda.vendedora_id) === Number(usuarioId)
+    )
+  ) {
+    return true;
+  }
+
+  if (!permissoes.permissoes.includes('editar_vendas_compartilhadas')) {
+    return false;
   }
 
   const vinculo = await Venda.knex()('venda_vendedoras')
@@ -1381,10 +1478,15 @@ async function criarVenda(dados, usuarioId) {
     throw new Error('Selecione pelo menos uma vendedora para cadastrar a venda.');
   }
 
+  await validarPermissaoCompartilharVenda({
+    usuarioId,
+    vendedorasIds: vendedorasIds.length > 0 ? vendedorasIds : [payload.vendedora_id].filter(Boolean)
+  });
+
   validarVendedorasNosChips(payload, vendedorasIds);
 
   if (payload.cliente_id) {
-    const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
+    const cliente = await buscarClienteParaPayloadVenda(payload.cliente_id, usuarioId);
 
     if (!cliente) {
       throw new Error('Cliente não encontrado.');
@@ -1436,7 +1538,7 @@ async function criarVenda(dados, usuarioId) {
 }
 
 async function atualizarVenda(id, dados, usuarioId) {
-  const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
+  const permitido = await usuarioPodeEditarVenda(id, usuarioId);
 
   if (!permitido) {
     return null;
@@ -1450,8 +1552,10 @@ async function atualizarVenda(id, dados, usuarioId) {
     return null;
   }
 
-  if (vendaAtual.enviada_pos_venda_em && !await usuarioTemPermissao(usuarioId, 'pos_venda')) {
-    const error = new Error('Venda já enviada ao pós-venda. Apenas usuários com permissão de pós-venda podem editar.');
+  const usuarioPodeOperarPosVenda = await usuarioTemPermissao(usuarioId, 'pos_venda');
+
+  if (vendaAtual.enviada_pos_venda_em && !usuarioPodeOperarPosVenda) {
+    const error = new Error('Venda ja enviada ao pos-venda. Apenas usuarios com permissao de pos-venda podem editar.');
     error.statusCode = 403;
     throw error;
   }
@@ -1473,12 +1577,26 @@ async function atualizarVenda(id, dados, usuarioId) {
     throw new Error('Selecione pelo menos uma vendedora valida para atualizar a venda.');
   }
 
+  if (vendedorasIds !== null) {
+    await validarPermissaoCompartilharVenda({
+      usuarioId,
+      vendedorasIds,
+      vendaId: id
+    });
+  } else if (payload.vendedora_id !== undefined && payload.vendedora_id !== null) {
+    await validarPermissaoCompartilharVenda({
+      usuarioId,
+      vendedorasIds: [payload.vendedora_id],
+      vendaId: id
+    });
+  }
+
   if (vendedorasIds && vendedorasIds.length > 0) {
     validarVendedorasNosChips(payload, vendedorasIds);
   }
 
   if (payload.cliente_id) {
-    const cliente = await clienteService.buscarClientePorId(payload.cliente_id, usuarioId);
+    const cliente = await buscarClienteParaPayloadVenda(payload.cliente_id, usuarioId, vendaAtual);
 
     if (!cliente) {
       throw new Error('Cliente não encontrado.');
@@ -1739,7 +1857,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 }
 
 async function enviarVendaParaPosVenda(id, usuarioId) {
-  const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
+  const permitido = await usuarioPodeEditarVenda(id, usuarioId);
 
   if (!permitido) {
     return { status: 'not_found' };
@@ -1905,11 +2023,18 @@ async function excluirVendaDefinitivo(id, usuarioId) {
     .delete();
 }
 
-async function listarVendedoras() {
-  return Usuario.query()
+async function listarVendedoras(usuarioId) {
+  const podeCompartilhar = usuarioId ? await usuarioTemPermissao(usuarioId, 'compartilhar_venda') : true;
+  const query = Usuario.query()
     .select('id', 'nome', 'email', 'ativo')
     .where('ativo', true)
     .orderBy('nome', 'asc');
+
+  if (!podeCompartilhar && usuarioId) {
+    query.where('id', usuarioId);
+  }
+
+  return query;
 }
 
 async function listarStatusVendasParaHistorico() {

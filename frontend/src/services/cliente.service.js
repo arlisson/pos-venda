@@ -68,6 +68,7 @@ export async function restaurarCliente(id) {
   return apiPost(`/clientes/${id}/restaurar`, {});
 }
 
-export async function excluirClienteDefinitivo(id) {
-  return apiDelete(`/clientes/${id}/definitivo`);
+export async function excluirClienteDefinitivo(id, opcoes = {}) {
+  const query = opcoes.excluirVendasRelacionadas ? '?excluir_vendas_relacionadas=1' : '';
+  return apiDelete(`/clientes/${id}/definitivo${query}`);
 }
