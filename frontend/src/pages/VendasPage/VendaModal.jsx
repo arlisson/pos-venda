@@ -3186,7 +3186,7 @@ function VendaModal({
               className={`modal-tab ${abaAtiva === 'arquivos' ? 'active' : ''}`}
               onClick={() => setAbaAtiva('arquivos')}
             >
-              <I.Note size={14} /> Documentos
+              <I.Folder size={14} /> Documentos
             </button>
           )}
           <button

@@ -7,16 +7,12 @@ import {
   excluirNota,
   listarNotasEntidade
 } from '../services/nota.service';
+import { formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../utils/datetime';
 
 const NOTA_VAZIA = { titulo: '', conteudo: '', retorno_agendado_para: null };
 
 function formatarDataNota(valor) {
-  if (!valor) return '';
-
-  const data = new Date(valor);
-  if (Number.isNaN(data.getTime())) return '';
-
-  return data.toLocaleString('pt-BR', {
+  return formatUtcDateTime(valor, {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
@@ -26,13 +22,7 @@ function formatarDataNota(valor) {
 }
 
 function formatarDataInput(valor) {
-  if (!valor) return '';
-
-  const data = new Date(String(valor).replace(' ', 'T'));
-  if (Number.isNaN(data.getTime())) return '';
-
-  const pad = value => String(value).padStart(2, '0');
-  return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}T${pad(data.getHours())}:${pad(data.getMinutes())}`;
+  return toLocalDateTimeInputFromUtc(valor);
 }
 
 function montarDraftNota(nota = NOTA_VAZIA) {

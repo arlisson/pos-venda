@@ -1,8 +1,7 @@
+import { formatDateValue } from '../utils/datetime';
+
 function formatarData(valor) {
-  if (!valor) return 'sem data da fonte';
-  const data = new Date(valor);
-  if (Number.isNaN(data.getTime())) return 'sem data da fonte';
-  return data.toLocaleDateString('pt-BR');
+  return formatDateValue(valor, undefined, 'sem data da fonte');
 }
 
 function getConfiancaLabel(valor) {

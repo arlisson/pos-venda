@@ -45,7 +45,7 @@
 
 .home-notifications__list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -91,6 +91,11 @@
 .home-notification-card--contact {
   --card-color: #16a34a;
   --card-soft: #dcfce7;
+}
+
+.home-notification-card--stalled {
+  --card-color: #9333ea;
+  --card-soft: #f3e8ff;
 }
 
 .home-notification-card__top {
@@ -155,6 +160,33 @@
   display: grid;
   gap: 6px;
   padding: 12px 0;
+}
+
+.home-notification-card__items.is-scrollable {
+  max-height: 258px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong, #cbd5e1) transparent;
+}
+
+.home-notification-card__items.is-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.home-notification-card__items.is-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.home-notification-card__items.is-scrollable::-webkit-scrollbar-thumb {
+  background: var(--border-strong, #cbd5e1);
+  border-radius: 999px;
+  border: 2px solid var(--surface);
+}
+
+.home-notification-card__items.is-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3, #94a3b8);
 }
 
 .home-notification-card__item {
@@ -248,6 +280,133 @@
 .home-notification-card__action:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.contatos-marcados-modal {
+  width: min(640px, calc(100vw - 32px));
+}
+
+.contatos-marcados-body {
+  padding-top: 18px;
+}
+
+.contatos-marcados-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(56vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong, #cbd5e1) transparent;
+}
+
+.contatos-marcados-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.contatos-marcados-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.contatos-marcados-list::-webkit-scrollbar-thumb {
+  background: var(--border-strong, #cbd5e1);
+  border-radius: 999px;
+  border: 2px solid var(--surface);
+}
+
+.contatos-marcados-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3, #94a3b8);
+}
+
+.contatos-marcados-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.contatos-marcados-item:hover,
+.contatos-marcados-item:focus-visible {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  box-shadow: 0 8px 18px rgba(22, 163, 74, 0.12);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.contatos-marcados-item.is-unread {
+  border-color: transparent;
+  background: var(--surface-2);
+}
+
+.contatos-marcados-item.is-unread:hover,
+.contatos-marcados-item.is-unread:focus-visible {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  box-shadow: 0 8px 18px rgba(22, 163, 74, 0.12);
+}
+
+.contatos-marcados-item__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.contatos-marcados-item__content {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.contatos-marcados-item__content strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contatos-marcados-item__content span {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.contatos-marcados-item__content em {
+  color: #16a34a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.contatos-marcados-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-3);
+  font-size: 13px;
 }
 
 .home-notification {

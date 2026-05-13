@@ -14,6 +14,7 @@ import {
   marcarFuturoClienteLead,
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
+import { formatDateValue, formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
 import './FuturosClientesPage.css';
 
 // ─── Helpers de colunas de lead ──────────────────────────────────────────────
@@ -163,20 +164,14 @@ function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
 }
 
 function formatarDataHora(valor) {
-  if (!valor) return '-';
-  const d = new Date(String(valor).replace(' ', 'T'));
-  if (isNaN(d.getTime())) return '-';
-  return d.toLocaleString('pt-BR', {
+  return formatUtcDateTime(valor, {
     day: '2-digit', month: '2-digit', year: '2-digit',
     hour: '2-digit', minute: '2-digit'
-  });
+  }, '-');
 }
 
 function formatarData(valor) {
-  if (!valor) return '-';
-  const d = new Date(String(valor).replace(' ', 'T'));
-  if (isNaN(d.getTime())) return '-';
-  return d.toLocaleDateString('pt-BR');
+  return formatDateValue(valor, undefined, '-');
 }
 
 function isFuturoClienteNaLixeira(linha) {
@@ -214,11 +209,7 @@ function renderLeadStatus(linha) {
 }
 
 function formatarParaDatetimeLocal(valor) {
-  if (!valor) return '';
-  const d = new Date(String(valor).replace(' ', 'T'));
-  if (isNaN(d.getTime())) return '';
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return toLocalDateTimeInputFromUtc(valor);
 }
 
 function datetimeRetornoParaIso(valor) {
@@ -689,7 +680,7 @@ function LeadsRecebidosView() {
                 <span></span><span></span><span></span><span></span>
               </div>
               <strong title={envio.nome}>{envio.nome}</strong>
-              <small>{new Date(envio.created_at).toLocaleDateString('pt-BR')} - {envio.total_linhas} leads</small>
+              <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} leads</small>
             </button>
           ))}
           {!carregando && envios.length === 0 && (

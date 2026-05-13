@@ -4,6 +4,7 @@ const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
 const db = require('../database/connection');
 const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
+const { parseUtcDateTime } = require('../utils/datetime');
 
 const PERMISSAO_VISUALIZAR = 'notificacoes_visualizar';
 const PERMISSAO_RECEBER_TODAS = 'notificacoes_receber_todas';
@@ -20,6 +21,8 @@ const TIPOS_OPERACIONAIS_VENDA = [
   ...TIPOS_PROBLEMA_VENDA,
   ...TIPOS_APROVACAO_VENDA
 ];
+const TIPO_VENDA_PARADA = vendaNotificacaoParadaService.TIPO_NOTIFICACAO;
+const PERMISSAO_VENDAS_PARADAS = vendaNotificacaoParadaService.PERMISSAO_VENDAS_PARADAS;
 const RETORNO_PRE_AVISO_MINUTOS = 15;
 
 function parsePermissoes(permissoes) {
@@ -102,14 +105,7 @@ function montarNivel(diasRestantes) {
 }
 
 function parseDataHora(valor) {
-  if (!valor) return null;
-
-  const texto = valor instanceof Date
-    ? valor.toISOString()
-    : String(valor).trim().replace(' ', 'T');
-  const data = new Date(texto);
-
-  return Number.isNaN(data.getTime()) ? null : data;
+  return parseUtcDateTime(valor);
 }
 
 function formatarDataHoraBR(valor) {
@@ -379,6 +375,7 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
   const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
     || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
+  const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
 
   const limit = Math.min(Number(filtros.limit || 20), 50);
   const query = NotificacaoDestinatario.query()
@@ -405,7 +402,12 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
     );
 
   if (!podeVerTudo) {
-    query.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
+    query.whereIn('n.tipo', [
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
+    ]);
+  } else if (!podeVerVendasParadas) {
+    query.whereNot('n.tipo', TIPO_VENDA_PARADA);
   }
 
   if (filtros.nao_lidas) {
@@ -422,7 +424,12 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
     .first();
 
   if (!podeVerTudo) {
-    contadorQuery.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
+    contadorQuery.whereIn('n.tipo', [
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
+    ]);
+  } else if (!podeVerVendasParadas) {
+    contadorQuery.whereNot('n.tipo', TIPO_VENDA_PARADA);
   }
 
   const [notificacoes, contador] = await Promise.all([
@@ -451,6 +458,7 @@ async function listarUrgentes(usuarioId) {
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
   const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
     || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
+  const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
 
   const query = NotificacaoDestinatario.query()
     .alias('nd')
@@ -477,7 +485,12 @@ async function listarUrgentes(usuarioId) {
     );
 
   if (!podeVerTudo) {
-    query.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
+    query.whereIn('n.tipo', [
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
+    ]);
+  } else if (!podeVerVendasParadas) {
+    query.whereNot('n.tipo', TIPO_VENDA_PARADA);
   }
 
   const notificacoes = await query;
@@ -496,6 +509,7 @@ async function marcarComoLida(notificacaoId, usuarioId) {
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
   const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
     || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
+  const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
   const query = NotificacaoDestinatario.query()
     .alias('nd')
     .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
@@ -505,7 +519,12 @@ async function marcarComoLida(notificacaoId, usuarioId) {
     .select('nd.id');
 
   if (!podeVerTudo) {
-    query.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
+    query.whereIn('n.tipo', [
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
+    ]);
+  } else if (!podeVerVendasParadas) {
+    query.whereNot('n.tipo', TIPO_VENDA_PARADA);
   }
 
   const destinatario = await query.first();
@@ -527,6 +546,7 @@ async function marcarTodasComoLidas(usuarioId) {
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
   const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
     || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
+  const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
   const query = NotificacaoDestinatario.query()
     .alias('nd')
     .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
@@ -536,7 +556,12 @@ async function marcarTodasComoLidas(usuarioId) {
     .select('nd.id');
 
   if (!podeVerTudo) {
-    query.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
+    query.whereIn('n.tipo', [
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
+    ]);
+  } else if (!podeVerVendasParadas) {
+    query.whereNot('n.tipo', TIPO_VENDA_PARADA);
   }
 
   const destinatarios = await query;

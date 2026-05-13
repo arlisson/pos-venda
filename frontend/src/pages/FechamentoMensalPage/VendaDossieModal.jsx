@@ -9,6 +9,7 @@ import {
   visualizarArquivoVenda
 } from '../../services/venda.service';
 import { getDossieVenda } from '../../services/fechamento.service';
+import { formatUtcDateTime } from '../../utils/datetime';
 
 const ABAS_BASE = [
   { id: 'resumo', label: 'Dados da venda' },
@@ -31,16 +32,13 @@ function fmtData(valor) {
 }
 
 function fmtDataHora(valor) {
-  if (!valor) return '-';
-  const data = new Date(String(valor).replace(' ', 'T'));
-  if (Number.isNaN(data.getTime())) return String(valor);
-  return data.toLocaleString('pt-BR', {
+  return formatUtcDateTime(valor, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  });
+  }, valor ? String(valor) : '-');
 }
 
 function valor(valor) {

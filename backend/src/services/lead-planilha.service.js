@@ -8,6 +8,7 @@ const LeadLinha = require('../models/LeadLinha');
 const LeadEnvio = require('../models/LeadEnvio');
 const LeadEnvioUsuario = require('../models/LeadEnvioUsuario');
 const db = require('../database/connection');
+const { parseUtcDateTime } = require('../utils/datetime');
 
 const IMPORT_DIR = process.env.LEAD_IMPORT_DIR
   ? path.resolve(process.env.LEAD_IMPORT_DIR)
@@ -288,7 +289,7 @@ async function reconciliarPlanilhaProcessando(planilha) {
   const arquivoSumiu = json.arquivo_temporario && !fs.existsSync(json.arquivo_temporario);
   const semProgresso = Number(json.linhas_processadas || 0) === 0 && Number(json.progresso_percentual || 0) === 0;
 
-  const ultimaAtualizacao = new Date(json.updated_at || json.created_at).getTime();
+  const ultimaAtualizacao = parseUtcDateTime(json.updated_at || json.created_at)?.getTime() ?? NaN;
   const tempoOcioso = Date.now() - ultimaAtualizacao;
   const travado = Number.isFinite(ultimaAtualizacao) && tempoOcioso > PROCESSAMENTO_TRAVADO_MS;
 

@@ -285,6 +285,7 @@ input, select, textarea { font-family: inherit; }
 .notification-popover__list {
   flex: 1 1 auto;
   min-height: 0;
+  max-height: min(440px, calc(100vh - 190px));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -406,9 +407,33 @@ input, select, textarea { font-family: inherit; }
   bottom: 18px;
   z-index: 260;
   width: min(440px, calc(100vw - 32px));
+  max-height: min(70vh, calc(100vh - 96px));
+  overflow-y: auto;
+  padding-right: 6px;
   display: grid;
   gap: 10px;
-  pointer-events: none;
+  pointer-events: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong, #cbd5e1) transparent;
+}
+
+.urgent-alert-stack::-webkit-scrollbar {
+  width: 8px;
+}
+
+.urgent-alert-stack::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.urgent-alert-stack::-webkit-scrollbar-thumb {
+  background: var(--border-strong, #cbd5e1);
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+
+.urgent-alert-stack::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3, #94a3b8);
 }
 
 .urgent-alert-card {

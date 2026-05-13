@@ -279,6 +279,11 @@ export const GRUPOS_PERMISSOES = [
             chave: 'notificacoes_receber_todas',
             nome: 'Receber todas',
             descricao: 'Inclui o usuário como destinatário dos avisos gerais do sistema.'
+          },
+          {
+            chave: 'notificacoes_vendas_paradas',
+            nome: 'Vendas paradas',
+            descricao: 'Permite receber e visualizar alertas de vendas paradas há mais de 5 dias no funil.'
           }
         ]
       }

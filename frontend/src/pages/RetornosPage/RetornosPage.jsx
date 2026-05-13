@@ -4,6 +4,7 @@ import * as I from '../../components/Icons';
 import { DEFAULT_OPERATORS as OPERATORS, STAGES } from '../../config/constants';
 import { listarEtapasFunil } from '../../services/config.service';
 import { atualizarStatusVenda, listarVendas } from '../../services/venda.service';
+import { parseUtcDateTime } from '../../utils/datetime';
 import './RetornosPage.css';
 
 const formatBRL = (value) =>
@@ -27,7 +28,9 @@ function classifyReason(reason) {
 function relTime(value) {
   if (!value) return 'recentemente';
 
-  const date = new Date(value);
+  const date = parseUtcDateTime(value);
+  if (!date) return 'recentemente';
+
   const days = Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
   if (days === 0) return 'hoje';
   if (days === 1) return 'ontem';

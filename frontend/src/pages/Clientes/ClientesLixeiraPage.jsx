@@ -4,11 +4,11 @@ import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { excluirClienteDefinitivo, listarClientesLixeira, restaurarCliente } from '../../services/cliente.service';
+import { formatDateValue } from '../../utils/datetime';
 import './Clientes.css';
 
 function formatarData(value) {
-  if (!value) return '-';
-  return new Date(value).toLocaleDateString('pt-BR');
+  return formatDateValue(value, undefined, '-');
 }
 
 function ConfirmarExclusaoDefinitivaModal({ cliente, excluindo, onClose, onConfirm }) {
