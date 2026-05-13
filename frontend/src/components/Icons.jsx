@@ -39,6 +39,8 @@ export const Edit = mk(<><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 
 export const Note = mk(<><path d="M6 3h9l3 3v15H6z" /><path d="M15 3v4h4" /><path d="M9 11h6M9 15h6M9 19h4" /></>);
 export const Download = mk(<><path d="M12 3v12M8 11l4 4 4-4M3 19h18" /></>);
 export const Trash = mk(<><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></>);
+export const TrashSend = mk(<><path d="M3 8h18" /><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" /><path d="M6 8l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" /><path d="M12 11v6" /><path d="M9.5 14.5 12 17l2.5-2.5" /></>);
+export const TrashRestore = mk(<><path d="M3 8h18" /><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" /><path d="M6 8l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" /><path d="M12 17v-6" /><path d="M9.5 13.5 12 11l2.5 2.5" /></>);
 export const AlertTriangle = mk(<><path d="M12 3 2 21h20L12 3z" /><path d="M12 9v5M12 18h.01" /></>);
 export const LayoutGrid = mk(<><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></>);
 export const LayoutList = mk(<><rect x="3" y="4" width="18" height="4" rx="1" /><rect x="3" y="11" width="18" height="4" rx="1" /><rect x="3" y="18" width="18" height="3" rx="1" /></>);

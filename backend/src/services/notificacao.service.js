@@ -441,12 +441,22 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
 }
 
 async function listarUrgentes(usuarioId) {
-  const notificacoes = await NotificacaoDestinatario.query()
+  await sincronizarNotificacoesFidelidade();
+  await sincronizarRetornosNotas(usuarioId);
+  await vendaNotificacaoParadaService.sincronizarVendasParadas();
+
+  const usuario = await Usuario.query()
+    .findById(usuarioId)
+    .withGraphFetched('role');
+  const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
+  const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
+    || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
+
+  const query = NotificacaoDestinatario.query()
     .alias('nd')
     .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
     .where('nd.usuario_id', usuarioId)
     .where('n.ativa', true)
-    .whereIn('n.tipo', TIPOS_PROBLEMA_VENDA)
     .whereNull('nd.popup_visto_em')
     .orderBy('n.updated_at', 'asc')
     .limit(5)
@@ -465,6 +475,12 @@ async function listarUrgentes(usuarioId) {
       'n.created_at',
       'n.updated_at'
     );
+
+  if (!podeVerTudo) {
+    query.whereIn('n.tipo', podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA);
+  }
+
+  const notificacoes = await query;
 
   return notificacoes.map(notificacao => ({
     ...notificacao,
@@ -540,7 +556,6 @@ async function marcarPopupVisto(notificacaoId, usuarioId) {
     .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
     .where('n.id', notificacaoId)
     .where('nd.usuario_id', usuarioId)
-    .whereIn('n.tipo', TIPOS_PROBLEMA_VENDA)
     .whereNull('nd.popup_visto_em')
     .select('nd.id')
     .first();

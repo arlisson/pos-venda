@@ -10,6 +10,7 @@ import RelatoriosPage from '../pages/RelatoriosPage/RelatoriosPage';
 import EditarPerfilPage from '../pages/EditarPerfilPage/EditarPerfilPage';
 import EditarUsuarioPage from '../pages/EditarUsuarioPage/EditarUsuarioPage';
 import HistoricoPage from '../pages/HistoricoPage/HistoricoPage';
+import HistoricoLixeiraPage from '../pages/HistoricoPage/HistoricoLixeiraPage';
 import ConfiguracoesPage from '../pages/ConfiguracoesPage/ConfiguracoesPage';
 import VendasPage from '../pages/VendasPage/VendasPage';
 import VendasLixeiraPage from '../pages/VendasPage/VendasLixeiraPage';
@@ -101,6 +102,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
       <Route path="/relatorios" element={<PrivateRoute permission="relatorios_visualizar"><RelatoriosPage /></PrivateRoute>} />
       <Route path="/historico" element={<PrivateRoute permission="historico_visualizar"><HistoricoPage /></PrivateRoute>} />
+      <Route path="/historico/lixeira" element={<PrivateRoute permission="historico_visualizar"><HistoricoLixeiraPage /></PrivateRoute>} />
       <Route
         path="/clientes"
         element={<PrivateRoute permission={['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_editar', 'clientes_excluir']}><Clientes /></PrivateRoute>}

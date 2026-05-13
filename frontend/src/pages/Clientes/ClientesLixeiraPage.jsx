@@ -223,8 +223,7 @@ function ClientesLixeiraPage() {
                               <I.Return size={13} /> Restaurar
                             </button>
                             <button
-                              className="btn btn-sm btn-ghost"
-                              style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                              className="btn btn-sm btn-ghost clientes-trash-delete"
                               disabled={processandoId === cliente.id}
                               onClick={() => setClienteParaExcluir(cliente)}
                             >

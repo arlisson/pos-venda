@@ -27,6 +27,28 @@
   cursor: default;
 }
 
+.users-page .users-add-btn:not(:disabled):hover {
+  background: #111827;
+  border-color: #111827;
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.22);
+  transform: translateY(-1px);
+}
+
+.users-page .users-edit-btn:not(:disabled):hover,
+.users-page .users-permissions-btn:not(:disabled):hover {
+  color: #111827;
+  border-color: #9ca3af;
+  background: #f3f4f6;
+  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.12);
+  transform: translateY(-1px);
+}
+
+.users-page .users-delete-btn:not(:disabled):hover {
+  color: #dc2626;
+  border-color: #dc2626;
+  background: #fee2e2;
+}
+
 .permissions-modal-overlay {
   position: fixed;
   inset: 0;

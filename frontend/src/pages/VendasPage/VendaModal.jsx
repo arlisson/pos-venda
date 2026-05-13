@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/CnpjSugestoes';
@@ -226,7 +226,7 @@ const CAMPOS = [
   { section: 'Dados do cliente' },
   { name: 'nome', label: 'Nome / Fantasia' },
   { name: 'razao_social', label: 'Razão Social' },
-  { name: 'telefone', label: 'Celular' },
+  { name: 'telefone', label: 'Telefone Celular' },
   { name: 'fixo_ddd', label: 'Telefone fixo' },
   { section: 'Representante Legal (RL)' },
   { name: 'nome_representante_legal', label: 'Nome RL' },
@@ -2306,6 +2306,45 @@ function VendaModal({
   const [enderecoRealModalAberto, setEnderecoRealModalAberto] = useState(false);
   const abaInicial = initialTab === 'arquivos' && !podeVerDocumentosVenda ? 'venda' : initialTab;
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
+  const modalBodyRef = useRef(null);
+  const alturaAbaAnteriorRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const body = modalBodyRef.current;
+    if (!body) return undefined;
+    const novaAltura = body.offsetHeight;
+    const anterior = alturaAbaAnteriorRef.current;
+    alturaAbaAnteriorRef.current = novaAltura;
+    if (anterior == null || anterior === novaAltura) return undefined;
+    const flexAnterior = body.style.flex;
+    const overflowAnterior = body.style.overflowY;
+    body.style.flex = '0 0 auto';
+    body.style.overflowY = 'hidden';
+    body.style.height = `${anterior}px`;
+    void body.offsetHeight;
+    body.style.transition = 'height 320ms cubic-bezier(0.22, 1, 0.36, 1)';
+    body.style.height = `${novaAltura}px`;
+    let finalizado = false;
+    const finalizar = () => {
+      if (finalizado) return;
+      finalizado = true;
+      body.style.transition = '';
+      body.style.height = '';
+      body.style.flex = flexAnterior;
+      body.style.overflowY = overflowAnterior;
+      body.removeEventListener('transitionend', onEnd);
+    };
+    const onEnd = (e) => {
+      if (e.target !== body || e.propertyName !== 'height') return;
+      finalizar();
+    };
+    body.addEventListener('transitionend', onEnd);
+    const fallback = window.setTimeout(finalizar, 500);
+    return () => {
+      window.clearTimeout(fallback);
+      finalizar();
+    };
+  }, [abaAtiva]);
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
   const enviadaPosVenda = Boolean(venda?.enviada_pos_venda_em || form.enviada_pos_venda_em);
   const usuarioPosVenda = temPermissao(usuarioLogado, 'pos_venda');
@@ -3179,7 +3218,8 @@ function VendaModal({
           </div>
         )}
 
-        <div className="modal-body">
+        <div className="modal-body" ref={modalBodyRef}>
+          <div className="venda-modal-tabpanel" key={abaAtiva}>
           {abaAtiva === 'notas' ? (
             <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
           ) : abaAtiva === 'solicitacao' && temClienteSolicitouAba ? (
@@ -3495,6 +3535,7 @@ function VendaModal({
 
           </>
           )}
+          </div>
         </div>
 
         {clienteSolicitouQuantidadeAberta && (

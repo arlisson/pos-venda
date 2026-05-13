@@ -652,6 +652,17 @@
   gap: 6px;
 }
 
+.clientes-trash-delete {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.clientes-trash-delete:hover:not(:disabled) {
+  color: #dc2626;
+  border-color: #dc2626;
+  background: #fee2e2;
+}
+
 .cliente-note-status-btn {
   min-height: 28px;
   padding: 4px 10px;

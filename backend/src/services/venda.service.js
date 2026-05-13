@@ -1912,6 +1912,24 @@ async function listarVendedoras() {
     .orderBy('nome', 'asc');
 }
 
+async function listarStatusVendasParaHistorico() {
+  const linhas = await Venda.query()
+    .select('id', 'excluido_em');
+
+  const ativas = [];
+  const lixeira = [];
+
+  linhas.forEach(linha => {
+    if (linha.excluido_em) {
+      lixeira.push(linha.id);
+    } else {
+      ativas.push(linha.id);
+    }
+  });
+
+  return { ativas, lixeira };
+}
+
 async function statusEhFinal(status) {
   const codigoFinal = await obterCodigoEtapaFinal();
   return status === codigoFinal;
@@ -1931,5 +1949,6 @@ module.exports = {
   excluirVenda,
   restaurarVenda,
   excluirVendaDefinitivo,
-  listarVendedoras
+  listarVendedoras,
+  listarStatusVendasParaHistorico
 };
