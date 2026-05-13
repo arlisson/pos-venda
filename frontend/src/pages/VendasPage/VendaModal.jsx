@@ -283,7 +283,7 @@ const CAMPOS = [
   { name: 'senha', label: 'Senha (portal do cliente)' },
   { name: 'numero_cliente_contrato', label: 'Número do cliente no contrato', placeholder: 'Caso não tenha Login e Senha', span: true },
   { name: 'responsaveis_recebimento', type: 'responsaveis', span: true },
-  { name: 'observacoes', label: 'Observações', type: 'longText', span: true, maxRows: 6 },
+  { name: 'observacoes', label: 'Observações da Venda', type: 'longText', span: true, maxRows: 6 },
 ];
 
 const STATUS_FUNIL_FILTROS = [
