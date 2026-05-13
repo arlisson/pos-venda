@@ -424,6 +424,7 @@ function Clientes() {
   const [sucesso, setSucesso] = useState('');
   const [clienteModal, setClienteModal] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [clienteCadastroDraft, setClienteCadastroDraft] = useState(null);
   const [importModalAberto, setImportModalAberto] = useState(false);
   const [limparBaseModalAberto, setLimparBaseModalAberto] = useState(false);
   const [clienteParaLixeira, setClienteParaLixeira] = useState(null);
@@ -600,6 +601,9 @@ function Clientes() {
     const editando = Boolean(clienteModal);
     setModalAberto(false);
     setClienteModal(null);
+    if (!editando) {
+      setClienteCadastroDraft(null);
+    }
     await carregarClientes(filtros);
     setSucesso(editando ? 'Cliente atualizado com sucesso.' : 'Cliente cadastrado com sucesso.');
   }
@@ -663,8 +667,10 @@ function Clientes() {
         <ClienteModal
           cliente={clienteModal}
           operadoras={operadoras}
+          initialDraft={clienteCadastroDraft}
           onClose={() => setModalAberto(false)}
           onSave={salvarCliente}
+          onDraftChange={setClienteCadastroDraft}
         />
       )}
 

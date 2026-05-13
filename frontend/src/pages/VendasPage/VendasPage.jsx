@@ -250,7 +250,7 @@ const CAMPOS = [
   { name: 'responsaveis_recebimento', type: 'responsaveis', span: true },
   { name: 'promessa_cliente', label: 'O que foi prometido ao cliente', type: 'longText', span: true, maxRows: 5 },
   { name: 'promessa_cumprida', label: 'Cumprimos o prometido?', type: 'promiseStatus', span: true },
-  { name: 'observacoes', label: 'Observações', type: 'longText', span: true, maxRows: 6 },
+  { name: 'observacoes', label: 'Observações da Venda', type: 'longText', span: true, maxRows: 6 },
 ];
 
 const STATUS_FUNIL_FILTROS = [
@@ -2164,6 +2164,7 @@ function VendasPage() {
   const [modalProblemaInicial, setModalProblemaInicial] = useState(null);
   const [modalModoEdicao, setModalModoEdicao] = useState(true);
   const [vendaInicial, setVendaInicial] = useState(null);
+  const [vendaCadastroDraft, setVendaCadastroDraft] = useState(null);
   const [vendaParaLixeira, setVendaParaLixeira] = useState(null);
   const [vendaProblema, setVendaProblema] = useState(null);
   const [deletando, setDeletando] = useState(false);
@@ -2176,6 +2177,7 @@ function VendasPage() {
   const [copiandoWhatsapp, setCopiandoWhatsapp] = useState(false);
   const [clienteRapidoAberto, setClienteRapidoAberto] = useState(false);
   const [clienteRapidoInicial, setClienteRapidoInicial] = useState(null);
+  const [clienteRapidoDraft, setClienteRapidoDraft] = useState(null);
   const [, setResolverClienteRapido] = useState(null);
   const [clientePreenchidoLead] = useState(() => location.state?.clientePreenchido || null);
   const usuarioLogado = getUsuarioLocal();
@@ -2316,6 +2318,9 @@ function VendasPage() {
   async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
     setClientes(clientesAtualizados);
+    if (!clienteRapidoInicial) {
+      setClienteRapidoDraft(null);
+    }
     fecharClienteRapido(clienteCriado);
     setSucesso('Cliente cadastrado com sucesso.');
     return clienteCriado;
@@ -2399,6 +2404,9 @@ function VendasPage() {
     setModalProblemaInicial(null);
     setModalModoEdicao(true);
     setVendaInicial(null);
+    if (!editando) {
+      setVendaCadastroDraft(null);
+    }
     await carregarDados();
     setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
   }
@@ -2568,6 +2576,7 @@ function VendasPage() {
         <VendaModal
           venda={modalVenda}
           initialValues={vendaInicial}
+          initialDraft={vendaCadastroDraft}
           clientes={clientes}
           vendas={vendas}
           vendedoras={vendedoras}
@@ -2593,6 +2602,7 @@ function VendasPage() {
             setVendaInicial(null);
           }}
           onSave={salvarVenda}
+          onDraftChange={setVendaCadastroDraft}
           onSendToPosVenda={enviarPosVenda}
           onCreateClient={abrirClienteRapido}
           clientePreenchido={clientePreenchidoLead}
@@ -2603,8 +2613,10 @@ function VendasPage() {
         <ClienteModal
           cliente={clienteRapidoInicial}
           operadoras={operadoras}
+          initialDraft={clienteRapidoDraft}
           onClose={() => fecharClienteRapido(null)}
           onSave={salvarClienteRapido}
+          onDraftChange={setClienteRapidoDraft}
         />
       )}
 

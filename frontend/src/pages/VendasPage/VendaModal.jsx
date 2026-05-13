@@ -5,6 +5,7 @@ import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/Cnpj
 import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
 import VendaProblemaPanel from './VendaProblemaPanel';
+import { useFormDraft } from '../../utils/useFormDraft';
 import {
   atualizarVenda,
   baixarArquivoVenda,
@@ -2281,16 +2282,45 @@ function VendaModal({
   onSendToPosVenda,
   sendToPosVendaLabel = 'Enviar para o pós-venda',
   onCreateClient,
-  clientePreenchido = null
+  clientePreenchido = null,
+  initialDraft = null,
+  onDraftChange
 }) {
+  const editando = Boolean(venda?.id);
+  const draftKey = 'venda_novo';
+  
   const [form, setForm] = useState(() => {
     const base = venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) };
+    
+    // Para novo venda, tenta carregar rascunho salvo, depois initialDraft, depois formulário vazio
+    if (!editando) {
+      const savedDraft = (() => {
+        try {
+          const draft = localStorage.getItem(`form_draft_${draftKey}`);
+          return draft ? JSON.parse(draft) : null;
+        } catch {
+          return null;
+        }
+      })();
+      
+      const baseComDraft = { ...base, ...(savedDraft || initialDraft || {}) };
+      if (!venda && usuarioLogado?.id && vendedoras?.some(v => String(v.id) === String(usuarioLogado.id))) {
+        const idStr = String(usuarioLogado.id);
+        if (!baseComDraft.vendedoras.includes(idStr)) baseComDraft.vendedoras = [...baseComDraft.vendedoras, idStr];
+      }
+      return baseComDraft;
+    }
+    
+    // Para edição, apenas normaliza
     if (!venda && usuarioLogado?.id && vendedoras?.some(v => String(v.id) === String(usuarioLogado.id))) {
       const idStr = String(usuarioLogado.id);
       if (!base.vendedoras.includes(idStr)) base.vendedoras = [...base.vendedoras, idStr];
     }
     return base;
   });
+  
+  // Usar hook para persistência de rascunhos
+  useFormDraft(editando ? null : draftKey, form, editando);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [cepStatus, setCepStatus] = useState('');
@@ -2427,6 +2457,19 @@ function VendaModal({
     : !usuarioAdmin && protocoloAtual
       ? 'Protocolo gerado. Apenas ADM pode alterar ou apagar.'
       : '';
+
+  useEffect(() => {
+    if (venda || somenteVisualizacao || !onDraftChange) return;
+    onDraftChange(form);
+  }, [venda, somenteVisualizacao, form, onDraftChange]);
+
+  function handleClose() {
+    if (!venda && !somenteVisualizacao && onDraftChange) {
+      onDraftChange(form);
+    }
+
+    onClose();
+  }
 
   function atualizarCampo(campo, valor) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
@@ -3158,6 +3201,11 @@ function VendaModal({
       payload.valor_total = calcularTotalItensChips(form.valores_unitarios_chips);
       payload.gb = resumirGigasItensChips(payload.valores_unitarios_chips);
 
+      // Limpar rascunho após sucesso
+      if (!venda?.id) {
+        localStorage.removeItem(`form_draft_${draftKey}`);
+      }
+
       await onSave(payload);
     } catch (error) {
       setErro(error.message || 'Erro ao salvar venda.');
@@ -3194,7 +3242,7 @@ function VendaModal({
                   : 'Selecione o cliente e preencha apenas os dados específicos da venda.'}
               </div>
             </div>
-            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={handleClose}>
               <I.Close size={14} />
             </button>
           </div>
@@ -3670,10 +3718,10 @@ function VendaModal({
 
         <div className="modal-footer">
           {abaAtiva === 'notas' || abaAtiva === 'arquivos' || abaAtiva === 'problema' ? (
-            <button type="button" className="btn" onClick={onClose}>Fechar</button>
+            <button type="button" className="btn" onClick={handleClose}>Fechar</button>
           ) : (somenteVisualizacao || vendaBloqueadaParaUsuario) ? (
             <>
-              <button type="button" className="btn" onClick={onClose}>Fechar</button>
+              <button type="button" className="btn" onClick={handleClose}>Fechar</button>
               {podeEditarVendaEfetivo && !enviadaPosVenda && (
                 <button type="button" className="btn venda-pos-venda-send-btn" disabled={salvando} onClick={handleEnviarPosVenda}>
                   <I.ArrowRight size={14} /> {salvando ? 'Aguarde...' : sendToPosVendaLabel}
@@ -3687,7 +3735,7 @@ function VendaModal({
             </>
           ) : (
             <>
-              <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+              <button type="button" className="btn" onClick={handleClose}>Cancelar</button>
               <button type="submit" className="btn btn-primary" disabled={salvando}>
                 {salvando ? 'Salvando...' : 'Salvar venda'}
               </button>

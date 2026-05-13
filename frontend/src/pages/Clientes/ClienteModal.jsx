@@ -6,6 +6,7 @@ import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/Cnpj
 import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
 import { criarCliente, atualizarCliente } from '../../services/cliente.service';
 import { criarNotaEntidade } from '../../services/nota.service';
+import { useFormDraft } from '../../utils/useFormDraft';
 import './Clientes.css';
 
 
@@ -158,8 +159,27 @@ function normalizarClienteForm(cliente) {
   };
 }
 
-function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'cliente' }) {
-  const [form, setForm] = useState(() => normalizarClienteForm(cliente));
+function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'cliente', initialDraft = null, onDraftChange }) {
+  const editando = Boolean(cliente);
+  const draftKey = 'cliente_novo';
+
+  const [form, setForm] = useState(() => {
+    const base = normalizarClienteForm(cliente);
+    if (editando) {
+      return base;
+    }
+
+    // Para novo cliente, tenta carregar rascunho salvo, depois initialDraft, depois formulário vazio
+    let savedDraft = null;
+    try {
+      const draft = localStorage.getItem(`form_draft_${draftKey}`);
+      savedDraft = draft ? JSON.parse(draft) : null;
+    } catch {
+      // Ignora erros ao carregar do localStorage
+    }
+
+    return { ...base, ...(savedDraft || initialDraft || {}) };
+  });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
@@ -169,7 +189,22 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   const [abaAtiva, setAbaAtiva] = useState(initialTab);
   const [pendingNotas, setPendingNotas] = useState([]);
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
-  const editando = Boolean(cliente);
+
+  // Usar hook para persistência de rascunhos
+  useFormDraft(editando ? null : draftKey, form, editando);
+
+  useEffect(() => {
+    if (editando || !onDraftChange) return;
+    onDraftChange(form);
+  }, [editando, form, onDraftChange]);
+
+  function handleClose() {
+    if (!editando && onDraftChange) {
+      onDraftChange(form);
+    }
+
+    onClose();
+  }
 
   function atualizarCampo(campo, valor) {
     setForm(prev => ({ ...prev, [campo]: valor }));
@@ -339,6 +374,11 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
         }
       }
 
+      // Limpar rascunho após sucesso
+      if (!cliente?.id) {
+        localStorage.removeItem(`form_draft_${draftKey}`);
+      }
+
       await onSave(saved);
     } catch (error) {
       setErro(error.message || 'Erro ao salvar cliente.');
@@ -355,7 +395,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
               <div className="modal-client">{editando ? 'Editar cliente' : 'Novo cliente'}</div>
               <div className="modal-sub">Atualize representantes, contatos e dados de fidelidade.</div>
             </div>
-            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={salvando}>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={handleClose} disabled={salvando}>
               <I.Close size={14} />
             </button>
           </div>
@@ -516,10 +556,10 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
 
         <div className="modal-footer">
           {abaAtiva === 'notas' && cliente?.id ? (
-            <button type="button" className="btn" onClick={onClose}>Fechar</button>
+            <button type="button" className="btn" onClick={handleClose}>Fechar</button>
           ) : (
             <>
-              <button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button>
+              <button type="button" className="btn" onClick={handleClose} disabled={salvando}>Cancelar</button>
               <button type="submit" className="btn btn-primary" disabled={salvando}>
                 {salvando ? 'Salvando...' : 'Salvar cliente'}
               </button>
