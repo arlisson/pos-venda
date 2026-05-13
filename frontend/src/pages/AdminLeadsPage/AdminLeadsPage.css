@@ -409,7 +409,7 @@
   background: var(--surface);
 }
 
-.lead-table tr:hover td:nth-child(-n + 4) {
+.lead-table tbody tr:hover td {
   background: var(--surface-2);
 }
 

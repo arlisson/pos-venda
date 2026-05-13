@@ -18,6 +18,25 @@
   gap: 8px;
 }
 
+.config-tabs .filter-chip {
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.config-tabs .filter-chip:hover,
+.config-tabs .filter-chip:focus-visible {
+  border-color: var(--text-2);
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.config-tabs .filter-chip.active:hover,
+.config-tabs .filter-chip.active:focus-visible {
+  background: var(--text);
+  color: var(--accent-fg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+}
+
 .config-panel-summary {
   display: flex;
   align-items: center;
