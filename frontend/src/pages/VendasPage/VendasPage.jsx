@@ -2181,6 +2181,7 @@ function VendasPage() {
   const usuarioLogado = getUsuarioLocal();
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, ['vendas_editar', 'pos_venda']);
+  const podeCompartilharVenda = temPermissao(usuarioLogado, 'compartilhar_venda');
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
   const podeVerDocumentosVenda = temPermissao(usuarioLogado, 'vendas_documentos');
   const podeMarcarProblema = temPermissao(usuarioLogado, 'vendas_marcar_problema');
@@ -2576,6 +2577,7 @@ function VendasPage() {
           vendasPorCliente={vendasPorCliente}
           vendasEmAndamentoPorCliente={vendasEmAndamentoPorCliente}
           podeEditarVenda={podeEditarVenda}
+          podeCompartilharVenda={podeCompartilharVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
           usuarioLogado={usuarioLogado}
           initialTab={modalAbaInicial}
@@ -2878,8 +2880,25 @@ function VendasPage() {
                                 Retorno
                               </span>
                             )}
+                            {venda.cliente_excluido_permanentemente_em && (
+                              <span
+                                className="vendas-cliente-excluido-badge"
+                                title="O cliente relacionado a esta venda foi excluido permanentemente"
+                              >
+                                <I.AlertTriangle size={11} />
+                                Cliente excluido
+                              </span>
+                            )}
                           </div>
-                          <span>{venda.cliente?.razao_social || venda.razao_social || venda.telefone || venda.email || '-'}</span>
+                          <span>
+                            {venda.cliente_excluido_permanentemente_nome
+                              || venda.cliente?.razao_social
+                              || venda.razao_social
+                              || venda.telefone
+                              || venda.email
+                              || '-'}
+                            {venda.cliente_excluido_permanentemente_cnpj ? ` - ${venda.cliente_excluido_permanentemente_cnpj}` : ''}
+                          </span>
                         </div>
                       </td>
                       <td><span className="tag">{venda.operadora?.nome || '-'}</span></td>

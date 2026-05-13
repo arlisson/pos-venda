@@ -207,8 +207,24 @@ function VendasLixeiraPage() {
                     <tr key={venda.id} className="vendas-trash-row">
                       <td>
                         <div className="vendas-table-name">
-                          <strong>{venda.cliente?.nome || venda.nome}</strong>
-                          <span>{venda.cliente?.razao_social || venda.razao_social || venda.telefone || venda.email || '-'}</span>
+                          <div className="vendas-table-name__title">
+                            <strong>{venda.cliente?.nome || venda.nome}</strong>
+                            {venda.cliente_excluido_permanentemente_em && (
+                              <span className="vendas-cliente-excluido-badge">
+                                <I.AlertTriangle size={11} />
+                                Cliente excluido
+                              </span>
+                            )}
+                          </div>
+                          <span>
+                            {venda.cliente_excluido_permanentemente_nome
+                              || venda.cliente?.razao_social
+                              || venda.razao_social
+                              || venda.telefone
+                              || venda.email
+                              || '-'}
+                            {venda.cliente_excluido_permanentemente_cnpj ? ` - ${venda.cliente_excluido_permanentemente_cnpj}` : ''}
+                          </span>
                         </div>
                       </td>
                       <td><span className="tag">{venda.operadora?.nome || '-'}</span></td>

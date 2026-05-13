@@ -1142,7 +1142,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   );
 }
 
-function VendedorasSelect({ value = [], options = [], onChange, idProtegido = null }) {
+function VendedorasSelect({ value = [], options = [], onChange, idProtegido = null, disabled = false }) {
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const wrapperRef = useRef(null);
 
@@ -1160,11 +1160,13 @@ function VendedorasSelect({ value = [], options = [], onChange, idProtegido = nu
   }, []);
 
   function adicionar(vendedora) {
+    if (disabled) return;
     onChange([...value, String(vendedora.id)]);
     setDropdownAberto(false);
   }
 
   function remover(id) {
+    if (disabled) return;
     if (idProtegido !== null && String(id) === String(idProtegido)) return;
     onChange(value.filter(v => v !== String(id)));
   }
@@ -1177,7 +1179,7 @@ function VendedorasSelect({ value = [], options = [], onChange, idProtegido = nu
           return (
             <span key={v.id} className="vendedoras-chip">
               {v.nome}
-              {!protegida && (
+              {!disabled && !protegida && (
                 <button type="button" onClick={() => remover(v.id)} title="Remover">
                   <I.Close size={11} />
                 </button>
@@ -1185,7 +1187,7 @@ function VendedorasSelect({ value = [], options = [], onChange, idProtegido = nu
             </span>
           );
         })}
-        {disponiveis.length > 0 && (
+        {!disabled && disponiveis.length > 0 && (
           <button
             type="button"
             className="btn btn-sm vendedoras-add-btn"
@@ -1195,7 +1197,7 @@ function VendedorasSelect({ value = [], options = [], onChange, idProtegido = nu
           </button>
         )}
       </div>
-      {dropdownAberto && disponiveis.length > 0 && (
+      {!disabled && dropdownAberto && disponiveis.length > 0 && (
         <div className="vendedoras-dropdown">
           {disponiveis.map(v => (
             <button key={v.id} type="button" className="vendedoras-dropdown__item" onClick={() => adicionar(v)}>
@@ -2267,6 +2269,7 @@ function VendaModal({
   vendasPorCliente,
   vendasEmAndamentoPorCliente = new Map(),
   podeEditarVenda,
+  podeCompartilharVenda,
   podeVerDocumentosVenda,
   usuarioLogado,
   initialTab = 'venda',
@@ -2349,11 +2352,49 @@ function VendaModal({
   const enviadaPosVenda = Boolean(venda?.enviada_pos_venda_em || form.enviada_pos_venda_em);
   const usuarioPosVenda = temPermissao(usuarioLogado, 'pos_venda');
   const usuarioAdmin = usuarioLogado?.role?.nome === 'admin';
+  const usuarioEhResponsavelVenda = Boolean(venda && usuarioLogado?.id && (
+    Number(venda.criado_por_id) === Number(usuarioLogado.id)
+    || Number(venda.vendedora_id) === Number(usuarioLogado.id)
+  ));
+  const usuarioEstaNaVendaCompartilhada = Boolean(venda && usuarioLogado?.id
+    && Array.isArray(venda.vendedoras)
+    && venda.vendedoras.some(item => Number(item?.id || item) === Number(usuarioLogado.id)));
+  const podeEditarVendaEfetivo = Boolean(
+    usuarioAdmin
+    || (
+      temPermissao(usuarioLogado, 'vendas_editar')
+      && (temPermissao(usuarioLogado, 'vendas_ver_todas') || usuarioEhResponsavelVenda)
+    )
+    || (
+      temPermissao(usuarioLogado, 'editar_vendas_compartilhadas')
+      && usuarioEstaNaVendaCompartilhada
+    )
+  );
   const vendaBloqueadaParaUsuario = enviadaPosVenda && !usuarioPosVenda;
+  const podeAlterarVendedorasVenda = Boolean(podeCompartilharVenda && !somenteVisualizacao && !vendaBloqueadaParaUsuario);
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
   const cepPreenchidoPorCnpjRef = useRef('');
   const vendaPortabilidade = temChipPortabilidade(form.valores_unitarios_chips);
   const quantidadePortabilidade = somarQuantidadePortabilidadeItensChips(form.valores_unitarios_chips || []);
+  const vendedorasOpcoesModal = useMemo(() => {
+    const mapa = new Map();
+    [...(vendedoras || []), ...((venda?.vendedoras || []))]
+      .filter(Boolean)
+      .forEach(item => {
+        const id = item.id || item.usuario_id || item.vendedora_id;
+        if (id) mapa.set(String(id), { ...item, id });
+      });
+    return Array.from(mapa.values());
+  }, [vendedoras, venda]);
+  const clientesDisponiveis = useMemo(() => {
+    const mapa = new Map();
+    [...(clientes || []), ...(venda?.cliente ? [venda.cliente] : [])]
+      .filter(Boolean)
+      .forEach(cliente => {
+        if (cliente.id) mapa.set(String(cliente.id), cliente);
+      });
+    return Array.from(mapa.values());
+  }, [clientes, venda]);
   const vendaAtivada = Boolean(normalizarDataVendaInput(form.data_ativacao));
   const chaveClienteSelecionado = form.cliente_id ? `cliente:${form.cliente_id}` : '';
   const totalVendasClienteSelecionado = chaveClienteSelecionado ? (vendasPorCliente.get(chaveClienteSelecionado) || 0) : 0;
@@ -2459,7 +2500,7 @@ function VendaModal({
   function atualizarClienteVenda(valor) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
-    const c = clientes.find(cliente => String(cliente.id) === String(valor));
+    const c = clientesDisponiveis.find(cliente => String(cliente.id) === String(valor));
 
     setForm(prev => {
       const telefoneWhatsapp = c ? formatarTelefoneComDdd([c.whatsapp_ddd, c.whatsapp_numero].filter(Boolean).join(''), true) : '';
@@ -2486,17 +2527,17 @@ function VendaModal({
   }
 
   useEffect(() => {
-    if (!clientePreenchido?.cnpj || clientes.length === 0) return;
+    if (!clientePreenchido?.cnpj || clientesDisponiveis.length === 0) return;
     const cnpjDigitos = String(clientePreenchido.cnpj).replace(/\D/g, '');
     if (!cnpjDigitos) return;
-    const clienteExistente = clientes.find(c => String(c.cnpj || '').replace(/\D/g, '') === cnpjDigitos);
+    const clienteExistente = clientesDisponiveis.find(c => String(c.cnpj || '').replace(/\D/g, '') === cnpjDigitos);
     if (clienteExistente && !form.cliente_id) {
       atualizarClienteVenda(String(clienteExistente.id));
     }
-  }, [clientes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clientesDisponiveis]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function atualizarVendedorasVenda(ids) {
-    if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario || !podeCompartilharVenda) return;
 
     setForm(prev => ({ ...prev, vendedoras: ids }));
   }
@@ -2995,7 +3036,7 @@ function VendaModal({
 
       if (vendedorasSemChips.length > 0) {
         const nomes = vendedorasSemChips
-          .map(id => vendedoras.find(v => Number(v.id) === Number(id))?.nome)
+          .map(id => vendedorasOpcoesModal.find(v => Number(v.id) === Number(id))?.nome)
           .filter(Boolean)
           .join(', ');
         setErro(`Atribua pelo menos um chip para cada vendedora da venda${nomes ? `: ${nomes}` : '.'}`);
@@ -3229,7 +3270,7 @@ function VendaModal({
               disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
             />
           ) : abaAtiva === 'arquivos' && podeVerDocumentosVenda ? (
-            <ArquivosVendaTab venda={venda} podeEditar={podeEditarVenda} />
+            <ArquivosVendaTab venda={venda} podeEditar={podeEditarVendaEfetivo} />
           ) : abaAtiva === 'problema' ? (
             <VendaProblemaPanel venda={venda} usuario={usuarioLogado} initialProblemaId={initialProblemaId} />
           ) : (
@@ -3271,7 +3312,7 @@ function VendaModal({
                   {campo.type === 'client' ? (
                       <ClienteVendaSelect
                         value={form[campo.name] ?? ''}
-                        clientes={clientes}
+                        clientes={clientesDisponiveis}
                         vendasRegistradas={vendasRegistradasClienteSelecionado}
                         vendasEmAndamento={vendasEmAndamentoClienteSelecionado}
                         onChange={atualizarClienteVenda}
@@ -3344,9 +3385,10 @@ function VendaModal({
                   ) : campo.type === 'sellers' ? (
                     <VendedorasSelect
                       value={form.vendedoras || []}
-                      options={vendedoras}
+                      options={vendedorasOpcoesModal}
                       onChange={atualizarVendedorasVenda}
-                      idProtegido={vendedoras?.some(v => String(v.id) === String(usuarioLogado?.id)) ? usuarioLogado?.id : null}
+                      idProtegido={vendedorasOpcoesModal?.some(v => String(v.id) === String(usuarioLogado?.id)) ? usuarioLogado?.id : null}
+                      disabled={!podeAlterarVendedorasVenda}
                     />
                   ) : campo.type === 'aceiteRange' ? (
                     <div className="aceite-bloco">
@@ -3428,7 +3470,7 @@ function VendaModal({
                     <ItensChipsInput
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
-                      vendedoras={vendedoras.filter(v => (form.vendedoras || []).includes(String(v.id)))}
+                      vendedoras={vendedorasOpcoesModal.filter(v => (form.vendedoras || []).includes(String(v.id)))}
                       limiteQuantidade={form.quantidade_linhas}
                       tiposServico={form.tipos_servico}
                     />
@@ -3629,12 +3671,12 @@ function VendaModal({
           ) : (somenteVisualizacao || vendaBloqueadaParaUsuario) ? (
             <>
               <button type="button" className="btn" onClick={onClose}>Fechar</button>
-              {podeEditarVenda && !enviadaPosVenda && (
+              {podeEditarVendaEfetivo && !enviadaPosVenda && (
                 <button type="button" className="btn venda-pos-venda-send-btn" disabled={salvando} onClick={handleEnviarPosVenda}>
                   <I.ArrowRight size={14} /> {salvando ? 'Aguarde...' : sendToPosVendaLabel}
                 </button>
               )}
-              {podeEditarVenda && !vendaBloqueadaParaUsuario && (
+              {podeEditarVendaEfetivo && !vendaBloqueadaParaUsuario && (
                 <button type="button" className="btn btn-primary" onClick={handleStartEdit}>
                   <I.Edit size={14} /> Editar venda
                 </button>

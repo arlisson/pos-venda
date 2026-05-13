@@ -151,7 +151,12 @@ async function restore(req, res) {
 
 async function destroyDefinitivo(req, res) {
   try {
-    const totalExcluido = await clienteService.excluirClienteDefinitivo(req.params.id, req.usuario.id);
+    const excluirVendasRelacionadas = ['1', 'true', true, 1].includes(
+      req.query.excluir_vendas_relacionadas ?? req.body?.excluir_vendas_relacionadas
+    );
+    const totalExcluido = await clienteService.excluirClienteDefinitivo(req.params.id, req.usuario.id, {
+      excluirVendasRelacionadas
+    });
 
     if (!totalExcluido) {
       return res.status(404).json({

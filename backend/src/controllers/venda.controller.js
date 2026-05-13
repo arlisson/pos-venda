@@ -269,7 +269,7 @@ async function destroyDefinitivo(req, res) {
 
 async function vendedoras(req, res) {
   try {
-    const usuarios = await vendaService.listarVendedoras();
+    const usuarios = await vendaService.listarVendedoras(req.usuario.id);
 
     return res.json(usuarios);
   } catch (error) {

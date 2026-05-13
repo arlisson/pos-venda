@@ -25,6 +25,21 @@ const PERMISSOES = [
     descricao: 'Permite editar vendas que o usuário pode acessar.'
   },
   {
+    chave: 'compartilhar_venda',
+    nome: 'Vendas: compartilhar',
+    descricao: 'Permite vincular outras vendedoras a uma venda.'
+  },
+  {
+    chave: 'ver_vendas_compartilhadas',
+    nome: 'Vendas: ver compartilhadas',
+    descricao: 'Permite ver vendas compartilhadas em que o usuario esta vinculado como vendedor.'
+  },
+  {
+    chave: 'editar_vendas_compartilhadas',
+    nome: 'Vendas: editar compartilhadas',
+    descricao: 'Permite editar vendas compartilhadas em que o usuario esta vinculado como vendedor.'
+  },
+  {
     chave: 'vendas_excluir',
     nome: 'Vendas: excluir',
     descricao: 'Permite excluir vendas que o usuário pode acessar.'

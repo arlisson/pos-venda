@@ -248,6 +248,21 @@
   color: #c2410c;
 }
 
+.vendas-cliente-excluido-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid #fecaca;
+  border-radius: 999px;
+  background: #fff7f7;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .vendas-page .list-table .vendas-actions-col {
   position: sticky;
   min-width: 60px;

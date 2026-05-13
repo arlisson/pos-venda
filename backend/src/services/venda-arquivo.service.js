@@ -65,7 +65,8 @@ async function buscarEscopoVendas(usuarioId) {
 
   return {
     podeVerTodas: permissoes.includes('vendas_ver_todas'),
-    podeVerProprias: permissoes.includes('vendas_ver_proprias')
+    podeVerProprias: permissoes.includes('vendas_ver_proprias'),
+    podeVerCompartilhadas: permissoes.includes('ver_vendas_compartilhadas')
   };
 }
 
@@ -73,15 +74,28 @@ async function usuarioPodeAcessarVenda(vendaId, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
 
   if (escopo.podeVerTodas) return true;
-  if (!escopo.podeVerProprias) return false;
+  if (!escopo.podeVerProprias && !escopo.podeVerCompartilhadas) return false;
 
   const venda = await Venda.query()
     .findById(vendaId)
     .select('id', 'criado_por_id', 'vendedora_id')
     .whereNull('excluido_em');
 
-  return Number(venda?.criado_por_id) === Number(usuarioId)
-    || Number(venda?.vendedora_id) === Number(usuarioId);
+  if (escopo.podeVerProprias && (
+    Number(venda?.criado_por_id) === Number(usuarioId)
+    || Number(venda?.vendedora_id) === Number(usuarioId)
+  )) {
+    return true;
+  }
+
+  if (!escopo.podeVerCompartilhadas) return false;
+
+  const vinculo = await Venda.knex()('venda_vendedoras')
+    .where('venda_id', vendaId)
+    .where('usuario_id', usuarioId)
+    .first();
+
+  return Boolean(vinculo);
 }
 
 async function garantirAcessoVenda(vendaId, usuarioId) {
