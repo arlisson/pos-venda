@@ -14,6 +14,7 @@ function formatarData(value) {
 function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, excluindo, onClose, onConfirm, onToggleExcluirVendas }) {
   if (!cliente) return null;
   const totalVendasRelacionadas = Number(cliente.vendas_relacionadas_total || 0);
+  const precisaExcluirVendas = totalVendasRelacionadas > 0;
 
   return (
     <div className="modal-overlay" onClick={event => !excluindo && event.target === event.currentTarget && onClose()}>
@@ -34,11 +35,15 @@ function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, 
           <div className="trash-warning">
             <I.AlertTriangle size={20} />
             <div>
-              <strong>Esta exclusão não pode ser desfeita.</strong>
-              <span>O cliente será removido permanentemente da lixeira.</span>
+              <strong>Esta exclusao nao pode ser desfeita.</strong>
+              <span>
+                {precisaExcluirVendas
+                  ? 'Este cliente possui vendas relacionadas. Para exclui-lo definitivamente, as vendas precisam ser excluidas junto.'
+                  : 'O cliente sera removido permanentemente da lixeira.'}
+              </span>
             </div>
           </div>
-          {totalVendasRelacionadas > 0 && (
+          {precisaExcluirVendas && (
             <label className="trash-related-option">
               <input
                 type="checkbox"
@@ -48,7 +53,7 @@ function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, 
               />
               <span>
                 <strong>Excluir tambem {totalVendasRelacionadas} venda(s) relacionada(s)</strong>
-                <small>Desmarcado, as vendas continuam no sistema com aviso de cliente excluido permanentemente.</small>
+                <small>Sem esta confirmacao, o cliente permanecera na lixeira.</small>
               </span>
             </label>
           )}
@@ -56,15 +61,23 @@ function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, 
 
         <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose} disabled={excluindo}>Cancelar</button>
-          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={excluindo}>
-            {excluindo ? 'Excluindo...' : 'Excluir definitivamente'}
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={onConfirm}
+            disabled={excluindo || (precisaExcluirVendas && !excluirVendasRelacionadas)}
+          >
+            {excluindo
+              ? 'Excluindo...'
+              : precisaExcluirVendas
+                ? 'Excluir cliente e vendas'
+                : 'Excluir definitivamente'}
           </button>
         </div>
       </div>
     </div>
   );
 }
-
 function ClientesLixeiraPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -141,10 +154,13 @@ function ClientesLixeiraPage() {
 
     try {
       await excluirClienteDefinitivo(clienteParaExcluir.id, { excluirVendasRelacionadas });
+      const totalVendasRelacionadas = Number(clienteParaExcluir.vendas_relacionadas_total || 0);
       setClientes(prev => prev.filter(item => item.id !== clienteParaExcluir.id));
       setClienteParaExcluir(null);
       setExcluirVendasRelacionadas(false);
-      setSucesso('Cliente excluído definitivamente.');
+      setSucesso(totalVendasRelacionadas > 0 && excluirVendasRelacionadas
+        ? `Cliente e ${totalVendasRelacionadas} venda(s) relacionada(s) excluidos definitivamente.`
+        : 'Cliente excluido definitivamente.');
     } catch (error) {
       setErro(error.message || 'Erro ao excluir cliente definitivamente.');
     } finally {

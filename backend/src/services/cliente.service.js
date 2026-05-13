@@ -945,17 +945,13 @@ async function excluirCliente(id, usuarioId) {
     });
 }
 
-async function marcarVendasClienteExcluidoPermanentemente(cliente, trx = null, dataExclusao = formatarDateTimeSQL()) {
-  if (!cliente?.id) return 0;
+async function contarVendasRelacionadasCliente(clienteId, trx = null) {
+  const resultado = await Venda.query(trx)
+    .where('cliente_id', clienteId)
+    .count('id as total')
+    .first();
 
-  return Venda.query(trx)
-    .where('cliente_id', cliente.id)
-    .patch({
-      cliente_excluido_permanentemente_em: dataExclusao,
-      cliente_excluido_permanentemente_nome: cliente.razao_social || cliente.nome || null,
-      cliente_excluido_permanentemente_cnpj: cliente.cnpj || null,
-      updated_at: dataExclusao
-    });
+  return Number(resultado?.total || 0);
 }
 
 async function limparClientesVencidosDaLixeira() {
@@ -966,17 +962,21 @@ async function limparClientesVencidosDaLixeira() {
       .whereNotNull('excluido_em')
       .where('excluir_definitivo_em', '<=', agora);
 
+    const clientesSemVendas = [];
     for (const cliente of clientes) {
-      await marcarVendasClienteExcluidoPermanentemente(cliente, trx, agora);
+      const totalVendas = await contarVendasRelacionadasCliente(cliente.id, trx);
+      if (totalVendas === 0) {
+        clientesSemVendas.push(cliente);
+      }
     }
 
-    if (clientes.length === 0) {
+    if (clientesSemVendas.length === 0) {
       return 0;
     }
 
     return Cliente.query(trx)
       .delete()
-      .whereIn('id', clientes.map(cliente => cliente.id));
+      .whereIn('id', clientesSemVendas.map(cliente => cliente.id));
   });
 }
 
@@ -1031,7 +1031,6 @@ async function excluirClienteDefinitivo(id, usuarioId, opcoes = {}) {
   }
 
   const excluirVendasRelacionadas = Boolean(opcoes.excluirVendasRelacionadas);
-  const agora = formatarDateTimeSQL();
 
   return Cliente.transaction(async trx => {
     const cliente = await Cliente.query(trx)
@@ -1043,12 +1042,21 @@ async function excluirClienteDefinitivo(id, usuarioId, opcoes = {}) {
       return 0;
     }
 
+    const totalVendasRelacionadas = await contarVendasRelacionadasCliente(id, trx);
+
+    if (totalVendasRelacionadas > 0 && !excluirVendasRelacionadas) {
+      const error = criarHttpError(
+        409,
+        `Este cliente possui ${totalVendasRelacionadas} venda(s) relacionada(s). Exclua as vendas antes ou confirme a exclusao delas junto com o cliente.`
+      );
+      error.totalVendasRelacionadas = totalVendasRelacionadas;
+      throw error;
+    }
+
     const vendasRelacionadas = Venda.query(trx).where('cliente_id', id);
 
-    if (excluirVendasRelacionadas) {
+    if (totalVendasRelacionadas > 0 && excluirVendasRelacionadas) {
       await vendasRelacionadas.delete();
-    } else {
-      await marcarVendasClienteExcluidoPermanentemente(cliente, trx, agora);
     }
 
     return Cliente.query(trx)
@@ -1063,11 +1071,23 @@ async function limparClientesBaseAnterior() {
     const clientes = await Cliente.query(trx)
       .select('id', 'nome', 'razao_social', 'cnpj')
       .where('base_anterior_sistema', true);
-    const clienteIds = clientes.map(cliente => Number(cliente.id)).filter(Boolean);
-
-    if (clienteIds.length === 0) {
+    if (clientes.length === 0) {
       return { excluidos: 0 };
     }
+
+    const clientesSemVendas = [];
+    for (const cliente of clientes) {
+      const totalVendas = await contarVendasRelacionadasCliente(cliente.id, trx);
+      if (totalVendas === 0) {
+        clientesSemVendas.push(cliente);
+      }
+    }
+
+    if (clientesSemVendas.length === 0) {
+      return { excluidos: 0, ignorados_com_vendas: clientes.length };
+    }
+
+    const clienteIds = clientesSemVendas.map(cliente => Number(cliente.id)).filter(Boolean);
 
     const notas = await trx('entidade_notas')
       .select('id')
@@ -1111,16 +1131,11 @@ async function limparClientesBaseAnterior() {
         .delete();
     }
 
-    const agora = formatarDateTimeSQL();
-    for (const cliente of clientes) {
-      await marcarVendasClienteExcluidoPermanentemente(cliente, trx, agora);
-    }
-
     const excluidos = await Cliente.query(trx)
       .whereIn('id', clienteIds)
       .delete();
 
-    return { excluidos };
+    return { excluidos, ignorados_com_vendas: clientes.length - clientesSemVendas.length };
   });
 }
 

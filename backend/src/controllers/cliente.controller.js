@@ -168,8 +168,9 @@ async function destroyDefinitivo(req, res) {
   } catch (error) {
     console.error(error);
 
-    return res.status(500).json({
-      message: 'Erro ao excluir cliente definitivamente.'
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao excluir cliente definitivamente.',
+      total_vendas_relacionadas: error.totalVendasRelacionadas
     });
   }
 }
