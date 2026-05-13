@@ -129,6 +129,17 @@
   vertical-align: middle;
 }
 
+.clientes-leads-table th,
+.clientes-leads-table td {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.clientes-leads-table td:first-child,
+.clientes-leads-table th:first-child {
+  text-align: left !important;
+}
+
 .futuros-clientes-table .futuro-cliente-notas-cell {
   margin: 0 auto;
 }
@@ -173,6 +184,22 @@
   background: color-mix(in srgb, var(--success) 5%, transparent);
 }
 
+.clientes-leads-table tbody tr td {
+  transition: background-color 120ms ease;
+}
+
+.clientes-leads-table tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+.clientes-leads-table tbody tr.lead-row-futuro td {
+  background: color-mix(in srgb, var(--success) 5%, transparent);
+}
+
+.clientes-leads-table tbody tr.lead-row-futuro:hover td {
+  background: color-mix(in srgb, var(--success) 9%, var(--surface-2));
+}
+
 .lead-row-futuro td:first-child {
   box-shadow: inset 3px 0 0 var(--success);
 }
@@ -180,7 +207,7 @@
 .lead-status-cell {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
   min-width: 150px;
 }
@@ -200,6 +227,18 @@
   font-size: 11.5px;
   line-height: 1.25;
   white-space: nowrap;
+}
+
+.clientes-leads-table .lead-register-sale-btn {
+  width: auto;
+  min-width: 118px;
+  min-height: 24px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+.clientes-leads-table .lead-cell-button {
+  text-align: center;
 }
 
 .lead-register-sale-btn.is-disabled,

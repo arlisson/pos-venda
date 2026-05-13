@@ -73,6 +73,12 @@
   transform: translateY(-1px) scale(1.03);
 }
 
+.vendas-page .btn-warn-icon:not(:disabled):hover {
+  color: #f97316;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
 .venda-modal input,
 .venda-modal select,
 .venda-modal textarea {
