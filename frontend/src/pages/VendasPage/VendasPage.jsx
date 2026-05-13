@@ -2186,7 +2186,7 @@ function VendasPage() {
   const podeCompartilharVenda = temPermissao(usuarioLogado, 'compartilhar_venda');
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
   const podeVerDocumentosVenda = temPermissao(usuarioLogado, 'vendas_documentos');
-  const podeMarcarProblema = temPermissao(usuarioLogado, 'vendas_marcar_problema');
+  const podeOperarPosVenda = temPermissao(usuarioLogado, 'pos_venda');
   const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const podeVerTodasVendas = temPermissao(usuarioLogado, 'vendas_ver_todas');
   const podeFunil = temPermissao(usuarioLogado, 'vendas');
@@ -2264,7 +2264,7 @@ function VendasPage() {
         listarTiposVenda(),
         listarServicos(),
         listarEtapasFunil(),
-        podeMarcarProblema ? listarDestinatariosProblemaVenda() : Promise.resolve([])
+        podeOperarPosVenda ? listarDestinatariosProblemaVenda() : Promise.resolve([])
       ]);
 
       setVendas(vendasData);
@@ -2565,10 +2565,10 @@ function VendasPage() {
     setValorMax('');
   }
 
-  const totalColunasVendas = 12 + (podeMarcarProblema ? 1 : 0) + (podeExcluirVenda ? 1 : 0);
+  const totalColunasVendas = 11 + (podeOperarPosVenda ? 2 : 0) + (podeExcluirVenda ? 1 : 0);
   const larguraColunaAcao = 60;
   const larguraColunaContato = 76;
-  const offsetAcoesFinais = (podeMarcarProblema ? larguraColunaAcao : 0) + (podeExcluirVenda ? larguraColunaAcao : 0);
+  const offsetAcoesFinais = (podeOperarPosVenda ? larguraColunaAcao : 0) + (podeExcluirVenda ? larguraColunaAcao : 0);
 
   return (
     <LayoutPrivado>
@@ -2817,9 +2817,15 @@ function VendasPage() {
                   <th>Venda</th>
                   <th>Ativação</th>
                   <th>Vendedor(a)</th>
-                  <th className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>Contato</th>
-                  {podeMarcarProblema && (
-                    <th className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>Problema</th>
+                  {podeOperarPosVenda && (
+                    <th className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
+                      Contato
+                    </th>
+                  )}
+                  {podeOperarPosVenda && (
+                    <th className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>
+                      Problema
+                    </th>
                   )}
                   {podeExcluirVenda && (
                     <th className="vendas-actions-col vendas-delete-actions-col">Excluir</th>
@@ -2923,45 +2929,47 @@ function VendasPage() {
                       <td>{formatarData(venda.data_venda)}</td>
                       <td>{formatarData(venda.data_ativacao)}</td>
                       <td><span className="tag">{obterVendedorasMensagem(venda)}</span></td>
-                      <td className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
-                        <div className="vendas-contact-actions">
-                          <button
-                            className="btn btn-icon btn-ghost vendas-whatsapp-btn"
-                            title="Gerar mensagem para WhatsApp"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              abrirMensagemWhatsapp(venda);
-                            }}
-                          >
-                            <I.Whatsapp size={13} />
-                          </button>
-                          <button
-                            className="btn btn-icon btn-ghost vendas-email-btn"
-                            title="Gerar corpo de email"
-                            disabled={gerandoEmailId === venda.id}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              abrirEmailVenda(venda);
-                            }}
-                          >
-                            <I.Mail size={13} />
-                          </button>
-                          {/claro/i.test(venda.operadora?.nome) && (
-                          <button
-                            className="btn btn-icon btn-ghost vendas-xlsx-btn"
-                            title="Baixar planilha Claro"
-                            disabled={baixandoXlsxId === venda.id}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleBaixarXlsxClaro(venda);
-                            }}
-                          >
-                            <I.TableSheet size={13} />
-                          </button>
-                          )}
-                        </div>
-                      </td>
-                      {podeMarcarProblema && (
+                      {podeOperarPosVenda && (
+                        <td className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
+                          <div className="vendas-contact-actions">
+                            <button
+                              className="btn btn-icon btn-ghost vendas-whatsapp-btn"
+                              title="Gerar mensagem para WhatsApp"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                abrirMensagemWhatsapp(venda);
+                              }}
+                            >
+                              <I.Whatsapp size={13} />
+                            </button>
+                            <button
+                              className="btn btn-icon btn-ghost vendas-email-btn"
+                              title="Gerar corpo de email"
+                              disabled={gerandoEmailId === venda.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                abrirEmailVenda(venda);
+                              }}
+                            >
+                              <I.Mail size={13} />
+                            </button>
+                            {/claro/i.test(venda.operadora?.nome) && (
+                            <button
+                              className="btn btn-icon btn-ghost vendas-xlsx-btn"
+                              title="Baixar planilha Claro"
+                              disabled={baixandoXlsxId === venda.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleBaixarXlsxClaro(venda);
+                              }}
+                            >
+                              <I.TableSheet size={13} />
+                            </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                      {podeOperarPosVenda && (
                         <td className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>
                           <button
                             className="btn btn-icon btn-ghost btn-warn-icon"

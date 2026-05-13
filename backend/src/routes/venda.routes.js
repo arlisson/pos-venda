@@ -32,7 +32,7 @@ router.get('/resumo', exigirUmaPermissao(['dashboard_resumo_vendas', 'vendas', '
 router.get('/relatorios', exigirUmaPermissao(['relatorios_visualizar']), vendaController.relatorios);
 router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.lixeira);
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.index);
-router.get('/problemas/destinatarios', exigirUmaPermissao(['vendas_marcar_problema']), vendaProblemaController.destinatarios);
+router.get('/problemas/destinatarios', exigirUmaPermissao(['pos_venda']), vendaProblemaController.destinatarios);
 router.get('/aprovacoes', exigirUmaPermissao(['vendas_aprovacoes_visualizar']), vendaAprovacaoController.index);
 router.post('/aprovacoes/:id/aprovar', exigirUmaPermissao(['vendas_aprovacoes_decidir']), vendaAprovacaoController.aprovar);
 router.post('/aprovacoes/:id/recusar', exigirUmaPermissao(['vendas_aprovacoes_decidir']), vendaAprovacaoController.recusar);
@@ -41,7 +41,7 @@ router.post('/problemas/:problemaId/correcao', exigirUmaPermissao(['vendas_ver_p
 router.post('/problemas/:problemaId/verificar', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaProblemaController.verificar);
 router.get('/:id/problemas', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaProblemaController.index);
 router.get('/:id/problemas/ativo', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaProblemaController.ativo);
-router.post('/:id/problemas', exigirUmaPermissao(['vendas_marcar_problema']), vendaProblemaController.store);
+router.post('/:id/problemas', exigirUmaPermissao(['pos_venda']), vendaProblemaController.store);
 router.get('/:id/arquivos', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaArquivoController.index);
 router.post('/:id/arquivos', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_editar', 'editar_vendas_compartilhadas']), vendaArquivoController.store);
 router.get('/:id/arquivos/pacote', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaArquivoController.pacoteShow);
