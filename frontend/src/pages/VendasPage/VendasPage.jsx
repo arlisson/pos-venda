@@ -2186,6 +2186,7 @@ function VendasPage() {
   const podeCompartilharVenda = temPermissao(usuarioLogado, 'compartilhar_venda');
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
   const podeVerDocumentosVenda = temPermissao(usuarioLogado, 'vendas_documentos');
+  const podeAcessarDocumentosVenda = Boolean(podeVerDocumentosVenda || podeEditarVenda);
   const podeOperarPosVenda = temPermissao(usuarioLogado, 'pos_venda');
   const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const podeVerTodasVendas = temPermissao(usuarioLogado, 'vendas_ver_todas');
@@ -2360,7 +2361,7 @@ function VendasPage() {
     const vendaId = searchParams.get('venda_id');
     const abaParam = searchParams.get('aba');
     const problemaId = searchParams.get('problema_id');
-    const abasPermitidas = ['venda', 'notas', ...(podeVerDocumentosVenda ? ['arquivos'] : []), 'problema'];
+    const abasPermitidas = ['venda', 'notas', ...(podeAcessarDocumentosVenda ? ['arquivos'] : []), 'problema'];
     const aba = abasPermitidas.includes(abaParam) ? abaParam : 'venda';
 
     if (!vendaId) return;
@@ -2376,7 +2377,7 @@ function VendasPage() {
         navigate('/vendas', { replace: true });
       })
       .catch(error => setErro(error.message || 'Erro ao abrir venda.'));
-  }, [searchParams, navigate, podeVerDocumentosVenda]);
+  }, [searchParams, navigate, podeAcessarDocumentosVenda]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function abrirVisualizacao(venda) {

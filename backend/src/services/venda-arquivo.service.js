@@ -70,6 +70,27 @@ async function buscarEscopoVendas(usuarioId) {
   };
 }
 
+async function usuarioTemPermissao(usuarioId, permissao) {
+  const usuario = await Usuario.query()
+    .findById(usuarioId)
+    .withGraphFetched('role');
+
+  if (!usuario || !usuario.ativo) {
+    return false;
+  }
+
+  if (usuario.role?.nome === 'admin') {
+    return true;
+  }
+
+  const permissoes = [
+    ...parsePermissoes(usuario.permissoes),
+    ...parsePermissoes(usuario.role?.permissoes)
+  ];
+
+  return permissoes.includes(permissao);
+}
+
 async function usuarioPodeAcessarVenda(vendaId, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
 
@@ -202,6 +223,16 @@ function formatarPacote(pacote) {
 
 async function listarArquivos(vendaId, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
+
+  const podeVisualizarDocumentos = await usuarioTemPermissao(usuarioId, 'vendas_documentos');
+
+  if (!podeVisualizarDocumentos) {
+    return {
+      arquivos: [],
+      pacote: null,
+      documentos_ocultos: true
+    };
+  }
 
   const arquivos = await VendaArquivo.query()
     .where('venda_id', vendaId)
