@@ -2371,7 +2371,6 @@ function VendaModal({
     )
   );
   const vendaBloqueadaParaUsuario = enviadaPosVenda && !usuarioPosVenda;
-  const podeAlterarVendedorasVenda = Boolean(podeCompartilharVenda && !somenteVisualizacao && !vendaBloqueadaParaUsuario);
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
   const cepPreenchidoPorCnpjRef = useRef('');
   const vendaPortabilidade = temChipPortabilidade(form.valores_unitarios_chips);
@@ -2386,6 +2385,10 @@ function VendaModal({
       });
     return Array.from(mapa.values());
   }, [vendedoras, venda]);
+  const usuarioTemOutrasVendedorasDisponiveis = Boolean(usuarioLogado?.id
+    && (vendedoras || []).some(vendedora => Number(vendedora.id) !== Number(usuarioLogado.id)));
+  const podeCompartilharVendaEfetivo = Boolean(podeCompartilharVenda || usuarioTemOutrasVendedorasDisponiveis);
+  const podeAlterarVendedorasVenda = Boolean(podeCompartilharVendaEfetivo && !somenteVisualizacao && !vendaBloqueadaParaUsuario);
   const clientesDisponiveis = useMemo(() => {
     const mapa = new Map();
     [...(clientes || []), ...(venda?.cliente ? [venda.cliente] : [])]
@@ -2537,7 +2540,7 @@ function VendaModal({
   }, [clientesDisponiveis]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function atualizarVendedorasVenda(ids) {
-    if (somenteVisualizacao || vendaBloqueadaParaUsuario || !podeCompartilharVenda) return;
+    if (somenteVisualizacao || vendaBloqueadaParaUsuario || !podeCompartilharVendaEfetivo) return;
 
     setForm(prev => ({ ...prev, vendedoras: ids }));
   }

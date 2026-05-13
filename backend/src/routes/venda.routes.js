@@ -27,7 +27,7 @@ function obterMovimentacaoStatus(venda) {
 
 router.use(authMiddleware);
 
-router.get('/vendedoras', exigirUmaPermissao(['vendas', 'vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas', 'relatorios_visualizar']), vendaController.vendedoras);
+router.get('/vendedoras', exigirUmaPermissao(['vendas', 'vendas_criar', 'vendas_editar', 'compartilhar_venda', 'vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas', 'relatorios_visualizar']), vendaController.vendedoras);
 router.get('/resumo', exigirUmaPermissao(['dashboard_resumo_vendas', 'vendas', 'vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.resumo);
 router.get('/relatorios', exigirUmaPermissao(['relatorios_visualizar']), vendaController.relatorios);
 router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.lixeira);
