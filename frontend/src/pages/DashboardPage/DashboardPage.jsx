@@ -10,6 +10,7 @@ import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import ClienteModal from '../Clientes/ClienteModal';
 import VendaModal from '../VendasPage/VendaModal';
 import * as I from '../../components/Icons';
+import { formatUtcDateTime, getUtcDateTimeTimestamp, parseUtcDateTime } from '../../utils/datetime';
 import './DashboardPage.css';
 
 const formatBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -39,6 +40,8 @@ const CATEGORY_LABELS = {
 const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
+const TIPO_VENDA_PARADA = 'venda_parada_funil';
+const RETORNO_PRE_AVISO_MINUTOS = 15;
 
 function getCampanhaKey(campanha) {
   return campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`;
@@ -94,6 +97,69 @@ function RewardModal({ gift, onClose }) {
   );
 }
 
+function ContatosMarcadosModal({ open, notificacoes, onClose, onOpenNotification }) {
+  if (!open) return null;
+
+  async function handleOpenNotification(notificacao) {
+    onClose();
+    await onOpenNotification(notificacao);
+  }
+
+  return (
+    <div className="modal-overlay contatos-marcados-overlay" onClick={onClose}>
+      <div
+        className="modal contatos-marcados-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contatos-marcados-title"
+        onClick={event => event.stopPropagation()}
+      >
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client" id="contatos-marcados-title">Contatos marcados</div>
+              <div className="modal-sub">{notificacoes.length} liga&ccedil;&atilde;o{notificacoes.length === 1 ? '' : 'es'} com retorno ativo</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} title="Fechar">
+              <I.Close size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body contatos-marcados-body">
+          {notificacoes.length === 0 ? (
+            <div className="contatos-marcados-empty">Nenhum contato marcado.</div>
+          ) : (
+            <div className="contatos-marcados-list">
+              {notificacoes.map(notificacao => (
+                <button
+                  key={notificacao.destinatario_id || notificacao.id}
+                  type="button"
+                  className={`contatos-marcados-item ${notificacao.lida === false ? 'is-unread' : ''}`}
+                  onClick={() => handleOpenNotification(notificacao)}
+                >
+                  <span className="contatos-marcados-item__icon">
+                    <I.Whatsapp size={15} />
+                  </span>
+                  <span className="contatos-marcados-item__content">
+                    <strong>{getNotificacaoTitulo(notificacao)}</strong>
+                    <span>{getNotificacaoDescricao(notificacao)}</span>
+                    <em>{getRetornoPrazo(notificacao)}</em>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getInitials(name) {
   if (!name) return '??';
   return name
@@ -131,6 +197,10 @@ function getNotificationTarget(notificacao) {
       return `/vendas?venda_id=${vendaId}&aba=problema${problemaId ? `&problema_id=${problemaId}` : ''}`;
     }
 
+    if (notificacao.tipo === TIPO_VENDA_PARADA) {
+      return `/vendas?venda_id=${vendaId}`;
+    }
+
     if (TIPOS_RETORNO_NOTA.includes(notificacao.tipo)) {
       return `/vendas?venda_id=${vendaId}&aba=notas`;
     }
@@ -143,31 +213,41 @@ function getNotificationTarget(notificacao) {
 
 function getRetornoTimestamp(notificacao) {
   const valor = notificacao?.dados?.retorno_agendado_para || notificacao?.updated_at;
-  const data = new Date(String(valor || '').replace(' ', 'T'));
-
-  return Number.isNaN(data.getTime()) ? Number.MAX_SAFE_INTEGER : data.getTime();
+  return getUtcDateTimeTimestamp(valor, Number.MAX_SAFE_INTEGER);
 }
 
 function formatarRetornoResumo(notificacao) {
   const valor = notificacao?.dados?.retorno_agendado_para;
   if (!valor) return 'sem data definida';
 
-  const data = new Date(String(valor).replace(' ', 'T'));
-  if (Number.isNaN(data.getTime())) return 'sem data definida';
-
-  return data.toLocaleString('pt-BR', {
+  return formatUtcDateTime(valor, {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
-  });
+  }, 'sem data definida');
+}
+
+function getRetornoMinutosParaVencer(notificacao) {
+  const data = parseUtcDateTime(notificacao?.dados?.retorno_agendado_para);
+  if (!data) return null;
+
+  return Math.ceil((data.getTime() - Date.now()) / 60000);
+}
+
+function retornoDeveAparecerNoCard(notificacao) {
+  if (!TIPOS_RETORNO_NOTA.includes(notificacao.tipo)) return false;
+  if (notificacao.tipo === 'nota_retorno_due') return true;
+
+  const minutos = getRetornoMinutosParaVencer(notificacao);
+  return minutos !== null && minutos > 0 && minutos <= RETORNO_PRE_AVISO_MINUTOS;
 }
 
 function formatarPrazoRelativo(valor) {
   if (!valor) return 'Pendente';
 
-  const data = new Date(String(valor).replace(' ', 'T'));
-  if (Number.isNaN(data.getTime())) return 'Pendente';
+  const data = parseUtcDateTime(valor);
+  if (!data) return 'Pendente';
 
   const agora = new Date();
   const diffDias = Math.round((agora.setHours(0, 0, 0, 0) - data.setHours(0, 0, 0, 0)) / 86400000);
@@ -213,22 +293,39 @@ function getFidelidadePrazo(notificacao) {
 }
 
 function getRetornoPrazo(notificacao) {
-  if (notificacao?.tipo === 'nota_retorno_due') return formatarRetornoResumo(notificacao);
+  if (notificacao?.tipo === 'nota_retorno_due') return 'Ligacao vencida';
+
+  const minutos = getRetornoMinutosParaVencer(notificacao);
+
+  if (minutos !== null && minutos <= 0) return 'Ligacao vencida';
+  if (minutos !== null && minutos <= RETORNO_PRE_AVISO_MINUTOS) {
+    return minutos === 1 ? 'Falta 1 minuto para vencer' : `Faltam ${minutos} minutos para vencer`;
+  }
+
   return formatarRetornoResumo(notificacao);
+}
+
+function getVendaParadaPrazo(notificacao) {
+  const horas = Number(notificacao?.dados?.horas);
+
+  if (Number.isFinite(horas) && horas >= 0) {
+    const dias = Math.floor(horas / 24);
+    return `Parada hÃ¡ ${dias} dia${dias === 1 ? '' : 's'}`;
+  }
+
+  return formatarPrazoRelativo(notificacao?.dados?.data_entrada || notificacao?.updated_at);
 }
 
 function getVendaRetornoTimestamp(venda) {
   const valor = venda?.retornou_em || venda?.updated_at || venda?.ultima_atividade_em;
-  const data = new Date(String(valor || '').replace(' ', 'T'));
-
-  return Number.isNaN(data.getTime()) ? 0 : data.getTime();
+  return getUtcDateTimeTimestamp(valor, 0);
 }
 
 function formatarDataRetornoVenda(venda) {
   const timestamp = getVendaRetornoTimestamp(venda);
   if (!timestamp) return 'Retorno registrado';
 
-  return new Date(timestamp).toLocaleString('pt-BR', {
+  return formatUtcDateTime(timestamp, {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -290,6 +387,7 @@ function DashboardPage() {
   const [usuarioCampanhaFiltro, setUsuarioCampanhaFiltro] = useState('');
   const [usuarioCampanhaBusca, setUsuarioCampanhaBusca] = useState('');
   const [notificacoes, setNotificacoes] = useState([]);
+  const [contatosMarcadosOpen, setContatosMarcadosOpen] = useState(false);
   const [vendasRetorno, setVendasRetorno] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [vendas, setVendas] = useState([]);
@@ -309,6 +407,7 @@ function DashboardPage() {
   const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
   const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
   const podeVerCampanhasUsuarios = temPermissao(usuario, 'campanhas_ver_usuarios');
+  const podeVerVendasParadas = temPermissao(usuario, 'notificacoes_vendas_paradas');
   const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
 
   useEffect(() => {
@@ -379,12 +478,33 @@ function DashboardPage() {
 
   useEffect(() => {
     if (!podeVerNotificacoes) {
+      setNotificacoes([]);
       return undefined;
     }
 
-    listarNotificacoes({ limit: 24 })
-      .then(data => setNotificacoes(data.notificacoes || []))
-      .catch(console.error);
+    let ativo = true;
+    const carregarNotificacoesDashboard = () => {
+      listarNotificacoes({ limit: 24 })
+        .then(data => {
+          if (ativo) setNotificacoes(data.notificacoes || []);
+        })
+        .catch(console.error);
+    };
+
+    carregarNotificacoesDashboard();
+    const timer = setInterval(carregarNotificacoesDashboard, 60000);
+
+    function handleRefreshNotifications() {
+      carregarNotificacoesDashboard();
+    }
+
+    window.addEventListener('pos-venda:notificacoes-atualizar', handleRefreshNotifications);
+
+    return () => {
+      ativo = false;
+      clearInterval(timer);
+      window.removeEventListener('pos-venda:notificacoes-atualizar', handleRefreshNotifications);
+    };
   }, [podeVerNotificacoes]);
 
   async function handleReadNotification(notificacao) {
@@ -517,7 +637,7 @@ function DashboardPage() {
     .filter(notificacao => notificacao.tipo === 'cliente_fidelidade')
     .sort((a, b) => Number(a.dados?.dias_restantes ?? 999) - Number(b.dados?.dias_restantes ?? 999));
   const notificacoesRetorno = notificacoes
-    .filter(notificacao => TIPOS_RETORNO_NOTA.includes(notificacao.tipo))
+    .filter(retornoDeveAparecerNoCard)
     .sort((a, b) => getRetornoTimestamp(a) - getRetornoTimestamp(b));
   const retornosVenda = vendasRetorno
     .slice()
@@ -534,7 +654,16 @@ function DashboardPage() {
       if (!vendaId) return true;
       return vendasAtivasIds.has(String(vendaId));
     })
-    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    .sort((a, b) => getUtcDateTimeTimestamp(b.updated_at) - getUtcDateTimeTimestamp(a.updated_at));
+  const notificacoesVendasParadas = notificacoes
+    .filter(notificacao => {
+      if (!podeVerVendasParadas || notificacao.tipo !== TIPO_VENDA_PARADA) return false;
+      if (!vendasCarregadas) return true;
+      const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id;
+      if (!vendaId) return true;
+      return vendasAtivasIds.has(String(vendaId));
+    })
+    .sort((a, b) => Number(b.dados?.horas || 0) - Number(a.dados?.horas || 0));
   const notificacaoCards = [
     {
       key: 'retornos',
@@ -573,20 +702,36 @@ function DashboardPage() {
       count: notificacoesRetorno.length,
       variant: 'contact',
       icon: <I.Whatsapp size={15} />,
-      items: notificacoesRetorno.slice(0, 3),
+      items: notificacoesRetorno,
+      scrollable: true,
       getTitle: getNotificacaoTitulo,
       getDescription: getNotificacaoDescricao,
-      metric: notificacao => notificacao.tipo === 'nota_retorno_due' ? 'Ligacao vencida' : getRetornoPrazo(notificacao),
+      metric: getRetornoPrazo,
       actionLabel: 'Ver contatos marcados',
-      onAction: () => {
-        if (notificacoesRetorno[0]) {
-          abrirNotificacaoNoDashboard(notificacoesRetorno[0]);
-          return;
-        }
-        navigate('/vendas');
-      },
+      onAction: () => setContatosMarcadosOpen(true),
       onItemClick: abrirNotificacaoNoDashboard
     },
+    ...(podeVerVendasParadas ? [{
+      key: 'vendas-paradas',
+      title: 'Vendas paradas',
+      subtitle: 'Mais de 5 dias',
+      count: notificacoesVendasParadas.length,
+      variant: 'stalled',
+      icon: <I.History size={15} />,
+      items: notificacoesVendasParadas.slice(0, 3),
+      getTitle: getNotificacaoTitulo,
+      getDescription: getNotificacaoDescricao,
+      metric: getVendaParadaPrazo,
+      actionLabel: 'Ver vendas paradas',
+      onAction: () => {
+        if (notificacoesVendasParadas[0]) {
+          abrirNotificacaoNoDashboard(notificacoesVendasParadas[0]);
+          return;
+        }
+        navigate('/funil');
+      },
+      onItemClick: abrirNotificacaoNoDashboard
+    }] : []),
     {
       key: 'problemas',
       title: 'Vendas com problema',
@@ -692,6 +837,12 @@ function DashboardPage() {
 
       <div className="dashboard-container">
         <RewardModal gift={selectedReward} onClose={() => setSelectedReward(null)} />
+        <ContatosMarcadosModal
+          open={contatosMarcadosOpen}
+          notificacoes={notificacoesRetorno}
+          onClose={() => setContatosMarcadosOpen(false)}
+          onOpenNotification={abrirNotificacaoNoDashboard}
+        />
         {feedback && (
           <div className={`alert-${feedback.type === 'success' ? 'success' : 'error'} alert-timed alert-timed--${feedback.type === 'success' ? 'success' : 'error'}`} style={{ marginBottom: 16 }}>
             {feedback.text}
@@ -749,7 +900,7 @@ function DashboardPage() {
                     <span className="home-notification-card__count">{card.count}</span>
                   </div>
 
-                  <div className="home-notification-card__items">
+                  <div className={`home-notification-card__items ${card.scrollable ? 'is-scrollable' : ''}`}>
                     {card.items.length === 0 ? (
                       <div className="home-notification-card__empty">Nenhuma notificação ativa.</div>
                     ) : card.items.map(notificacao => (

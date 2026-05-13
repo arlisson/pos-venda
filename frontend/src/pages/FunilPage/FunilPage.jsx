@@ -31,6 +31,7 @@ import {
   listarVendas,
   listarVendedoras
 } from '../../services/venda.service';
+import { parseUtcDateTime } from '../../utils/datetime';
 import '../VendasPage/VendasPage.css';
 
 const formatBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -125,9 +126,7 @@ function parseDate(value) {
   if (!value) return new Date();
   // Strings do banco vêm em UTC ("YYYY-MM-DD HH:MM:SS"); adiciona Z para evitar
   // interpretação como horário local do browser.
-  const iso = typeof value === 'string' ? value.replace(' ', 'T') + 'Z' : value;
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? new Date() : date;
+  return parseUtcDateTime(value) || new Date();
 }
 
 function formatDate(d) {

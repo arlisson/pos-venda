@@ -4,6 +4,7 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { listarAuditLogs, listarStatusVendasHistorico } from '../../services/audit-log.service';
 import { listarEtapasFunil } from '../../services/config.service';
+import { formatUtcDateTime, getUtcDateTimeTimestamp } from '../../utils/datetime';
 
 const ACAO_LABELS = {
   'auth.login': 'Login realizado',
@@ -50,15 +51,13 @@ function parseDados(dados) {
 }
 
 function formatarData(valor) {
-  if (!valor) return '';
-
-  return new Intl.DateTimeFormat('pt-BR', {
+  return formatUtcDateTime(valor, {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
-  }).format(new Date(valor));
+  });
 }
 
 function formatarAcao(acao) {
@@ -240,7 +239,7 @@ function extrairNomeVenda(logs, vendaId) {
 }
 
 function buildStageProgression(logs) {
-  const sorted = [...logs].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const sorted = [...logs].sort((a, b) => getUtcDateTimeTimestamp(a.created_at) - getUtcDateTimeTimestamp(b.created_at));
 
   const reached = new Map();
   let currentStage = null;
@@ -373,11 +372,11 @@ function agruparLogsVenda(logs = []) {
 
   return Array.from(grupos.values()).map(grupo => ({
     ...grupo,
-    logs: grupo.logs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+    logs: grupo.logs.sort((a, b) => getUtcDateTimeTimestamp(a.created_at) - getUtcDateTimeTimestamp(b.created_at)),
     maisRecente: grupo.logs.reduce((recente, log) => (
-      !recente || new Date(log.created_at) > new Date(recente.created_at) ? log : recente
+      !recente || getUtcDateTimeTimestamp(log.created_at) > getUtcDateTimeTimestamp(recente.created_at) ? log : recente
     ), null)
-  })).sort((a, b) => new Date(b.maisRecente?.created_at || 0) - new Date(a.maisRecente?.created_at || 0));
+  })).sort((a, b) => getUtcDateTimeTimestamp(b.maisRecente?.created_at) - getUtcDateTimeTimestamp(a.maisRecente?.created_at));
 }
 
 function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {

@@ -8,21 +8,14 @@ import {
   marcarTodasNotificacoesLidas
 } from '../../services/notificacao.service';
 import { temPermissao } from '../../services/auth.service';
+import { formatDateValue } from '../../utils/datetime';
 
 const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 
 function formatDate(value) {
-  if (!value) return '';
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return formatDateValue(value, { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 function tomNotificacao(notification) {

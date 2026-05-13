@@ -4,11 +4,11 @@ import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { deletarVendaDefinitivo, listarVendasLixeira, restaurarVenda } from '../../services/venda.service';
+import { formatDateValue } from '../../utils/datetime';
 import './VendasPage.css';
 
 function formatarData(value) {
-  if (!value) return '-';
-  return new Date(value).toLocaleDateString('pt-BR');
+  return formatDateValue(value, undefined, '-');
 }
 
 function formatarMoeda(value) {

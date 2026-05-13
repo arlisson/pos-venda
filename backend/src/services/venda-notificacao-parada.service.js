@@ -2,8 +2,10 @@ const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
 const db = require('../database/connection');
+const { parseUtcDateTime } = require('../utils/datetime');
 
 const TIPO_NOTIFICACAO = 'venda_parada_funil';
+const PERMISSAO_VENDAS_PARADAS = 'notificacoes_vendas_paradas';
 const HORAS_LIMITE = 5 * 24; // 5 dias corridos em horas
 
 function parsePermissoes(permissoes) {
@@ -39,7 +41,10 @@ function usuarioTemPermissao(usuario, permissao) {
 
 function horasDecorridas(dataInicio, dataFim) {
   if (!dataInicio || !dataFim) return 0;
-  return (new Date(dataFim) - new Date(dataInicio)) / (1000 * 60 * 60);
+  const inicio = parseUtcDateTime(dataInicio);
+  const fim = parseUtcDateTime(dataFim);
+  if (!inicio || !fim) return 0;
+  return (fim - inicio) / (1000 * 60 * 60);
 }
 
 async function registrarEntradaEstagio(vendaId, etapaCodigo, dataEntrada = new Date(), trx = null) {
@@ -87,9 +92,46 @@ async function desativarNotificacaoVendaParada(vendaId, etapaCodigo, trx = null)
   }
 }
 
+async function garantirRegistrosEntradaAtivos() {
+  const vendasSemRegistro = await db('vendas as v')
+    .join('funil_etapas as fe', 'v.status_funil', 'fe.codigo')
+    .leftJoin('venda_notificacao_parada as vnp', function () {
+      this.on('v.id', '=', 'vnp.venda_id')
+        .andOn('v.status_funil', '=', 'vnp.etapa_codigo');
+    })
+    .where('fe.etapa_final', false)
+    .where('v.excluido_em', null)
+    .whereNull('vnp.id')
+    .whereNotNull('v.status_funil')
+    .select(
+      'v.id',
+      'v.status_funil',
+      'v.ultima_atividade_em',
+      'v.updated_at',
+      'v.criado_em'
+    );
+
+  for (const venda of vendasSemRegistro) {
+    const historicoEntrada = await db('venda_historicos')
+      .where('venda_id', venda.id)
+      .where('status_novo', venda.status_funil)
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .first();
+
+    await registrarEntradaEstagio(
+      venda.id,
+      venda.status_funil,
+      historicoEntrada?.created_at || venda.ultima_atividade_em || venda.updated_at || venda.criado_em || new Date()
+    );
+  }
+}
+
 async function sincronizarVendasParadas() {
   try {
     const agora = new Date();
+
+    await garantirRegistrosEntradaAtivos();
     
     const vendas = await db('vendas as v')
       .join('venda_notificacao_parada as vnp', 'v.id', 'vnp.venda_id')
@@ -184,14 +226,14 @@ async function obterDestinatariosVenda(venda) {
     const ids = new Set();
 
     usuarios.forEach(usuario => {
-      if (usuario.role?.nome === 'admin' || usuarioTemPermissao(usuario, 'notificacoes_receber_todas')) {
+      if (usuarioTemPermissao(usuario, PERMISSAO_VENDAS_PARADAS)) {
         ids.add(Number(usuario.id));
       }
     });
 
     if (venda.vendedora_id) {
       const vendedora = usuarios.find(u => Number(u.id) === Number(venda.vendedora_id));
-      if (vendedora?.ativo) {
+      if (usuarioTemPermissao(vendedora, PERMISSAO_VENDAS_PARADAS)) {
         ids.add(Number(venda.vendedora_id));
       }
     }
@@ -205,6 +247,7 @@ async function obterDestinatariosVenda(venda) {
 
 module.exports = {
   TIPO_NOTIFICACAO,
+  PERMISSAO_VENDAS_PARADAS,
   HORAS_LIMITE,
   horasDecorridas,
   registrarEntradaEstagio,

@@ -15,6 +15,7 @@ import {
   recusarSolicitacaoVenda
 } from '../../services/venda.service';
 import VendaModal from './VendaModal';
+import { formatUtcDateTime } from '../../utils/datetime';
 import './VendasPage.css';
 
 const STATUS_LABEL = {
@@ -37,17 +38,13 @@ const MOTIVO_LABEL = {
 };
 
 function formatarData(valor) {
-  if (!valor) return '-';
-  const data = new Date(valor);
-  if (Number.isNaN(data.getTime())) return '-';
-
-  return data.toLocaleString('pt-BR', {
+  return formatUtcDateTime(valor, {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
-  });
+  }, '-');
 }
 
 function nomeVenda(venda) {

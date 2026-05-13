@@ -14,6 +14,7 @@ import {
 import { listarNotasEntidade } from '../../services/nota.service';
 import { listarEtapasFunil, listarOperadoras } from '../../services/config.service';
 import { listarVendas } from '../../services/venda.service';
+import { formatUtcDateTime, getUtcDateTimeTimestamp } from '../../utils/datetime';
 import './Clientes.css';
 
 function formatarContato(cliente) {
@@ -52,12 +53,7 @@ function formatarMoeda(valor) {
 }
 
 function formatarDataHoraNota(valor) {
-  if (!valor) return '';
-
-  const data = new Date(String(valor).replace(' ', 'T'));
-  if (Number.isNaN(data.getTime())) return '';
-
-  return data.toLocaleString('pt-BR', {
+  return formatUtcDateTime(valor, {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
@@ -533,9 +529,11 @@ function Clientes() {
       setClientes(prev => prev.map(c => {
         if (Number(c.id) !== Number(clienteId)) return c;
         const comRetorno = notas.filter(n => n.retorno_agendado_para);
-        const agendadas = comRetorno.map(n => n.retorno_agendado_para).sort();
-        const agora = new Date().toISOString();
-        const vencidas = agendadas.filter(d => d <= agora);
+        const agendadas = comRetorno
+          .map(n => n.retorno_agendado_para)
+          .sort((a, b) => getUtcDateTimeTimestamp(a, Number.MAX_SAFE_INTEGER) - getUtcDateTimeTimestamp(b, Number.MAX_SAFE_INTEGER));
+        const agora = Date.now();
+        const vencidas = agendadas.filter(d => getUtcDateTimeTimestamp(d, Number.MAX_SAFE_INTEGER) <= agora);
         return {
           ...c,
           notas_resumo: {
