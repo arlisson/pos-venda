@@ -291,7 +291,7 @@ function Usuarios() {
             {usuarios.length} usuários · {usuarios.filter(u => u.ativo).length} ativos
           </div>
           {podeCriarUsuarios && (
-            <button className="btn btn-primary" onClick={() => navigate('/usuarios/novo')}>
+            <button className="btn btn-primary users-add-btn" onClick={() => navigate('/usuarios/novo')}>
               <I.Plus size={14} /> Adicionar usuário
             </button>
           )}
@@ -355,13 +355,13 @@ function Usuarios() {
                       {podeMostrarAcoesUsuarios && (
                         <td className="row-actions">
                           {podeEditarUsuarios && (
-                            <button className="btn btn-icon btn-ghost" title="Editar" onClick={() => navigate(`/usuarios/${u.id}/editar`)}>
+                            <button className="btn btn-icon btn-ghost users-edit-btn" title="Editar" onClick={() => navigate(`/usuarios/${u.id}/editar`)}>
                               <I.Edit size={13} />
                             </button>
                           )}
 
                           {podeGerenciarPermissoes && (
-                            <button className="btn btn-sm btn-ghost" onClick={() => setGerenciandoId(u.id)}>
+                            <button className="btn btn-sm btn-ghost users-permissions-btn" onClick={() => setGerenciandoId(u.id)}>
                               Gerenciar permissões
                             </button>
                           )}
@@ -380,7 +380,11 @@ function Usuarios() {
                               </button>
                             </>
                           ) : podeExcluirUsuarios && Number(usuarioLogado?.id) !== Number(u.id) && (usuarioLogadoEhAdmin || u.role?.nome !== 'admin') ? (
+<<<<<<< HEAD
+                            <button className="btn btn-icon btn-ghost users-delete-btn" title="Excluir" onClick={() => handleDelete(u)}>
+=======
                             <button className="btn btn-icon btn-ghost btn-danger-icon" title="Excluir" onClick={() => handleDelete(u)}>
+>>>>>>> 59ac04e9a2feb461ed45717914f22cf78cb22c0f
                               <I.Trash size={13} />
                             </button>
                           ) : null}

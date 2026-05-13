@@ -293,6 +293,7 @@ function DashboardPage() {
   const [vendasRetorno, setVendasRetorno] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [vendas, setVendas] = useState([]);
+  const [vendasCarregadas, setVendasCarregadas] = useState(false);
   const [vendedoras, setVendedoras] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
   const [tiposVenda, setTiposVenda] = useState([]);
@@ -359,6 +360,7 @@ function DashboardPage() {
     ]) => {
       setClientes(Array.isArray(clientesData) ? clientesData : []);
       setVendas(Array.isArray(vendasData) ? vendasData : []);
+      setVendasCarregadas(true);
       setVendedoras(Array.isArray(vendedorasData) ? vendedorasData : []);
       setOperadoras(Array.isArray(operadorasData) ? operadorasData : []);
       setTiposVenda(Array.isArray(tiposVendaData) ? tiposVendaData : []);
@@ -520,8 +522,18 @@ function DashboardPage() {
   const retornosVenda = vendasRetorno
     .slice()
     .sort((a, b) => getVendaRetornoTimestamp(b) - getVendaRetornoTimestamp(a));
+  const vendasAtivasIds = useMemo(
+    () => new Set(vendas.map(v => String(v.id))),
+    [vendas]
+  );
   const notificacoesProblema = notificacoes
-    .filter(notificacao => TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo))
+    .filter(notificacao => {
+      if (!TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo)) return false;
+      if (!vendasCarregadas) return true;
+      const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id;
+      if (!vendaId) return true;
+      return vendasAtivasIds.has(String(vendaId));
+    })
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
   const notificacaoCards = [
     {

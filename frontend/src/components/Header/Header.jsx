@@ -25,6 +25,24 @@ function formatDate(value) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+function tomNotificacao(notification) {
+  switch (notification.tipo) {
+    case 'venda_problema_aberto':
+    case 'venda_problema_resolvido':
+    case 'venda_problema_correcao':
+      return 'info';
+    case 'venda_aprovacao_pendente':
+    case 'venda_parada_funil':
+    case 'cliente_fidelidade':
+      return 'warn';
+    case 'nota_retorno_pre':
+    case 'nota_retorno_due':
+      return 'contact';
+    default:
+      return notification.nivel === 'warn' ? 'warn' : 'danger';
+  }
+}
+
 function getNotificationTarget(notification) {
   if (notification.tipo === 'cliente_fidelidade') {
     return Number(notification.dados?.dias_restantes ?? 1) < 0
@@ -115,7 +133,7 @@ function Header({ title, subtitle, onNew, usuario }) {
 
   async function carregarNotificacoes() {
     try {
-      const dados = await listarNotificacoes({ limit: 8 });
+      const dados = await listarNotificacoes({ limit: 50 });
       setNotifications(dados.notificacoes || []);
       setUnreadCount(Number(dados.unread_count || 0));
     } catch {
@@ -208,7 +226,7 @@ function Header({ title, subtitle, onNew, usuario }) {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="external-link"
+                    className={`external-link external-link--${link.dot || 'gov'}`}
                     title={`Abrir ${link.name}`}
                     role="menuitem"
                     onClick={() => setLinksOpen(false)}
@@ -256,22 +274,24 @@ function Header({ title, subtitle, onNew, usuario }) {
               {notifications.length === 0 ? (
                 <div className="notification-empty">Nenhuma notificação ativa.</div>
               ) : (
-                notifications.map(notification => (
-                  <button
-                    type="button"
-                    key={notification.destinatario_id || notification.id}
-                    className={`notification-item ${notification.lida ? '' : 'is-unread'} ${notification.nivel || 'info'}`}
-                    onClick={() => handleMarkRead(notification)}
-                    role="menuitem"
-                  >
-                    <span className="notification-dot"></span>
-                    <span className="notification-item__body">
-                      <strong>{notification.titulo}</strong>
-                      <span>{notification.mensagem}</span>
-                      <em>{formatDate(notification.dados?.fidelidade_fim || notification.dados?.retorno_agendado_para || notification.updated_at)}</em>
-                    </span>
-                  </button>
-                ))
+                <div className="notification-popover__list">
+                  {notifications.map(notification => (
+                    <button
+                      type="button"
+                      key={notification.destinatario_id || notification.id}
+                      className={`notification-item notification-item--${tomNotificacao(notification)} ${notification.lida ? '' : 'is-unread'}`}
+                      onClick={() => handleMarkRead(notification)}
+                      role="menuitem"
+                    >
+                      <span className="notification-dot"></span>
+                      <span className="notification-item__body">
+                        <strong>{notification.titulo}</strong>
+                        <span>{notification.mensagem}</span>
+                        <em>{formatDate(notification.dados?.fidelidade_fim || notification.dados?.retorno_agendado_para || notification.updated_at)}</em>
+                      </span>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           )}

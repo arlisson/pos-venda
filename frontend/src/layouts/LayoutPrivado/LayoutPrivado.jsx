@@ -26,6 +26,7 @@ const routeConfigs = [
   { path: '/retornos', title: 'Retornos', sub: 'Chips que retornaram por algum erro', id: 'retornos' },
   { path: '/relatorios', title: 'Relatórios', sub: 'Indicadores comerciais e desempenho por usuário', id: 'relatorios' },
   { path: '/historico', title: 'Histórico', sub: 'Todas as movimentações do sistema', id: 'historico' },
+  { path: '/historico/lixeira', title: 'Lixeira de vendas', sub: 'Histórico das vendas excluídas', id: 'historico' },
   { path: '/usuarios', title: 'Usuários', sub: 'Gerencie acessos e permissões', id: 'usuarios', end: true },
   { path: '/usuarios/novo', title: 'Novo Usuário', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
   { path: '/usuarios/cadastrar', title: 'Novo Usuário', sub: 'Cadastrar novo acesso no sistema', id: 'usuarios' },
@@ -230,9 +231,55 @@ function LayoutPrivado({ children }) {
     window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
   }
 
+  function tomAlerta(notificacao) {
+    switch (notificacao.tipo) {
+      case 'venda_problema_aberto':
+      case 'venda_problema_resolvido':
+      case 'venda_problema_correcao':
+        return 'info';
+      case 'venda_aprovacao_pendente':
+      case 'venda_parada_funil':
+      case 'cliente_fidelidade':
+        return 'warn';
+      case 'nota_retorno_pre':
+      case 'nota_retorno_due':
+        return 'contact';
+      default:
+        return notificacao.nivel === 'warn' ? 'warn' : 'danger';
+    }
+  }
+
+  function montarRotaAlerta(notificacao) {
+    const id = notificacao.entidade_id || notificacao.dados?.venda_id || notificacao.dados?.cliente_id || '';
+
+    switch (notificacao.tipo) {
+      case 'venda_problema_aberto':
+      case 'venda_problema_resolvido':
+      case 'venda_problema_correcao':
+        return `/vendas?venda_id=${id}&aba=problema`;
+      case 'venda_aprovacao_pendente':
+        return '/vendas/aprovacoes';
+      case 'venda_parada_funil':
+        return '/funil';
+      case 'cliente_fidelidade':
+        return id ? `/clientes/${id}/editar` : '/clientes';
+      case 'nota_retorno_pre':
+      case 'nota_retorno_due':
+        if (notificacao.entidade === 'clientes') {
+          return id ? `/clientes/${id}/editar` : '/clientes';
+        }
+        return id ? `/vendas?venda_id=${id}` : '/vendas';
+      default:
+        if (notificacao.entidade === 'clientes') return '/clientes';
+        if (notificacao.entidade === 'vendas') return '/vendas';
+        return '/';
+    }
+  }
+
   async function abrirVendaAlerta(notificacao) {
+    const rota = montarRotaAlerta(notificacao);
     await fecharAlertaUrgente(notificacao);
-    navigate(`/vendas?venda_id=${notificacao.entidade_id || notificacao.dados?.venda_id || ''}&aba=problema`);
+    navigate(rota);
   }
 
   return (
@@ -292,7 +339,7 @@ function LayoutPrivado({ children }) {
       {alertasUrgentes.length > 0 && (
         <div className="urgent-alert-stack" aria-live="assertive">
           {alertasUrgentes.map(alerta => (
-            <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card ${alerta.nivel || 'danger'}`}>
+            <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card urgent-alert-card--${tomAlerta(alerta)}`}>
               <div className="urgent-alert-card__icon">
                 <I.AlertTriangle size={18} />
               </div>
@@ -302,7 +349,7 @@ function LayoutPrivado({ children }) {
               </div>
               <div className="urgent-alert-card__actions">
                 <button type="button" className="btn btn-sm" onClick={() => abrirVendaAlerta(alerta)}>
-                  Abrir venda
+                  {alerta.entidade === 'clientes' ? 'Abrir cliente' : 'Abrir'}
                 </button>
                 <button type="button" className="btn btn-icon btn-ghost" onClick={() => fecharAlertaUrgente(alerta)} title="Fechar aviso">
                   <I.Close size={13} />

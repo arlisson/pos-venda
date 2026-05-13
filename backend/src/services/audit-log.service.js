@@ -73,13 +73,17 @@ async function registrarSemBloquear(req, dadosAuditoria) {
   }
 }
 
-async function listar({ busca, limite = 160 } = {}) {
+async function listar({ busca, limite = 160, entidade } = {}) {
   const limiteNormalizado = Math.min(Number(limite) || 160, 500);
 
   const query = AuditLog.query()
     .withGraphFetched('usuario')
     .orderBy('created_at', 'desc')
     .limit(limiteNormalizado);
+
+  if (entidade) {
+    query.where('entidade', entidade);
+  }
 
   if (busca) {
     const termo = `%${busca}%`;

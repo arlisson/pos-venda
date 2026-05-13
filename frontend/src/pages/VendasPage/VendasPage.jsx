@@ -196,7 +196,7 @@ const CAMPOS = [
   { section: 'Dados do cliente' },
   { name: 'nome', label: 'Nome / Fantasia' },
   { name: 'razao_social', label: 'Razão Social' },
-  { name: 'telefone', label: 'Celular' },
+  { name: 'telefone', label: 'Telefone Celular' },
   { name: 'fixo_ddd', label: 'Telefone fixo' },
   { section: 'Representante Legal (RL)' },
   { name: 'nome_representante_legal', label: 'Nome RL' },
@@ -723,7 +723,7 @@ const DOCUMENTOS_FALTANTES_WHATSAPP = [
   'Comprovante de endereco'
 ];
 
-function obterDocumentosFaltantesPadrao(venda = {}) {
+export function obterDocumentosFaltantesPadrao(venda = {}) {
   const texto = obterDocumentosFaltantesMensagem(venda);
   if (!texto || texto.startsWith('[')) return [];
   return texto.split(',').map(item => item.trim()).filter(Boolean);
@@ -751,7 +751,7 @@ function formatarResumoVendaWhatsapp(venda = {}) {
   return `${tipo} - ${quantidade} linha(s) - ${detalhes.join(' - ')}`;
 }
 
-function montarChecklistWhatsappVenda(venda = {}, documentosFaltantes = obterDocumentosFaltantesPadrao(venda)) {
+export function montarChecklistWhatsappVenda(venda = {}, documentosFaltantes = obterDocumentosFaltantesPadrao(venda)) {
   const produto = obterCategoriaProdutoWhatsapp(venda);
   const razaoSocial = venda.cliente?.razao_social || venda.razao_social || '-';
   const documentos = documentosFaltantes.length > 0 ? documentosFaltantes.join(', ') : 'NAO';
@@ -2056,7 +2056,7 @@ function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
   );
 }
 
-function WhatsappMensagemModal({ dados, copiando, onClose, onChange, onDocsChange, onCopy }) {
+export function WhatsappMensagemModal({ dados, copiando, onClose, onChange, onDocsChange, onCopy }) {
   if (!dados) return null;
 
   const documentosSelecionados = dados.documentosFaltantes || [];
@@ -2905,7 +2905,7 @@ function VendasPage() {
                             <I.Whatsapp size={13} />
                           </button>
                           <button
-                            className="btn btn-icon btn-ghost"
+                            className="btn btn-icon btn-ghost vendas-email-btn"
                             title="Gerar corpo de email"
                             disabled={gerandoEmailId === venda.id}
                             onClick={(event) => {
@@ -2917,7 +2917,7 @@ function VendasPage() {
                           </button>
                           {/claro/i.test(venda.operadora?.nome) && (
                           <button
-                            className="btn btn-icon btn-ghost"
+                            className="btn btn-icon btn-ghost vendas-xlsx-btn"
                             title="Baixar planilha Claro"
                             disabled={baixandoXlsxId === venda.id}
                             onClick={(event) => {
@@ -2933,7 +2933,7 @@ function VendasPage() {
                       {podeMarcarProblema && (
                         <td className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>
                           <button
-                            className="btn btn-icon btn-ghost btn-danger-icon"
+                            className="btn btn-icon btn-ghost btn-warn-icon"
                             title="Marcar problema"
                             onClick={(event) => {
                               event.stopPropagation();

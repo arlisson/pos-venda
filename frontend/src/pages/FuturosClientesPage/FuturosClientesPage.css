@@ -123,6 +123,16 @@
   min-height: 0;
 }
 
+.futuros-clientes-table th,
+.futuros-clientes-table td {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.futuros-clientes-table .futuro-cliente-notas-cell {
+  margin: 0 auto;
+}
+
 .futuro-cliente-notas-cell {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -314,6 +324,11 @@
 
 /* ── Detalhe futuro cliente ── */
 
+.futuros-clientes-table tbody tr {
+  transition: background-color 120ms ease;
+}
+
 .futuros-clientes-table tbody tr:hover {
-  background: color-mix(in srgb, var(--primary) 4%, transparent);
+  background: var(--surface-2);
+  cursor: pointer;
 }

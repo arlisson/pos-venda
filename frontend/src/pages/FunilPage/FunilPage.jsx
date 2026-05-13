@@ -6,6 +6,11 @@ import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import ClienteModal from '../Clientes/ClienteModal';
 import VendaModal from '../VendasPage/VendaModal';
 import {
+  WhatsappMensagemModal,
+  montarChecklistWhatsappVenda,
+  obterDocumentosFaltantesPadrao
+} from '../VendasPage/VendasPage';
+import {
   atualizarEtapaFunil,
   criarEtapaFunil,
   excluirEtapaFunil,
@@ -488,7 +493,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
                 <div className="value">{sale.plan}</div>
               </div>
               <div className="detail-item">
-                <div className="label">LINHA</div>
+                <div className="label">TELEFONE CELULAR</div>
                 <div className="value mono">{sale.linha}</div>
               </div>
               <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
@@ -759,7 +764,7 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
   );
 }
 
-function SaleCard({ sale, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId }) {
+function SaleCard({ sale, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp }) {
   const priorityColor = PRIORITIES[sale.priority || 'media']?.color || '#3b82f6';
   return (
     <div className="sale-card" onClick={onClick}>
@@ -783,10 +788,22 @@ function SaleCard({ sale, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixand
           <span className="seller-name">{sale.seller.name}</span>
           <span>#{sale.id}</span>
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="vendas-contact-actions sale-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, width: 'auto' }}>
           <button
             type="button"
-            className="btn btn-icon btn-ghost"
+            className="btn btn-icon btn-ghost vendas-whatsapp-btn"
+            title="Gerar mensagem para WhatsApp"
+            onClick={(e) => {
+              e.stopPropagation();
+              onWhatsapp(sale.raw);
+            }}
+            style={{ padding: 4, height: 24, width: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <I.Whatsapp size={12} />
+          </button>
+          <button
+            type="button"
+            className="btn btn-icon btn-ghost vendas-email-btn"
             title="Gerar corpo de email"
             disabled={gerandoEmailId === sale.id}
             onClick={(e) => {
@@ -798,13 +815,13 @@ function SaleCard({ sale, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixand
             {gerandoEmailId === sale.id ? (
               <div className="spinner-small" style={{ width: 12, height: 12, border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
             ) : (
-              <I.Note size={12} />
+              <I.Mail size={12} />
             )}
           </button>
           {/claro/i.test(sale.raw?.operadora?.nome) && (
             <button
               type="button"
-              className="btn btn-icon btn-ghost"
+              className="btn btn-icon btn-ghost vendas-xlsx-btn"
               title="Baixar planilha Claro"
               disabled={baixandoXlsxId === sale.id}
               onClick={(e) => {
@@ -813,7 +830,7 @@ function SaleCard({ sale, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixand
               }}
               style={{ padding: 4, height: 24, width: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <I.Download size={12} />
+              <I.TableSheet size={12} />
             </button>
           )}
           <span style={{ fontSize: '10px' }}>{timeAgo(sale.updated)}</span>
@@ -876,6 +893,8 @@ function FunilPage() {
   const [emailTemplate, setEmailTemplate] = useState(null);
   const [gerandoEmailId, setGerandoEmailId] = useState(null);
   const [copiandoEmail, setCopiandoEmail] = useState(false);
+  const [whatsappMensagem, setWhatsappMensagem] = useState(null);
+  const [copiandoWhatsapp, setCopiandoWhatsapp] = useState(false);
   const [mostrarArquivadas, setMostrarArquivadas] = useState(false);
   const [agora, setAgora] = useState(Date.now);
   const [baixandoXlsxId, setBaixandoXlsxId] = useState(null);
@@ -1052,6 +1071,54 @@ function FunilPage() {
       setStageFeedback({ type: 'error', message: 'Erro ao copiar email.' });
     } finally {
       setCopiandoEmail(false);
+    }
+  }
+
+  function abrirMensagemWhatsapp(venda) {
+    if (!venda?.id) return;
+    const documentosFaltantes = obterDocumentosFaltantesPadrao(venda);
+    setWhatsappMensagem({
+      venda,
+      documentosFaltantes,
+      texto: montarChecklistWhatsappVenda(venda, documentosFaltantes)
+    });
+  }
+
+  function atualizarDocumentosWhatsapp(documentosFaltantes) {
+    setWhatsappMensagem(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        documentosFaltantes,
+        texto: montarChecklistWhatsappVenda(prev.venda, documentosFaltantes)
+      };
+    });
+  }
+
+  async function copiarMensagemWhatsapp() {
+    if (!whatsappMensagem?.texto) return;
+
+    setCopiandoWhatsapp(true);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(whatsappMensagem.texto);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = whatsappMensagem.texto;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setStageFeedback({ type: 'success', message: 'Mensagem do WhatsApp copiada.' });
+      setWhatsappMensagem(null);
+    } catch {
+      setStageFeedback({ type: 'error', message: 'Não foi possível copiar a mensagem automaticamente.' });
+    } finally {
+      setCopiandoWhatsapp(false);
     }
   }
 
@@ -1648,6 +1715,7 @@ function FunilPage() {
                         gerandoEmailId={gerandoEmailId}
                         onXlsxClaro={handleBaixarXlsxClaro}
                         baixandoXlsxId={baixandoXlsxId}
+                        onWhatsapp={abrirMensagemWhatsapp}
                       />
                     ))
                   )}
@@ -1663,6 +1731,15 @@ function FunilPage() {
         copiando={copiandoEmail}
         onClose={() => setEmailTemplate(null)}
         onCopy={copiarEmailVenda}
+      />
+
+      <WhatsappMensagemModal
+        dados={whatsappMensagem}
+        copiando={copiandoWhatsapp}
+        onClose={() => setWhatsappMensagem(null)}
+        onChange={texto => setWhatsappMensagem(prev => prev ? { ...prev, texto } : prev)}
+        onDocsChange={atualizarDocumentosWhatsapp}
+        onCopy={copiarMensagemWhatsapp}
       />
     </LayoutPrivado>
   );
