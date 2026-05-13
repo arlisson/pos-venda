@@ -196,7 +196,7 @@ function ClientesLixeiraPage() {
                   </tr>
                 ) : (
                   clientes.map(cliente => (
-                    <tr key={cliente.id}>
+                    <tr key={cliente.id} className="clientes-trash-row">
                       <td>
                         <div className="cliente-primary">
                           <strong>{cliente.nome}</strong>
@@ -219,11 +219,11 @@ function ClientesLixeiraPage() {
                       {podeExcluir && (
                         <td>
                           <div className="clientes-actions">
-                            <button className="btn btn-sm" disabled={processandoId === cliente.id} onClick={() => handleRestaurar(cliente)}>
+                            <button className="btn btn-sm clientes-restore-action" disabled={processandoId === cliente.id} onClick={() => handleRestaurar(cliente)}>
                               <I.Return size={13} /> Restaurar
                             </button>
                             <button
-                              className="btn btn-sm btn-ghost clientes-trash-delete"
+                              className="btn btn-sm btn-ghost btn-danger-icon clientes-trash-delete"
                               disabled={processandoId === cliente.id}
                               onClick={() => setClienteParaExcluir(cliente)}
                             >

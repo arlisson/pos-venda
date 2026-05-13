@@ -121,6 +121,18 @@
   background: var(--surface-2);
 }
 
+.vendas-page tbody tr.vendas-trash-row td {
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.vendas-page tbody tr.vendas-trash-row:hover td {
+  background: var(--surface-2);
+}
+
+.vendas-page tbody tr.vendas-trash-row:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--border-strong);
+}
+
 .vendas-page tbody tr.clickable-row:focus-visible td {
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--border-strong);
@@ -400,6 +412,10 @@
   padding-right: 12px;
 }
 
+.vendas-page tbody tr.vendas-trash-row:hover td.vendas-trash-actions-col {
+  background: var(--surface-2);
+}
+
 .vendas-trash-actions {
   display: flex;
   align-items: center;
@@ -412,10 +428,22 @@
   border-color: var(--danger);
 }
 
-.vendas-page .vendas-trash-actions .vendas-trash-delete:hover:not(:disabled) {
-  color: #dc2626;
-  border-color: #dc2626;
-  background: #fee2e2;
+.vendas-trash-delete:hover {
+  color: var(--danger);
+  border-color: #fecaca;
+  background: var(--danger-bg);
+}
+
+.vendas-page .vendas-restore-action:hover:not(:disabled) {
+  color: var(--success);
+  border-color: #bbf7d0;
+  background: var(--success-bg);
+}
+
+.vendas-page .vendas-trash-delete:hover:not(:disabled) {
+  color: var(--danger) !important;
+  border-color: #fecaca !important;
+  background: var(--danger-bg) !important;
 }
 
 .filter-field {

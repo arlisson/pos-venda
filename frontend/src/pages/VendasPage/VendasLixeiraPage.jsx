@@ -204,7 +204,7 @@ function VendasLixeiraPage() {
                   </tr>
                 ) : (
                   vendas.map(venda => (
-                    <tr key={venda.id}>
+                    <tr key={venda.id} className="vendas-trash-row">
                       <td>
                         <div className="vendas-table-name">
                           <strong>{venda.cliente?.nome || venda.nome}</strong>
@@ -220,11 +220,11 @@ function VendasLixeiraPage() {
                       {podeExcluirVenda && (
                         <td className="vendas-trash-actions-col">
                           <div className="vendas-trash-actions">
-                            <button className="btn btn-sm" disabled={processandoId === venda.id} onClick={() => handleRestaurar(venda)}>
+                            <button className="btn btn-sm vendas-restore-action" disabled={processandoId === venda.id} onClick={() => handleRestaurar(venda)}>
                               <I.Return size={13} /> Restaurar
                             </button>
                             <button
-                              className="btn btn-sm btn-ghost vendas-trash-delete"
+                              className="btn btn-sm btn-ghost btn-danger-icon vendas-trash-delete"
                               disabled={processandoId === venda.id}
                               onClick={() => setVendaParaExcluir(venda)}
                             >

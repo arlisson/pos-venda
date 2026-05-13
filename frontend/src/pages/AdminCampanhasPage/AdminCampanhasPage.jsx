@@ -267,7 +267,7 @@ function AdminCampanhasPage() {
                       <td style={{ textAlign: 'right' }}>
                         <button
                           type="button"
-                          className="btn btn-icon btn-ghost"
+                          className="btn btn-icon btn-ghost btn-danger-icon"
                           title="Excluir campanha"
                           onClick={() => handleDeleteCampanha(gift.id)}
                           disabled={saving}

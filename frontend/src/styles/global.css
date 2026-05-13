@@ -732,8 +732,11 @@ input, select, textarea { font-family: inherit; }
 .btn-primary:hover { background: #000; }
 .btn-danger { background: #ef4444 !important; color: white !important; border: none !important; transition: all 0.2s ease; }
 .btn-danger:hover { background: #dc2626 !important; }
-.btn-danger-icon:hover { color: #dc2626 !important; background: #fee2e2 !important; }
-.btn-warn-icon:hover { color: #ea580c !important; background: #ffedd5 !important; }
+.btn-danger-icon:hover:not(:disabled) {
+  color: var(--danger) !important;
+  background: var(--danger-bg) !important;
+  border-color: #fecaca !important;
+}
 .btn-ghost { background: transparent; border-color: transparent; color: var(--text-2); }
 .btn-ghost:hover { background: var(--surface-2); color: var(--text); }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
