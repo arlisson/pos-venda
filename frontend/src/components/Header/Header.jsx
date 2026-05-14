@@ -25,9 +25,10 @@ function tomNotificacao(notification) {
     case 'venda_problema_resolvido':
     case 'venda_problema_correcao':
       return 'info';
+    case 'venda_retorno_registrado':
+      return 'danger';
     case 'venda_aprovacao_pendente':
     case 'venda_parada_funil':
-    case 'venda_retorno_registrado':
     case 'cliente_fidelidade':
       return 'warn';
     case 'nota_retorno_pre':

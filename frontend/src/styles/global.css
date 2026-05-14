@@ -100,6 +100,11 @@ input, select, textarea { font-family: inherit; }
   margin-left: auto; font-size: 11px; background: var(--surface-3);
   color: var(--text-2); padding: 1px 6px; border-radius: 10px;
 }
+.nav-item--alert { color: #ea580c; font-weight: 600; }
+.nav-item--alert:hover { background: #fff7ed; color: #c2410c; }
+.nav-item--alert.active { background: #ffedd5; color: #9a3412; }
+.nav-item--alert .icon { opacity: 1; color: #ea580c; }
+.nav-item--alert .badge { background: #ea580c; color: #fff; }
 .sidebar-footer { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
 
 /* === Main Content Area === */
@@ -451,6 +456,7 @@ input, select, textarea { font-family: inherit; }
   border-radius: 10px;
   background: var(--surface, #fff);
   box-shadow: 0 14px 36px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
   animation: urgentAlertIn 220ms ease-out;
 }
@@ -472,8 +478,8 @@ input, select, textarea { font-family: inherit; }
 
 .urgent-alert-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.2);
   border-color: var(--tone-color);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
 }
 
 .urgent-alert-card--danger {
@@ -866,8 +872,10 @@ input, select, textarea { font-family: inherit; }
 .row-actions { display: flex; gap: 4px; }
 .users-page, .dashboard { padding: 24px; overflow-y: auto; }
 .filters { display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
-.filter-chip { padding: 4px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; cursor: pointer; }
+.filter-chip { padding: 4px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; cursor: pointer; transition: background 120ms, border-color 120ms, color 120ms; }
+.filter-chip:hover { background: var(--surface-2); border-color: var(--text-3); }
 .filter-chip.active { background: var(--accent); color: var(--accent-fg); border: none; }
+.filter-chip.active:hover { background: var(--accent); filter: brightness(0.92); }
 .funnel-search-box {
   width: min(460px, 42vw);
   background: var(--surface);

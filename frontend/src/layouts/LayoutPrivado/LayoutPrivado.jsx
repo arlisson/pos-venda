@@ -8,7 +8,7 @@ import VendaModal from '../../pages/VendasPage/VendaModal';
 import ClienteModal from '../../pages/Clientes/ClienteModal';
 import { listarClientes } from '../../services/cliente.service';
 import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
-import { criarVenda, listarVendas, listarVendedoras } from '../../services/venda.service';
+import { criarVenda, listarAprovacoesVenda, listarVendas, listarVendedoras } from '../../services/venda.service';
 import {
   listarNotificacoesUrgentes,
   marcarPopupNotificacaoVisto
@@ -206,6 +206,35 @@ function LayoutPrivado({ children }) {
   }
 
   const [alertasUrgentes, setAlertasUrgentes] = useState([]);
+  const [aprovacoesPendentes, setAprovacoesPendentes] = useState(0);
+  const podeVerAprovacoes = usuario && temPermissao(usuario, 'vendas_aprovacoes_visualizar');
+
+  useEffect(() => {
+    if (!podeVerAprovacoes) {
+      setAprovacoesPendentes(0);
+      return undefined;
+    }
+
+    let ativo = true;
+
+    async function carregar() {
+      try {
+        const lista = await listarAprovacoesVenda({ status: 'pendente' });
+        if (!ativo) return;
+        setAprovacoesPendentes(Array.isArray(lista) ? lista.length : 0);
+      } catch {
+        if (ativo) setAprovacoesPendentes(0);
+      }
+    }
+
+    carregar();
+    const timer = setInterval(carregar, 15000);
+
+    return () => {
+      ativo = false;
+      clearInterval(timer);
+    };
+  }, [podeVerAprovacoes]);
 
   async function carregarAlertasUrgentes() {
     try {
@@ -237,9 +266,10 @@ function LayoutPrivado({ children }) {
       case 'venda_problema_resolvido':
       case 'venda_problema_correcao':
         return 'info';
+      case 'venda_retorno_registrado':
+        return 'danger';
       case 'venda_aprovacao_pendente':
       case 'venda_parada_funil':
-      case 'venda_retorno_registrado':
       case 'cliente_fidelidade':
         return 'warn';
       case 'nota_retorno_pre':
@@ -290,7 +320,7 @@ function LayoutPrivado({ children }) {
       <Sidebar
         page={currentConfig.id}
         setPage={handleSetPage}
-        counts={{ active: 0, returns: 0 }}
+        counts={{ active: 0, returns: 0, aprovacoes: aprovacoesPendentes }}
         usuario={usuario}
         onLogout={handleLogout}
         onPerfilClick={() => navigate('/perfil')}
