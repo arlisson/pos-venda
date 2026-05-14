@@ -72,7 +72,6 @@ function parsePermissoes(permissoes) {
 
 function usuarioPodeReceberEmail(usuario) {
   if (!usuario?.ativo) return false;
-  if (usuario.role?.nome === 'admin') return true;
 
   return [
     ...parsePermissoes(usuario.permissoes),
