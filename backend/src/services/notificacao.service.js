@@ -4,6 +4,7 @@ const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
 const db = require('../database/connection');
 const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
+const notificacaoEmailService = require('./notificacao-email.service');
 const { parseUtcDateTime } = require('../utils/datetime');
 
 const PERMISSAO_VISUALIZAR = 'notificacoes_visualizar';
@@ -252,6 +253,8 @@ async function sincronizarFidelidadeCliente(clienteId, trx = null) {
     }
   }
 
+  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
+
   return notificacao;
 }
 
@@ -319,6 +322,8 @@ async function salvarNotificacaoRetornoNota(nota, etapa, agora) {
       usuario_id: nota.usuario_id
     });
   }
+
+  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
 
   return notificacao;
 }

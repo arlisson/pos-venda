@@ -16,8 +16,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "axios": "^1.15.2",
     "archiver": "^5.3.2",
+    "axios": "^1.15.2",
     "bcrypt": "^6.0.0",
     "busboy": "^1.6.0",
     "cors": "^2.8.6",
@@ -27,6 +27,7 @@
     "jsonwebtoken": "^9.0.3",
     "knex": "^3.2.9",
     "mysql2": "^3.22.2",
+    "nodemailer": "^8.0.7",
     "objection": "^3.1.5"
   },
   "devDependencies": {

@@ -4,6 +4,7 @@ const Usuario = require('../models/Usuario');
 const Venda = require('../models/Venda');
 const VendaAprovacaoSolicitacao = require('../models/VendaAprovacaoSolicitacao');
 const VendaHistorico = require('../models/VendaHistorico');
+const notificacaoEmailService = require('./notificacao-email.service');
 
 const STATUS_PENDENTE = 'pendente';
 const STATUS_APROVADA = 'aprovada';
@@ -226,6 +227,8 @@ async function criarOuAtualizarNotificacaoPendente(solicitacao, venda, trx = nul
       });
     }
   }
+
+  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
 
   return notificacao;
 }

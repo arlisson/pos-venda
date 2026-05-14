@@ -7,6 +7,7 @@ const VendaHistorico = require('../models/VendaHistorico');
 const VendaProblema = require('../models/VendaProblema');
 const VendaProblemaDestinatario = require('../models/VendaProblemaDestinatario');
 const VendaProblemaEvento = require('../models/VendaProblemaEvento');
+const notificacaoEmailService = require('./notificacao-email.service');
 
 const STATUS_ATIVOS = ['aberto', 'resolvido', 'correcao_solicitada'];
 const TIPOS_NOTIFICACAO_PROBLEMA = [
@@ -163,6 +164,8 @@ async function criarNotificacaoProblema({ tipo, problema, evento, destinatariosI
       usuario_id: usuarioId
     });
   }
+
+  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
 
   return notificacao;
 }
