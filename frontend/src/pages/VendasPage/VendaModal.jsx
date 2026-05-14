@@ -1942,7 +1942,7 @@ function getIconStatusPacote(status) {
   return <I.Note size={12} />;
 }
 
-function ArquivosVendaTab({ venda, podeEditar, podeVisualizar }) {
+function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) {
   const inputRef = useRef(null);
   const [arquivos, setArquivos] = useState([]);
   const [pacote, setPacote] = useState(null);
@@ -1997,6 +1997,7 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar }) {
     const files = Array.from(event.target.files || []);
     event.target.value = '';
 
+    if (!podeAdicionar) return;
     if (files.length === 0) return;
 
     setEnviando(true);
@@ -2100,7 +2101,7 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar }) {
         </div>
 
         <div className="venda-arquivos-actions">
-          <select aria-label="Categoria do arquivo" value={categoria} onChange={event => setCategoria(event.target.value)} disabled={!podeEditar || enviando}>
+          <select aria-label="Categoria do arquivo" value={categoria} onChange={event => setCategoria(event.target.value)} disabled={!podeAdicionar || enviando}>
             <option value="documento">Documento</option>
             <option value="contrato">Contrato</option>
             <option value="comprovante">Comprovante</option>
@@ -2114,7 +2115,7 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar }) {
             hidden
             onChange={handleUpload}
           />
-          <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={!podeEditar || enviando}>
+          <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={!podeAdicionar || enviando}>
             <I.Plus size={13} />
             {enviando ? 'Enviando...' : 'Enviar arquivos'}
           </button>
@@ -2151,8 +2152,8 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar }) {
           <strong>Carregando arquivos...</strong>
         </div>
       ) : arquivos.length === 0 ? (
-        <div className="venda-arquivos-empty venda-arquivos-empty--upload" role={podeEditar ? 'button' : undefined} tabIndex={podeEditar ? 0 : undefined} onClick={() => podeEditar && inputRef.current?.click()} onKeyDown={event => {
-          if (!podeEditar) return;
+        <div className="venda-arquivos-empty venda-arquivos-empty--upload" role={podeAdicionar ? 'button' : undefined} tabIndex={podeAdicionar ? 0 : undefined} onClick={() => podeAdicionar && inputRef.current?.click()} onKeyDown={event => {
+          if (!podeAdicionar) return;
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             inputRef.current?.click();
@@ -2162,7 +2163,7 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar }) {
             <I.Plus size={20} />
           </span>
           <strong>{podeVisualizar ? 'Nenhum arquivo anexado' : 'Envie novos documentos'}</strong>
-          <span>{podeEditar
+          <span>{podeAdicionar
             ? (podeVisualizar
               ? 'Clique para selecionar documentos, contratos ou comprovantes.'
               : 'Documentos antigos ficam ocultos para seu perfil. Clique para anexar novos arquivos.')
@@ -2310,6 +2311,7 @@ function VendaModal({
   podeEditarVenda,
   podeCompartilharVenda,
   podeVerDocumentosVenda,
+  podeAdicionarDocumentosVenda,
   usuarioLogado,
   initialTab = 'venda',
   initialProblemaId = null,
@@ -2375,9 +2377,26 @@ function VendaModal({
   const [clienteSolicitouQuantidadesDraft, setClienteSolicitouQuantidadesDraft] = useState({ bloqueio: '', cancelamento: '' });
   const [clienteSolicitouNumerosDraft, setClienteSolicitouNumerosDraft] = useState({ bloqueio: [], cancelamento: [] });
   const [enderecoRealModalAberto, setEnderecoRealModalAberto] = useState(false);
-  const podeAcessarDocumentosVendaInicial = Boolean(podeVerDocumentosVenda || podeEditarVenda);
+  const [etapasFunilModal, setEtapasFunilModal] = useState([]);
+  const podeAcessarDocumentosVendaInicial = Boolean(podeVerDocumentosVenda || podeAdicionarDocumentosVenda);
   const abaInicial = initialTab === 'arquivos' && !podeAcessarDocumentosVendaInicial ? 'venda' : initialTab;
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
+
+  useEffect(() => {
+    let ativo = true;
+
+    listarEtapasFunil()
+      .then(etapas => {
+        if (ativo) setEtapasFunilModal(Array.isArray(etapas) ? etapas : []);
+      })
+      .catch(() => {
+        if (ativo) setEtapasFunilModal([]);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
   const modalBodyRef = useRef(null);
   const alturaAbaAnteriorRef = useRef(null);
 
@@ -2439,7 +2458,8 @@ function VendaModal({
       && usuarioEstaNaVendaCompartilhada
     )
   );
-  const podeAcessarDocumentosVenda = Boolean(podeVerDocumentosVenda || podeEditarVendaEfetivo);
+  const podeAdicionarDocumentosVendaEfetivo = Boolean(podeAdicionarDocumentosVenda);
+  const podeAcessarDocumentosVenda = Boolean(podeVerDocumentosVenda || podeAdicionarDocumentosVendaEfetivo);
   const vendaBloqueadaParaUsuario = enviadaPosVenda && !usuarioPosVenda;
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
   const cepPreenchidoPorCnpjRef = useRef('');
@@ -2468,6 +2488,19 @@ function VendaModal({
       });
     return Array.from(mapa.values());
   }, [clientes, venda]);
+  const codigosEtapasFinais = useMemo(() => {
+    const codigos = new Set(
+      etapasFunilModal
+        .filter(etapa => etapa?.etapa_final || etapa?.etapaFinal)
+        .map(etapa => etapa.codigo || etapa.id)
+        .filter(Boolean)
+    );
+
+    if (codigos.size === 0) codigos.add('concluido');
+    return codigos;
+  }, [etapasFunilModal]);
+  const statusVendaAtual = venda?.status_funil || form.status_funil || '';
+  const vendaEmEtapaFinal = Boolean(venda?.id && statusVendaAtual && codigosEtapasFinais.has(statusVendaAtual));
   const vendaAtivada = Boolean(normalizarDataVendaInput(form.data_ativacao));
   const chaveClienteSelecionado = form.cliente_id ? `cliente:${form.cliente_id}` : '';
   const totalVendasClienteSelecionado = chaveClienteSelecionado ? (vendasPorCliente.get(chaveClienteSelecionado) || 0) : 0;
@@ -3211,12 +3244,16 @@ function VendaModal({
         }))
         .filter(item => item.quantidade > 0 && item.valor_unitario > 0);
 
+      const dataAtivacaoPayload = vendaEmEtapaFinal
+        ? normalizarDataVendaInput(form.data_ativacao) || null
+        : undefined;
+
       const payload = {
         ...form,
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
-        data_ativacao: normalizarDataVendaInput(form.data_ativacao) || null,
+        data_ativacao: vendaEmEtapaFinal ? dataAtivacaoPayload : undefined,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
-        numeros_ativados: form.data_ativacao ? numerosAtivados : null,
+        numeros_ativados: vendaEmEtapaFinal ? (dataAtivacaoPayload ? numerosAtivados : null) : undefined,
         valores_unitarios_chips: chipsProcessados,
         cliente_solicitou_servicos: solicitouNenhumServico ? ['nenhum_servico'] : servicosSolicitados,
         cliente_solicitou_bloqueio_qtd: solicitouNenhumServico || !solicitouBloqueio ? null : bloqueioQtd,
@@ -3361,7 +3398,12 @@ function VendaModal({
               disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
             />
           ) : abaAtiva === 'arquivos' && podeAcessarDocumentosVenda ? (
-            <ArquivosVendaTab venda={venda} podeEditar={podeEditarVendaEfetivo} podeVisualizar={podeVerDocumentosVenda} />
+            <ArquivosVendaTab
+              venda={venda}
+              podeEditar={podeEditarVendaEfetivo}
+              podeVisualizar={podeVerDocumentosVenda}
+              podeAdicionar={podeAdicionarDocumentosVendaEfetivo}
+            />
           ) : abaAtiva === 'problema' ? (
             <VendaProblemaPanel venda={venda} usuario={usuarioLogado} initialProblemaId={initialProblemaId} />
           ) : (
@@ -3383,7 +3425,11 @@ function VendaModal({
                 return null;
               }
 
-              if (campo.name === 'numeros_ativados' && !vendaAtivada) {
+              if (campo.name === 'data_ativacao' && !vendaEmEtapaFinal) {
+                return null;
+              }
+
+              if (campo.name === 'numeros_ativados' && (!vendaEmEtapaFinal || !vendaAtivada)) {
                 return null;
               }
 

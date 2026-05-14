@@ -1668,7 +1668,7 @@ function getIconStatusPacote(status) {
   return <I.Note size={12} />;
 }
 
-function ArquivosVendaTab({ venda, podeEditar }) {
+function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) {
   const inputRef = useRef(null);
   const [arquivos, setArquivos] = useState([]);
   const [pacote, setPacote] = useState(null);
@@ -1677,9 +1677,16 @@ function ArquivosVendaTab({ venda, podeEditar }) {
   const [enviando, setEnviando] = useState(false);
   const [progresso, setProgresso] = useState(null);
   const [erro, setErro] = useState('');
+  const [mensagem, setMensagem] = useState('');
 
   async function carregar() {
     if (!venda?.id) return;
+
+    if (!podeVisualizar) {
+      setArquivos([]);
+      setPacote(null);
+      return;
+    }
 
     setCarregando(true);
     setErro('');
@@ -1698,9 +1705,10 @@ function ArquivosVendaTab({ venda, podeEditar }) {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venda?.id]);
+  }, [venda?.id, podeVisualizar]);
 
   useEffect(() => {
+    if (!podeVisualizar) return undefined;
     if (!['pendente', 'gerando'].includes(pacote?.status)) return undefined;
 
     const timer = setInterval(() => {
@@ -1709,16 +1717,18 @@ function ArquivosVendaTab({ venda, podeEditar }) {
 
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pacote?.status, venda?.id]);
+  }, [pacote?.status, venda?.id, podeVisualizar]);
 
   async function handleUpload(event) {
     const files = Array.from(event.target.files || []);
     event.target.value = '';
 
+    if (!podeAdicionar) return;
     if (files.length === 0) return;
 
     setEnviando(true);
     setErro('');
+    setMensagem('');
 
     try {
       for (const file of files) {
@@ -1729,7 +1739,15 @@ function ArquivosVendaTab({ venda, podeEditar }) {
       }
 
       setProgresso(null);
-      await carregar();
+      if (podeVisualizar) {
+        await carregar();
+      } else {
+        setArquivos([]);
+        setPacote(null);
+        setMensagem(files.length === 1
+          ? 'Arquivo enviado. Os documentos existentes continuam ocultos para seu perfil.'
+          : 'Arquivos enviados. Os documentos existentes continuam ocultos para seu perfil.');
+      }
     } catch (error) {
       setErro(error.message || 'Erro ao enviar arquivo.');
     } finally {
@@ -1776,6 +1794,7 @@ function ArquivosVendaTab({ venda, podeEditar }) {
 
   const statusPacote = pacote?.status || 'inexistente';
   const totalArquivos = arquivos.length;
+  const podeGerenciarPacote = Boolean(podeVisualizar);
 
   return (
     <div className="venda-arquivos">
@@ -1783,21 +1802,32 @@ function ArquivosVendaTab({ venda, podeEditar }) {
         <div className="venda-arquivos-heading">
           <div className="venda-arquivos-title-row">
             <div className="venda-arquivos-title">Arquivos da venda</div>
-            <span className="venda-arquivos-count">
-              {totalArquivos} {totalArquivos === 1 ? 'arquivo' : 'arquivos'}
-            </span>
+            {podeVisualizar && (
+              <span className="venda-arquivos-count">
+                {totalArquivos} {totalArquivos === 1 ? 'arquivo' : 'arquivos'}
+              </span>
+            )}
           </div>
-          <div className={`venda-arquivos-package status-${statusPacote}`}>
-            {getIconStatusPacote(statusPacote)}
-            <span className="venda-arquivos-package__text">
-              <span>{labelStatusPacote(statusPacote)}</span>
-              {pacote?.total_arquivos ? <span>{pacote.total_arquivos} no ZIP</span> : null}
-            </span>
-          </div>
+          {podeVisualizar ? (
+            <div className={`venda-arquivos-package status-${statusPacote}`}>
+              {getIconStatusPacote(statusPacote)}
+              <span className="venda-arquivos-package__text">
+                <span>{labelStatusPacote(statusPacote)}</span>
+                {pacote?.total_arquivos ? <span>{pacote.total_arquivos} no ZIP</span> : null}
+              </span>
+            </div>
+          ) : (
+            <div className="venda-arquivos-package status-inexistente">
+              <I.Eye size={12} />
+              <span className="venda-arquivos-package__text">
+                <span>Documentos existentes ocultos</span>
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="venda-arquivos-actions">
-          <select aria-label="Categoria do arquivo" value={categoria} onChange={event => setCategoria(event.target.value)} disabled={!podeEditar || enviando}>
+          <select aria-label="Categoria do arquivo" value={categoria} onChange={event => setCategoria(event.target.value)} disabled={!podeAdicionar || enviando}>
             <option value="documento">Documento</option>
             <option value="contrato">Contrato</option>
             <option value="comprovante">Comprovante</option>
@@ -1811,18 +1841,22 @@ function ArquivosVendaTab({ venda, podeEditar }) {
             hidden
             onChange={handleUpload}
           />
-          <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={!podeEditar || enviando}>
+          <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={!podeAdicionar || enviando}>
             <I.Plus size={13} />
             {enviando ? 'Enviando...' : 'Enviar arquivos'}
           </button>
-          <button type="button" className="btn" onClick={handleGerarPacote} disabled={!podeEditar || arquivos.length === 0 || pacote?.status === 'gerando'}>
-            <I.Note size={13} />
-            Gerar ZIP
-          </button>
-          <button type="button" className="btn" onClick={() => baixarPacoteArquivosVenda(venda.id)} disabled={pacote?.status !== 'pronto'}>
-            <I.Download size={13} />
-            Baixar ZIP
-          </button>
+          {podeGerenciarPacote && (
+            <>
+              <button type="button" className="btn" onClick={handleGerarPacote} disabled={!podeEditar || arquivos.length === 0 || pacote?.status === 'gerando'}>
+                <I.Note size={13} />
+                Gerar ZIP
+              </button>
+              <button type="button" className="btn" onClick={() => baixarPacoteArquivosVenda(venda.id)} disabled={pacote?.status !== 'pronto'}>
+                <I.Download size={13} />
+                Baixar ZIP
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1834,6 +1868,7 @@ function ArquivosVendaTab({ venda, podeEditar }) {
       )}
 
       {erro && <div className="alert-error">{erro}</div>}
+      {mensagem && <div className="alert-success">{mensagem}</div>}
 
       {carregando ? (
         <div className="venda-arquivos-empty">
@@ -1843,8 +1878,8 @@ function ArquivosVendaTab({ venda, podeEditar }) {
           <strong>Carregando arquivos...</strong>
         </div>
       ) : arquivos.length === 0 ? (
-        <div className="venda-arquivos-empty venda-arquivos-empty--upload" role={podeEditar ? 'button' : undefined} tabIndex={podeEditar ? 0 : undefined} onClick={() => podeEditar && inputRef.current?.click()} onKeyDown={event => {
-          if (!podeEditar) return;
+        <div className="venda-arquivos-empty venda-arquivos-empty--upload" role={podeAdicionar ? 'button' : undefined} tabIndex={podeAdicionar ? 0 : undefined} onClick={() => podeAdicionar && inputRef.current?.click()} onKeyDown={event => {
+          if (!podeAdicionar) return;
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             inputRef.current?.click();
@@ -1853,8 +1888,12 @@ function ArquivosVendaTab({ venda, podeEditar }) {
           <span className="venda-arquivos-empty__icon">
             <I.Plus size={20} />
           </span>
-          <strong>Nenhum arquivo anexado</strong>
-          <span>{podeEditar ? 'Clique para selecionar documentos, contratos ou comprovantes.' : 'Sem arquivos para exibir.'}</span>
+          <strong>{podeVisualizar ? 'Nenhum arquivo anexado' : 'Envie novos documentos'}</strong>
+          <span>{podeAdicionar
+            ? (podeVisualizar
+              ? 'Clique para selecionar documentos, contratos ou comprovantes.'
+              : 'Documentos antigos ficam ocultos para seu perfil. Clique para anexar novos arquivos.')
+            : 'Sem arquivos para exibir.'}</span>
           <em>PDF, JPG, PNG ou WEBP</em>
         </div>
       ) : (
@@ -1892,7 +1931,7 @@ function ArquivosVendaTab({ venda, podeEditar }) {
         </div>
       )}
 
-      {pacote?.status === 'erro' && (
+      {podeVisualizar && pacote?.status === 'erro' && (
         <div className="alert-error">
           {pacote.erro || 'Não foi possível gerar o pacote.'}
         </div>
@@ -2186,7 +2225,8 @@ function VendasPage() {
   const podeCompartilharVenda = temPermissao(usuarioLogado, 'compartilhar_venda');
   const podeExcluirVenda = temPermissao(usuarioLogado, 'vendas_excluir');
   const podeVerDocumentosVenda = temPermissao(usuarioLogado, 'vendas_documentos');
-  const podeAcessarDocumentosVenda = Boolean(podeVerDocumentosVenda || podeEditarVenda);
+  const podeAdicionarDocumentosVenda = temPermissao(usuarioLogado, 'adicionar_documentos');
+  const podeAcessarDocumentosVenda = Boolean(podeVerDocumentosVenda || podeAdicionarDocumentosVenda);
   const podeOperarPosVenda = temPermissao(usuarioLogado, 'pos_venda');
   const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const podeVerTodasVendas = temPermissao(usuarioLogado, 'vendas_ver_todas');
@@ -2589,6 +2629,7 @@ function VendasPage() {
           podeEditarVenda={podeEditarVenda}
           podeCompartilharVenda={podeCompartilharVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
+          podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
           usuarioLogado={usuarioLogado}
           initialTab={modalAbaInicial}
           initialProblemaId={modalProblemaInicial}

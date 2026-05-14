@@ -406,6 +406,7 @@ function DashboardPage() {
   const podeVerRetornos = temPermissao(usuario, ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas']);
   const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
   const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
+  const podeAdicionarDocumentosVenda = temPermissao(usuario, 'adicionar_documentos');
   const podeVerCampanhasUsuarios = temPermissao(usuario, 'campanhas_ver_usuarios');
   const podeVerVendasParadas = temPermissao(usuario, 'notificacoes_vendas_paradas');
   const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
@@ -816,6 +817,7 @@ function DashboardPage() {
           vendasEmAndamentoPorCliente={vendasEmAndamentoPorCliente}
           podeEditarVenda={podeEditarVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
+          podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
           usuarioLogado={usuario}
           initialTab={vendaModalAba}
           initialProblemaId={vendaModalProblemaId}

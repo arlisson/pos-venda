@@ -994,24 +994,7 @@ async function solicitarPacoteSeVendaFinalizada(venda, usuarioId, etapaFinal = n
 }
 
 async function statusPreencheDataAtivacao(status, etapaFinal) {
-  if (!status) return false;
-  if (status === etapaFinal) return true;
-
-  const statusNormalizado = normalizarTextoBusca(status);
-  if (statusNormalizado.includes('ativacao') || statusNormalizado.includes('ativado')) {
-    return true;
-  }
-
-  try {
-    const etapa = await FunilEtapa.query()
-      .where('codigo', status)
-      .first();
-
-    const nomeNormalizado = normalizarTextoBusca(etapa?.nome);
-    return nomeNormalizado.includes('ativacao') || nomeNormalizado.includes('ativado');
-  } catch {
-    return false;
-  }
+  return Boolean(status && status === etapaFinal);
 }
 
 async function montarResumoFasesDinamico(vendas = []) {
@@ -1470,6 +1453,9 @@ async function criarVenda(dados, usuarioId) {
   const vendedorasIds = normalizarIdsVendedoras(dados.vendedoras);
   let payload = montarPayload(dados);
 
+  delete payload.data_ativacao;
+  delete payload.numeros_ativados;
+
   if (vendedorasIds.length > 0) {
     payload.vendedora_id = vendedorasIds[0];
   }
@@ -1546,7 +1532,7 @@ async function atualizarVenda(id, dados, usuarioId) {
 
   const vendaAtual = await Venda.query()
     .findById(id)
-    .select('id', 'cliente_id', 'protocolo', 'enviada_pos_venda_em', 'excluido_em');
+    .select('id', 'cliente_id', 'protocolo', 'status_funil', 'enviada_pos_venda_em', 'excluido_em');
 
   if (!vendaAtual || vendaAtual.excluido_em) {
     return null;
@@ -1563,10 +1549,17 @@ async function atualizarVenda(id, dados, usuarioId) {
   const agora = formatarDateTimeSQL();
   const vendedorasIds = Array.isArray(dados.vendedoras) ? normalizarIdsVendedoras(dados.vendedoras) : null;
   let payload = montarPayload(dados);
+  const etapaFinal = await obterCodigoEtapaFinal();
+  const vendaEstaNaEtapaFinal = vendaAtual.status_funil === etapaFinal;
 
   if (!vendaAtual.enviada_pos_venda_em) {
     delete payload.status_funil;
     delete payload.status_anterior_retorno;
+  }
+
+  if (!vendaEstaNaEtapaFinal) {
+    delete payload.data_ativacao;
+    delete payload.numeros_ativados;
   }
 
   if (vendedorasIds && vendedorasIds.length > 0) {

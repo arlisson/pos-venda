@@ -71,8 +71,13 @@ export const GRUPOS_PERMISSOES = [
           },
           {
             chave: 'vendas_documentos',
-            nome: 'Documentos',
-            descricao: 'Libera a aba de documentos e downloads da venda.'
+            nome: 'Visualizar documentos',
+            descricao: 'Libera listagem, visualizacao e downloads de documentos da venda.'
+          },
+          {
+            chave: 'adicionar_documentos',
+            nome: 'Adicionar documentos',
+            descricao: 'Permite anexar novos documentos na venda.'
           }
         ]
       },

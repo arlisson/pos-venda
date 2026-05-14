@@ -46,8 +46,13 @@ const PERMISSOES = [
   },
   {
     chave: 'vendas_documentos',
-    nome: 'Vendas: documentos',
-    descricao: 'Permite visualizar a aba de documentos da venda.'
+    nome: 'Vendas: visualizar documentos',
+    descricao: 'Permite visualizar, baixar e listar documentos da venda.'
+  },
+  {
+    chave: 'adicionar_documentos',
+    nome: 'Vendas: adicionar documentos',
+    descricao: 'Permite anexar novos documentos em vendas.'
   },
   {
     chave: 'vendas_aprovacoes_visualizar',

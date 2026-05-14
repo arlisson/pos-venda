@@ -81,6 +81,7 @@ function LayoutPrivado({ children }) {
   const podeCriarVenda = usuario && temPermissao(usuario, 'vendas_criar');
   const podeEditarVenda = usuario && temPermissao(usuario, ['vendas_editar', 'pos_venda']);
   const podeVerDocumentosVenda = usuario && temPermissao(usuario, 'vendas_documentos');
+  const podeAdicionarDocumentosVenda = usuario && temPermissao(usuario, 'adicionar_documentos');
   const podeListarVendas = usuario && temPermissao(usuario, ['vendas_ver_proprias', 'vendas_ver_todas']);
   const podeListarClientes = usuario && temPermissao(usuario, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const [novaVendaAberta, setNovaVendaAberta] = useState(false);
@@ -318,6 +319,7 @@ function LayoutPrivado({ children }) {
           vendasPorCliente={vendasPorClienteNovaVenda}
           podeEditarVenda={podeEditarVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
+          podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
           usuarioLogado={usuario}
           modoEdicao
           onClose={() => setNovaVendaAberta(false)}

@@ -915,6 +915,7 @@ function FunilPage() {
   ]);
   const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
   const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
+  const podeAdicionarDocumentosVenda = temPermissao(usuario, 'adicionar_documentos');
   const podeListarClientes = temPermissao(usuario, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const [sales, setSales] = useState([]);
   const [stages, setStages] = useState(FALLBACK_STAGES);
@@ -1474,6 +1475,7 @@ function FunilPage() {
           vendasEmAndamentoPorCliente={vendasEmAndamentoPorCliente}
           podeEditarVenda={podeEditarVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
+          podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
           usuarioLogado={usuario}
           modoEdicao={modalVendaModoEdicao}
           onStartEdit={() => setModalVendaModoEdicao(true)}
