@@ -203,6 +203,7 @@ function montarTextoBuscaVenda(sale) {
     raw.tipoVenda?.nome,
     raw.servico?.nome,
     raw.vendedora?.nome,
+    ...(Array.isArray(raw.vendedoras) ? raw.vendedoras.map(item => item?.nome) : []),
     raw.cliente?.nome,
     raw.cliente?.razao_social,
     raw.cliente?.email
@@ -269,6 +270,43 @@ function getSellerPhoto(venda) {
     || venda.vendedora_foto_perfil
     || venda.foto_perfil_vendedora
     || '';
+}
+
+function getSellerPhotoFromUser(usuario = {}) {
+  return usuario.foto_perfil
+    || usuario.fotoPerfil
+    || usuario.vendedora_foto_perfil
+    || usuario.foto_perfil_vendedora
+    || '';
+}
+
+function getSellers(venda = {}) {
+  const vendedoras = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
+    ? venda.vendedoras
+    : [venda.vendedora].filter(Boolean);
+
+  const sellers = vendedoras
+    .map(item => {
+      const name = item?.nome || item?.name || '';
+
+      return {
+        id: item?.id || item?.usuario_id || item?.vendedora_id || name,
+        name: name || 'Sem vendedor',
+        initials: initials(name || 'Sem vendedor'),
+        photo: getSellerPhotoFromUser(item)
+      };
+    })
+    .filter(item => item.name);
+
+  if (sellers.length > 0) return sellers;
+
+  const sellerName = venda.vendedora?.nome || 'Sem vendedor';
+  return [{
+    id: venda.vendedora_id || sellerName,
+    name: sellerName,
+    initials: initials(sellerName),
+    photo: getSellerPhoto(venda)
+  }];
 }
 
 function getHistoryAuthor(item) {
@@ -348,7 +386,9 @@ function getEtapasPuladas(item, stages) {
 }
 
 function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
-  const sellerName = venda.vendedora?.nome || 'Sem vendedor';
+  const sellers = getSellers(venda);
+  const seller = sellers[0];
+  const sellerName = sellers.map(item => item.name).join(', ') || 'Sem vendedor';
   const updated = parseDate(venda.ultima_atividade_em || venda.updated_at || venda.created_at);
   const created = parseDate(venda.criado_em || venda.created_at || venda.data_venda);
   const stage = venda.status_funil || 'aprovacao';
@@ -361,7 +401,8 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
     operator: getOperator(venda),
     plan: getPlan(venda),
     cpfCnpj: venda.cnpj || venda.cpf || '-',
-    seller: { name: sellerName, initials: initials(sellerName), photo: getSellerPhoto(venda) },
+    seller,
+    sellers,
     linha: venda.telefone || venda.quantidade_linhas || '-',
     endereco: [
       venda.endereco,
@@ -473,10 +514,14 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
                 <div className="value big">{formatBRL(sale.value)}</div>
               </div>
               <div className="detail-item">
-                <div className="label">VENDEDOR</div>
-                <div className="value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <SellerAvatar seller={sale.seller} className="seller-detail-avatar" />
-                  {sale.seller.name}
+                <div className="label">{sale.sellers?.length > 1 ? 'VENDEDORES' : 'VENDEDOR'}</div>
+                <div className="value funil-sellers-list">
+                  {(sale.sellers || [sale.seller]).map(seller => (
+                    <span key={seller.id || seller.name} className="funil-seller-item">
+                      <SellerAvatar seller={seller} className="seller-detail-avatar" />
+                      <span>{seller.name}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
               <div className="detail-item">

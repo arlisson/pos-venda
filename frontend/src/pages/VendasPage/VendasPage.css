@@ -317,6 +317,46 @@
   white-space: nowrap;
 }
 
+.vendas-page .list-table .aprovacoes-actions-col {
+  min-width: 248px;
+  width: 248px;
+  text-align: center;
+}
+
+.vendas-page .list-table td.aprovacoes-actions-col {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.aprovacoes-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.aprovacoes-actions .btn {
+  height: 32px;
+  min-width: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.funil-sellers-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.funil-seller-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .vendas-contact-actions {
   display: inline-flex;
   align-items: center;
