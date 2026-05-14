@@ -87,12 +87,12 @@ export const GRUPOS_PERMISSOES = [
           {
             chave: 'ver_vendas_compartilhadas',
             nome: 'Ver compartilhadas',
-            descricao: 'Mostra apenas vendas compartilhadas em que o usuario esta como vendedor.'
+            descricao: 'Mostra apenas vendas compartilhadas em que o usuário está como vendedor.'
           },
           {
             chave: 'editar_vendas_compartilhadas',
             nome: 'Editar compartilhadas',
-            descricao: 'Permite editar vendas compartilhadas em que o usuario esta como vendedor.'
+            descricao: 'Permite editar vendas compartilhadas em que o usuário está como vendedor.'
           }
         ]
       },

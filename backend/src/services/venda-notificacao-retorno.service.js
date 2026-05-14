@@ -40,7 +40,7 @@ async function criarOuAtualizarNotificacaoRetorno({ venda, statusAnterior, motiv
   if (destinatariosIds.length === 0) return null;
 
   const sourceKey = sourceKeyVenda(venda.id);
-  const titulo = 'Venda retornou para correcao';
+  const titulo = 'Venda retornou para correção';
   const mensagem = `${nomeVenda(venda)} foi retornada pelo pos-venda: ${motivo}`;
 
   const payload = {

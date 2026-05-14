@@ -247,7 +247,7 @@ function obterCabecalhos(worksheet) {
   }
 
   if (colunas.length === 0) {
-    throw criarHttpError(400, 'Nao foi possivel identificar cabecalhos na primeira linha.');
+    throw criarHttpError(400, 'Não foi possível identificar cabeçalhos na primeira linha.');
   }
 
   return colunas;
@@ -574,7 +574,7 @@ async function buscarClienteDuplicadoPorCnpj(cnpjDigitos, ignorarId = null, trx 
 function lancarErroCnpjDuplicado(cliente) {
   const nome = cliente.razao_social || cliente.nome || `#${cliente.id}`;
   const sufixo = cliente.excluido_em
-    ? ' O cliente esta na lixeira; restaure-o para usar este CNPJ.'
+    ? ' O cliente está na lixeira; restaure-o para usar este CNPJ.'
     : '';
 
   throw criarHttpError(409, `Ja existe um cliente cadastrado com este CNPJ (${nome}).${sufixo}`);

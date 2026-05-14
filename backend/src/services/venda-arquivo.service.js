@@ -446,7 +446,7 @@ async function prepararDownloadArquivo(vendaId, arquivoVendaId, usuarioId) {
   const absPath = caminhoAbsoluto(vinculo.arquivo.storage_path);
 
   if (vinculo.arquivo.removido_em) {
-    const error = new Error('Arquivo individual ja foi arquivado no pacote.');
+    const error = new Error('Arquivo individual já foi arquivado no pacote.');
     error.statusCode = 410;
     throw error;
   }
@@ -667,7 +667,7 @@ async function prepararDownloadPacote(vendaId, usuarioId) {
     .first();
 
   if (!pacote?.storage_path) {
-    const error = new Error('Pacote ainda nao esta pronto.');
+    const error = new Error('Pacote ainda não está pronto.');
     error.statusCode = 404;
     throw error;
   }

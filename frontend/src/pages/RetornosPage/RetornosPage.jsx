@@ -131,7 +131,7 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm, onSaveObse
       await onSaveObservation(venda, returnObservation.trim());
       setSavingObservation(false);
     } catch (err) {
-      setError(err.message || 'Erro ao salvar observacao do retorno.');
+      setError(err.message || 'Erro ao salvar observação do retorno.');
       setSavingObservation(false);
     }
   }
@@ -180,7 +180,7 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm, onSaveObse
                 onClick={handleSaveObservation}
                 disabled={savingObservation || returnObservation.trim() === originalObservation.trim()}
               >
-                {savingObservation ? 'Salvando...' : 'Salvar observacao'}
+                {savingObservation ? 'Salvando...' : 'Salvar observação'}
               </button>
             </div>
           </div>

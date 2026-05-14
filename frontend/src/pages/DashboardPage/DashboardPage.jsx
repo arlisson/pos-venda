@@ -310,7 +310,7 @@ function getVendaParadaPrazo(notificacao) {
 
   if (Number.isFinite(horas) && horas >= 0) {
     const dias = Math.floor(horas / 24);
-    return `Parada hÃ¡ ${dias} dia${dias === 1 ? '' : 's'}`;
+    return `Parada há ${dias} dia${dias === 1 ? '' : 's'}`;
   }
 
   return formatarPrazoRelativo(notificacao?.dados?.data_entrada || notificacao?.updated_at);

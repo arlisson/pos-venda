@@ -160,7 +160,7 @@ function ClientesLixeiraPage() {
       setExcluirVendasRelacionadas(false);
       setSucesso(totalVendasRelacionadas > 0 && excluirVendasRelacionadas
         ? `Cliente e ${totalVendasRelacionadas} venda(s) relacionada(s) excluidos definitivamente.`
-        : 'Cliente excluido definitivamente.');
+        : 'Cliente excluído definitivamente.');
     } catch (error) {
       setErro(error.message || 'Erro ao excluir cliente definitivamente.');
     } finally {

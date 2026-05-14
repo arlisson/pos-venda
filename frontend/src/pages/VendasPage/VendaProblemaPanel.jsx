@@ -20,8 +20,8 @@ function formatarData(value) {
 }
 
 function getProblemaStatusLabel(status) {
-  if (status === 'resolvido') return 'Aguardando verificacao';
-  if (status === 'correcao_solicitada') return 'Correcao solicitada';
+  if (status === 'resolvido') return 'Aguardando verificação';
+  if (status === 'correcao_solicitada') return 'Correção solicitada';
   return 'Problema aberto';
 }
 
@@ -87,7 +87,7 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
         <div className="venda-problema-card-main">
           <span className={`venda-problema-status-badge status-${problema.status}`}>{getProblemaStatusLabel(problema.status)}</span>
           <span>{getProblemaTitulo(problema)}</span>
-          <em>Solicitado por {problema.solicitante?.nome || 'usuario'} em {formatarData(problema.aberto_em)}</em>
+          <em>Solicitado por {problema.solicitante?.nome || 'usuário'} em {formatarData(problema.aberto_em)}</em>
         </div>
       </button>
 
@@ -98,7 +98,7 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
       >
         <div className="venda-problema-detalhes-inner">
           <div className="venda-problema-responsaveis">
-            <strong>Responsaveis</strong>
+            <strong>Responsáveis</strong>
             <span>{getResponsaveis(problema)}</span>
           </div>
 
@@ -116,7 +116,7 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
 
           {podeResolver && (
             <div className="venda-problema-action">
-              <label>Mensagem de resolucao</label>
+              <label>Mensagem de resolução</label>
               <AutoResizeTextarea value={mensagemResolucao} onChange={event => setMensagemResolucao(event.target.value)} placeholder="Explique o que foi corrigido" />
               <button type="button" className="btn btn-primary" disabled={salvando || !mensagemResolucao.trim()} onClick={() => executar('resolver')}>
                 Marcar resolvido
@@ -131,10 +131,10 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
                   Verificado
                 </button>
               </div>
-              <label>Solicitar nova correcao</label>
+              <label>Solicitar nova correção</label>
               <AutoResizeTextarea value={mensagemCorrecao} onChange={event => setMensagemCorrecao(event.target.value)} placeholder="Descreva o que ainda precisa ser ajustado" />
               <button type="button" className="btn" disabled={salvando || !mensagemCorrecao.trim()} onClick={() => executar('correcao')}>
-                Enviar correcao
+                Enviar correção
               </button>
             </div>
           )}
@@ -211,7 +211,7 @@ function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
     <div className="venda-problema-panel">
       <div className="venda-problema-summary">
         <strong>{problemas.length} problema{problemas.length === 1 ? '' : 's'} ativo{problemas.length === 1 ? '' : 's'}</strong>
-        <span>Cada problema possui responsaveis, historico e revisao independentes.</span>
+        <span>Cada problema possui responsáveis, histórico e revisão independentes.</span>
       </div>
 
       {erro && <div className="alert-error">{erro}</div>}

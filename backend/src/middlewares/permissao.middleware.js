@@ -110,7 +110,7 @@ function exigirAdmin(req, res, next) {
 
       if (!solicitanteEhAdmin) {
         return res.status(403).json({
-          message: 'Apenas administradores podem executar esta acao.'
+          message: 'Apenas administradores podem executar esta ação.'
         });
       }
 
@@ -120,7 +120,7 @@ function exigirAdmin(req, res, next) {
       console.error(error);
 
       return res.status(500).json({
-        message: 'Erro ao validar permissoes.'
+        message: 'Erro ao validar permissões.'
       });
     });
 }

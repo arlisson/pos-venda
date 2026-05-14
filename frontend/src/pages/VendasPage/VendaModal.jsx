@@ -3238,21 +3238,21 @@ function VendaModal({
 
       if (!solicitouNenhumServico && clienteSolicitouResolvido === 'sim') {
         if (!normalizarDataVendaInput(form.cliente_solicitou_resolvido_em)) {
-          setErro('Informe a data de resolucao da solicitacao do cliente.');
+          setErro('Informe a data de resolução da solicitação do cliente.');
           setAbaAtiva('solicitacao');
           setSalvando(false);
           return;
         }
 
         if (!String(form.cliente_solicitou_protocolo_atendimento || '').trim()) {
-          setErro('Informe o protocolo de atendimento da solicitacao do cliente.');
+          setErro('Informe o protocolo de atendimento da solicitação do cliente.');
           setAbaAtiva('solicitacao');
           setSalvando(false);
           return;
         }
 
         if (!String(form.cliente_solicitou_observacao || '').trim()) {
-          setErro('Informe a observacao da solicitacao do cliente.');
+          setErro('Informe a observação da solicitação do cliente.');
           setAbaAtiva('solicitacao');
           setSalvando(false);
           return;

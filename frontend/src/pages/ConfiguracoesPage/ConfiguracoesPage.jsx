@@ -366,7 +366,7 @@ function ConfiguracoesPage() {
       }
       setItemParaExcluir(null);
       await carregarDados();
-      setSucesso('Item excluido com sucesso.');
+      setSucesso('Item excluído com sucesso.');
     } catch (error) {
       setErro(error.message || 'Erro ao excluir item.');
     } finally {

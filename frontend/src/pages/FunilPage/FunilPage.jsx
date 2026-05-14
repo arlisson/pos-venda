@@ -685,7 +685,7 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
     const motivoFinal = motivo || observacaoNormalizada;
 
     if (!motivoFinal) {
-      setError('Selecione um motivo ou descreva o retorno na observacao.');
+      setError('Selecione um motivo ou descreva o retorno na observação.');
       return;
     }
 
@@ -1041,7 +1041,7 @@ function FunilPage() {
     setStageFeedback({
       type: 'success',
       message: resultado?.status === 'pendente'
-        ? (resultado.message || 'Solicitacao enviada para aprovacao do ADM.')
+        ? (resultado.message || 'Solicitação enviada para aprovação do ADM.')
         : 'Venda enviada para o pos-venda.'
     });
   }

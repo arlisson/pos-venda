@@ -167,7 +167,7 @@ async function enviarPosVenda(req, res) {
 
     if (resultado.status === 'pendente') {
       return res.status(202).json({
-        message: resultado.message || 'Solicitacao enviada para aprovacao do ADM.',
+        message: resultado.message || 'Solicitação enviada para aprovação do ADM.',
         status: resultado.status,
         solicitacao: resultado.solicitacao
       });
@@ -175,7 +175,7 @@ async function enviarPosVenda(req, res) {
 
     if (resultado.status === 'recusada') {
       return res.status(403).json({
-        message: resultado.message || 'Solicitacao recusada pelo ADM.',
+        message: resultado.message || 'Solicitação recusada pelo ADM.',
         status: resultado.status,
         solicitacao: resultado.solicitacao
       });
