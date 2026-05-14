@@ -275,7 +275,7 @@ function VendasAprovacoesPage() {
                   <th>Status</th>
                   <th>Solicitada em</th>
                   <th>Decisão</th>
-                  <th></th>
+                  <th className="aprovacoes-actions-col">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -328,39 +328,41 @@ function VendasAprovacoesPage() {
                         </div>
                       ) : '-'}
                     </td>
-                    <td className="row-actions">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        disabled={carregandoVendaId === solicitacao.venda_id}
-                        onClick={() => abrirVenda(solicitacao)}
-                      >
-                        {carregandoVendaId === solicitacao.venda_id ? 'Abrindo...' : 'Abrir venda'}
-                      </button>
+                    <td className="aprovacoes-actions-col">
+                      <div className="aprovacoes-actions">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          disabled={carregandoVendaId === solicitacao.venda_id}
+                          onClick={() => abrirVenda(solicitacao)}
+                        >
+                          {carregandoVendaId === solicitacao.venda_id ? 'Abrindo...' : 'Abrir venda'}
+                        </button>
 
-                      {podeDecidir && solicitacao.status === 'pendente' && (
-                        <>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-primary"
-                            disabled={salvandoId === solicitacao.id}
-                            onClick={() => aprovar(solicitacao)}
-                          >
-                            Aprovar
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-ghost"
-                            disabled={salvandoId === solicitacao.id}
-                            onClick={() => {
-                              setRecusando(solicitacao);
-                              setObservacao('');
-                            }}
-                          >
-                            Recusar
-                          </button>
-                        </>
-                      )}
+                        {podeDecidir && solicitacao.status === 'pendente' && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-primary"
+                              disabled={salvandoId === solicitacao.id}
+                              onClick={() => aprovar(solicitacao)}
+                            >
+                              Aprovar
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              disabled={salvandoId === solicitacao.id}
+                              onClick={() => {
+                                setRecusando(solicitacao);
+                                setObservacao('');
+                              }}
+                            >
+                              Recusar
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

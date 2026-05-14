@@ -1634,13 +1634,10 @@ async function atualizarVenda(id, dados, usuarioId) {
     }
 
     if (
-      !vendaAtual.enviada_pos_venda_em
-      && (
-        Object.prototype.hasOwnProperty.call(payload, 'cliente_id')
-        || vendedorasIds !== null
-      )
+      Object.prototype.hasOwnProperty.call(payload, 'cliente_id')
+      || vendedorasIds !== null
     ) {
-      await vendaAprovacaoService.sincronizarAprovacaoAposAlteracao(id, trx);
+      await vendaAprovacaoService.validarEnvioPosVenda(id, usuarioId, trx);
     }
 
     return venda;
