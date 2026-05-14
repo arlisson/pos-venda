@@ -26,6 +26,16 @@ function parsePermissoes(permissoes) {
   return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
 }
 
+function getPermissoesIniciais(usuario, permissoesDisponiveis) {
+  const permissoesUsuario = parsePermissoes(usuario?.permissoes);
+
+  if (usuario?.role?.nome === 'admin' && permissoesUsuario.length === 0) {
+    return permissoesDisponiveis.map(permissao => permissao.chave);
+  }
+
+  return permissoesUsuario;
+}
+
 function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   const [usuario, setUsuario] = useState(null);
   const [permissoes, setPermissoes] = useState([]);
@@ -44,9 +54,11 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
           listarPermissoes()
         ]);
 
+        const permissoesCompletas = garantirPermissaoPosVendaCompartilhada(permissoesData);
+
         setUsuario(usuarioData);
-        setPermissoes(garantirPermissaoPosVendaCompartilhada(permissoesData));
-        setSelecionadas(parsePermissoes(usuarioData.permissoes));
+        setPermissoes(permissoesCompletas);
+        setSelecionadas(getPermissoesIniciais(usuarioData, permissoesCompletas));
       } catch {
         setErro('Erro ao carregar permissões do usuário.');
       } finally {
@@ -108,7 +120,6 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
     }
   }
 
-  const isAdmin = usuario?.role?.nome === 'admin';
   const gruposPermissoesCompartilhados = montarGruposPermissoesCompartilhados(permissoes);
   const totalSelecionadas = selecionadas.length;
   const usuariosOrigem = usuarios.filter(item => Number(item.id) !== Number(usuarioId));
@@ -140,10 +151,6 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
             </div>
           ) : erro && !usuario ? (
             <div style={{ color: 'var(--danger)', fontSize: 13 }}>{erro}</div>
-          ) : isAdmin ? (
-            <div style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-2)' }}>
-              Administradores possuem todas as permissões automaticamente.
-            </div>
           ) : (
             <>
               <div className="permissions-copy">

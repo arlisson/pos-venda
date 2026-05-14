@@ -72,9 +72,14 @@ function parsePermissoes(permissoes) {
 
 function usuarioPodeReceberEmail(usuario) {
   if (!usuario?.ativo) return false;
+  const permissoesUsuario = parsePermissoes(usuario.permissoes);
+
+  if (usuario.role?.nome === 'admin' && permissoesUsuario.length > 0) {
+    return permissoesUsuario.includes(PERMISSAO_RECEBER_EMAIL);
+  }
 
   return [
-    ...parsePermissoes(usuario.permissoes),
+    ...permissoesUsuario,
     ...parsePermissoes(usuario.role?.permissoes)
   ].includes(PERMISSAO_RECEBER_EMAIL);
 }
