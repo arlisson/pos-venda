@@ -162,6 +162,19 @@ const CAMPOS_ENDERECO_REAL_VENDA = [
 
 const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' };
 const NUMERO_PORTADO_VAZIO = '';
+
+function criarVendaVazia() {
+  return {
+    ...VENDA_VAZIA,
+    numeros_ativados: [],
+    valores_unitarios_chips: [{ ...ITEM_CHIP_VAZIO }],
+    tipos_servico: ['novo'],
+    cliente_solicitou_servicos: [],
+    cliente_solicitou_numeros: { bloqueio: [], cancelamento: [] },
+    vendedoras: []
+  };
+}
+
 const TIPOS_LINHA_CHIP = [
   { value: 'novo', label: 'Novo' },
   { value: 'portabilidade', label: 'Port.' }
@@ -2347,7 +2360,7 @@ function VendaModal({
   const draftKey = 'venda_novo';
   
   const [form, setForm] = useState(() => {
-    const base = venda ? normalizarVenda(venda) : { ...VENDA_VAZIA, ...(initialValues || {}) };
+    const base = venda ? normalizarVenda(venda) : { ...criarVendaVazia(), ...(initialValues || {}) };
     
     // Para novo venda, tenta carregar rascunho salvo, depois initialDraft, depois formulário vazio
     if (!editando) {
@@ -2377,7 +2390,7 @@ function VendaModal({
   });
   
   // Usar hook para persistência de rascunhos
-  useFormDraft(editando ? null : draftKey, form, editando);
+  const { clearDraft } = useFormDraft(editando ? null : draftKey, form, editando);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [cepStatus, setCepStatus] = useState('');
@@ -2559,6 +2572,32 @@ function VendaModal({
     }
 
     onClose();
+  }
+
+  function limparDadosVenda() {
+    if (editando || somenteVisualizacao || vendaBloqueadaParaUsuario || salvando) return;
+
+    const formLimpo = criarVendaVazia();
+
+    clearDraft();
+    setForm(formLimpo);
+    onDraftChange?.(formLimpo);
+    setErro('');
+    setCepStatus('');
+    setCepRealStatus('');
+    setCnpjStatus({ tipo: '', mensagem: '' });
+    setCnpjDados(null);
+    setCnpjSugestoes({});
+    setTipoBusca('cnpj');
+    setAceiteMode('janela');
+    setClienteSolicitouQuantidadeAberta(false);
+    setClienteSolicitouNumerosAberto(false);
+    setClienteSolicitouServicosDraft([]);
+    setClienteSolicitouQuantidadesDraft({ bloqueio: '', cancelamento: '' });
+    setClienteSolicitouNumerosDraft({ bloqueio: [], cancelamento: [] });
+    setEnderecoRealModalAberto(false);
+    ultimoCnpjConsultadoRef.current = '';
+    cepPreenchidoPorCnpjRef.current = '';
   }
 
   function atualizarCampo(campo, valor) {
@@ -3473,6 +3512,7 @@ function VendaModal({
                   {labelCampo && campo.type !== 'realAddressToggle' && <label>{labelCampo}{campo.required && <span className="field-required-mark"> *</span>}</label>}
                   {campo.type === 'client' ? (
                       <ClienteVendaSelect
+                        key={form[campo.name] || 'sem-cliente'}
                         value={form[campo.name] ?? ''}
                         clientes={clientesDisponiveis}
                         vendasRegistradas={vendasRegistradasClienteSelecionado}
@@ -3846,6 +3886,11 @@ function VendaModal({
             </>
           ) : (
             <>
+              {!editando && (
+                <button type="button" className="btn btn-ghost" onClick={limparDadosVenda} disabled={salvando}>
+                  <I.Trash size={14} /> Limpar Dados
+                </button>
+              )}
               <button type="button" className="btn" onClick={handleClose}>Cancelar</button>
               <button type="submit" className="btn btn-primary" disabled={salvando}>
                 {salvando ? 'Salvando...' : 'Salvar venda'}
