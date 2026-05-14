@@ -1667,10 +1667,6 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
     return { status: 'invalid', message: 'Envie a venda ao pós-venda antes de movimentar no funil.' };
   }
 
-  if (!await usuarioTemPermissao(usuarioId, 'pos_venda')) {
-    return { status: 'forbidden', message: 'Apenas usuários com permissão de pós-venda podem movimentar vendas no funil.' };
-  }
-
   const agora = formatarDateTimeSQL();
   const etapaFinal = await obterCodigoEtapaFinal();
   const status = dados.status_funil;
@@ -1683,6 +1679,10 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
     : prioridadeInformada;
 
   const retornoVoltandoParaOrigem = venda.status_funil === 'retorno' && status === (venda.status_anterior_retorno || 'aprovacao');
+
+  if (!retornoVoltandoParaOrigem && !await usuarioTemPermissao(usuarioId, 'pos_venda')) {
+    return { status: 'forbidden', message: 'Apenas usuários com permissão de pós-venda podem movimentar vendas no funil.' };
+  }
 
   if (!retornoVoltandoParaOrigem && !await validarStatusFunil(status)) {
     return { status: 'invalid', message: 'Status do funil inválido.' };

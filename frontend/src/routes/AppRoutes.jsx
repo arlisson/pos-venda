@@ -98,7 +98,7 @@ function AppRoutes() {
         element={<PrivateRoute permission={['futuros_clientes_ver']}><FuturosClientesPage /></PrivateRoute>}
       />
 
-      <Route path="/retornos" element={<PrivateRoute><RetornosPage /></PrivateRoute>} />
+      <Route path="/retornos" element={<PrivateRoute permission={['vendas_ver_proprias', 'vendas_ver_todas', 'ver_vendas_compartilhadas']}><RetornosPage /></PrivateRoute>} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
       <Route path="/relatorios" element={<PrivateRoute permission="relatorios_visualizar"><RelatoriosPage /></PrivateRoute>} />
       <Route path="/historico" element={<PrivateRoute permission="historico_visualizar"><HistoricoPage /></PrivateRoute>} />
