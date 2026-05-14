@@ -271,6 +271,11 @@ export const GRUPOS_PERMISSOES = [
             descricao: 'Mostra os cards Vendas no dia, Valor vendido hoje, Concluídas hoje e Em pipeline.'
           },
           {
+            chave: 'campanhas_visualizar',
+            nome: 'Visualizar campanhas',
+            descricao: 'Mostra a seção de campanhas e recompensas na tela inicial.'
+          },
+          {
             chave: 'campanhas_ver_usuarios',
             nome: 'Campanhas por usuário',
             descricao: 'Mostra no dashboard quem bateu ou ainda não bateu cada campanha.'

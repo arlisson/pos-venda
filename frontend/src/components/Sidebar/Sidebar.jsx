@@ -7,11 +7,18 @@ import { getCampanhas, getProgresso } from '../../services/campanha.service';
 function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   const [campanhas, setCampanhas] = useState([]);
   const [progresso, setProgresso] = useState({});
+  const podeVerCampanhas = temPermissao(usuario, 'campanhas_visualizar');
 
   useEffect(() => {
+    if (!podeVerCampanhas) {
+      setCampanhas([]);
+      setProgresso({});
+      return;
+    }
+
     getCampanhas().then(setCampanhas).catch(console.error);
     getProgresso().then(setProgresso).catch(console.error);
-  }, []);
+  }, [podeVerCampanhas]);
 
   const items = [
     { id: 'dashboard', label: 'Inicio', icon: <I.Home /> },
@@ -86,7 +93,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
         )}
       </div>
 
-      {giftCampanhas.length > 0 && (
+      {podeVerCampanhas && giftCampanhas.length > 0 && (
         <div className="sidebar-goals">
           <div className="header-row">
             <span className="title">Campanhas</span>

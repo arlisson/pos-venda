@@ -407,6 +407,7 @@ function DashboardPage() {
   const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
   const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
   const podeAdicionarDocumentosVenda = temPermissao(usuario, 'adicionar_documentos');
+  const podeVerCampanhas = temPermissao(usuario, 'campanhas_visualizar');
   const podeVerCampanhasUsuarios = temPermissao(usuario, 'campanhas_ver_usuarios');
   const podeVerVendasParadas = temPermissao(usuario, 'notificacoes_vendas_paradas');
   const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
@@ -418,7 +419,19 @@ function DashboardPage() {
   }, [feedback]);
 
   useEffect(() => {
-    getCampanhas().then(setCampanhas).catch(console.error);
+    if (podeVerCampanhas) {
+      getCampanhas().then(setCampanhas).catch(console.error);
+      getProgresso()
+        .then(data => {
+          setProgresso(data);
+          setOpenedGifts(new Set((data.resgatadas || []).map(Number)));
+        })
+        .catch(console.error);
+    } else {
+      setCampanhas([]);
+      setProgresso({});
+      setOpenedGifts(new Set());
+    }
 
     if (podeVerResumoVendas || podeVerRetornos) {
       obterResumoVendas().then(setStats).catch(console.error);
@@ -430,13 +443,7 @@ function DashboardPage() {
         .catch(console.error);
     }
 
-    getProgresso()
-      .then(data => {
-        setProgresso(data);
-        setOpenedGifts(new Set((data.resgatadas || []).map(Number)));
-      })
-      .catch(console.error);
-  }, [podeVerResumoVendas, podeVerRetornos]);
+  }, [podeVerCampanhas, podeVerResumoVendas, podeVerRetornos]);
 
   useEffect(() => {
     if (!podeVerNotificacoes) return undefined;
@@ -1061,7 +1068,7 @@ function DashboardPage() {
         )}
 
         {/* Sistema de recompensas DIÁRIAS */}
-        {campanhasComProgresso.length > 0 && (
+        {podeVerCampanhas && campanhasComProgresso.length > 0 && (
           <>
             <div className="rewards-header">
               <div>

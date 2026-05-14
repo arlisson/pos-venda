@@ -85,6 +85,11 @@ const PERMISSOES = [
     descricao: 'Permite visualizar os cards de resumo de vendas na página inicial.'
   },
   {
+    chave: 'campanhas_visualizar',
+    nome: 'Campanhas: visualizar',
+    descricao: 'Permite visualizar a secao de campanhas e recompensas na pagina inicial.'
+  },
+  {
     chave: 'campanhas_ver_usuarios',
     nome: 'Campanhas: ver por usuário',
     descricao: 'Permite acompanhar no dashboard quais usuários bateram ou não as campanhas.'
