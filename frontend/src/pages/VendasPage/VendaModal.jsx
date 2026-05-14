@@ -516,10 +516,25 @@ function formatarDiaVencimento(valor) {
   return dia > 0 ? String(dia) : '';
 }
 
+function formatarRg(valor) {
+  let limpo = String(valor || '').toUpperCase().replace(/[^\dX]/g, '');
+  const terminaEmX = limpo.endsWith('X');
+  limpo = limpo.replace(/X/g, '');
+  if (terminaEmX) limpo += 'X';
+  limpo = limpo.slice(0, 9);
+
+  const len = limpo.length;
+  if (len <= 2) return limpo;
+  if (len <= 5) return `${limpo.slice(0, 2)}.${limpo.slice(2)}`;
+  if (len <= 8) return `${limpo.slice(0, 2)}.${limpo.slice(2, 5)}.${limpo.slice(5)}`;
+  return `${limpo.slice(0, 2)}.${limpo.slice(2, 5)}.${limpo.slice(5, 8)}-${limpo.slice(8)}`;
+}
+
 function formatarCampoVenda(campo, valor) {
   if (campo === 'telefone' || campo === 'telefone_representante_legal' || campo === 'telefone_administrador') return formatarTelefoneComDdd(valor, true);
   if (campo === 'fixo_ddd') return formatarTelefoneComDdd(valor, false);
   if (campo === 'cpf_representante_legal' || campo === 'cpf_administrador') return formatarCpf(valor);
+  if (campo === 'rg_representante_legal' || campo === 'rg_administrador') return formatarRg(valor);
   if (campo === 'cnpj') return formatarCnpj(valor);
   if (campo === 'cep' || campo === 'cep_real') return formatarCep(valor);
   if (campo === 'uf' || campo === 'uf_real') return String(valor || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
@@ -549,6 +564,8 @@ function getMaxLengthCampo(campo, maxLength) {
     telefone_administrador: 15,
     cpf_representante_legal: 14,
     cpf_administrador: 14,
+    rg_representante_legal: 12,
+    rg_administrador: 12,
     cnpj: 18,
     cep: 9,
     cep_real: 9,
@@ -2593,6 +2610,10 @@ function VendaModal({
       const telefoneFixo = c ? formatarTelefoneComDdd([c.fixo_ddd, c.fixo_numero].filter(Boolean).join(''), false) : '';
       const nomeRl = c?.responsavel_tipo === 'rl' ? (c.responsavel_nome || '') : '';
       const nomeAdm = c?.responsavel_tipo === 'adm' ? (c.responsavel_nome || '') : '';
+      const emailRl = c?.responsavel_tipo === 'rl' ? (c.email || '') : '';
+      const emailAdm = c?.responsavel_tipo === 'adm' ? (c.email || '') : '';
+      const telefoneRl = c?.responsavel_tipo === 'rl' ? telefoneWhatsapp : '';
+      const telefoneAdm = c?.responsavel_tipo === 'adm' ? telefoneWhatsapp : '';
       const fechouVenda = c?.responsavel_tipo === 'rl' ? 'RL' : c?.responsavel_tipo === 'adm' ? 'ADM' : '';
 
       return {
@@ -2605,7 +2626,11 @@ function VendaModal({
         telefone: prev.telefone || telefoneWhatsapp || '',
         fixo_ddd: prev.fixo_ddd || telefoneFixo || '',
         nome_representante_legal: prev.nome_representante_legal || nomeRl,
+        email_representante_legal: prev.email_representante_legal || emailRl,
+        telefone_representante_legal: prev.telefone_representante_legal || telefoneRl,
         nome_administrador: prev.nome_administrador || nomeAdm,
+        email_administrador: prev.email_administrador || emailAdm,
+        telefone_administrador: prev.telefone_administrador || telefoneAdm,
         nome_fechou_venda: prev.nome_fechou_venda || fechouVenda,
         operadora_atual_id: prev.operadora_atual_id || String(c?.operadora_atual_id || ''),
       };

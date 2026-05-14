@@ -17,8 +17,13 @@ const TIPOS_PROBLEMA_VENDA = [
   'venda_problema_correcao'
 ];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
-const TIPOS_OPERACIONAIS_VENDA = [
+const TIPOS_RETORNO_VENDA = ['venda_retorno_registrado'];
+const TIPOS_BASE_VENDA = [
   ...TIPOS_PROBLEMA_VENDA,
+  ...TIPOS_RETORNO_VENDA
+];
+const TIPOS_OPERACIONAIS_VENDA = [
+  ...TIPOS_BASE_VENDA,
   ...TIPOS_APROVACAO_VENDA
 ];
 const TIPO_VENDA_PARADA = vendaNotificacaoParadaService.TIPO_NOTIFICACAO;
@@ -403,7 +408,7 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
 
   if (!podeVerTudo) {
     query.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
       ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
     ]);
   } else if (!podeVerVendasParadas) {
@@ -425,7 +430,7 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
 
   if (!podeVerTudo) {
     contadorQuery.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
       ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
     ]);
   } else if (!podeVerVendasParadas) {
@@ -486,7 +491,7 @@ async function listarUrgentes(usuarioId) {
 
   if (!podeVerTudo) {
     query.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
       ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
     ]);
   } else if (!podeVerVendasParadas) {
@@ -520,7 +525,7 @@ async function marcarComoLida(notificacaoId, usuarioId) {
 
   if (!podeVerTudo) {
     query.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
       ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
     ]);
   } else if (!podeVerVendasParadas) {
@@ -557,7 +562,7 @@ async function marcarTodasComoLidas(usuarioId) {
 
   if (!podeVerTudo) {
     query.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_PROBLEMA_VENDA),
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
       ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
     ]);
   } else if (!podeVerVendasParadas) {
@@ -600,6 +605,7 @@ module.exports = {
   PERMISSAO_RECEBER_TODAS,
   TIPOS_PROBLEMA_VENDA,
   TIPOS_APROVACAO_VENDA,
+  TIPOS_RETORNO_VENDA,
   listarNotificacoes,
   listarUrgentes,
   marcarComoLida,

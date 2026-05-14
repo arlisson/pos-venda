@@ -239,6 +239,7 @@ function LayoutPrivado({ children }) {
         return 'info';
       case 'venda_aprovacao_pendente':
       case 'venda_parada_funil':
+      case 'venda_retorno_registrado':
       case 'cliente_fidelidade':
         return 'warn';
       case 'nota_retorno_pre':
@@ -261,6 +262,8 @@ function LayoutPrivado({ children }) {
         return '/vendas/aprovacoes';
       case 'venda_parada_funil':
         return '/funil';
+      case 'venda_retorno_registrado':
+        return id ? `/retornos?venda_id=${id}` : '/retornos';
       case 'cliente_fidelidade':
         return id ? `/clientes/${id}/editar` : '/clientes';
       case 'nota_retorno_pre':

@@ -13,6 +13,7 @@ import { formatDateValue } from '../../utils/datetime';
 const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
+const TIPOS_RETORNO_VENDA = ['venda_retorno_registrado'];
 
 function formatDate(value) {
   return formatDateValue(value, { day: '2-digit', month: '2-digit', year: '2-digit' });
@@ -26,6 +27,7 @@ function tomNotificacao(notification) {
       return 'info';
     case 'venda_aprovacao_pendente':
     case 'venda_parada_funil':
+    case 'venda_retorno_registrado':
     case 'cliente_fidelidade':
       return 'warn';
     case 'nota_retorno_pre':
@@ -63,6 +65,10 @@ function getNotificationTarget(notification) {
 
     if (TIPOS_RETORNO_NOTA.includes(notification.tipo)) {
       return `/vendas?venda_id=${vendaId}&aba=notas`;
+    }
+
+    if (TIPOS_RETORNO_VENDA.includes(notification.tipo)) {
+      return `/retornos?venda_id=${vendaId}`;
     }
 
     return `/vendas?venda_id=${vendaId}`;

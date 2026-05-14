@@ -251,7 +251,7 @@ function VendasAprovacoesPage() {
             </select>
           </div>
 
-          <button type="button" className="btn" onClick={carregar}>
+          <button type="button" className="btn" onClick={carregar} style={{ alignSelf: 'end', height: 38 }}>
             <I.Return size={14} /> Atualizar
           </button>
         </div>

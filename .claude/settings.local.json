@@ -31,7 +31,17 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src\" -Recurse -Filter \"*.tsx\" -o Name)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src\\\\pages\\\\VendasPage\\\\\" | Format-Table Name, @{Name=\"Type\"; Expression={if\\($_.PSIsContainer\\){\"Directory\"}else{\"File\"}}})",
       "Bash(Get-ChildItem -Path . -Recurse -Directory -Name)",
-      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\"\\), \".\" })"
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\"\\), \".\" })",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3306 -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Process -Name \"mysqld\" -ErrorAction SilentlyContinue)",
+      "PowerShell(& \"C:\\\\xampp\\\\mysql\\\\bin\\\\mysqld.exe\" --defaults-file=\"C:\\\\xampp\\\\mysql\\\\bin\\\\my.ini\" --console --standalone 2>&1)",
+      "PowerShell(& \"C:\\\\xampp\\\\mysql\\\\bin\\\\mysql.exe\" -u root -e \"SHOW DATABASES;\" 2>&1)",
+      "PowerShell(Start-Process -FilePath \"C:\\\\xampp\\\\mysql\\\\bin\\\\mysqld.exe\" -ArgumentList '--defaults-file=C:\\\\xampp\\\\mysql\\\\bin\\\\my.ini','--standalone' -WindowStyle Hidden)",
+      "Bash(findstr /i \"Notificacao Venda\")",
+      "Bash(node --check backend/src/services/venda-notificacao-retorno.service.js)",
+      "Bash(node --check backend/src/services/venda.service.js)",
+      "Bash(node --check backend/src/services/notificacao.service.js)",
+      "Bash(Select-Object Name)"
     ]
   }
 }

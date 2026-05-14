@@ -6,6 +6,7 @@ const Cliente = require('../models/Cliente');
 const clienteService = require('./cliente.service');
 const vendaArquivoService = require('./venda-arquivo.service');
 const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
+const vendaNotificacaoRetornoService = require('./venda-notificacao-retorno.service');
 const vendaAprovacaoService = require('./venda-aprovacao.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
 
@@ -501,6 +502,9 @@ function montarPayload(dados) {
     payload.operadora_id = Number(payload.operadora_id);
   }
 
+  if (payload.operadora_atual_id !== undefined && payload.operadora_atual_id !== null) {
+    payload.operadora_atual_id = Number(payload.operadora_atual_id);
+  }
 
   if (payload.cliente_id !== undefined && payload.cliente_id !== null) {
     payload.cliente_id = Number(payload.cliente_id);
@@ -625,10 +629,21 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
     nome_representante_legal: payload.nome_representante_legal || (
       cliente.responsavel_tipo === 'rl' ? cliente.responsavel_nome : null
     ),
+    email_representante_legal: payload.email_representante_legal || (
+      cliente.responsavel_tipo === 'rl' ? cliente.email : null
+    ),
+    telefone_representante_legal: payload.telefone_representante_legal || (
+      cliente.responsavel_tipo === 'rl' ? (telefoneWhatsapp || null) : null
+    ),
     nome_administrador: payload.nome_administrador || (
       cliente.responsavel_tipo === 'adm' ? cliente.responsavel_nome : null
     ),
-    quantidade_linhas: payload.quantidade_linhas || cliente.quantidade_chips
+    email_administrador: payload.email_administrador || (
+      cliente.responsavel_tipo === 'adm' ? cliente.email : null
+    ),
+    telefone_administrador: payload.telefone_administrador || (
+      cliente.responsavel_tipo === 'adm' ? (telefoneWhatsapp || null) : null
+    )
   };
 }
 
@@ -1758,6 +1773,14 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 
       await vendaNotificacaoParadaService.desativarNotificacaoVendaParada(id, statusAnterior, trx);
 
+      await vendaNotificacaoRetornoService.criarOuAtualizarNotificacaoRetorno({
+        venda: atualizada,
+        statusAnterior,
+        motivo,
+        usuarioId,
+        trx
+      });
+
       return atualizada;
     });
 
@@ -1797,6 +1820,8 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
         createdAt: agora,
         trx
       });
+
+      await vendaNotificacaoRetornoService.desativarNotificacaoRetorno(id, trx);
 
       return atualizada;
     });
