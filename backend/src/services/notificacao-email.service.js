@@ -7,6 +7,27 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 let transporter = null;
 
+function emailUser() {
+  return process.env.EMAIL || process.env.SMTP_USER || '';
+}
+
+function emailPassword() {
+  return process.env.EMAIL_PASSWORD || process.env.SMTP_PASS || '';
+}
+
+function emailHost() {
+  return process.env.EMAIL_HOST || process.env.SMTP_HOST || 'smtp.hostinger.com';
+}
+
+function emailPort() {
+  return Number(process.env.EMAIL_PORT || process.env.SMTP_PORT || 465);
+}
+
+function emailSecure() {
+  const valor = process.env.EMAIL_SECURE || process.env.SMTP_SECURE || 'true';
+  return String(valor) !== 'false';
+}
+
 function parseDados(dados) {
   if (!dados) return {};
   if (typeof dados === 'string') {
@@ -21,7 +42,7 @@ function parseDados(dados) {
 }
 
 function emailConfigurado() {
-  return Boolean(process.env.EMAIL && process.env.EMAIL_PASSWORD);
+  return Boolean(emailUser() && emailPassword());
 }
 
 function getTransporter() {
@@ -29,12 +50,12 @@ function getTransporter() {
 
   if (!transporter) {
     transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.hostinger.com',
-      port: Number(process.env.EMAIL_PORT || 465),
-      secure: String(process.env.EMAIL_SECURE || 'true') !== 'false',
+      host: emailHost(),
+      port: emailPort(),
+      secure: emailSecure(),
       auth: {
-        user: process.env.EMAIL,
-        pass: process.env.EMAIL_PASSWORD
+        user: emailUser(),
+        pass: emailPassword()
       }
     });
   }
@@ -250,7 +271,7 @@ async function enviarEmailDestinatario({ notificacao, destinatario, usuario }) {
   };
 
   await mailer.sendMail({
-    from: `"Pos-venda Avance VIP" <${process.env.EMAIL}>`,
+    from: `"Pos-venda Avance VIP" <${emailUser()}>`,
     to: usuario.email,
     subject: `[Pos-venda] ${notificacao.titulo}`,
     html: montarHtml(payload),
