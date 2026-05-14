@@ -90,19 +90,12 @@ function getReturnObservation(venda) {
   return dados.observacao || registro.observacao || '';
 }
 
-function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm, onSaveObservation }) {
+function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
   const [note, setNote] = useState('');
-  const [returnObservation, setReturnObservation] = useState(() => getReturnObservation(venda));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [savingObservation, setSavingObservation] = useState(false);
   const destination = getDestination(venda);
-  const originalObservation = getReturnObservation(venda);
-
-  useEffect(() => {
-    setReturnObservation(getReturnObservation(venda));
-    setSavingObservation(false);
-  }, [venda]);
+  const returnObservation = getReturnObservation(venda);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -120,19 +113,6 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm, onSaveObse
     } catch (err) {
       setError(err.message || 'Erro ao atualizar status.');
       setSaving(false);
-    }
-  }
-
-  async function handleSaveObservation() {
-    setSavingObservation(true);
-    setError('');
-
-    try {
-      await onSaveObservation(venda, returnObservation.trim());
-      setSavingObservation(false);
-    } catch (err) {
-      setError(err.message || 'Erro ao salvar observacao do retorno.');
-      setSavingObservation(false);
     }
   }
 
@@ -168,20 +148,12 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm, onSaveObse
             <textarea
               className="obs-textarea return-observation-textarea"
               value={returnObservation}
-              onChange={event => setReturnObservation(event.target.value)}
-              placeholder="Nenhuma observacao foi registrada neste retorno."
+              readOnly
+              placeholder="Nenhuma observação foi registrada neste retorno."
               rows={5}
             />
             <div className="return-observation-actions">
-              <span>{originalObservation ? 'Observação registrada no retorno.' : 'Sem observação registrada.'}</span>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={handleSaveObservation}
-                disabled={savingObservation || returnObservation.trim() === originalObservation.trim()}
-              >
-                {savingObservation ? 'Salvando...' : 'Salvar observacao'}
-              </button>
+              <span>{returnObservation ? 'Observação registrada no retorno.' : 'Sem observação registrada.'}</span>
             </div>
           </div>
 
@@ -290,22 +262,6 @@ function RetornosPage() {
     setSelectedReturn(null);
   }
 
-  async function handleSaveReturnObservation(venda, observacao) {
-    const vendaAtualizada = await atualizarStatusVenda(venda.id, {
-      status_funil: 'retorno',
-      motivo_retorno: venda.motivo_retorno,
-      observacao
-    });
-
-    setAllReturns(prev => prev.map(item => (
-      item.id === venda.id ? vendaAtualizada : item
-    )));
-    setAllSales(prev => prev.map(item => (
-      item.id === venda.id ? vendaAtualizada : item
-    )));
-    setSelectedReturn(vendaAtualizada);
-  }
-
   return (
     <LayoutPrivado>
       {selectedReturn && (
@@ -314,7 +270,6 @@ function RetornosPage() {
           stageLabels={stageLabels}
           onClose={() => setSelectedReturn(null)}
           onConfirm={handleResolveReturn}
-          onSaveObservation={handleSaveReturnObservation}
         />
       )}
 

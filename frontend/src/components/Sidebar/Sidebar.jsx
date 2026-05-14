@@ -27,7 +27,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
     { id: 'futuros-clientes', label: 'Futuros Clientes', icon: <I.Calendar />, permission: ['futuros_clientes_ver'] },
     { id: 'funil', label: 'Funil de vendas', icon: <I.Funnel />, badge: counts?.active, permission: 'funil_vendas' },
     { id: 'aprovacoes', label: 'Aprovações', icon: <I.Shield />, badge: counts?.aprovacoes, alert: counts?.aprovacoes > 0, permission: 'vendas_aprovacoes_visualizar' },
-    { id: 'retornos', label: 'Retornos', icon: <I.Return />, badge: counts?.returns, permission: 'vendas' },
+    { id: 'retornos', label: 'Retornos', icon: <I.Return />, badge: counts?.returns, permission: ['vendas_ver_proprias', 'vendas_ver_todas', 'ver_vendas_compartilhadas'] },
     { id: 'relatorios', label: 'Relatórios', icon: <I.Chart />, permission: 'relatorios_visualizar' },
     { id: 'historico', label: 'Histórico', icon: <I.History />, permission: 'historico_visualizar' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
