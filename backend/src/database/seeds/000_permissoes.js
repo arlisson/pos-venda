@@ -190,6 +190,11 @@ const PERMISSOES = [
     descricao: 'Permite receber todas as notificações geradas pelo sistema.'
   },
   {
+    chave: 'notificacoes_receber_email',
+    nome: 'Notificacoes: receber por email',
+    descricao: 'Permite receber por email as notificacoes destinadas ao usuario.'
+  },
+  {
     chave: 'vendas_fechamento_mensal',
     nome: 'Vendas: fechamento mensal',
     descricao: 'Permite acessar a página de fechamento mensal de vendas e gerenciar planos com taxa de comissão.'

@@ -4,6 +4,7 @@ const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PERMISSAO_RECEBER_EMAIL = 'notificacoes_receber_email';
 
 let transporter = null;
 
@@ -50,6 +51,33 @@ function parseDados(dados) {
   }
 
   return dados;
+}
+
+function parsePermissoes(permissoes) {
+  if (!permissoes) return [];
+  if (Array.isArray(permissoes)) return permissoes;
+
+  if (typeof permissoes === 'string') {
+    try {
+      return parsePermissoes(JSON.parse(permissoes));
+    } catch {
+      return [];
+    }
+  }
+
+  return Object.entries(permissoes)
+    .filter(([, permitido]) => permitido === true)
+    .map(([chave]) => chave);
+}
+
+function usuarioPodeReceberEmail(usuario) {
+  if (!usuario?.ativo) return false;
+  if (usuario.role?.nome === 'admin') return true;
+
+  return [
+    ...parsePermissoes(usuario.permissoes),
+    ...parsePermissoes(usuario.role?.permissoes)
+  ].includes(PERMISSAO_RECEBER_EMAIL);
 }
 
 function emailConfigurado() {
@@ -261,9 +289,16 @@ function montarTexto({ notificacao, usuario, actionUrl, actionLabel, detalhes })
 }
 
 async function enviarEmailDestinatario({ notificacao, destinatario, usuario }) {
-  if (!usuario?.ativo || !EMAIL_RE.test(String(usuario.email || '').trim())) {
+  if (!usuarioPodeReceberEmail(usuario)) {
     await NotificacaoDestinatario.query()
-      .patch({ email_erro: 'Usuario inativo ou email invalido.' })
+      .patch({ email_erro: 'Usuario sem permissao para receber notificacoes por email.' })
+      .where('id', destinatario.id);
+    return false;
+  }
+
+  if (!EMAIL_RE.test(String(usuario.email || '').trim())) {
+    await NotificacaoDestinatario.query()
+      .patch({ email_erro: 'Email invalido.' })
       .where('id', destinatario.id);
     return false;
   }
@@ -361,7 +396,9 @@ async function enviarEmailsPendentes(notificacaoId) {
 
   for (const destinatario of destinatarios) {
     try {
-      const usuario = await Usuario.query().findById(destinatario.usuario_id);
+      const usuario = await Usuario.query()
+        .findById(destinatario.usuario_id)
+        .withGraphFetched('role');
       const enviado = await enviarEmailDestinatario({ notificacao, destinatario, usuario });
       if (enviado) enviados += 1;
     } catch (error) {
@@ -398,6 +435,7 @@ module.exports = {
   enviarEmailsPendentesAsync,
   enviarEmailTeste,
   statusConfiguracao,
+  PERMISSAO_RECEBER_EMAIL,
   _internals: {
     montarAcao,
     montarHtml,
