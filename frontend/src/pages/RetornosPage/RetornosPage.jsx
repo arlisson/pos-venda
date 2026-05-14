@@ -116,22 +116,6 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
     }
   }
 
-<<<<<<< HEAD
-  async function handleSaveObservation() {
-    setSavingObservation(true);
-    setError('');
-
-    try {
-      await onSaveObservation(venda, returnObservation.trim());
-      setSavingObservation(false);
-    } catch (err) {
-      setError(err.message || 'Erro ao salvar observação do retorno.');
-      setSavingObservation(false);
-    }
-  }
-
-=======
->>>>>>> 23fa30514abc689ffca4dc7b2ebdb7f01adf6908
   return (
     <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
       <form className="modal return-status-modal" onSubmit={handleSubmit}>
@@ -169,19 +153,7 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
               rows={5}
             />
             <div className="return-observation-actions">
-<<<<<<< HEAD
-              <span>{originalObservation ? 'Observação registrada no retorno.' : 'Sem observação registrada.'}</span>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={handleSaveObservation}
-                disabled={savingObservation || returnObservation.trim() === originalObservation.trim()}
-              >
-                {savingObservation ? 'Salvando...' : 'Salvar observação'}
-              </button>
-=======
               <span>{returnObservation ? 'Observação registrada no retorno.' : 'Sem observação registrada.'}</span>
->>>>>>> 23fa30514abc689ffca4dc7b2ebdb7f01adf6908
             </div>
           </div>
 
