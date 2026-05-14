@@ -66,6 +66,7 @@ function VendasAprovacoesPage() {
   const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
   const podeCompartilharVenda = temPermissao(usuario, 'compartilhar_venda');
   const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
+  const podeAdicionarDocumentosVenda = temPermissao(usuario, 'adicionar_documentos');
   const [status, setStatus] = useState(searchParams.get('status') || 'pendente');
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -332,7 +333,7 @@ function VendasAprovacoesPage() {
                       <div className="aprovacoes-actions">
                         <button
                           type="button"
-                          className="btn btn-sm btn-ghost"
+                          className="btn btn-sm btn-ghost aprovacao-action-open"
                           disabled={carregandoVendaId === solicitacao.venda_id}
                           onClick={() => abrirVenda(solicitacao)}
                         >
@@ -343,7 +344,7 @@ function VendasAprovacoesPage() {
                           <>
                             <button
                               type="button"
-                              className="btn btn-sm btn-primary"
+                              className="btn btn-sm btn-primary aprovacao-action-approve"
                               disabled={salvandoId === solicitacao.id}
                               onClick={() => aprovar(solicitacao)}
                             >
@@ -351,7 +352,7 @@ function VendasAprovacoesPage() {
                             </button>
                             <button
                               type="button"
-                              className="btn btn-sm btn-ghost"
+                              className="btn btn-sm btn-ghost aprovacao-action-reject"
                               disabled={salvandoId === solicitacao.id}
                               onClick={() => {
                                 setRecusando(solicitacao);
@@ -423,6 +424,7 @@ function VendasAprovacoesPage() {
           podeEditarVenda={podeEditarVenda}
           podeCompartilharVenda={podeCompartilharVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
+          podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
           usuarioLogado={usuario}
           initialTab="venda"
           initialProblemaId={null}

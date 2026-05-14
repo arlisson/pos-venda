@@ -71,8 +71,13 @@ export const GRUPOS_PERMISSOES = [
           },
           {
             chave: 'vendas_documentos',
-            nome: 'Documentos',
-            descricao: 'Libera a aba de documentos e downloads da venda.'
+            nome: 'Visualizar documentos',
+            descricao: 'Libera listagem, visualizacao e downloads de documentos da venda.'
+          },
+          {
+            chave: 'adicionar_documentos',
+            nome: 'Adicionar documentos',
+            descricao: 'Permite anexar novos documentos na venda.'
           }
         ]
       },
@@ -264,6 +269,11 @@ export const GRUPOS_PERMISSOES = [
             chave: 'dashboard_resumo_vendas',
             nome: 'Resumo de vendas',
             descricao: 'Mostra os cards Vendas no dia, Valor vendido hoje, Concluídas hoje e Em pipeline.'
+          },
+          {
+            chave: 'campanhas_visualizar',
+            nome: 'Visualizar campanhas',
+            descricao: 'Mostra a seção de campanhas e recompensas na tela inicial.'
           },
           {
             chave: 'campanhas_ver_usuarios',

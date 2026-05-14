@@ -90,6 +90,7 @@ function FechamentoMensalPage() {
   const usuarioLogado = getUsuarioLocal();
   const podeEditarVenda = temPermissao(usuarioLogado, ['vendas_editar', 'pos_venda']);
   const podeVerDocumentosVenda = temPermissao(usuarioLogado, 'vendas_documentos');
+  const podeAdicionarDocumentosVenda = temPermissao(usuarioLogado, 'adicionar_documentos');
   const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const vendasPorCliente = useMemo(() => contarVendasPorCliente(vendas), [vendas]);
 
@@ -332,6 +333,7 @@ function FechamentoMensalPage() {
           vendasPorCliente={vendasPorCliente}
           podeEditarVenda={podeEditarVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
+          podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
           usuarioLogado={usuarioLogado}
           modoEdicao={modalModoEdicao}
           onStartEdit={() => setModalModoEdicao(true)}

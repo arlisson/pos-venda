@@ -7,11 +7,11 @@ const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 router.use(authMiddleware);
 
 router.get('/progresso/usuarios', exigirUmaPermissao(['campanhas_ver_usuarios']), campanhaController.progressoUsuarios);
-router.get('/progresso', campanhaController.progresso);
-router.get('/', campanhaController.index);
+router.get('/progresso', exigirUmaPermissao(['campanhas_visualizar', 'gerenciar_campanhas']), campanhaController.progresso);
+router.get('/', exigirUmaPermissao(['campanhas_visualizar', 'gerenciar_campanhas']), campanhaController.index);
 
 router.post('/', exigirUmaPermissao(['gerenciar_campanhas']), campanhaController.store);
-router.post('/:id/resgatar', campanhaController.resgatar);
+router.post('/:id/resgatar', exigirUmaPermissao(['campanhas_visualizar', 'gerenciar_campanhas']), campanhaController.resgatar);
 
 router.put('/', exigirUmaPermissao(['gerenciar_campanhas']), campanhaController.updateBulk); 
 

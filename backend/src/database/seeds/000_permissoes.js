@@ -46,8 +46,13 @@ const PERMISSOES = [
   },
   {
     chave: 'vendas_documentos',
-    nome: 'Vendas: documentos',
-    descricao: 'Permite visualizar a aba de documentos da venda.'
+    nome: 'Vendas: visualizar documentos',
+    descricao: 'Permite visualizar, baixar e listar documentos da venda.'
+  },
+  {
+    chave: 'adicionar_documentos',
+    nome: 'Vendas: adicionar documentos',
+    descricao: 'Permite anexar novos documentos em vendas.'
   },
   {
     chave: 'vendas_aprovacoes_visualizar',
@@ -78,6 +83,11 @@ const PERMISSOES = [
     chave: 'dashboard_resumo_vendas',
     nome: 'Início: resumo de vendas',
     descricao: 'Permite visualizar os cards de resumo de vendas na página inicial.'
+  },
+  {
+    chave: 'campanhas_visualizar',
+    nome: 'Campanhas: visualizar',
+    descricao: 'Permite visualizar a secao de campanhas e recompensas na pagina inicial.'
   },
   {
     chave: 'campanhas_ver_usuarios',

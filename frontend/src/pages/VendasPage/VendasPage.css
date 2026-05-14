@@ -343,6 +343,24 @@
   white-space: nowrap;
 }
 
+.aprovacoes-actions .aprovacao-action-open:not(:disabled):hover {
+  color: #1d4ed8 !important;
+  border-color: #bfdbfe !important;
+  background: #eff6ff !important;
+}
+
+.aprovacoes-actions .aprovacao-action-approve:not(:disabled):hover {
+  color: #166534 !important;
+  border-color: #bbf7d0 !important;
+  background: #ecfdf3 !important;
+}
+
+.aprovacoes-actions .aprovacao-action-reject:not(:disabled):hover {
+  color: var(--danger) !important;
+  border-color: #fecaca !important;
+  background: var(--danger-bg) !important;
+}
+
 .funil-sellers-list {
   display: flex;
   align-items: center;
