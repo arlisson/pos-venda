@@ -1,5 +1,6 @@
 const notificacaoService = require('../services/notificacao.service');
 const notificacaoEmailService = require('../services/notificacao-email.service');
+const Usuario = require('../models/Usuario');
 
 async function index(req, res) {
   try {
@@ -53,7 +54,8 @@ async function marcarTodasLidas(req, res) {
 
 async function testarEmail(req, res) {
   try {
-    const resultado = await notificacaoEmailService.enviarEmailTeste(req.usuario);
+    const usuario = await Usuario.query().findById(req.usuario.id);
+    const resultado = await notificacaoEmailService.enviarEmailTeste(usuario);
     return res.json({
       ...resultado,
       config: notificacaoEmailService.statusConfiguracao()
