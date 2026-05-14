@@ -28,6 +28,17 @@ function emailSecure() {
   return String(valor) !== 'false';
 }
 
+function statusConfiguracao() {
+  return {
+    configurado: emailConfigurado(),
+    host: emailHost(),
+    port: emailPort(),
+    secure: emailSecure(),
+    user: emailUser() || null,
+    frontend_url: frontendUrl()
+  };
+}
+
 function parseDados(dados) {
   if (!dados) return {};
   if (typeof dados === 'string') {
@@ -288,6 +299,53 @@ async function enviarEmailDestinatario({ notificacao, destinatario, usuario }) {
   return true;
 }
 
+async function enviarEmailTeste(usuario) {
+  if (!emailConfigurado()) {
+    const error = new Error('SMTP nao configurado. Defina SMTP_USER/SMTP_PASS ou EMAIL/EMAIL_PASSWORD.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!usuario?.ativo || !EMAIL_RE.test(String(usuario.email || '').trim())) {
+    const error = new Error('Usuario logado nao possui email valido para receber o teste.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const mailer = getTransporter();
+  const actionUrl = absoluteUrl('/');
+  const notificacao = {
+    titulo: 'Teste de email do Pos-venda',
+    mensagem: 'Se voce recebeu este email, a conexao SMTP do sistema esta funcionando.'
+  };
+  const payload = {
+    notificacao,
+    usuario,
+    actionUrl,
+    actionLabel: 'Abrir sistema',
+    detalhes: detalhesFromEntries([
+      ['SMTP', `${emailHost()}:${emailPort()}`],
+      ['Remetente', emailUser()]
+    ])
+  };
+
+  const info = await mailer.sendMail({
+    from: `"Pos-venda Avance VIP" <${emailUser()}>`,
+    to: usuario.email,
+    subject: '[Pos-venda] Teste de email',
+    html: montarHtml(payload),
+    text: montarTexto(payload)
+  });
+
+  return {
+    enviado: true,
+    to: usuario.email,
+    message_id: info.messageId || null,
+    accepted: info.accepted || [],
+    rejected: info.rejected || []
+  };
+}
+
 async function enviarEmailsPendentes(notificacaoId) {
   if (!emailConfigurado()) return { enviados: 0, ignorado: true };
 
@@ -338,6 +396,8 @@ function enviarEmailsPendentesAsync(notificacaoId) {
 module.exports = {
   enviarEmailsPendentes,
   enviarEmailsPendentesAsync,
+  enviarEmailTeste,
+  statusConfiguracao,
   _internals: {
     montarAcao,
     montarHtml,

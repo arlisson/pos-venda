@@ -1,4 +1,5 @@
 const notificacaoService = require('../services/notificacao.service');
+const notificacaoEmailService = require('../services/notificacao-email.service');
 
 async function index(req, res) {
   try {
@@ -50,10 +51,27 @@ async function marcarTodasLidas(req, res) {
   }
 }
 
+async function testarEmail(req, res) {
+  try {
+    const resultado = await notificacaoEmailService.enviarEmailTeste(req.usuario);
+    return res.json({
+      ...resultado,
+      config: notificacaoEmailService.statusConfiguracao()
+    });
+  } catch (error) {
+    console.error('Erro ao enviar email de teste:', error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao enviar email de teste.',
+      config: notificacaoEmailService.statusConfiguracao()
+    });
+  }
+}
+
 module.exports = {
   index,
   urgentes,
   marcarLida,
   marcarPopupVisto,
-  marcarTodasLidas
+  marcarTodasLidas,
+  testarEmail
 };
