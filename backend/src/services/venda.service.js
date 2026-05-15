@@ -2039,7 +2039,12 @@ async function excluirVendaDefinitivo(id, usuarioId) {
 }
 
 async function listarVendedoras(usuarioId) {
-  const podeCompartilhar = usuarioId ? await usuarioTemPermissao(usuarioId, 'compartilhar_venda') : true;
+  const podeCompartilhar = usuarioId
+    ? (
+      await usuarioTemPermissao(usuarioId, 'compartilhar_venda')
+      || await usuarioTemPermissao(usuarioId, 'clientes_atribuir_vendedora')
+    )
+    : true;
   const query = Usuario.query()
     .select('id', 'nome', 'email', 'ativo')
     .where('ativo', true)

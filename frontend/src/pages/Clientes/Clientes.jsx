@@ -5,6 +5,7 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import ClienteModal from './ClienteModal';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
+  atribuirDonoCliente,
   excluirCliente,
   importarBaseAnterior,
   limparClientesBaseAnterior,
@@ -13,7 +14,7 @@ import {
 } from '../../services/cliente.service';
 import { listarNotasEntidade } from '../../services/nota.service';
 import { listarEtapasFunil, listarOperadoras } from '../../services/config.service';
-import { listarVendas } from '../../services/venda.service';
+import { listarVendas, listarVendedoras } from '../../services/venda.service';
 import { formatUtcDateTime, getUtcDateTimeTimestamp } from '../../utils/datetime';
 import './Clientes.css';
 
@@ -405,9 +406,11 @@ function Clientes() {
   const podeEditar = temPermissao(usuario, 'clientes_editar');
   const podeExcluir = temPermissao(usuario, 'clientes_excluir');
   const isAdmin = usuario?.role?.nome === 'admin';
+  const podeAtribuirVendedora = isAdmin || temPermissao(usuario, 'clientes_atribuir_vendedora');
 
   const [clientes, setClientes] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
+  const [vendedoras, setVendedoras] = useState([]);
   const [vendas, setVendas] = useState([]);
   const [etapasFunil, setEtapasFunil] = useState([]);
   const [busca, setBusca] = useState('');
@@ -435,6 +438,7 @@ function Clientes() {
   const [notasCliente, setNotasCliente] = useState([]);
   const [carregandoNotasCliente, setCarregandoNotasCliente] = useState(false);
   const [erroNotasCliente, setErroNotasCliente] = useState('');
+  const [atribuindoDonoId, setAtribuindoDonoId] = useState(null);
 
   const filtros = useMemo(() => ({
     busca,
@@ -474,16 +478,18 @@ function Clientes() {
     setCarregando(true);
 
     try {
-      const [dados, operadorasData, vendasData, etapasData] = await Promise.all([
+      const [dados, operadorasData, vendasData, etapasData, vendedorasData] = await Promise.all([
         listarClientes(proximosFiltros),
         listarOperadoras(),
         listarVendas(),
         listarEtapasFunil(),
+        podeAtribuirVendedora ? listarVendedoras() : Promise.resolve([])
       ]);
       setClientes(dados);
       setOperadoras(operadorasData);
       setVendas(vendasData);
       setEtapasFunil(etapasData || []);
+      setVendedoras(vendedorasData || []);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar clientes.');
     } finally {
@@ -642,6 +648,25 @@ function Clientes() {
       setErro(error.message || 'Erro ao limpar clientes da base anterior.');
     } finally {
       setLimpandoBase(false);
+    }
+  }
+
+  async function alterarDonoCliente(cliente, usuarioId) {
+    if (!podeAtribuirVendedora || !usuarioId || Number(usuarioId) === Number(cliente.criado_por_id)) return;
+
+    setAtribuindoDonoId(cliente.id);
+    setErro('');
+
+    try {
+      const atualizado = await atribuirDonoCliente(cliente.id, usuarioId);
+      setClientes(prev => prev.map(item => (
+        Number(item.id) === Number(cliente.id) ? atualizado : item
+      )));
+      setSucesso('Cliente atribuido com sucesso.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao atribuir cliente.');
+    } finally {
+      setAtribuindoDonoId(null);
     }
   }
 
@@ -913,7 +938,27 @@ function Clientes() {
                                 <dt>Operadora</dt>
                                 <dd>{cliente.operadoraAtual?.nome || '-'}</dd>
                                 <dt>Registrado por</dt>
-                                <dd>{cliente.criador?.nome || 'Sem registro'}</dd>
+                                <dd>
+                                  {podeAtribuirVendedora ? (
+                                    <select
+                                      className="cliente-owner-select"
+                                      value={cliente.criado_por_id || ''}
+                                      disabled={atribuindoDonoId === cliente.id}
+                                      onClick={event => event.stopPropagation()}
+                                      onChange={event => {
+                                        event.stopPropagation();
+                                        alterarDonoCliente(cliente, event.target.value);
+                                      }}
+                                    >
+                                      <option value="">Sem registro</option>
+                                      {vendedoras.map(vendedora => (
+                                        <option key={vendedora.id} value={vendedora.id}>{vendedora.nome}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    cliente.criador?.nome || 'Sem registro'
+                                  )}
+                                </dd>
                                 <dt>Valor pago</dt>
                                 <dd>{formatarMoeda(cliente.valor_pago)}</dd>
                                 <dt>Chips</dt>
@@ -967,7 +1012,26 @@ function Clientes() {
                         </td>
                         <td data-label="Operadora" data-mobile-hidden="true">{cliente.operadoraAtual?.nome || '-'}</td>
                         <td data-label="Registrado por" data-mobile-hidden="true">
-                          <span className="tag">{cliente.criador?.nome || 'Sem registro'}</span>
+                          {podeAtribuirVendedora ? (
+                            <select
+                              className="cliente-owner-select"
+                              value={cliente.criado_por_id || ''}
+                              disabled={atribuindoDonoId === cliente.id}
+                              onClick={event => event.stopPropagation()}
+                              onChange={event => {
+                                event.stopPropagation();
+                                alterarDonoCliente(cliente, event.target.value);
+                              }}
+                              title="Atribuir cliente a uma vendedora"
+                            >
+                              <option value="">Sem registro</option>
+                              {vendedoras.map(vendedora => (
+                                <option key={vendedora.id} value={vendedora.id}>{vendedora.nome}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="tag">{cliente.criador?.nome || 'Sem registro'}</span>
+                          )}
                         </td>
                         <td data-label="Valor pago" data-mobile-hidden="true">{formatarMoeda(cliente.valor_pago)}</td>
                         <td data-label="Chips" data-mobile-hidden="true">{cliente.quantidade_chips ?? '-'}</td>

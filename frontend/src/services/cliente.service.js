@@ -60,6 +60,10 @@ export async function atualizarCliente(id, dados) {
   return apiPut(`/clientes/${id}`, dados);
 }
 
+export async function atribuirDonoCliente(id, usuarioId) {
+  return apiPut(`/clientes/${id}/dono`, { usuario_id: usuarioId });
+}
+
 export async function excluirCliente(id) {
   return apiDelete(`/clientes/${id}`);
 }
