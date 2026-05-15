@@ -165,11 +165,10 @@ async function carregarRegrasComissaoAtivas() {
     .select('rc.*', 'o.nome as operadora_nome')
     .where('rc.ativo', true)
     .orderByRaw('rc.operadora_id IS NOT NULL DESC')
-    .orderBy('o.ordem', 'asc')
     .orderBy('o.nome', 'asc')
-    .orderBy('rc.ordem', 'asc')
     .orderBy('rc.valor_min', 'asc')
-    .orderBy('rc.valor_max', 'asc');
+    .orderBy('rc.valor_max', 'asc')
+    .orderBy('rc.id', 'asc');
 }
 
 async function obterCodigoEtapaFinal() {

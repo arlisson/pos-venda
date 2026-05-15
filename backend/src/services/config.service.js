@@ -8,31 +8,43 @@ const RegraComissao = require('../models/RegraComissao');
 const Venda = require('../models/Venda');
 
 function orderConfig(query) {
-  return query.orderBy('ordem', 'asc').orderBy('nome', 'asc');
+  return query.orderBy('nome', 'asc').orderBy('id', 'asc');
+}
+
+function selectConfig(query) {
+  return query.select('id', 'nome', 'ativo', 'created_at', 'updated_at');
+}
+
+function ocultarOrdem(registro) {
+  if (!registro) return registro;
+
+  const json = typeof registro.toJSON === 'function' ? registro.toJSON() : registro;
+  const { ordem, ...semOrdem } = json;
+
+  return semOrdem;
 }
 
 async function listarOperadoras() {
-  return Operadora.query()
-    .orderBy('ordem', 'asc')
-    .orderBy('nome', 'asc');
+  return orderConfig(selectConfig(Operadora.query()));
 }
 
 async function listarLinksExternos() {
   return LinkExterno.query()
-    .orderBy('ordem', 'asc')
-    .orderBy('nome', 'asc');
+    .select('id', 'chave', 'nome', 'url', 'dot', 'ativo', 'created_at', 'updated_at')
+    .orderBy('nome', 'asc')
+    .orderBy('id', 'asc');
 }
 
 async function listarTiposProduto() {
-  return orderConfig(TipoProduto.query());
+  return orderConfig(selectConfig(TipoProduto.query()));
 }
 
 async function listarTiposVenda() {
-  return orderConfig(TipoVenda.query());
+  return orderConfig(selectConfig(TipoVenda.query()));
 }
 
 async function listarServicos() {
-  return orderConfig(Servico.query());
+  return orderConfig(selectConfig(Servico.query()));
 }
 
 async function listarFunilEtapas() {
@@ -45,32 +57,41 @@ async function listarRegrasComissao() {
   return RegraComissao.query()
     .alias('rc')
     .leftJoin('operadoras as o', 'rc.operadora_id', 'o.id')
-    .select('rc.*', 'o.nome as operadora_nome')
+    .select(
+      'rc.id',
+      'rc.operadora_id',
+      'rc.valor_min',
+      'rc.valor_max',
+      'rc.valor_comissao',
+      'rc.valor_comissao_base',
+      'rc.valor_comissao_base_propria',
+      'rc.prioridade_base_dupla',
+      'rc.ativo',
+      'rc.created_at',
+      'rc.updated_at',
+      'o.nome as operadora_nome'
+    )
     .orderByRaw('rc.operadora_id IS NOT NULL DESC')
-    .orderBy('o.ordem', 'asc')
     .orderBy('o.nome', 'asc')
-    .orderBy('rc.ordem', 'asc')
     .orderBy('rc.valor_min', 'asc')
-    .orderBy('rc.valor_max', 'asc');
+    .orderBy('rc.valor_max', 'asc')
+    .orderBy('rc.id', 'asc');
 }
 
 async function listarOperadorasAtivas() {
-  return Operadora.query()
-    .where('ativo', true)
-    .orderBy('ordem', 'asc')
-    .orderBy('nome', 'asc');
+  return orderConfig(selectConfig(Operadora.query().where('ativo', true)));
 }
 
 async function listarTiposProdutoAtivos() {
-  return orderConfig(TipoProduto.query().where('ativo', true));
+  return orderConfig(selectConfig(TipoProduto.query().where('ativo', true)));
 }
 
 async function listarTiposVendaAtivos() {
-  return orderConfig(TipoVenda.query().where('ativo', true));
+  return orderConfig(selectConfig(TipoVenda.query().where('ativo', true)));
 }
 
 async function listarServicosAtivos() {
-  return orderConfig(Servico.query().where('ativo', true));
+  return orderConfig(selectConfig(Servico.query().where('ativo', true)));
 }
 
 async function listarFunilEtapasAtivas() {
@@ -83,30 +104,44 @@ async function listarFunilEtapasAtivas() {
 async function listarLinksExternosAtivos() {
   return LinkExterno.query()
     .where('ativo', true)
-    .orderBy('ordem', 'asc')
-    .orderBy('nome', 'asc');
+    .select('id', 'chave', 'nome', 'url', 'dot', 'ativo', 'created_at', 'updated_at')
+    .orderBy('nome', 'asc')
+    .orderBy('id', 'asc');
 }
 
 async function listarRegrasComissaoAtivas() {
   return RegraComissao.query()
     .alias('rc')
     .leftJoin('operadoras as o', 'rc.operadora_id', 'o.id')
-    .select('rc.*', 'o.nome as operadora_nome')
+    .select(
+      'rc.id',
+      'rc.operadora_id',
+      'rc.valor_min',
+      'rc.valor_max',
+      'rc.valor_comissao',
+      'rc.valor_comissao_base',
+      'rc.valor_comissao_base_propria',
+      'rc.prioridade_base_dupla',
+      'rc.ativo',
+      'rc.created_at',
+      'rc.updated_at',
+      'o.nome as operadora_nome'
+    )
     .where('rc.ativo', true)
     .orderByRaw('rc.operadora_id IS NOT NULL DESC')
-    .orderBy('o.ordem', 'asc')
     .orderBy('o.nome', 'asc')
-    .orderBy('rc.ordem', 'asc')
     .orderBy('rc.valor_min', 'asc')
-    .orderBy('rc.valor_max', 'asc');
+    .orderBy('rc.valor_max', 'asc')
+    .orderBy('rc.id', 'asc');
 }
 
 async function criarOperadora(dados) {
-  return Operadora.query().insert({
+  const operadora = await Operadora.query().insert({
     nome: dados.nome,
-    ativo: dados.ativo ?? true,
-    ordem: dados.ordem ?? 0
+    ativo: dados.ativo ?? true
   });
+
+  return ocultarOrdem(operadora);
 }
 
 async function atualizarOperadora(id, dados) {
@@ -114,9 +149,9 @@ async function atualizarOperadora(id, dados) {
 
   if (dados.nome !== undefined) atualizacao.nome = dados.nome;
   if (dados.ativo !== undefined) atualizacao.ativo = dados.ativo;
-  if (dados.ordem !== undefined) atualizacao.ordem = dados.ordem;
 
-  return Operadora.query().patchAndFetchById(id, atualizacao);
+  const operadora = await Operadora.query().patchAndFetchById(id, atualizacao);
+  return ocultarOrdem(operadora);
 }
 
 async function excluirOperadora(id) {
@@ -124,11 +159,12 @@ async function excluirOperadora(id) {
 }
 
 async function criarTipoProduto(dados) {
-  return TipoProduto.query().insert({
+  const tipoProduto = await TipoProduto.query().insert({
     nome: dados.nome,
-    ativo: dados.ativo ?? true,
-    ordem: dados.ordem ?? 0
+    ativo: dados.ativo ?? true
   });
+
+  return ocultarOrdem(tipoProduto);
 }
 
 async function atualizarTipoProduto(id, dados) {
@@ -136,9 +172,9 @@ async function atualizarTipoProduto(id, dados) {
 
   if (dados.nome !== undefined) atualizacao.nome = dados.nome;
   if (dados.ativo !== undefined) atualizacao.ativo = dados.ativo;
-  if (dados.ordem !== undefined) atualizacao.ordem = dados.ordem;
 
-  return TipoProduto.query().patchAndFetchById(id, atualizacao);
+  const tipoProduto = await TipoProduto.query().patchAndFetchById(id, atualizacao);
+  return ocultarOrdem(tipoProduto);
 }
 
 async function excluirTipoProduto(id) {
@@ -146,11 +182,12 @@ async function excluirTipoProduto(id) {
 }
 
 async function criarTipoVenda(dados) {
-  return TipoVenda.query().insert({
+  const tipoVenda = await TipoVenda.query().insert({
     nome: dados.nome,
-    ativo: dados.ativo ?? true,
-    ordem: dados.ordem ?? 0
+    ativo: dados.ativo ?? true
   });
+
+  return ocultarOrdem(tipoVenda);
 }
 
 async function atualizarTipoVenda(id, dados) {
@@ -158,9 +195,9 @@ async function atualizarTipoVenda(id, dados) {
 
   if (dados.nome !== undefined) atualizacao.nome = dados.nome;
   if (dados.ativo !== undefined) atualizacao.ativo = dados.ativo;
-  if (dados.ordem !== undefined) atualizacao.ordem = dados.ordem;
 
-  return TipoVenda.query().patchAndFetchById(id, atualizacao);
+  const tipoVenda = await TipoVenda.query().patchAndFetchById(id, atualizacao);
+  return ocultarOrdem(tipoVenda);
 }
 
 async function excluirTipoVenda(id) {
@@ -168,11 +205,12 @@ async function excluirTipoVenda(id) {
 }
 
 async function criarServico(dados) {
-  return Servico.query().insert({
+  const servico = await Servico.query().insert({
     nome: dados.nome,
-    ativo: dados.ativo ?? true,
-    ordem: dados.ordem ?? 0
+    ativo: dados.ativo ?? true
   });
+
+  return ocultarOrdem(servico);
 }
 
 async function atualizarServico(id, dados) {
@@ -180,9 +218,9 @@ async function atualizarServico(id, dados) {
 
   if (dados.nome !== undefined) atualizacao.nome = dados.nome;
   if (dados.ativo !== undefined) atualizacao.ativo = dados.ativo;
-  if (dados.ordem !== undefined) atualizacao.ordem = dados.ordem;
 
-  return Servico.query().patchAndFetchById(id, atualizacao);
+  const servico = await Servico.query().patchAndFetchById(id, atualizacao);
+  return ocultarOrdem(servico);
 }
 
 async function excluirServico(id) {
@@ -339,8 +377,7 @@ function normalizarRegraComissao(dados) {
     valor_comissao_base: Number(valorComissaoBase.toFixed(2)),
     valor_comissao_base_propria: Number(valorComissaoBasePropria.toFixed(2)),
     prioridade_base_dupla: prioridadeBaseDupla,
-    ativo: dados.ativo ?? true,
-    ordem: Number(dados.ordem || 0)
+    ativo: dados.ativo ?? true
   };
 }
 
@@ -370,7 +407,8 @@ async function criarRegraComissao(dados) {
   const regra = normalizarRegraComissao(dados);
   await validarSobreposicaoRegraComissao(regra);
 
-  return RegraComissao.query().insert(regra);
+  const regraCriada = await RegraComissao.query().insert(regra);
+  return ocultarOrdem(regraCriada);
 }
 
 async function atualizarRegraComissao(id, dados) {
@@ -386,12 +424,12 @@ async function atualizarRegraComissao(id, dados) {
     valor_comissao_base: dados.valor_comissao_base ?? atual.valor_comissao_base ?? atual.valor_comissao,
     valor_comissao_base_propria: dados.valor_comissao_base_propria ?? atual.valor_comissao_base_propria ?? atual.valor_comissao_base ?? atual.valor_comissao,
     prioridade_base_dupla: dados.prioridade_base_dupla ?? atual.prioridade_base_dupla ?? 'base_propria',
-    ativo: dados.ativo ?? atual.ativo,
-    ordem: dados.ordem ?? atual.ordem
+    ativo: dados.ativo ?? atual.ativo
   });
   await validarSobreposicaoRegraComissao(regra, id);
 
-  return RegraComissao.query().patchAndFetchById(id, regra);
+  const regraAtualizada = await RegraComissao.query().patchAndFetchById(id, regra);
+  return ocultarOrdem(regraAtualizada);
 }
 
 async function excluirRegraComissao(id) {
@@ -399,14 +437,15 @@ async function excluirRegraComissao(id) {
 }
 
 async function criarLinkExterno(dados) {
-  return LinkExterno.query().insert({
+  const link = await LinkExterno.query().insert({
     chave: dados.chave,
     nome: dados.nome,
     url: dados.url,
     dot: dados.dot || null,
-    ativo: dados.ativo ?? true,
-    ordem: dados.ordem ?? 0
+    ativo: dados.ativo ?? true
   });
+
+  return ocultarOrdem(link);
 }
 
 async function atualizarLinkExterno(id, dados) {
@@ -417,9 +456,9 @@ async function atualizarLinkExterno(id, dados) {
   if (dados.url !== undefined) atualizacao.url = dados.url;
   if (dados.dot !== undefined) atualizacao.dot = dados.dot || null;
   if (dados.ativo !== undefined) atualizacao.ativo = dados.ativo;
-  if (dados.ordem !== undefined) atualizacao.ordem = dados.ordem;
 
-  return LinkExterno.query().patchAndFetchById(id, atualizacao);
+  const link = await LinkExterno.query().patchAndFetchById(id, atualizacao);
+  return ocultarOrdem(link);
 }
 
 async function excluirLinkExterno(id) {
