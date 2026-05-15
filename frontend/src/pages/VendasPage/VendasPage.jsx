@@ -98,7 +98,7 @@ const VENDA_VAZIA = {
   uf_real: '',
   ponto_referencia: '',
   tipo_local_cpf: '',
-  // Aceite e recebimento
+  // Aceite
   horario_aceite_voz: '',
   horario_aceite_inicio: '',
   horario_aceite_fim: '',
@@ -240,7 +240,7 @@ const CAMPOS = [
   { name: 'ponto_referencia', label: 'Ponto de referência', type: 'longText', span: true },
   { name: 'tipo_local_cpf', label: 'Venda CPF: casa, hotel, condomínio, shopping...', type: 'longText', span: true },
 
-  { section: 'Aceite e recebimento' },
+  { section: 'Aceite' },
   { name: 'horario_aceite_range', label: 'Janela do aceite', type: 'timeRange', nameDe: 'horario_aceite_inicio', nameAte: 'horario_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
   { name: 'dia_aceite_range', label: 'Dias para aceite', type: 'dayRange', nameDe: 'dia_aceite_inicio', nameAte: 'dia_aceite_fim', labelDe: 'De', labelAte: 'Até', span: true },
   { name: 'protocolo', label: 'Protocolo do Cliente', span: true },
@@ -2414,11 +2414,16 @@ function VendasPage() {
         setModalModoEdicao(false);
         setVendaInicial(null);
         setModalAberto(true);
-        navigate('/vendas', { replace: true });
       })
       .catch(error => setErro(error.message || 'Erro ao abrir venda.'));
   }, [searchParams, navigate, podeAcessarDocumentosVenda]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  function limparRotaModalVenda() {
+    if (searchParams.has('venda_id') || searchParams.has('aba') || searchParams.has('problema_id')) {
+      navigate('/vendas', { replace: true });
+    }
+  }
 
   function abrirVisualizacao(venda) {
     setModalVenda(venda);
@@ -2439,6 +2444,7 @@ function VendasPage() {
       await criarVenda(dados);
     }
 
+    limparRotaModalVenda();
     setModalAberto(false);
     setModalVenda(null);
     setModalAbaInicial('venda');
@@ -2455,6 +2461,7 @@ function VendasPage() {
   async function enviarPosVenda(venda) {
     setErro('');
     const resultado = await enviarVendaParaPosVenda(venda.id);
+    limparRotaModalVenda();
     setModalAberto(false);
     setModalVenda(null);
     setModalAbaInicial('venda');
@@ -2608,13 +2615,14 @@ function VendasPage() {
 
   const totalColunasVendas = 11 + (podeOperarPosVenda ? 2 : 0) + (podeExcluirVenda ? 1 : 0);
   const larguraColunaAcao = 60;
-  const larguraColunaContato = 76;
+  const larguraColunaContato = 104;
   const offsetAcoesFinais = (podeOperarPosVenda ? larguraColunaAcao : 0) + (podeExcluirVenda ? larguraColunaAcao : 0);
 
   return (
     <LayoutPrivado>
       {modalAberto && (
         <VendaModal
+          key={`${modalVenda?.id || 'nova'}-${modalAbaInicial}-${modalProblemaInicial || ''}`}
           venda={modalVenda}
           initialValues={vendaInicial}
           initialDraft={vendaCadastroDraft}
@@ -2636,6 +2644,7 @@ function VendasPage() {
           modoEdicao={modalModoEdicao}
           onStartEdit={() => setModalModoEdicao(true)}
           onClose={() => {
+            limparRotaModalVenda();
             setModalAberto(false);
             setModalVenda(null);
             setModalAbaInicial('venda');
@@ -2895,7 +2904,7 @@ function VendasPage() {
                     return (
                     <tr
                       key={venda.id}
-                      className="clickable-row"
+                      className="clickable-row is-tappable"
                       role="button"
                       tabIndex={0}
                       onClick={() => abrirVisualizacao(venda)}
@@ -2906,7 +2915,7 @@ function VendasPage() {
                         }
                       }}
                     >
-                      <td>
+                      <td data-label="Cliente" className="m-primary">
                         <div className="vendas-table-name">
                           <div className="vendas-table-name__title">
                             <strong>{venda.cliente?.nome || venda.nome}</strong>
@@ -2959,20 +2968,43 @@ function VendasPage() {
                               || '-'}
                             {venda.cliente_excluido_permanentemente_cnpj ? ` - ${venda.cliente_excluido_permanentemente_cnpj}` : ''}
                           </span>
+                          <details className="mobile-row-drawer">
+                            <summary>Ver detalhes da venda</summary>
+                            <dl>
+                              <dt>Operadora</dt>
+                              <dd>{venda.operadora?.nome || '-'}</dd>
+                              <dt>Tipo</dt>
+                              <dd>{obterTipoVendaTabela(venda)}</dd>
+                              <dt>Produto</dt>
+                              <dd>{venda.servico?.nome || '-'}</dd>
+                              <dt>Linhas</dt>
+                              <dd>{venda.quantidade_linhas || '-'}</dd>
+                              <dt>GB</dt>
+                              <dd>{venda.gb || '-'}</dd>
+                              <dt>Venc.</dt>
+                              <dd>{venda.dia_vencimento || '-'}</dd>
+                              <dt>Venda</dt>
+                              <dd>{formatarData(venda.data_venda)}</dd>
+                              <dt>Ativacao</dt>
+                              <dd>{formatarData(venda.data_ativacao)}</dd>
+                              <dt>Vendedor(a)</dt>
+                              <dd>{obterVendedorasMensagem(venda)}</dd>
+                            </dl>
+                          </details>
                         </div>
                       </td>
-                      <td><span className="tag">{venda.operadora?.nome || '-'}</span></td>
-                      <td>{obterTipoVendaTabela(venda)}</td>
-                      <td>{venda.servico?.nome || '-'}</td>
-                      <td>{venda.quantidade_linhas || '-'}</td>
-                      <td>{venda.gb || '-'}</td>
-                      <td className="vendas-value">{formatarMoeda(venda.valor_total)}</td>
-                      <td>{venda.dia_vencimento || '-'}</td>
-                      <td>{formatarData(venda.data_venda)}</td>
-                      <td>{formatarData(venda.data_ativacao)}</td>
-                      <td><span className="tag">{obterVendedorasMensagem(venda)}</span></td>
+                      <td data-label="Operadora" className="m-secondary"><span className="tag">{venda.operadora?.nome || '-'}</span> · {obterTipoVendaTabela(venda)}</td>
+                      <td data-label="Tipo" data-mobile-hidden="true">{obterTipoVendaTabela(venda)}</td>
+                      <td data-label="Produto" data-mobile-hidden="true">{venda.servico?.nome || '-'}</td>
+                      <td data-label="Linhas" data-mobile-hidden="true">{venda.quantidade_linhas || '-'}</td>
+                      <td data-label="GB" data-mobile-hidden="true">{venda.gb || '-'}</td>
+                      <td data-label="Valor" className="vendas-value m-meta">{formatarMoeda(venda.valor_total)}</td>
+                      <td data-label="Venc." data-mobile-hidden="true">{venda.dia_vencimento || '-'}</td>
+                      <td data-label="Venda" data-mobile-hidden="true">{formatarData(venda.data_venda)}</td>
+                      <td data-label="Ativacao" data-mobile-hidden="true">{formatarData(venda.data_ativacao)}</td>
+                      <td data-label="Vendedor(a)" data-mobile-hidden="true"><span className="tag">{obterVendedorasMensagem(venda)}</span></td>
                       {podeOperarPosVenda && (
-                        <td className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
+                        <td data-label="Contato" className="vendas-actions-col vendas-email-actions-col vendas-mobile-actions m-actions" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
                           <div className="vendas-contact-actions">
                             <button
                               className="btn btn-icon btn-ghost vendas-whatsapp-btn"
@@ -2983,6 +3015,7 @@ function VendasPage() {
                               }}
                             >
                               <I.Whatsapp size={13} />
+                              <span className="mobile-action-label">WhatsApp</span>
                             </button>
                             <button
                               className="btn btn-icon btn-ghost vendas-email-btn"
@@ -2994,6 +3027,7 @@ function VendasPage() {
                               }}
                             >
                               <I.Mail size={13} />
+                              <span className="mobile-action-label">E-mail</span>
                             </button>
                             {/claro/i.test(venda.operadora?.nome) && (
                             <button
@@ -3006,13 +3040,25 @@ function VendasPage() {
                               }}
                             >
                               <I.TableSheet size={13} />
+                              <span className="mobile-action-label">Planilha</span>
                             </button>
                             )}
+                            <button
+                              className="btn btn-ghost btn-warn-icon vendas-mobile-problem-btn"
+                              title="Marcar problema"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setVendaProblema(venda);
+                              }}
+                            >
+                              <I.AlertTriangle size={13} />
+                              <span className="mobile-action-label">Problema</span>
+                            </button>
                           </div>
                         </td>
                       )}
                       {podeOperarPosVenda && (
-                        <td className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>
+                        <td data-label="Problema" className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>
                           <button
                             className="btn btn-icon btn-ghost btn-warn-icon"
                             title="Marcar problema"
@@ -3026,7 +3072,7 @@ function VendasPage() {
                         </td>
                       )}
                       {podeExcluirVenda && (
-                        <td className="vendas-actions-col vendas-delete-actions-col">
+                        <td data-label="Excluir" className="vendas-actions-col vendas-delete-actions-col">
                           <button
                             className="btn btn-icon btn-ghost btn-danger-icon"
                             title="Excluir"

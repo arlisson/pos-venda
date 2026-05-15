@@ -816,6 +816,38 @@
 }
 
 @media (max-width: 720px) {
+  .fechamento-page {
+    padding: 16px;
+  }
+
+  .fechamento-modal-large {
+    width: 100% !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .fechamento-modal-filters__grid,
+  .plano-form {
+    grid-template-columns: 1fr;
+  }
+
+  .fechamento-modal-filters__wide {
+    grid-column: auto;
+  }
+
+  .fechamento-modal-filters__footer,
+  .fechamento-totais__row,
+  .fechamento-totais__geral {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .fechamento-modal-table-wrapper,
+  .dossie-table-wrap,
+  .dossie-info-table-wrap {
+    max-height: 58vh;
+    overflow: auto;
+  }
+
   .fechamento-painel__grid,
   .dossie-grid {
     grid-template-columns: 1fr;
@@ -833,4 +865,53 @@
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+/* ===== Mobile (<= 640px) — refatoração ===== */
+@media (max-width: 640px) {
+  .fechamento-page {
+    padding: 12px;
+  }
+
+  /* Mantém 2 colunas para métricas para preservar densidade comparativa */
+  .fechamento-painel-card__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  /* Tabela de fechamento: scroll horizontal explícito + hint visual */
+  .fechamento-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius);
+    position: relative;
+  }
+
+  .fechamento-table {
+    min-width: 720px;
+    font-size: 12px;
+  }
+
+  .fechamento-table th,
+  .fechamento-table td {
+    padding: 8px 6px;
+  }
+
+  /* Hint de scroll horizontal */
+  .fechamento-table-wrapper::after {
+    content: "← deslize →";
+    position: sticky;
+    right: 0;
+    display: block;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-3);
+    padding: 4px;
+    background: var(--surface-2);
+    border-top: 1px dashed var(--border);
+  }
+
+  .plano-list-table { font-size: 12px; }
+  .plano-list-table th,
+  .plano-list-table td { padding: 6px 8px; }
 }

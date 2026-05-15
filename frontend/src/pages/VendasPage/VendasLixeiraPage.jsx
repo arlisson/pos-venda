@@ -205,7 +205,7 @@ function VendasLixeiraPage() {
                 ) : (
                   vendas.map(venda => (
                     <tr key={venda.id} className="vendas-trash-row">
-                      <td>
+                      <td data-label="Cliente" className="m-primary">
                         <div className="vendas-table-name">
                           <div className="vendas-table-name__title">
                             <strong>{venda.cliente?.nome || venda.nome}</strong>
@@ -225,16 +225,33 @@ function VendasLixeiraPage() {
                               || '-'}
                             {venda.cliente_excluido_permanentemente_cnpj ? ` - ${venda.cliente_excluido_permanentemente_cnpj}` : ''}
                           </span>
+                          <details className="mobile-row-drawer">
+                            <summary>Ver dados da lixeira</summary>
+                            <dl>
+                              <dt>Operadora</dt>
+                              <dd>{venda.operadora?.nome || '-'}</dd>
+                              <dt>Produto</dt>
+                              <dd>{venda.servico?.nome || venda.tipoVenda?.nome || '-'}</dd>
+                              <dt>Valor</dt>
+                              <dd>{formatarMoeda(venda.valor_total)}</dd>
+                              <dt>Enviada em</dt>
+                              <dd>{formatarData(venda.excluido_em)}</dd>
+                              <dt>Exclusao definitiva</dt>
+                              <dd>{formatarData(venda.excluir_definitivo_em)}</dd>
+                              <dt>Enviada por</dt>
+                              <dd>{venda.excluidoPor?.nome || '-'}</dd>
+                            </dl>
+                          </details>
                         </div>
                       </td>
-                      <td><span className="tag">{venda.operadora?.nome || '-'}</span></td>
-                      <td>{venda.servico?.nome || venda.tipoVenda?.nome || '-'}</td>
-                      <td className="vendas-value">{formatarMoeda(venda.valor_total)}</td>
-                      <td>{formatarData(venda.excluido_em)}</td>
-                      <td>{formatarData(venda.excluir_definitivo_em)}</td>
-                      <td><span className="tag">{venda.excluidoPor?.nome || '-'}</span></td>
+                      <td data-label="Operadora" className="m-secondary"><span className="tag">{venda.operadora?.nome || '-'}</span> · {venda.servico?.nome || venda.tipoVenda?.nome || '-'}</td>
+                      <td data-label="Produto" data-mobile-hidden="true">{venda.servico?.nome || venda.tipoVenda?.nome || '-'}</td>
+                      <td data-label="Valor" className="vendas-value m-meta">{formatarMoeda(venda.valor_total)}</td>
+                      <td data-label="Enviada em" data-mobile-hidden="true">{formatarData(venda.excluido_em)}</td>
+                      <td data-label="Exclusao definitiva" data-mobile-hidden="true">{formatarData(venda.excluir_definitivo_em)}</td>
+                      <td data-label="Enviada por" data-mobile-hidden="true"><span className="tag">{venda.excluidoPor?.nome || '-'}</span></td>
                       {podeExcluirVenda && (
-                        <td className="vendas-trash-actions-col">
+                        <td data-label="Acoes" className="vendas-trash-actions-col m-actions">
                           <div className="vendas-trash-actions">
                             <button className="btn btn-sm vendas-restore-action" disabled={processandoId === venda.id} onClick={() => handleRestaurar(venda)}>
                               <I.Return size={13} /> Restaurar

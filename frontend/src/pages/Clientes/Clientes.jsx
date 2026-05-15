@@ -836,7 +836,7 @@ function Clientes() {
                   <th>Valor pago</th>
                   <th>Chips</th>
                   <th>Fidelidade</th>
-                  <th>Retorno</th>
+                  <th>Notas</th>
                   {podeExcluir && <th>Excluir</th>}
                 </tr>
               </thead>
@@ -863,7 +863,7 @@ function Clientes() {
                       <tr
                         key={cliente.id}
                         className={[
-                          podeEditar ? 'clickable-row' : '',
+                          podeEditar ? 'clickable-row is-tappable' : '',
                           String(cliente.id) === String(highlightClienteId) ? 'cliente-row-highlight' : '',
                           fidelidade === 'vencida' && cliente.aviso_fidelidade?.dias_restantes < 0 ? 'cliente-row-fidelity-expired' : ''
                         ].filter(Boolean).join(' ')}
@@ -878,50 +878,106 @@ function Clientes() {
                           }
                         }}
                       >
-                        <td>
+                        <td data-label="Cliente" className="m-primary">
                           <div className="cliente-primary">
                             <div className="cliente-primary__title">
                               <strong>{cliente.nome}</strong>
-                              {cliente.base_anterior_sistema ? (
-                                <span className="tag clientes-base-tag">Base anterior</span>
-                              ) : null}
-                              {(() => {
-                                const n = vendasConcluidasPorCliente.get(`cliente:${cliente.id}`) || 0;
-                                if (!n) return null;
-                                return (
-                                  <span className="clientes-concluidas-badge">
-                                    <I.Check size={11} />
-                                    {n} {n === 1 ? 'venda concluída' : 'vendas concluídas'}
-                                  </span>
-                                );
-                              })()}
+                              <div className="cliente-primary__badges">
+                                {cliente.base_anterior_sistema ? (
+                                  <span className="tag clientes-base-tag">Base anterior</span>
+                                ) : null}
+                                {(() => {
+                                  const n = vendasConcluidasPorCliente.get(`cliente:${cliente.id}`) || 0;
+                                  if (!n) return null;
+                                  return (
+                                    <span className="clientes-concluidas-badge">
+                                      <I.Check size={11} />
+                                      {n} {n === 1 ? 'venda concluída' : 'vendas concluídas'}
+                                    </span>
+                                  );
+                                })()}
+                                <span className={`pill cliente-primary__fidelity-mobile ${fidelidade.className}`}>
+                                  <span className="pill-dot"></span>
+                                  {fidelidade.label}
+                                </span>
+                              </div>
                             </div>
-                            <span>{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
+                            <span className="cliente-primary__document">{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
+                            <details className="cliente-mobile-drawer" onClick={event => event.stopPropagation()}>
+                              <summary>Ver detalhes</summary>
+                              <dl>
+                                <dt>Responsavel</dt>
+                                <dd>{cliente.responsavel_tipo === 'adm' ? 'ADM' : 'RL'} {cliente.responsavel_nome || '-'}</dd>
+                                <dt>Contato</dt>
+                                <dd>{cliente.email || '-'} / {contato.whatsapp || contato.fixo || '-'}</dd>
+                                <dt>Operadora</dt>
+                                <dd>{cliente.operadoraAtual?.nome || '-'}</dd>
+                                <dt>Registrado por</dt>
+                                <dd>{cliente.criador?.nome || 'Sem registro'}</dd>
+                                <dt>Valor pago</dt>
+                                <dd>{formatarMoeda(cliente.valor_pago)}</dd>
+                                <dt>Chips</dt>
+                                <dd>{cliente.quantidade_chips ?? '-'}</dd>
+                                <dt>Notas</dt>
+                                <dd>
+                                  <button
+                                    type="button"
+                                    className={`cliente-note-status-btn ${retornoNota.className}`}
+                                    title={retornoNota.title}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      abrirNotasCliente(cliente);
+                                    }}
+                                  >
+                                    <I.Note size={13} />
+                                    Abrir nota
+                                  </button>
+                                </dd>
+                                {podeExcluir && (
+                                  <>
+                                    <dt>Ações</dt>
+                                    <dd>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-ghost btn-danger-icon cliente-mobile-delete-btn"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setClienteParaLixeira(cliente);
+                                        }}
+                                      >
+                                        <I.Trash size={13} />
+                                        Excluir
+                                      </button>
+                                    </dd>
+                                  </>
+                                )}
+                              </dl>
+                            </details>
                           </div>
                         </td>
-                        <td>
+                        <td data-label="Responsavel" data-mobile-hidden="true">
                           <span className="tag">{cliente.responsavel_tipo === 'adm' ? 'ADM' : 'RL'}</span>{' '}
                           {cliente.responsavel_nome || '-'}
                         </td>
-                        <td>
+                        <td data-label="Contato" className="m-secondary">
                           <div className="cliente-contact">
                             <span>{cliente.email || '-'}</span>
                             <span>{contato.whatsapp || contato.fixo || '-'}</span>
                           </div>
                         </td>
-                        <td>{cliente.operadoraAtual?.nome || '-'}</td>
-                        <td>
+                        <td data-label="Operadora" data-mobile-hidden="true">{cliente.operadoraAtual?.nome || '-'}</td>
+                        <td data-label="Registrado por" data-mobile-hidden="true">
                           <span className="tag">{cliente.criador?.nome || 'Sem registro'}</span>
                         </td>
-                        <td>{formatarMoeda(cliente.valor_pago)}</td>
-                        <td>{cliente.quantidade_chips ?? '-'}</td>
-                        <td>
+                        <td data-label="Valor pago" data-mobile-hidden="true">{formatarMoeda(cliente.valor_pago)}</td>
+                        <td data-label="Chips" data-mobile-hidden="true">{cliente.quantidade_chips ?? '-'}</td>
+                        <td data-label="Fidelidade" className="m-meta">
                           <span className={`pill ${fidelidade.className}`}>
                             <span className="pill-dot"></span>
                             {fidelidade.label}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Notas">
                           <button
                             type="button"
                             className={`cliente-note-status-btn ${retornoNota.className}`}
@@ -936,7 +992,7 @@ function Clientes() {
                           </button>
                         </td>
                         {podeExcluir && (
-                          <td>
+                          <td data-label="Excluir">
                             <div className="clientes-actions">
                               <button
                                 className="btn btn-icon btn-ghost btn-danger-icon"

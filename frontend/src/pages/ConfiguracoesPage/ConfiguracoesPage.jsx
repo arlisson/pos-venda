@@ -421,11 +421,22 @@ function ConfiguracoesPage() {
             <tbody>
               {listaAtual.map(item => (
                 <tr key={item.id}>
-                  <td>{item.nome}</td>
-                  <td className="muted">{item.url}</td>
-                  <td>{item.dot}</td>
-                  <td><StatusPill ativo={item.ativo} /></td>
-                  <td className="row-actions">
+                  <td data-label="Nome" className="m-primary">
+                    {item.nome}
+                    <details className="mobile-row-drawer">
+                      <summary>Ver detalhes</summary>
+                      <dl>
+                        <dt>URL</dt>
+                        <dd>{item.url}</dd>
+                        <dt>Marcador</dt>
+                        <dd>{item.dot || '-'}</dd>
+                      </dl>
+                    </details>
+                  </td>
+                  <td data-label="URL" data-mobile-hidden="true" className="muted">{item.url}</td>
+                  <td data-label="Marcador" data-mobile-hidden="true">{item.dot}</td>
+                  <td data-label="Status" className="m-meta"><StatusPill ativo={item.ativo} /></td>
+                  <td data-label="Acoes" className="row-actions m-actions">
                     <button type="button" className="btn btn-sm config-edit" onClick={() => editarItem(item)}><I.Edit size={13} /> Editar</button>
                     <button type="button" className="btn btn-sm btn-ghost btn-danger-icon config-danger" onClick={() => solicitarExclusao(item)}><I.Trash size={13} /> Excluir</button>
                   </td>
@@ -513,12 +524,25 @@ function ConfiguracoesPage() {
             <tbody>
               {listaAtual.map(item => (
                 <tr key={item.id}>
-                  <td>{fmtMoeda(item.valor_min)} até {fmtMoeda(item.valor_max)}</td>
-                  <td>{fmtMoeda(item.valor_comissao)}</td>
-                  <td>{fmtMoeda(item.valor_comissao_base ?? item.valor_comissao)}</td>
-                  <td>{item.ordem}</td>
-                  <td><StatusPill ativo={item.ativo} /></td>
-                  <td className="row-actions">
+                  <td data-label="Faixa" className="m-primary">
+                    {fmtMoeda(item.valor_min)} até {fmtMoeda(item.valor_max)}
+                    <details className="mobile-row-drawer">
+                      <summary>Ver detalhes</summary>
+                      <dl>
+                        <dt>Integral</dt>
+                        <dd>{fmtMoeda(item.valor_comissao)}</dd>
+                        <dt>Cliente da base</dt>
+                        <dd>{fmtMoeda(item.valor_comissao_base ?? item.valor_comissao)}</dd>
+                        <dt>Ordem</dt>
+                        <dd>{item.ordem}</dd>
+                      </dl>
+                    </details>
+                  </td>
+                  <td data-label="Integral" data-mobile-hidden="true">{fmtMoeda(item.valor_comissao)}</td>
+                  <td data-label="Cliente da base" data-mobile-hidden="true">{fmtMoeda(item.valor_comissao_base ?? item.valor_comissao)}</td>
+                  <td data-label="Ordem" data-mobile-hidden="true">{item.ordem}</td>
+                  <td data-label="Status" className="m-meta"><StatusPill ativo={item.ativo} /></td>
+                  <td data-label="Acoes" className="row-actions m-actions">
                     <button type="button" className="btn btn-sm config-edit" onClick={() => editarItem(item)}><I.Edit size={13} /> Editar</button>
                     <button type="button" className="btn btn-sm btn-ghost btn-danger-icon config-danger" onClick={() => solicitarExclusao(item)}><I.Trash size={13} /> Excluir</button>
                   </td>
@@ -568,10 +592,19 @@ function ConfiguracoesPage() {
             <tbody>
               {listaAtual.map(item => (
                 <tr key={item.id}>
-                  <td>{item.nome}</td>
-                  <td>{item.ordem}</td>
-                  <td><StatusPill ativo={item.ativo} /></td>
-                  <td className="row-actions">
+                  <td data-label="Nome" className="m-primary">
+                    {item.nome}
+                    <details className="mobile-row-drawer">
+                      <summary>Ver detalhes</summary>
+                      <dl>
+                        <dt>Ordem</dt>
+                        <dd>{item.ordem}</dd>
+                      </dl>
+                    </details>
+                  </td>
+                  <td data-label="Ordem" data-mobile-hidden="true">{item.ordem}</td>
+                  <td data-label="Status" className="m-meta"><StatusPill ativo={item.ativo} /></td>
+                  <td data-label="Acoes" className="row-actions m-actions">
                     <button type="button" className="btn btn-sm config-edit" onClick={() => editarItem(item)}><I.Edit size={13} /> Editar</button>
                     <button type="button" className="btn btn-sm btn-ghost btn-danger-icon config-danger" onClick={() => solicitarExclusao(item)}><I.Trash size={13} /> Excluir</button>
                   </td>

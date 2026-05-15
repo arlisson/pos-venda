@@ -4,7 +4,7 @@ import logo from '../../assets/LogoClaraSemFundo.png';
 import { temPermissao } from '../../services/auth.service';
 import { getCampanhas, getProgresso } from '../../services/campanha.service';
 
-function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
+function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMobileOpen = false, onClose }) {
   const [campanhas, setCampanhas] = useState([]);
   const [progresso, setProgresso] = useState({});
   const podeVerCampanhas = temPermissao(usuario, 'campanhas_visualizar');
@@ -53,12 +53,24 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick }) {
   const resgatadas = new Set((progresso.resgatadas || []).map(Number));
 
   return (
-    <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <aside
+      id="app-sidebar"
+      className={`sidebar ${isMobileOpen ? 'is-open' : ''}`}
+      aria-label="NavegaÃ§Ã£o principal"
+    >
       <div className="sidebar-logo">
         <img src={logo} alt="Logo" className="sidebar-logo-img" />
+        <button
+          type="button"
+          className="btn btn-icon btn-ghost sidebar-close-btn"
+          aria-label="Fechar menu"
+          onClick={onClose}
+        >
+          <I.Close size={15} />
+        </button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="sidebar-scroll">
         {items.length > 0 && (
           <div className="sidebar-section">
             <div className="sidebar-section-title">Operação</div>

@@ -260,6 +260,20 @@
 }
 
 @media (max-width: 760px) {
+  .users-toolbar {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .users-toolbar .btn {
+    width: 100%;
+  }
+
+  .users-page .list-table td:first-child > div {
+    align-items: flex-start !important;
+  }
+
   .permissions-grid,
   .permissions-options,
   .permissions-copy {
@@ -268,5 +282,28 @@
 
   .permissions-group__header {
     flex-direction: column;
+  }
+
+  .permissions-modal-overlay {
+    align-items: stretch;
+    padding: 8px;
+  }
+
+  .permissions-modal {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .permissions-modal__footer {
+    position: static;
+    flex-direction: column-reverse;
+    margin: 16px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .permissions-modal__footer button {
+    justify-content: center;
+    width: 100%;
   }
 }

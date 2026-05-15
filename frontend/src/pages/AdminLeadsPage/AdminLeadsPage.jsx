@@ -1070,7 +1070,7 @@ function AdminLeadsPage() {
           </div>
         )}
 
-        <div className="list-table lead-table">
+        <div className="list-table lead-table list-table--scroll-mobile">
           <div className="scroll">
             <table>
               <thead>

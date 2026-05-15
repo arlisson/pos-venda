@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -726,10 +726,26 @@ function LeadsRecebidosView() {
               ) : (
                 linhas.map(linha => (
                   <tr key={linha.id} className={isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : ''}>
-                    <td><span className="tag">{linha.envio?.nome || '-'}</span></td>
-                    <td>{renderLeadStatus(linha)}</td>
+                    <td data-label="Envio" className="m-primary">
+                      <span className="tag">{linha.envio?.nome || '-'}</span>
+                      <details className="mobile-row-drawer">
+                        <summary>Ver dados do lead</summary>
+                        <dl>
+                          {colunas.map(coluna => {
+                            const valor = getValorLeadRecebido(linha, coluna);
+                            return (
+                              <Fragment key={getColunaKeyLeadRecebido(coluna)}>
+                                <dt>{getLabelColunaLeadRecebido(coluna)}</dt>
+                                <dd>{valor || '-'}</dd>
+                              </Fragment>
+                            );
+                          })}
+                        </dl>
+                      </details>
+                    </td>
+                    <td data-label="Status" className="m-meta">{renderLeadStatus(linha)}</td>
                     {(podeRegistrarVenda || podeRegistrarFuturo) && (
-                      <td>
+                      <td data-label="Adicionar" className="m-actions">
                         <button
                           type="button"
                           className={`lead-register-sale-btn ${isFuturoClienteNaLixeira(linha) ? 'is-disabled' : ''}`}
@@ -746,7 +762,7 @@ function LeadsRecebidosView() {
                       const podeAtualizar = !coluna.atualizada && Boolean(getNomeColunaLeadRecebido(linha, coluna));
 
                       return (
-                        <td key={key} className={coluna.atualizada ? 'lead-updated-cell' : ''}>
+                        <td key={key} data-label={getLabelColunaLeadRecebido(coluna)} data-mobile-hidden="true" className={coluna.atualizada ? 'lead-updated-cell' : ''}>
                           {coluna.atualizada || !podeAtualizar ? (
                             valor || '-'
                           ) : (
@@ -1181,8 +1197,38 @@ function FuturosClientesMainView() {
                       style={{ cursor: modoLixeira ? 'default' : 'pointer' }}
                       onClick={() => !modoLixeira && setLinhaAtiva(linha)}
                     >
-                      <td><span className="tag">{linha.envio?.nome || '-'}</span></td>
-                      <td>
+                      <td data-label="Envio" className="m-primary">
+                        <span className="tag">{linha.envio?.nome || '-'}</span>
+                        <details className="mobile-row-drawer">
+                          <summary>Ver dados do futuro cliente</summary>
+                          <dl>
+                            <dt>Notas</dt>
+                            <dd>{linha.futuro_cliente_notas || '-'}</dd>
+                            <dt>Retorno</dt>
+                            <dd>{linha.futuro_cliente_retorno ? formatarDataHora(linha.futuro_cliente_retorno) : '-'}</dd>
+                            <dt>{modoLixeira ? 'Enviado para lixeira' : 'Marcado em'}</dt>
+                            <dd>{formatarDataHora(modoLixeira ? linha.futuro_cliente_excluido_em : linha.futuro_cliente_marcado_em)}</dd>
+                            {modoLixeira && (
+                              <>
+                                <dt>Exclusao definitiva</dt>
+                                <dd>{formatarData(linha.futuro_cliente_excluir_definitivo_em)}</dd>
+                                <dt>Enviado por</dt>
+                                <dd>{linha.futuroClienteExcluidoPor?.nome || '-'}</dd>
+                              </>
+                            )}
+                            {colunasDados.map(chave => {
+                              const valor = dados[`${chave} (atualizado)`] ?? dados[chave] ?? '';
+                              return (
+                                <Fragment key={chave}>
+                                  <dt>{chave}</dt>
+                                  <dd>{valor || '-'}</dd>
+                                </Fragment>
+                              );
+                            })}
+                          </dl>
+                        </details>
+                      </td>
+                      <td data-label="Notas" className="m-secondary">
                         <span
                           className={`futuro-cliente-notas-cell ${linha.futuro_cliente_notas ? '' : 'muted'}`}
                           title={linha.futuro_cliente_notas || ''}
@@ -1190,7 +1236,7 @@ function FuturosClientesMainView() {
                           {linha.futuro_cliente_notas || '-'}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Retorno" className="m-meta">
                         {linha.futuro_cliente_retorno ? (
                           <span className="pill success">
                             <span className="pill-dot"></span>
@@ -1198,19 +1244,19 @@ function FuturosClientesMainView() {
                           </span>
                         ) : '-'}
                       </td>
-                      <td>{formatarDataHora(modoLixeira ? linha.futuro_cliente_excluido_em : linha.futuro_cliente_marcado_em)}</td>
+                      <td data-label={modoLixeira ? 'Enviado para lixeira' : 'Marcado em'} data-mobile-hidden="true">{formatarDataHora(modoLixeira ? linha.futuro_cliente_excluido_em : linha.futuro_cliente_marcado_em)}</td>
                       {modoLixeira && (
                         <>
-                          <td>{formatarData(linha.futuro_cliente_excluir_definitivo_em)}</td>
-                          <td><span className="tag">{linha.futuroClienteExcluidoPor?.nome || '-'}</span></td>
+                          <td data-label="Exclusao definitiva" data-mobile-hidden="true">{formatarData(linha.futuro_cliente_excluir_definitivo_em)}</td>
+                          <td data-label="Enviado por" data-mobile-hidden="true"><span className="tag">{linha.futuroClienteExcluidoPor?.nome || '-'}</span></td>
                         </>
                       )}
                       {colunasDados.map(chave => {
                         const valor = dados[`${chave} (atualizado)`] ?? dados[chave] ?? '';
-                        return <td key={chave}>{valor || '-'}</td>;
+                        return <td key={chave} data-label={chave} data-mobile-hidden="true">{valor || '-'}</td>;
                       })}
                       {podeGerenciar && (
-                        <td className="futuros-clientes-delete-col">
+                        <td data-label={modoLixeira ? 'Acoes' : 'Excluir'} className="futuros-clientes-delete-col m-actions">
                           <div className="futuros-clientes-actions">
                             {modoLixeira ? (
                               <>

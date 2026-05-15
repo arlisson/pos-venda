@@ -106,7 +106,7 @@ const VENDA_VAZIA = {
   uf_real: '',
   ponto_referencia: '',
   tipo_local_cpf: '',
-  // Aceite e recebimento
+  // Aceite
   horario_aceite_voz: '',
   horario_aceite_inicio: '',
   horario_aceite_fim: '',
@@ -290,7 +290,7 @@ const CAMPOS = [
   { name: 'ponto_referencia', label: 'Ponto de referência', type: 'longText', span: true },
   { name: 'tipo_local_cpf', label: 'Tipo de local', type: 'tipoLocalCpf', span: true },
 
-  { section: 'Aceite e recebimento' },
+  { section: 'Aceite' },
   { name: 'aceite_range', label: 'Disponibilidade para aceite', type: 'aceiteRange', span: true },
   { name: 'protocolo', label: 'Protocolo do Cliente', span: true },
   { name: 'login', label: 'Login (portal do cliente)' },
@@ -983,6 +983,48 @@ function normalizarVenda(venda) {
   };
 }
 
+function montarDadosClienteVenda(cliente, clienteId = '') {
+  const telefoneWhatsapp = cliente
+    ? formatarTelefoneComDdd([cliente.whatsapp_ddd, cliente.whatsapp_numero].filter(Boolean).join(''), true)
+    : '';
+  const telefoneFixo = cliente
+    ? formatarTelefoneComDdd([cliente.fixo_ddd, cliente.fixo_numero].filter(Boolean).join(''), false)
+    : '';
+  const responsavelTipo = cliente?.responsavel_tipo || '';
+  const nomeRl = responsavelTipo === 'rl' ? (cliente.responsavel_nome || '') : '';
+  const nomeAdm = responsavelTipo === 'adm' ? (cliente.responsavel_nome || '') : '';
+  const emailRl = responsavelTipo === 'rl' ? (cliente.email || '') : '';
+  const emailAdm = responsavelTipo === 'adm' ? (cliente.email || '') : '';
+  const telefoneRl = responsavelTipo === 'rl' ? telefoneWhatsapp : '';
+  const telefoneAdm = responsavelTipo === 'adm' ? telefoneWhatsapp : '';
+  const fechouVenda = responsavelTipo === 'rl' ? 'RL' : responsavelTipo === 'adm' ? 'ADM' : '';
+  const operadoraAtualId = cliente?.operadora_atual_id || cliente?.operadoraAtual?.id || '';
+
+  return {
+    cliente_id: clienteId ? String(clienteId) : '',
+    nome: cliente?.nome || '',
+    razao_social: cliente?.razao_social || '',
+    cnpj: cliente?.cnpj ? formatarCnpj(cliente.cnpj) : '',
+    email: cliente?.email || '',
+    telefone: telefoneWhatsapp || '',
+    fixo_ddd: telefoneFixo || '',
+    nome_representante_legal: nomeRl,
+    cpf_representante_legal: '',
+    rg_representante_legal: '',
+    data_nascimento_representante_legal: '',
+    telefone_representante_legal: telefoneRl,
+    email_representante_legal: emailRl,
+    nome_administrador: nomeAdm,
+    cpf_administrador: '',
+    rg_administrador: '',
+    data_nascimento_administrador: '',
+    telefone_administrador: telefoneAdm,
+    email_administrador: emailAdm,
+    nome_fechou_venda: fechouVenda,
+    operadora_atual_id: operadoraAtualId ? String(operadoraAtualId) : ''
+  };
+}
+
 function TiposServicoInput({ value, onChange }) {
   const selecionados = Array.isArray(value) && value.length > 0 ? value : ['novo'];
   const opcoes = [
@@ -1092,50 +1134,65 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
 
         return (
           <div key={index} className="chip-item-row">
-            <input
-              type="number"
-              min="1"
-              max={maximoQuantidadeLinha}
-              value={item.quantidade}
-              onChange={e => atualizarItem(index, 'quantidade', e.target.value)}
-              placeholder="3"
-            />
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={getMaxLengthCampo('gb')}
-              value={item.gb}
-              onChange={e => atualizarItem(index, 'gb', formatarCampoVenda('gb', e.target.value))}
-              placeholder="20"
-            />
+            <label className="chip-item-field chip-item-field--quantidade">
+              <span className="chip-item-field__label">Chips</span>
+              <input
+                type="number"
+                min="1"
+                max={maximoQuantidadeLinha}
+                value={item.quantidade}
+                onChange={e => atualizarItem(index, 'quantidade', e.target.value)}
+                placeholder="3"
+              />
+            </label>
+            <label className="chip-item-field chip-item-field--gb">
+              <span className="chip-item-field__label">GB</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={getMaxLengthCampo('gb')}
+                value={item.gb}
+                onChange={e => atualizarItem(index, 'gb', formatarCampoVenda('gb', e.target.value))}
+                placeholder="20"
+              />
+            </label>
             {mostrarTipoLinha && (
-              <select
-                value={item.tipo_linha || 'novo'}
-                onChange={e => atualizarItem(index, 'tipo_linha', e.target.value)}
-              >
-                {TIPOS_LINHA_CHIP.map(tipo => (
-                  <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
-                ))}
-              </select>
+              <label className="chip-item-field chip-item-field--tipo">
+                <span className="chip-item-field__label">Tipo</span>
+                <select
+                  value={item.tipo_linha || 'novo'}
+                  onChange={e => atualizarItem(index, 'tipo_linha', e.target.value)}
+                >
+                  {TIPOS_LINHA_CHIP.map(tipo => (
+                    <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
+                  ))}
+                </select>
+              </label>
             )}
-            <input
-              type="text"
-              inputMode="decimal"
-              value={item.valor_unitario}
-              onChange={e => atualizarItem(index, 'valor_unitario', formatarInputMoedaBR(e.target.value))}
-              placeholder="29,99"
-            />
+            <label className="chip-item-field chip-item-field--valor">
+              <span className="chip-item-field__label">Valor unit.</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={item.valor_unitario}
+                onChange={e => atualizarItem(index, 'valor_unitario', formatarInputMoedaBR(e.target.value))}
+                placeholder="29,99"
+              />
+            </label>
             <div className="chip-item-subtotal">{formatarMoeda(subtotal)}</div>
             {mostrarVendedora && (
-              <select
-                value={item.vendedora_id || ''}
-                onChange={e => atualizarItem(index, 'vendedora_id', e.target.value)}
-              >
-                <option value="">—</option>
-                {vendedoras.map(v => (
-                  <option key={v.id} value={String(v.id)}>{v.nome}</option>
-                ))}
-              </select>
+              <label className="chip-item-field chip-item-field--vendedora">
+                <span className="chip-item-field__label">Vendedora</span>
+                <select
+                  value={item.vendedora_id || ''}
+                  onChange={e => atualizarItem(index, 'vendedora_id', e.target.value)}
+                >
+                  <option value="">—</option>
+                  {vendedoras.map(v => (
+                    <option key={v.id} value={String(v.id)}>{v.nome}</option>
+                  ))}
+                </select>
+              </label>
             )}
             <button
               type="button"
@@ -2537,8 +2594,25 @@ function VendaModal({
   const vendasRegistradasClienteSelecionado = venda?.id
     ? Math.max(totalVendasClienteSelecionado - 1, 0)
     : totalVendasClienteSelecionado;
-  const totalEmAndamentoClienteSelecionado = chaveClienteSelecionado ? (vendasEmAndamentoPorCliente.get(chaveClienteSelecionado) || 0) : 0;
-  const vendasEmAndamentoClienteSelecionado = venda?.id
+  const vendasEmAndamentoPorClienteDerivado = useMemo(() => {
+    if (!Array.isArray(vendas) || vendas.length === 0) return new Map();
+    if (!Array.isArray(etapasFunilModal) || etapasFunilModal.length === 0) return new Map();
+    const codigosFinais = new Set(
+      etapasFunilModal
+        .filter(etapa => etapa?.etapa_final || etapa?.etapaFinal)
+        .map(etapa => etapa.codigo || etapa.id)
+        .filter(Boolean)
+    );
+    if (codigosFinais.size === 0) codigosFinais.add('concluido');
+    const ativas = vendas.filter(v => !codigosFinais.has(v.status_funil));
+    return contarVendasPorCliente(ativas);
+  }, [vendas, etapasFunilModal]);
+  const mapaEmAndamentoEfetivo = vendasEmAndamentoPorClienteDerivado.size > 0
+    ? vendasEmAndamentoPorClienteDerivado
+    : vendasEmAndamentoPorCliente;
+  const totalEmAndamentoClienteSelecionado = chaveClienteSelecionado ? (mapaEmAndamentoEfetivo.get(chaveClienteSelecionado) || 0) : 0;
+  const vendaAtualEmAndamento = Boolean(venda?.id && statusVendaAtual && !codigosEtapasFinais.has(statusVendaAtual));
+  const vendasEmAndamentoClienteSelecionado = venda?.id && vendaAtualEmAndamento
     ? Math.max(totalEmAndamentoClienteSelecionado - 1, 0)
     : totalEmAndamentoClienteSelecionado;
   const quantidadeLinhasFechadas = Number(form.quantidade_linhas || 0);
@@ -2672,41 +2746,30 @@ function VendaModal({
     }, {});
   }
 
-  function atualizarClienteVenda(valor) {
+  function atualizarClienteVenda(valor, clienteSelecionado = null) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
-    const c = clientesDisponiveis.find(cliente => String(cliente.id) === String(valor));
+    const clienteSelecionadoValido = clienteSelecionado && String(clienteSelecionado.id) === String(valor)
+      ? clienteSelecionado
+      : null;
+    const c = clienteSelecionadoValido || clientesDisponiveis.find(cliente => String(cliente.id) === String(valor));
+    const dadosCliente = montarDadosClienteVenda(c, valor);
+    const documentoDigitos = sanitizarCnpj(dadosCliente.cnpj);
 
     setForm(prev => {
-      const telefoneWhatsapp = c ? formatarTelefoneComDdd([c.whatsapp_ddd, c.whatsapp_numero].filter(Boolean).join(''), true) : '';
-      const telefoneFixo = c ? formatarTelefoneComDdd([c.fixo_ddd, c.fixo_numero].filter(Boolean).join(''), false) : '';
-      const nomeRl = c?.responsavel_tipo === 'rl' ? (c.responsavel_nome || '') : '';
-      const nomeAdm = c?.responsavel_tipo === 'adm' ? (c.responsavel_nome || '') : '';
-      const emailRl = c?.responsavel_tipo === 'rl' ? (c.email || '') : '';
-      const emailAdm = c?.responsavel_tipo === 'adm' ? (c.email || '') : '';
-      const telefoneRl = c?.responsavel_tipo === 'rl' ? telefoneWhatsapp : '';
-      const telefoneAdm = c?.responsavel_tipo === 'adm' ? telefoneWhatsapp : '';
-      const fechouVenda = c?.responsavel_tipo === 'rl' ? 'RL' : c?.responsavel_tipo === 'adm' ? 'ADM' : '';
-
       return {
         ...prev,
-        cliente_id: valor,
-        nome: prev.nome || c?.nome || '',
-        razao_social: prev.razao_social || c?.razao_social || '',
-        cnpj: prev.cnpj || formatarCnpj(c?.cnpj || ''),
-        email: prev.email || c?.email || '',
-        telefone: prev.telefone || telefoneWhatsapp || '',
-        fixo_ddd: prev.fixo_ddd || telefoneFixo || '',
-        nome_representante_legal: prev.nome_representante_legal || nomeRl,
-        email_representante_legal: prev.email_representante_legal || emailRl,
-        telefone_representante_legal: prev.telefone_representante_legal || telefoneRl,
-        nome_administrador: prev.nome_administrador || nomeAdm,
-        email_administrador: prev.email_administrador || emailAdm,
-        telefone_administrador: prev.telefone_administrador || telefoneAdm,
-        nome_fechou_venda: prev.nome_fechou_venda || fechouVenda,
-        operadora_atual_id: prev.operadora_atual_id || String(c?.operadora_atual_id || ''),
+        ...dadosCliente
       };
     });
+
+    setTipoBusca(documentoDigitos.length === 11 ? 'cpf' : 'cnpj');
+    setCnpjStatus({ tipo: '', mensagem: '' });
+    setCnpjDados(null);
+    setCnpjSugestoes({});
+    setCepStatus('');
+    ultimoCnpjConsultadoRef.current = documentoDigitos.length === 14 ? documentoDigitos : '';
+    cepPreenchidoPorCnpjRef.current = '';
   }
 
   useEffect(() => {
@@ -3521,7 +3584,7 @@ function VendaModal({
                         onCreateClient={async () => {
                           const clienteCriado = await onCreateClient?.(clientePreenchido);
                           if (clienteCriado?.id) {
-                            atualizarClienteVenda(String(clienteCriado.id));
+                            atualizarClienteVenda(String(clienteCriado.id), clienteCriado);
                           }
                         }}
                       />

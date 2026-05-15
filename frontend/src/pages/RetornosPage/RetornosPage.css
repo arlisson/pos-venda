@@ -340,9 +340,217 @@
 
 @media (max-width: 760px) {
   .returns-page {
-    padding: 16px;
+    padding: 10px 12px 14px;
   }
 
+  .returns-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .returns-kpi {
+    min-height: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .returns-kpi .label {
+    margin-bottom: 4px;
+    font-size: 9.5px;
+    line-height: 1.2;
+    letter-spacing: 0.035em;
+  }
+
+  .returns-kpi .value {
+    font-size: 19px;
+    line-height: 1.1;
+    letter-spacing: 0;
+  }
+
+  .returns-kpi .value-md {
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .returns-kpi .sub {
+    margin-top: 5px;
+    font-size: 10.5px;
+    line-height: 1.25;
+  }
+
+  .returns-grid.single .panel {
+    border-radius: 10px;
+  }
+
+  .returns-panel-header {
+    gap: 8px;
+    padding: 11px 12px 10px;
+  }
+
+  .returns-title-row {
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .returns-title-row h3 {
+    font-size: 13px;
+  }
+
+  .returns-title-row .muted {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .returns-filter-row {
+    flex-wrap: nowrap;
+    gap: 5px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .returns-filter-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .returns-filter-row > span {
+    flex: 0 0 auto;
+    min-width: 48px;
+    font-size: 10.5px;
+  }
+
+  .returns-filter-row .filter-chip {
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 5px 10px;
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .returns-list {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .returns-list .empty {
+    padding: 28px 14px;
+    font-size: 12px;
+  }
+
+  .return-item {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 11px 12px;
+  }
+
+  .return-item-right {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    text-align: right;
+    gap: 4px 10px;
+  }
+
+  .return-item-right .muted {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    font-size: 10.5px;
+  }
+
+  .return-value {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 13px;
+  }
+
+  .return-open-hint {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+    font-size: 10.5px;
+  }
+
+  .return-item-left {
+    gap: 5px;
+  }
+
+  .return-reason-tag {
+    padding: 3px 7px;
+    font-size: 10.5px;
+  }
+
+  .return-client {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .return-meta {
+    gap: 4px;
+    font-size: 10.5px;
+    line-height: 1.3;
+  }
+
+  .return-reason-detail {
+    margin-top: 2px;
+    padding: 7px 9px;
+    font-size: 11.5px;
+    line-height: 1.35;
+  }
+
+  .return-reason-detail div {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .return-reason-detail span {
+    font-size: 9.5px;
+  }
+
+  .return-status-summary {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .return-status-modal {
+    width: min(100%, 560px);
+  }
+
+  .return-status-summary > div {
+    padding: 9px 10px;
+  }
+
+  .return-status-modal .obs-textarea {
+    min-height: 118px;
+  }
+
+  .return-status-modal .return-observation-textarea {
+    min-height: 78px;
+  }
+
+  .return-status-modal .modal-body {
+    gap: 12px;
+  }
+
+  .return-status-modal .modal-footer {
+    gap: 8px;
+  }
+
+  .return-status-modal .modal-footer .btn {
+    flex: 1 1 0;
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 360px) {
   .returns-kpis {
     grid-template-columns: 1fr;
   }
@@ -352,16 +560,7 @@
     flex-direction: column;
   }
 
-  .return-item {
-    grid-template-columns: 1fr;
-  }
-
-  .return-item-right {
-    align-items: flex-start;
-    text-align: left;
-  }
-
-  .return-status-summary {
-    grid-template-columns: 1fr;
+  .returns-title-row .muted {
+    white-space: normal;
   }
 }

@@ -1502,8 +1502,8 @@ function FunilPage() {
         />
       )}
 
-      <div className="page">
-        <div className="filters">
+      <div className="page funil-page">
+        <div className="filters funil-filters">
           <div className="search-box funnel-search-box">
             <I.Search size={14} />
             <input
@@ -1522,34 +1522,36 @@ function FunilPage() {
               </button>
             )}
           </div>
-          <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 4 }}>Operadora:</span>
-          {['todas', ...operators].map(op => (
-            <button
-              type="button"
-              key={op}
-              className={`filter-chip ${filter === op ? 'active' : ''}`}
-              onClick={() => setFilter(op)}
-            >
-              {op === 'todas' ? 'Todas' : op}
-            </button>
-          ))}
-          {(arquivadas > 0 || mostrarArquivadas) && (
-            <button
-              type="button"
-              className={`filter-chip${mostrarArquivadas ? ' active' : ''}`}
-              onClick={() => setMostrarArquivadas(v => !v)}
-              title="Vendas na etapa final sem atividade há mais de 6 meses"
-            >
-              {mostrarArquivadas ? 'Ocultar arquivadas' : `Arquivadas (${arquivadas})`}
-            </button>
-          )}
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 12.5 }}>
-            <span className="muted">{filtradas.length} vendas</span>
-            <span style={{ color: 'var(--border-strong)' }}>·</span>
-            <span>
-              <span className="muted">Total: </span>
-              <strong style={{ fontFamily: 'var(--font-mono)' }}>{formatBRL(total)}</strong>
-            </span>
+          <div className="funil-chips-row">
+            <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 4, flexShrink: 0 }}>Operadora:</span>
+            {['todas', ...operators].map(op => (
+              <button
+                type="button"
+                key={op}
+                className={`filter-chip ${filter === op ? 'active' : ''}`}
+                onClick={() => setFilter(op)}
+              >
+                {op === 'todas' ? 'Todas' : op}
+              </button>
+            ))}
+            {(arquivadas > 0 || mostrarArquivadas) && (
+              <button
+                type="button"
+                className={`filter-chip${mostrarArquivadas ? ' active' : ''}`}
+                onClick={() => setMostrarArquivadas(v => !v)}
+                title="Vendas na etapa final sem atividade há mais de 6 meses"
+              >
+                {mostrarArquivadas ? 'Ocultar arquivadas' : `Arquivadas (${arquivadas})`}
+              </button>
+            )}
+            <div className="funil-stats" style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 12.5, flexShrink: 0 }}>
+              <span className="muted">{filtradas.length} vendas</span>
+              <span style={{ color: 'var(--border-strong)' }}>·</span>
+              <span>
+                <span className="muted">Total: </span>
+                <strong style={{ fontFamily: 'var(--font-mono)' }}>{formatBRL(total)}</strong>
+              </span>
+            </div>
           </div>
         </div>
 

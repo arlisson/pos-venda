@@ -235,27 +235,42 @@ function ClientesLixeiraPage() {
                 ) : (
                   clientes.map(cliente => (
                     <tr key={cliente.id} className="clientes-trash-row">
-                      <td>
+                      <td data-label="Cliente" className="m-primary">
                         <div className="cliente-primary">
                           <strong>{cliente.nome}</strong>
                           <span>{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
+                          <details className="mobile-row-drawer">
+                            <summary>Ver dados da lixeira</summary>
+                            <dl>
+                              <dt>Responsavel</dt>
+                              <dd>{cliente.responsavel_tipo === 'adm' ? 'ADM' : 'RL'} {cliente.responsavel_nome || '-'}</dd>
+                              <dt>Contato</dt>
+                              <dd>{cliente.email || '-'} / {[cliente.whatsapp_ddd, cliente.whatsapp_numero].filter(Boolean).join(' ') || '-'}</dd>
+                              <dt>Enviado em</dt>
+                              <dd>{formatarData(cliente.excluido_em)}</dd>
+                              <dt>Exclusao definitiva</dt>
+                              <dd>{formatarData(cliente.excluir_definitivo_em)}</dd>
+                              <dt>Enviado por</dt>
+                              <dd>{cliente.excluidoPor?.nome || '-'}</dd>
+                            </dl>
+                          </details>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Responsavel" data-mobile-hidden="true">
                         <span className="tag">{cliente.responsavel_tipo === 'adm' ? 'ADM' : 'RL'}</span>{' '}
                         {cliente.responsavel_nome || '-'}
                       </td>
-                      <td>
+                      <td data-label="Contato" className="m-secondary">
                         <div className="cliente-contact">
                           <span>{cliente.email || '-'}</span>
                           <span>{[cliente.whatsapp_ddd, cliente.whatsapp_numero].filter(Boolean).join(' ') || '-'}</span>
                         </div>
                       </td>
-                      <td>{formatarData(cliente.excluido_em)}</td>
-                      <td>{formatarData(cliente.excluir_definitivo_em)}</td>
-                      <td><span className="tag">{cliente.excluidoPor?.nome || '-'}</span></td>
+                      <td data-label="Enviado em" data-mobile-hidden="true">{formatarData(cliente.excluido_em)}</td>
+                      <td data-label="Exclusao definitiva" data-mobile-hidden="true">{formatarData(cliente.excluir_definitivo_em)}</td>
+                      <td data-label="Enviado por" data-mobile-hidden="true"><span className="tag">{cliente.excluidoPor?.nome || '-'}</span></td>
                       {podeExcluir && (
-                        <td>
+                        <td data-label="Acoes" className="m-actions">
                           <div className="clientes-actions">
                             <button className="btn btn-sm clientes-restore-action" disabled={processandoId === cliente.id} onClick={() => handleRestaurar(cliente)}>
                               <I.Return size={13} /> Restaurar
