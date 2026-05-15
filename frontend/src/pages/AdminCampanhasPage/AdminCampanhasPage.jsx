@@ -129,7 +129,6 @@ function AdminCampanhasPage() {
     );
   }
 
-  const diaria = campanhas.find(campanha => !campanha.is_gift);
   const gifts = campanhas.filter(campanha => campanha.is_gift);
 
   return (
@@ -149,33 +148,8 @@ function AdminCampanhasPage() {
             {message.text}
           </div>
         )}
-
-        <div className="panel admin-campanhas-panel admin-campanhas-daily-panel" style={{ marginBottom: 24 }}>
-          <div className="panel-header admin-campanhas-panel__header">
-            <h3>Campanha Diária Global</h3>
-            <span className="muted" style={{ fontSize: 12 }}>Define o alvo total de vendas do dia</span>
-          </div>
-          <div className="panel-body admin-campanhas-daily-panel__body">
-            {diaria ? (
-              <div className="form-grid" style={{ marginBottom: 0 }}>
-                <div className="form-field">
-                  <label>Alvo (Quantidade de Vendas)</label>
-                  <input
-                    className="admin-campanhas-control"
-                    type="number"
-                    value={diaria.target}
-                    onChange={event => handleCampanhasChange(diaria.id, 'target', parseInt(event.target.value, 10) || 0)}
-                  />
-                </div>
-              </div>
-            ) : (
-              <p className="admin-campanhas-empty">Campanha diaria global nao encontrada.</p>
-            )}
-          </div>
-        </div>
-
-        <div className="panel admin-campanhas-panel admin-campanhas-rewards-panel">
-          <div className="panel-header admin-campanhas-panel__header">
+        <div className="panel">
+          <div className="panel-header">
             <div>
               <h3>Gamificação: Presentes e Recompensas</h3>
               <span className="muted" style={{ fontSize: 12 }}>
