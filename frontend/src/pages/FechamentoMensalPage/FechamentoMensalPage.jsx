@@ -226,7 +226,7 @@ function FechamentoMensalPage() {
 
   async function exportarVendas() {
     if (!dataValida(periodoConsulta.data_inicio) || !dataValida(periodoConsulta.data_fim)) {
-      setErro('Informe um periodo valido para exportar.');
+      setErro('Informe um período válido para exportar.');
       return;
     }
 
@@ -236,7 +236,7 @@ function FechamentoMensalPage() {
     try {
       await exportarVendasPeriodo(periodoConsulta);
     } catch (error) {
-      setErro(error.message || 'Erro ao exportar vendas do periodo.');
+      setErro(error.message || 'Erro ao exportar vendas do período.');
     } finally {
       setExportando(false);
     }
@@ -267,7 +267,7 @@ function FechamentoMensalPage() {
             className="btn fechamento-export-btn"
             onClick={exportarVendas}
             disabled={exportando || loading}
-            title="Exportar vendas do periodo em Excel"
+            title="Exportar vendas do período em Excel"
           >
             <TableSheet size={16} />
             <span>{exportando ? 'Exportando...' : 'Exportar Excel'}</span>
@@ -294,7 +294,7 @@ function FechamentoMensalPage() {
 
         <FechamentoSecao
           titulo="Contratos tratando"
-          subtitulo="Aprovacao, ativacao, envio, entrega e confirmacao"
+          subtitulo="Aprovação, ativação, envio, entrega e confirmação"
           linhas={resumo.tratando || []}
           secao="tratando"
           loading={loading}
@@ -303,7 +303,7 @@ function FechamentoMensalPage() {
 
         <FechamentoSecao
           titulo="Vendas ativas"
-          subtitulo="Contratos concluidos pela data de ativacao, com UGRs por chip"
+          subtitulo="Contratos concluídos pela data de ativação, com UGRs por chip"
           linhas={resumo.ativas || []}
           secao="ativas"
           loading={loading}

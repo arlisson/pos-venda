@@ -25,6 +25,24 @@
   font-weight: 600;
 }
 
+.lead-doc-strip__title .btn {
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.lead-doc-strip__title .btn-primary:not(:disabled):hover,
+.lead-doc-strip__title .btn-primary:not(:disabled):focus-visible {
+  border-color: #2f2f2f;
+  background: #2f2f2f;
+  color: var(--accent-fg);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.22);
+  transform: translateY(-1px);
+}
+
 .lead-doc-list {
   display: flex;
   gap: 24px;
@@ -185,6 +203,10 @@
 
 .admin-leads-toolbar .search-box {
   width: min(340px, 100%);
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .admin-leads-toolbar select,
@@ -197,6 +219,64 @@
   color: var(--text);
   padding: 0 10px;
   outline: none;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.admin-leads-toolbar select:not(:disabled):hover,
+.admin-leads-toolbar input:not(:disabled):hover,
+.admin-leads-toolbar .search-box:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.admin-leads-toolbar select:focus,
+.admin-leads-toolbar input:focus,
+.admin-leads-toolbar .search-box:focus-within {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.06);
+}
+
+.admin-leads-toolbar .btn {
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.admin-leads-toolbar .btn:not(:disabled):hover,
+.admin-leads-toolbar .btn:not(:disabled):focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.admin-leads-toolbar .btn-primary:not(:disabled):hover,
+.admin-leads-toolbar .btn-primary:not(:disabled):focus-visible {
+  border-color: #2f2f2f;
+  background: #2f2f2f;
+  color: var(--accent-fg);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.22);
+}
+
+.admin-leads-toolbar .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  box-shadow: none;
+  transform: none;
+}
+
+.admin-leads-toolbar .btn-primary:disabled {
+  border-color: var(--surface-3);
+  background: var(--surface-3);
+  color: var(--text-3);
 }
 
 .lead-filter-chips {

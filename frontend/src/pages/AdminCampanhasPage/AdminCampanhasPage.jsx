@@ -177,7 +177,7 @@ function AdminCampanhasPage() {
                 <tbody>
                   {gifts.map(gift => (
                     <tr key={gift.id} className="admin-campanhas-card-row">
-                      <td className="admin-campanhas-card-field admin-campanhas-card-field--periodo" data-label="Periodo">
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--periodo" data-label="Período">
                         <select
                           className="admin-campanhas-control"
                           value={gift.periodo || 'diaria'}
@@ -219,7 +219,7 @@ function AdminCampanhasPage() {
                           onChange={event => handleCampanhasChange(gift.id, 'target', parseInt(event.target.value, 10) || 0)}
                         />
                       </td>
-                      <td className="admin-campanhas-card-field admin-campanhas-card-field--descricao" data-label="Descricao exibida">
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--descricao" data-label="Descrição exibida">
                         <input
                           className="admin-campanhas-control"
                           type="text"
@@ -235,7 +235,7 @@ function AdminCampanhasPage() {
                           onChange={event => handleCampanhasChange(gift.id, 'reward', event.target.value)}
                         />
                       </td>
-                      <td className="admin-campanhas-card-field admin-campanhas-card-field--acoes" data-label="Acoes" style={{ textAlign: 'right' }}>
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--acoes" data-label="Ações" style={{ textAlign: 'right' }}>
                         <button
                           type="button"
                           className="btn btn-icon btn-ghost btn-danger-icon"
