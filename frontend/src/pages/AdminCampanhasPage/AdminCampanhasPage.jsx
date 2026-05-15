@@ -135,7 +135,6 @@ function AdminCampanhasPage() {
     );
   }
 
-  const diaria = campanhas.find(campanha => !campanha.is_gift);
   const gifts = campanhas.filter(campanha => campanha.is_gift);
 
   return (
@@ -155,27 +154,6 @@ function AdminCampanhasPage() {
             {message.text}
           </div>
         )}
-
-        <div className="panel" style={{ marginBottom: 24 }}>
-          <div className="panel-header">
-            <h3>Campanha Diária Global</h3>
-            <span className="muted" style={{ fontSize: 12 }}>Define o alvo total de vendas do dia</span>
-          </div>
-          <div className="panel-body">
-            {diaria && (
-              <div className="form-grid" style={{ marginBottom: 0 }}>
-                <div className="form-field">
-                  <label>Alvo (Quantidade de Vendas)</label>
-                  <input
-                    type="number"
-                    value={diaria.target}
-                    onChange={event => handleCampanhasChange(diaria.id, 'target', parseInt(event.target.value, 10) || 0)}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
 
         <div className="panel">
           <div className="panel-header">
