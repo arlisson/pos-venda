@@ -8,6 +8,7 @@ router.use(authMiddleware);
 
 router.get('/', notificacaoController.index);
 router.get('/urgentes', notificacaoController.urgentes);
+router.post('/email-teste', notificacaoController.testarEmail);
 router.patch('/lidas', notificacaoController.marcarTodasLidas);
 router.patch('/:id/popup-visto', notificacaoController.marcarPopupVisto);
 router.patch('/:id/lida', notificacaoController.marcarLida);

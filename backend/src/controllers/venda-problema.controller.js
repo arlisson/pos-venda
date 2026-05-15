@@ -21,7 +21,7 @@ async function destinatarios(req, res) {
     const usuarios = await vendaProblemaService.listarDestinatariosDisponiveis();
     return res.json(usuarios);
   } catch (error) {
-    return responderErro(res, error, 'Erro ao listar responsaveis.');
+    return responderErro(res, error, 'Erro ao listar responsáveis.');
   }
 }
 
@@ -57,7 +57,7 @@ async function correcao(req, res) {
     const problema = await vendaProblemaService.solicitarCorrecao(req.params.problemaId, req.body, req.usuario.id);
     return res.json(problema);
   } catch (error) {
-    return responderErro(res, error, 'Erro ao solicitar nova correcao.');
+    return responderErro(res, error, 'Erro ao solicitar nova correção.');
   }
 }
 

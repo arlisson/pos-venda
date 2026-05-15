@@ -7,6 +7,7 @@ const VendaHistorico = require('../models/VendaHistorico');
 const VendaProblema = require('../models/VendaProblema');
 const VendaProblemaDestinatario = require('../models/VendaProblemaDestinatario');
 const VendaProblemaEvento = require('../models/VendaProblemaEvento');
+const notificacaoEmailService = require('./notificacao-email.service');
 
 const STATUS_ATIVOS = ['aberto', 'resolvido', 'correcao_solicitada'];
 const TIPOS_NOTIFICACAO_PROBLEMA = [
@@ -164,6 +165,8 @@ async function criarNotificacaoProblema({ tipo, problema, evento, destinatariosI
     });
   }
 
+  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
+
   return notificacao;
 }
 
@@ -172,7 +175,7 @@ async function resolverDestinatarios(venda, dados, trx) {
     const ids = [...new Set((dados.destinatarios || []).map(Number).filter(Boolean))];
 
     if (ids.length === 0) {
-      throw erro(400, 'Selecione ao menos um responsavel.');
+      throw erro(400, 'Selecione ao menos um responsável.');
     }
 
     const usuarios = await Usuario.query(trx)
@@ -181,7 +184,7 @@ async function resolverDestinatarios(venda, dados, trx) {
       .select('id');
 
     if (usuarios.length !== ids.length) {
-      throw erro(400, 'Um ou mais responsaveis selecionados nao estao ativos.');
+      throw erro(400, 'Um ou mais responsáveis selecionados não estão ativos.');
     }
 
     return ids;
@@ -192,7 +195,7 @@ async function resolverDestinatarios(venda, dados, trx) {
   const ids = [...new Set(vinculados.length > 0 ? vinculados : fallback)];
 
   if (ids.length === 0) {
-    throw erro(400, 'A venda nao possui responsavel vinculado.');
+    throw erro(400, 'A venda não possui responsável vinculado.');
   }
 
   return ids;
@@ -209,7 +212,7 @@ async function abrirProblema(vendaId, dados, usuarioId) {
     const venda = await buscarVendaAcessivel(vendaId, usuarioId, trx);
 
     if (!venda) {
-      throw erro(404, 'Venda nao encontrada.');
+      throw erro(404, 'Venda não encontrada.');
     }
 
     const destinatariosIds = await resolverDestinatarios(venda, dados, trx);
@@ -289,7 +292,7 @@ async function resolverProblema(problemaId, dados, usuarioId) {
   const mensagem = String(dados.mensagem || '').trim();
 
   if (!mensagem) {
-    throw erro(400, 'Informe a mensagem de resolucao.');
+    throw erro(400, 'Informe a mensagem de resolução.');
   }
 
   return VendaProblema.transaction(async trx => {
@@ -300,7 +303,7 @@ async function resolverProblema(problemaId, dados, usuarioId) {
     }
 
     if (!usuarioEhResponsavel(problema, usuarioId)) {
-      throw erro(403, 'Apenas responsaveis podem marcar o problema como resolvido.');
+      throw erro(403, 'Apenas responsáveis podem marcar o problema como resolvido.');
     }
 
     const agora = formatarDateTimeSQL();
@@ -352,7 +355,7 @@ async function solicitarCorrecao(problemaId, dados, usuarioId) {
   const mensagem = String(dados.mensagem || '').trim();
 
   if (!mensagem) {
-    throw erro(400, 'Informe a mensagem de correcao.');
+    throw erro(400, 'Informe a mensagem de correção.');
   }
 
   return VendaProblema.transaction(async trx => {
@@ -392,8 +395,8 @@ async function solicitarCorrecao(problemaId, dados, usuarioId) {
       problema: atualizado,
       evento,
       destinatariosIds,
-      titulo: 'Nova correcao solicitada em venda',
-      mensagem: `${nomeVenda(problema.venda)} precisa de nova correcao: ${mensagem}`,
+      titulo: 'Nova correção solicitada em venda',
+      mensagem: `${nomeVenda(problema.venda)} precisa de nova correção: ${mensagem}`,
       trx
     });
 

@@ -42,7 +42,7 @@ exports.seed = async function (knex) {
     },
     {
       nome: 'usuario',
-      descricao: 'Usuario comum com acesso limitado ao sistema.',
+      descricao: 'Usuário comum com acesso limitado ao sistema.',
       permissoes: JSON.stringify(
         montarPermissoes(permissoes, permissoesUsuario)
       )

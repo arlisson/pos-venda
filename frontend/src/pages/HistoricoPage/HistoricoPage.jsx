@@ -194,9 +194,9 @@ function HistoricoItem({ log, selecionado, compacto, onClick }) {
             </div>
             <div className="history-meta">
               <span>{usuario}</span>
-              <span>Â·</span>
+              <span>·</span>
               <span>{log.metodo || 'API'} {log.rota || ''}</span>
-              <span>Â·</span>
+              <span>·</span>
               <span>{formatarData(log.created_at)}</span>
             </div>
           </div>
@@ -575,7 +575,7 @@ function HistoricoPage() {
         setVendasAtivasIds(new Set((statusVendas?.ativas || []).map(id => String(id))));
         setVendasLixeiraIds(new Set((statusVendas?.lixeira || []).map(id => String(id))));
       } catch (error) {
-        setErro(error.message || 'Erro ao carregar historico.');
+        setErro(error.message || 'Erro ao carregar histórico.');
       } finally {
         setCarregando(false);
       }
@@ -619,7 +619,7 @@ function HistoricoPage() {
             />
           </div>
 
-          <div className="history-filters" aria-label="Filtros do historico">
+          <div className="history-filters" aria-label="Filtros do histórico">
             {[
               ['todos', 'Todos'],
               ['vendas', 'Vendas'],

@@ -32,12 +32,12 @@ const PERMISSOES = [
   {
     chave: 'ver_vendas_compartilhadas',
     nome: 'Vendas: ver compartilhadas',
-    descricao: 'Permite ver vendas compartilhadas em que o usuario esta vinculado como vendedor.'
+    descricao: 'Permite ver vendas compartilhadas em que o usuário está vinculado como vendedor.'
   },
   {
     chave: 'editar_vendas_compartilhadas',
     nome: 'Vendas: editar compartilhadas',
-    descricao: 'Permite editar vendas compartilhadas em que o usuario esta vinculado como vendedor.'
+    descricao: 'Permite editar vendas compartilhadas em que o usuário está vinculado como vendedor.'
   },
   {
     chave: 'vendas_excluir',
@@ -56,13 +56,13 @@ const PERMISSOES = [
   },
   {
     chave: 'vendas_aprovacoes_visualizar',
-    nome: 'Vendas: visualizar aprovacoes',
-    descricao: 'Permite acessar a pagina de solicitacoes de liberacao de vendas especiais.'
+    nome: 'Vendas: visualizar aprovações',
+    descricao: 'Permite acessar a página de solicitações de liberação de vendas especiais.'
   },
   {
     chave: 'vendas_aprovacoes_decidir',
-    nome: 'Vendas: aprovar solicitacoes',
-    descricao: 'Permite aprovar ou recusar solicitacoes de liberacao de vendas especiais.'
+    nome: 'Vendas: aprovar solicitações',
+    descricao: 'Permite aprovar ou recusar solicitações de liberação de vendas especiais.'
   },
   {
     chave: 'pos_venda',
@@ -87,7 +87,7 @@ const PERMISSOES = [
   {
     chave: 'campanhas_visualizar',
     nome: 'Campanhas: visualizar',
-    descricao: 'Permite visualizar a secao de campanhas e recompensas na pagina inicial.'
+    descricao: 'Permite visualizar a seção de campanhas e recompensas na página inicial.'
   },
   {
     chave: 'campanhas_ver_usuarios',
@@ -190,9 +190,14 @@ const PERMISSOES = [
     descricao: 'Permite receber todas as notificações geradas pelo sistema.'
   },
   {
+    chave: 'notificacoes_receber_email',
+    nome: 'Notificacoes: receber por email',
+    descricao: 'Permite receber por email as notificacoes destinadas ao usuario.'
+  },
+  {
     chave: 'vendas_fechamento_mensal',
     nome: 'Vendas: fechamento mensal',
-    descricao: 'Permite acessar a pagina de fechamento mensal de vendas e gerenciar planos com taxa de comissao.'
+    descricao: 'Permite acessar a página de fechamento mensal de vendas e gerenciar planos com taxa de comissão.'
   },
   {
     chave: 'gerenciar_leads',
@@ -202,7 +207,7 @@ const PERMISSOES = [
   {
     chave: 'futuros_clientes_ver',
     nome: 'Futuros clientes: visualizar',
-    descricao: 'Permite acessar a pagina de futuros clientes e ver leads marcados como futuro cliente.'
+    descricao: 'Permite acessar a página de futuros clientes e ver leads marcados como futuro cliente.'
   },
   {
     chave: 'futuros_clientes_registrar',

@@ -716,7 +716,7 @@ function montarMensagemWhatsappVenda(venda = {}) {
 const DOCUMENTOS_FALTANTES_WHATSAPP = [
   'RG do representante legal',
   'RG do administrador',
-  'RG do responsavel pelo recebimento',
+  'RG do responsável pelo recebimento',
   'Documento da empresa',
   'Fatura',
   'Contrato social',
@@ -2135,7 +2135,7 @@ export function WhatsappMensagemModal({ dados, copiando, onClose, onChange, onDo
                   checked={semDocumentoFaltante}
                   onChange={() => onDocsChange([])}
                 />
-                <span>Nao falta documento</span>
+                <span>Não falta documento</span>
               </label>
               {DOCUMENTOS_FALTANTES_WHATSAPP.map(documento => (
                 <label className="whatsapp-doc-option" key={documento}>
@@ -2952,10 +2952,10 @@ function VendasPage() {
                             {venda.cliente_excluido_permanentemente_em && (
                               <span
                                 className="vendas-cliente-excluido-badge"
-                                title="O cliente relacionado a esta venda foi excluido permanentemente"
+                                title="O cliente relacionado a esta venda foi excluído permanentemente"
                               >
                                 <I.AlertTriangle size={11} />
-                                Cliente excluido
+                                Cliente excluído
                               </span>
                             )}
                           </div>

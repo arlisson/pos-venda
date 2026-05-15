@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { DEFAULT_OPERATORS as OPERATORS, STAGES } from '../../config/constants';
@@ -183,6 +184,7 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
 }
 
 function RetornosPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [operatorFilter, setOperatorFilter] = useState('todas');
   const [reasonFilter, setReasonFilter] = useState('todos');
   const [allSales, setAllSales] = useState([]);
@@ -216,9 +218,29 @@ function RetornosPage() {
     }
   }
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     carregarRetornos();
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (loading) return;
+
+    const vendaId = searchParams.get('venda_id');
+    if (!vendaId) return;
+
+    const retorno = allReturns.find(item => String(item.id) === String(vendaId));
+    if (retorno) {
+      setSelectedReturn(retorno);
+    }
+
+    const proximosParams = new URLSearchParams(searchParams);
+    proximosParams.delete('venda_id');
+    setSearchParams(proximosParams, { replace: true });
+  }, [allReturns, loading, searchParams, setSearchParams]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const groupCounts = useMemo(() => (
     RETURN_REASON_GROUPS.map(group => {

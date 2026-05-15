@@ -348,7 +348,7 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
                         required={campo.required}
                         disabled={carregando}
                       >
-                        <option value="">Nao importar</option>
+                        <option value="">Não importar</option>
                         {colunas.map(coluna => (
                           <option key={`${campo.name}:${coluna.index}`} value={coluna.nome}>{coluna.nome}</option>
                         ))}

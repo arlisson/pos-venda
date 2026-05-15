@@ -216,7 +216,7 @@ async function excluirFuturoCliente(req, res) {
     const total = await leadPlanilhaService.enviarFuturoClienteParaLixeira(req.params.id, req.usuario.id);
 
     if (!total) {
-      return res.status(404).json({ message: 'Futuro cliente nÃ£o encontrado.' });
+      return res.status(404).json({ message: 'Futuro cliente não encontrado.' });
     }
 
     return res.status(204).send();
@@ -232,7 +232,7 @@ async function restaurarFuturoCliente(req, res) {
     const linha = await leadPlanilhaService.restaurarFuturoCliente(req.params.id, req.usuario.id);
 
     if (!linha) {
-      return res.status(404).json({ message: 'Futuro cliente nÃ£o encontrado na lixeira.' });
+      return res.status(404).json({ message: 'Futuro cliente não encontrado na lixeira.' });
     }
 
     return res.json(linha);
@@ -248,7 +248,7 @@ async function excluirFuturoClienteDefinitivo(req, res) {
     const total = await leadPlanilhaService.excluirFuturoClienteDefinitivo(req.params.id, req.usuario.id);
 
     if (!total) {
-      return res.status(404).json({ message: 'Futuro cliente nÃ£o encontrado na lixeira.' });
+      return res.status(404).json({ message: 'Futuro cliente não encontrado na lixeira.' });
     }
 
     return res.status(204).send();

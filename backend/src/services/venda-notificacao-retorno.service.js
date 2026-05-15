@@ -1,6 +1,7 @@
 const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Venda = require('../models/Venda');
+const notificacaoEmailService = require('./notificacao-email.service');
 
 const TIPO_NOTIFICACAO = 'venda_retorno_registrado';
 
@@ -40,7 +41,7 @@ async function criarOuAtualizarNotificacaoRetorno({ venda, statusAnterior, motiv
   if (destinatariosIds.length === 0) return null;
 
   const sourceKey = sourceKeyVenda(venda.id);
-  const titulo = 'Venda retornou para correcao';
+  const titulo = 'Venda retornou para correção';
   const mensagem = `${nomeVenda(venda)} foi retornada pelo pos-venda: ${motivo}`;
 
   const payload = {
@@ -97,7 +98,14 @@ async function criarOuAtualizarNotificacaoRetorno({ venda, statusAnterior, motiv
 
   await NotificacaoDestinatario.query(trx)
     .where('notificacao_id', notificacao.id)
-    .patch({ lida_em: null, popup_visto_em: null });
+    .patch({
+      lida_em: null,
+      popup_visto_em: null,
+      email_enviado_em: null,
+      email_erro: null
+    });
+
+  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
 
   return notificacao;
 }

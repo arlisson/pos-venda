@@ -4,6 +4,7 @@ const Usuario = require('../models/Usuario');
 const Venda = require('../models/Venda');
 const VendaAprovacaoSolicitacao = require('../models/VendaAprovacaoSolicitacao');
 const VendaHistorico = require('../models/VendaHistorico');
+const notificacaoEmailService = require('./notificacao-email.service');
 
 const STATUS_PENDENTE = 'pendente';
 const STATUS_APROVADA = 'aprovada';
@@ -227,6 +228,8 @@ async function criarOuAtualizarNotificacaoPendente(solicitacao, venda, trx = nul
     }
   }
 
+  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
+
   return notificacao;
 }
 
@@ -277,7 +280,7 @@ async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
       status: 'pendente',
       venda,
       solicitacao: atual,
-      message: 'Solicitacao ja esta aguardando aprovacao do ADM.'
+      message: 'Solicitação já está aguardando aprovação do ADM.'
     };
   }
 
@@ -312,7 +315,7 @@ async function criarSolicitacaoPendente(venda, motivos, usuarioId, trx = null) {
     status: 'pendente',
     venda,
     solicitacao,
-    message: 'Solicitacao enviada para aprovacao do ADM.'
+    message: 'Solicitação enviada para aprovação do ADM.'
   };
 }
 
@@ -408,7 +411,7 @@ async function decidirSolicitacao(id, dados, usuarioId, decisao) {
   });
 
   if (resultado?.desatualizada) {
-    const error = new Error('A solicitacao ficou desatualizada apos alteracoes na venda.');
+    const error = new Error('A solicitação ficou desatualizada após alterações na venda.');
     error.statusCode = 409;
     throw error;
   }

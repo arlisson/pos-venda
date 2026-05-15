@@ -3,6 +3,7 @@ const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
 const db = require('../database/connection');
 const { parseUtcDateTime } = require('../utils/datetime');
+const notificacaoEmailService = require('./notificacao-email.service');
 
 const TIPO_NOTIFICACAO = 'venda_parada_funil';
 const PERMISSAO_VENDAS_PARADAS = 'notificacoes_vendas_paradas';
@@ -210,6 +211,8 @@ async function sincronizarVendasParadas() {
             });
           }
         }
+
+        notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
       }
     }
   } catch (erro) {

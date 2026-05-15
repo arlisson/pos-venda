@@ -520,7 +520,7 @@ class CampanhaController {
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Erro ao calcular progresso por usuario.' });
+      res.status(500).json({ error: 'Erro ao calcular progresso por usuário.' });
     }
   }
 
@@ -548,7 +548,7 @@ class CampanhaController {
 
       if (existente) {
         return res.json({
-          message: 'Campanha ja resgatada neste ciclo.',
+          message: 'Campanha já resgatada neste ciclo.',
           resgatada: true,
           jaResgatada: true,
           campanhaId: campanha.id,
@@ -595,7 +595,7 @@ class CampanhaController {
             .first();
 
           return res.json({
-            message: 'Campanha ja resgatada neste ciclo.',
+            message: 'Campanha já resgatada neste ciclo.',
             resgatada: true,
             jaResgatada: true,
             campanhaId: campanha.id,

@@ -191,7 +191,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
 
   // Usar hook para persistência de rascunhos
-  useFormDraft(editando ? null : draftKey, form, editando);
+  const { clearDraft } = useFormDraft(editando ? null : draftKey, form, editando);
 
   useEffect(() => {
     if (editando || !onDraftChange) return;
@@ -204,6 +204,23 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
     }
 
     onClose();
+  }
+
+  function limparDadosCliente() {
+    if (editando || salvando) return;
+
+    const formLimpo = { ...FORM_INICIAL };
+
+    clearDraft();
+    setForm(formLimpo);
+    onDraftChange?.(formLimpo);
+    setErro('');
+    setCnpjStatus({ tipo: '', mensagem: '' });
+    setCnpjDados(null);
+    setCnpjSugestoes({});
+    setPendingNotas([]);
+    setAbaAtiva('cliente');
+    ultimoCnpjConsultadoRef.current = '';
   }
 
   function atualizarCampo(campo, valor) {
@@ -559,6 +576,11 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
             <button type="button" className="btn" onClick={handleClose}>Fechar</button>
           ) : (
             <>
+              {!editando && (
+                <button type="button" className="btn btn-ghost" onClick={limparDadosCliente} disabled={salvando}>
+                  <I.Trash size={14} /> Limpar Dados
+                </button>
+              )}
               <button type="button" className="btn" onClick={handleClose} disabled={salvando}>Cancelar</button>
               <button type="submit" className="btn btn-primary" disabled={salvando}>
                 {salvando ? 'Salvando...' : 'Salvar cliente'}

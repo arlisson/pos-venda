@@ -403,7 +403,7 @@ async function validarPermissaoCompartilharVenda({ usuarioId, vendedorasIds = []
   const idsDiferentesDoUsuario = vendedorasIds.filter(id => Number(id) !== Number(usuarioId));
 
   if (idsDiferentesDoUsuario.length > 0) {
-    const error = new Error('Voce nao tem permissao para compartilhar vendas com outras vendedoras.');
+    const error = new Error('Você não tem permissão para compartilhar vendas com outras vendedoras.');
     error.statusCode = 403;
     throw error;
   }
@@ -1556,7 +1556,7 @@ async function atualizarVenda(id, dados, usuarioId) {
   const usuarioPodeOperarPosVenda = await usuarioTemPermissao(usuarioId, 'pos_venda');
 
   if (vendaAtual.enviada_pos_venda_em && !usuarioPodeOperarPosVenda) {
-    const error = new Error('Venda ja enviada ao pos-venda. Apenas usuarios com permissao de pos-venda podem editar.');
+    const error = new Error('Venda já enviada ao pós-venda. Apenas usuários com permissão de pós-venda podem editar.');
     error.statusCode = 403;
     throw error;
   }

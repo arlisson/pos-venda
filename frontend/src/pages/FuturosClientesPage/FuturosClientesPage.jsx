@@ -1089,7 +1089,7 @@ function FuturosClientesMainView() {
       setLinhas(prev => prev.filter(item => item.id !== linha.id));
       setTotal(prev => Math.max(0, prev - 1));
       setConfirmacaoLixeira(null);
-      setSucesso('Futuro cliente excluido definitivamente.');
+      setSucesso('Futuro cliente excluído definitivamente.');
     } catch (error) {
       setErro(error.message || 'Erro ao excluir futuro cliente definitivamente.');
     } finally {

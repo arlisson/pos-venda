@@ -1271,7 +1271,7 @@ function montarLinhaExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FIN
     data_ativacao: dataParaExcel(venda.data_ativacao),
     status,
     status_funil: valorTexto(venda.status_funil),
-    etapa_final: venda.status_funil === statusFinal ? 'Sim' : 'Nao',
+    etapa_final: venda.status_funil === statusFinal ? 'Sim' : 'Não',
     protocolo: valorTexto(venda.protocolo),
     numero_cliente_contrato: valorTexto(venda.numero_cliente_contrato),
     telefone: valorTexto(venda.telefone),

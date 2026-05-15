@@ -212,7 +212,7 @@ function VendasLixeiraPage() {
                             {venda.cliente_excluido_permanentemente_em && (
                               <span className="vendas-cliente-excluido-badge">
                                 <I.AlertTriangle size={11} />
-                                Cliente excluido
+                                Cliente excluído
                               </span>
                             )}
                           </div>
