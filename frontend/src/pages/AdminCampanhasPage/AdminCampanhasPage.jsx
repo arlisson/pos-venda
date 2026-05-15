@@ -148,32 +148,6 @@ function AdminCampanhasPage() {
             {message.text}
           </div>
         )}
-
-<<<<<<< HEAD
-=======
-        <div className="panel" style={{ marginBottom: 24 }}>
-          <div className="panel-header">
-            <h3>Campanha Diária Global</h3>
-            <span className="muted" style={{ fontSize: 12 }}>Define o alvo total de vendas do dia</span>
-          </div>
-          <div className="panel-body">
-            {diaria && (
-              <div className="form-grid" style={{ marginBottom: 0 }}>
-                <div className="form-field">
-                  <label>Alvo (Quantidade de Vendas)</label>
-                  <input
-                    className="admin-campanhas-control"
-                    type="number"
-                    value={diaria.target}
-                    onChange={event => handleCampanhasChange(diaria.id, 'target', parseInt(event.target.value, 10) || 0)}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
->>>>>>> 37c319dee55ceb8d8f0f813a1ae92f270c496e4b
         <div className="panel">
           <div className="panel-header">
             <div>
