@@ -430,8 +430,7 @@
   width: 100%;
 }
 
-.mobile-action-label,
-.vendas-mobile-problem-btn {
+.mobile-action-label {
   display: none;
 }
 
@@ -2754,10 +2753,6 @@ input.is-invalid {
     display: inline;
     font-size: 11.5px;
     font-weight: 700;
-  }
-
-  .vendas-page .list-table:not(.list-table--scroll-mobile) td.vendas-mobile-actions .vendas-mobile-problem-btn {
-    display: inline-flex;
   }
 
   .aprovacoes-actions {

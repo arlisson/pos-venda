@@ -11,9 +11,9 @@
 
 .clientes-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto auto;
-  gap: 10px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
   margin-bottom: 4px;
 }
 
@@ -48,10 +48,11 @@
 }
 
 .clientes-toolbar__meta {
+  order: 2;
   color: var(--text-2);
   font-size: 13px;
   font-weight: 500;
-  min-width: 180px;
+  min-width: 0;
 }
 
 .clientes-toolbar__actions {
@@ -59,6 +60,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  width: 100%;
   min-width: 0;
 }
 
@@ -72,7 +74,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  width: min(360px, 100%);
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 320px;
   height: 38px;
   padding: 0 12px;
   border: 1px solid var(--border);
@@ -1033,6 +1037,8 @@
   }
 
   .clientes-search {
+    flex: 1 1 auto;
+    min-width: 0;
     width: 100%;
   }
 
