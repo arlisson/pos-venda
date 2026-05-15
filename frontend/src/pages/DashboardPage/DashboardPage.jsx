@@ -394,8 +394,9 @@ function DashboardPage() {
       ? new Set(NOTIFICATION_DRAWER_KEYS)
       : new Set()
   ));
-  const [openTeamGoalDrawers, setOpenTeamGoalDrawers] = useState(() => (
-    typeof window !== 'undefined' && window.innerWidth > 760 ? 'all' : new Set()
+  const [openTeamGoalDrawers, setOpenTeamGoalDrawers] = useState(new Set());
+  const [teamGoalMobileLayout, setTeamGoalMobileLayout] = useState(() => (
+    typeof window !== 'undefined' ? window.innerWidth <= 760 : false
   ));
   const [vendasRetorno, setVendasRetorno] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -426,6 +427,19 @@ function DashboardPage() {
     const timer = setTimeout(() => setFeedback(null), feedback.type === 'success' ? 4000 : 6000);
     return () => clearTimeout(timer);
   }, [feedback]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia('(max-width: 760px)');
+    const handleChange = event => setTeamGoalMobileLayout(event.matches);
+
+    setTeamGoalMobileLayout(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   useEffect(() => {
     if (podeVerCampanhas) {
@@ -689,7 +703,7 @@ function DashboardPage() {
       count: retornosVenda.length,
       variant: 'danger',
       icon: <I.AlertTriangle size={15} />,
-      items: retornosVenda.slice(0, 3),
+      items: retornosVenda,
       getTitle: getVendaRetornoTitulo,
       getDescription: getVendaRetornoDescricao,
       metric: formatarDataRetornoVenda,
@@ -704,7 +718,7 @@ function DashboardPage() {
       count: notificacoesFidelidade.length,
       variant: 'warn',
       icon: <I.History size={15} />,
-      items: notificacoesFidelidade.slice(0, 3),
+      items: notificacoesFidelidade,
       getTitle: getNotificacaoTitulo,
       getDescription: getNotificacaoDescricao,
       metric: getFidelidadePrazo,
@@ -720,7 +734,6 @@ function DashboardPage() {
       variant: 'contact',
       icon: <I.Whatsapp size={15} />,
       items: notificacoesRetorno,
-      scrollable: true,
       getTitle: getNotificacaoTitulo,
       getDescription: getNotificacaoDescricao,
       metric: getRetornoPrazo,
@@ -735,7 +748,7 @@ function DashboardPage() {
       count: notificacoesVendasParadas.length,
       variant: 'stalled',
       icon: <I.History size={15} />,
-      items: notificacoesVendasParadas.slice(0, 3),
+      items: notificacoesVendasParadas,
       getTitle: getNotificacaoTitulo,
       getDescription: getNotificacaoDescricao,
       metric: getVendaParadaPrazo,
@@ -756,7 +769,7 @@ function DashboardPage() {
       count: notificacoesProblema.length,
       variant: 'info',
       icon: <I.AlertTriangle size={15} />,
-      items: notificacoesProblema.slice(0, 3),
+      items: notificacoesProblema,
       getTitle: getNotificacaoTitulo,
       getDescription: getNotificacaoDescricao,
       metric: notificacao => formatarPrazoRelativo(notificacao.updated_at),
@@ -785,15 +798,13 @@ function DashboardPage() {
   }
 
   function isTeamGoalDrawerOpen(id) {
-    return openTeamGoalDrawers === 'all' || openTeamGoalDrawers.has(String(id));
+    return !teamGoalMobileLayout || openTeamGoalDrawers.has(String(id));
   }
 
   function toggleTeamGoalDrawer(id) {
     const key = String(id);
     setOpenTeamGoalDrawers(prev => {
-      const next = prev === 'all'
-        ? new Set(progressoUsuarios.map(item => String(item.id)))
-        : new Set(prev);
+      const next = new Set(prev);
 
       if (next.has(key)) {
         next.delete(key);
@@ -966,7 +977,7 @@ function DashboardPage() {
                   </button>
 
                   <div id={drawerId} className="home-notification-card__drawer">
-                    <div className={`home-notification-card__items ${card.scrollable ? 'is-scrollable' : ''}`}>
+                    <div className="home-notification-card__items is-scrollable">
                     {card.items.length === 0 ? (
                       <div className="home-notification-card__empty">Nenhuma notificação ativa.</div>
                     ) : card.items.map(notificacao => (
@@ -1281,16 +1292,19 @@ function DashboardPage() {
                 const pct = total > 0 ? Math.round((atingidas / total) * 100) : 0;
                 const drawerOpen = isTeamGoalDrawerOpen(item.id);
                 const drawerId = `team-goal-drawer-${item.id}`;
+                const TeamGoalHeader = teamGoalMobileLayout ? 'button' : 'div';
+                const teamGoalHeaderProps = teamGoalMobileLayout
+                  ? {
+                      type: 'button',
+                      'aria-expanded': drawerOpen,
+                      'aria-controls': drawerId,
+                      onClick: () => toggleTeamGoalDrawer(item.id)
+                    }
+                  : {};
 
                 return (
                   <article key={item.id} className={`team-goal-card ${drawerOpen ? 'is-open' : ''}`}>
-                    <button
-                      type="button"
-                      className="team-goal-card__top"
-                      aria-expanded={drawerOpen}
-                      aria-controls={drawerId}
-                      onClick={() => toggleTeamGoalDrawer(item.id)}
-                    >
+                    <TeamGoalHeader className="team-goal-card__top" {...teamGoalHeaderProps}>
                       <div className="mini-avatar">
                         {item.foto_perfil ? (
                           <img src={item.foto_perfil} alt={item.nome || 'Usuário'} />
@@ -1303,10 +1317,12 @@ function DashboardPage() {
                         <span>{atingidas}/{total} campanhas atingidas · {item.resumo?.resgatadas || 0} resgatadas</span>
                       </div>
                       <b>{pct}%</b>
-                      <span className="team-goal-card__chevron" aria-hidden="true">
-                        <I.ChevronDown size={14} />
-                      </span>
-                    </button>
+                      {teamGoalMobileLayout && (
+                        <span className="team-goal-card__chevron" aria-hidden="true">
+                          <I.ChevronDown size={14} />
+                        </span>
+                      )}
+                    </TeamGoalHeader>
 
                     <div id={drawerId} className="team-goal-card__drawer">
                     <div className="progress-track">

@@ -2870,7 +2870,7 @@ function VendasPage() {
                   <th>Vendedor(a)</th>
                   {podeOperarPosVenda && (
                     <th className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
-                      Contato
+                      Automação
                     </th>
                   )}
                   {podeOperarPosVenda && (
@@ -3004,7 +3004,7 @@ function VendasPage() {
                       <td data-label="Ativacao" data-mobile-hidden="true">{formatarData(venda.data_ativacao)}</td>
                       <td data-label="Vendedor(a)" data-mobile-hidden="true"><span className="tag">{obterVendedorasMensagem(venda)}</span></td>
                       {podeOperarPosVenda && (
-                        <td data-label="Contato" className="vendas-actions-col vendas-email-actions-col vendas-mobile-actions m-actions" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
+                        <td data-label="Automação" className="vendas-actions-col vendas-email-actions-col vendas-mobile-actions m-actions" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
                           <div className="vendas-contact-actions">
                             <button
                               className="btn btn-icon btn-ghost vendas-whatsapp-btn"
@@ -3043,17 +3043,6 @@ function VendasPage() {
                               <span className="mobile-action-label">Planilha</span>
                             </button>
                             )}
-                            <button
-                              className="btn btn-ghost btn-warn-icon vendas-mobile-problem-btn"
-                              title="Marcar problema"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setVendaProblema(venda);
-                              }}
-                            >
-                              <I.AlertTriangle size={13} />
-                              <span className="mobile-action-label">Problema</span>
-                            </button>
                           </div>
                         </td>
                       )}
