@@ -1,0 +1,8 @@
+
+> backend@1.0.0 start
+> node src/server.js
+
+◇ injected env (16) from .env // tip: ⌘ override existing { override: true }
+◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+Servidor rodando em http://localhost:3000

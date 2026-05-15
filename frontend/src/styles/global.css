@@ -80,7 +80,7 @@ input, select, textarea { font-family: inherit; }
 }
 .sidebar-logo-img { max-width: 85%; max-height: 48px; width: auto; height: auto; object-fit: contain; }
 .sidebar-close-btn { display: none; margin-left: auto; }
-.sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
 .sidebar-mobile-backdrop { display: none; }
 .logo-placeholder {
   height: 44px; display: flex; align-items: center; justify-content: center;
@@ -630,6 +630,7 @@ input, select, textarea { font-family: inherit; }
     inset: 0 auto 0 0;
     width: min(320px, calc(100vw - 44px));
     max-width: 88vw;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     transform: translateX(-100%);
     border-right: 1px solid var(--border);
     box-shadow: var(--shadow-lg);
@@ -646,6 +647,19 @@ input, select, textarea { font-family: inherit; }
 
   .sidebar-close-btn {
     display: flex;
+  }
+
+  .sidebar-goals {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .sidebar-footer {
+    margin-top: 0;
+    margin-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 14px;
+    background: var(--surface);
+    box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.04);
   }
 
   .app.is-mobile-menu-open .sidebar-mobile-backdrop {
@@ -846,7 +860,8 @@ input, select, textarea { font-family: inherit; }
 .user-card { display: flex; align-items: center; gap: 10px; padding: 4px; }
 .user-info { flex: 1; min-width: 0; }
 .user-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.user-role { font-size: 11px; color: var(--text-3); }
+.user-email { font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* === Dashboard / Perfil grids === */
 .dash-grid {

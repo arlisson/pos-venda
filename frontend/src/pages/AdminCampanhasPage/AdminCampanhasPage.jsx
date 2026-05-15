@@ -156,12 +156,12 @@ function AdminCampanhasPage() {
                 Configure campanhas por período e categoria comercial
               </span>
             </div>
-            <button type="button" className="btn btn-sm" onClick={handleAddCampanha} disabled={saving}>
+            <button type="button" className="btn btn-sm admin-campanhas-add-button" onClick={handleAddCampanha} disabled={saving}>
               <I.Plus size={14} /> Adicionar campanha
             </button>
           </div>
-          <div className="panel-body" style={{ padding: 0 }}>
-            <div className="list-table list-table--scroll-mobile" style={{ margin: 0, borderRadius: 0, border: 'none' }}>
+          <div className="panel-body admin-campanhas-rewards-panel__body" style={{ padding: 0 }}>
+            <div className="list-table list-table--scroll-mobile admin-campanhas-table" style={{ margin: 0, borderRadius: 0, border: 'none' }}>
               <table>
                 <thead>
                   <tr>
@@ -176,8 +176,8 @@ function AdminCampanhasPage() {
                 </thead>
                 <tbody>
                   {gifts.map(gift => (
-                    <tr key={gift.id}>
-                      <td data-label="Periodo">
+                    <tr key={gift.id} className="admin-campanhas-card-row">
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--periodo" data-label="Periodo">
                         <select
                           className="admin-campanhas-control"
                           value={gift.periodo || 'diaria'}
@@ -188,7 +188,7 @@ function AdminCampanhasPage() {
                           ))}
                         </select>
                       </td>
-                      <td data-label="Categoria">
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--categoria" data-label="Categoria">
                         <select
                           className="admin-campanhas-control"
                           value={gift.categoria || 'registro_cliente'}
@@ -199,7 +199,7 @@ function AdminCampanhasPage() {
                           ))}
                         </select>
                       </td>
-                      <td data-label="Operadora">
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--operadora" data-label="Operadora">
                         <select
                           className="admin-campanhas-control"
                           value={gift.operadora_id || ''}
@@ -211,7 +211,7 @@ function AdminCampanhasPage() {
                           ))}
                         </select>
                       </td>
-                      <td data-label="Alvo">
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--alvo" data-label="Alvo">
                         <input
                           className="admin-campanhas-control"
                           type="number"
@@ -219,7 +219,7 @@ function AdminCampanhasPage() {
                           onChange={event => handleCampanhasChange(gift.id, 'target', parseInt(event.target.value, 10) || 0)}
                         />
                       </td>
-                      <td data-label="Descricao exibida">
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--descricao" data-label="Descricao exibida">
                         <input
                           className="admin-campanhas-control"
                           type="text"
@@ -227,7 +227,7 @@ function AdminCampanhasPage() {
                           onChange={event => handleCampanhasChange(gift.id, 'desc', event.target.value)}
                         />
                       </td>
-                      <td data-label="Recompensa">
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--recompensa" data-label="Recompensa">
                         <input
                           className="admin-campanhas-control"
                           type="text"
@@ -235,7 +235,7 @@ function AdminCampanhasPage() {
                           onChange={event => handleCampanhasChange(gift.id, 'reward', event.target.value)}
                         />
                       </td>
-                      <td data-label="Acoes" style={{ textAlign: 'right' }}>
+                      <td className="admin-campanhas-card-field admin-campanhas-card-field--acoes" data-label="Acoes" style={{ textAlign: 'right' }}>
                         <button
                           type="button"
                           className="btn btn-icon btn-ghost btn-danger-icon"
@@ -250,8 +250,8 @@ function AdminCampanhasPage() {
                   ))}
 
                   {gifts.length === 0 && (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-3)', padding: 24 }}>
+                    <tr className="admin-campanhas-empty-row">
+                      <td className="admin-campanhas-empty-cell" colSpan={7} style={{ textAlign: 'center', color: 'var(--text-3)', padding: 24 }}>
                         Nenhuma campanha de recompensa cadastrada.
                       </td>
                     </tr>
@@ -262,7 +262,7 @@ function AdminCampanhasPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+        <div className="admin-campanhas-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
           <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
             <I.Check size={16} /> {saving ? 'Salvando...' : 'Salvar Alterações'}
           </button>
