@@ -51,6 +51,30 @@ function valorBoolean(valor) {
   return '-';
 }
 
+function fmtEtapaFunil(codigo) {
+  const etapas = {
+    aprovacao: 'Aprovação',
+    ativacao: 'Ativação',
+    envio: 'Envio',
+    entrega: 'Entrega',
+    confirmacao: 'Confirmação',
+    concluido: 'Concluído',
+    retorno: 'Retorno'
+  };
+
+  return etapas[codigo] || valor(codigo);
+}
+
+function fmtPrioridadeFunil(valorPrioridade) {
+  const prioridades = {
+    alta: 'Alta',
+    media: 'Média',
+    baixa: 'Baixa'
+  };
+  const chave = String(valorPrioridade || '').trim().toLowerCase();
+  return prioridades[chave] || valor(valorPrioridade);
+}
+
 function fmtRepasse(linha) {
   if (linha.cliente_base_propria && linha.cliente_base_operadora) return 'Nossa base + base da operadora';
   if (linha.cliente_base_propria) return 'Nossa base';
@@ -185,10 +209,10 @@ function ResumoTab({ dossie }) {
     { label: 'DDD', value: valor(venda.ddd) },
     { label: 'GB', value: valor(venda.gb) },
     { label: 'Dia de vencimento', value: valor(venda.dia_vencimento) },
-    { label: 'Etapa do funil', value: valor(dossie.contexto?.status_funil_label || venda.status_funil) },
-    { label: 'Prioridade', value: valor(venda.prioridade_funil) },
-    { label: 'Data venda', value: fmtData(venda.data_venda) },
-    { label: 'Data ativação', value: fmtData(venda.data_ativacao) },
+    { label: 'Etapa do funil', value: valor(dossie.contexto?.status_funil_label || fmtEtapaFunil(venda.status_funil)) },
+    { label: 'Prioridade', value: fmtPrioridadeFunil(venda.prioridade_funil) },
+    { label: 'Data da venda', value: fmtData(venda.data_venda) },
+    { label: 'Data de ativação', value: fmtData(venda.data_ativacao) },
     { label: 'Fidelidade fim', value: fmtData(cliente.fidelidade_fim) },
     { label: 'Valor total', value: fmtMoeda(venda.valor_total) },
     { label: 'Vendedoras', value: nomesVendedoras(venda) },
@@ -214,8 +238,8 @@ function ResumoTab({ dossie }) {
     { label: 'Promessa ao cliente', value: valor(venda.promessa_cliente) },
     { label: 'Promessa cumprida', value: valor(venda.promessa_cumprida) },
     { label: 'Observações', value: valor(venda.observacoes) },
-    { label: 'Motivo retorno', value: valor(venda.motivo_retorno) },
-    { label: 'Status anterior retorno', value: valor(venda.status_anterior_retorno) },
+    { label: 'Motivo do retorno', value: valor(venda.motivo_retorno) },
+    { label: 'Status anterior ao retorno', value: fmtEtapaFunil(venda.status_anterior_retorno) },
     { label: 'Retornou em', value: fmtDataHora(venda.retornou_em) },
     { label: 'Corrigido em', value: fmtDataHora(venda.corrigido_em) },
     { label: 'Criado em', value: fmtDataHora(venda.created_at) },
@@ -307,8 +331,8 @@ function OperacionalTab({ dossie }) {
         { label: 'Código da etapa', value: valor(venda.status_funil) },
         { label: 'Status final', value: valor(dossie.contexto?.status_final) },
         { label: 'Churn aproximado', value: dossie.contexto?.churn_aproximado ? 'Sim' : 'Não' },
-        { label: 'Motivo retorno', value: valor(venda.motivo_retorno) },
-        { label: 'Status anterior retorno', value: valor(venda.status_anterior_retorno) },
+        { label: 'Motivo do retorno', value: valor(venda.motivo_retorno) },
+        { label: 'Status anterior ao retorno', value: fmtEtapaFunil(venda.status_anterior_retorno) },
         { label: 'Retornou em', value: fmtDataHora(venda.retornou_em) },
         { label: 'Corrigido em', value: fmtDataHora(venda.corrigido_em) },
         { label: 'Protocolo', value: valor(venda.protocolo) },

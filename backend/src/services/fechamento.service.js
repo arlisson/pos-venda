@@ -214,7 +214,7 @@ async function listarEtapasPainel() {
 }
 
 function nomeEtapa(etapas, codigo) {
-  if (codigo === CODIGO_RETORNO_HISTORICO) return 'Ja retornou';
+  if (codigo === CODIGO_RETORNO_HISTORICO) return 'Já retornou';
   if (codigo === 'retorno') return 'Retorno';
   return etapas.find(etapa => etapa.codigo === codigo)?.nome || codigo || 'Sem etapa';
 }

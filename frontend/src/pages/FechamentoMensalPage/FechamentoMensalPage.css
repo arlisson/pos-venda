@@ -518,6 +518,7 @@
 }
 
 .fechamento-etapa-badge {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   max-width: 140px;
@@ -543,6 +544,10 @@
   border-color: #fecaca;
   background: var(--danger-bg);
   color: #991b1b;
+}
+
+.fechamento-etapa-badge.is-return-history {
+  max-width: none;
 }
 
 .fechamento-modal-table .num {

@@ -52,8 +52,8 @@ function linhaTeveRetorno(linha = {}) {
 }
 
 function fmtRetornoBadge(linha = {}) {
-  if (linha.retornou_em) return `Ja retornou em ${fmtData(linha.retornou_em)}`;
-  return 'Ja retornou';
+  if (linha.retornou_em) return `Já retornou em ${fmtData(linha.retornou_em)}`;
+  return 'Já retornou';
 }
 
 function fmtLista(valor) {
@@ -124,16 +124,26 @@ function fmtRepasse(linha) {
 
 function fmtEtapaFunil(codigo) {
   const etapas = {
-    aprovacao: 'Aprovacao',
-    ativacao: 'Ativacao',
+    aprovacao: 'Aprovação',
+    ativacao: 'Ativação',
     envio: 'Envio',
     entrega: 'Entrega',
-    confirmacao: 'Confirmacao',
-    concluido: 'Concluido',
+    confirmacao: 'Confirmação',
+    concluido: 'Concluído',
     retorno: 'Retorno'
   };
 
   return etapas[codigo] || codigo || '-';
+}
+
+function fmtPrioridadeFunil(valor) {
+  const prioridades = {
+    alta: 'Alta',
+    media: 'Média',
+    baixa: 'Baixa'
+  };
+  const chave = String(valor || '').trim().toLowerCase();
+  return prioridades[chave] || fmtTexto(valor);
 }
 
 function classeEtapaFunil(codigo) {
@@ -484,7 +494,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
           {loading ? (
             <div className="fechamento-empty">Carregando...</div>
           ) : dados.linhas.length === 0 ? (
-            <div className="fechamento-empty">Nenhum chip no periodo.</div>
+            <div className="fechamento-empty">Nenhum chip no período.</div>
           ) : (
             <>
               <div className="fechamento-modal-filters">
@@ -584,15 +594,15 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                       <th>Protocolo</th>
                       <th>Login</th>
                       <th>Contrato</th>
-                      <th>Ativacao</th>
+                      <th>Ativação</th>
                       <th>Venda</th>
                       <th>Prioridade</th>
                       <th>Vendedora</th>
                       <th>Cliente</th>
-                      <th>Nome venda</th>
-                      <th>Razão venda</th>
+                      <th>Nome da venda</th>
+                      <th>Razão da venda</th>
                       <th>CNPJ</th>
-                      <th>CNPJ venda</th>
+                      <th>CNPJ da venda</th>
                       <th>E-mail</th>
                       <th>E-mail 2</th>
                       <th>Celular</th>
@@ -619,25 +629,25 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                       <th>Qtd. cancelamento</th>
                       <th>Números solicitados</th>
                       <th>Números portados</th>
-                      <th>Endereço Receita</th>
+                      <th>Endereço da Receita</th>
                       <th>Endereço real divergente</th>
                       <th>Endereço real</th>
-                      <th>Ponto referência</th>
+                      <th>Ponto de referência</th>
                       <th>Local CPF</th>
-                      <th>Horário aceite</th>
-                      <th>Dias aceite</th>
+                      <th>Horário de aceite</th>
+                      <th>Dias de aceite</th>
                       <th>QC feito por</th>
                       <th>Promessa</th>
                       <th>Promessa cumprida</th>
                       <th>Observações</th>
-                      <th>Motivo retorno</th>
-                      <th>Status anterior retorno</th>
+                      <th>Motivo do retorno</th>
+                      <th>Status anterior ao retorno</th>
                       <th>Chip</th>
                       <th>Número ativado</th>
                       <th>DDD</th>
                       <th>GB</th>
                       <th>Fidelidade</th>
-                      <th className="num">Valor chip</th>
+                      <th className="num">Valor do chip</th>
                       <th>Regra</th>
                       <th className="num">Comissão R$</th>
                     </tr>
@@ -659,7 +669,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                               {fmtEtapaFunil(linha.status_funil)}
                             </span>
                             {linhaTeveRetorno(linha) && (
-                              <span className="fechamento-etapa-badge is-return" title={fmtTexto(linha.motivo_retorno)}>
+                              <span className="fechamento-etapa-badge is-return is-return-history" title={fmtTexto(linha.motivo_retorno)}>
                                 {fmtRetornoBadge(linha)}
                               </span>
                             )}
@@ -670,7 +680,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                         <td>{fmtTexto(linha.numero_cliente_contrato)}</td>
                         <td>{fmtData(linha.data_ativacao)}</td>
                         <td>{fmtData(linha.data_venda)}</td>
-                        <td>{fmtTexto(linha.prioridade_funil)}</td>
+                        <td>{fmtPrioridadeFunil(linha.prioridade_funil)}</td>
                         <td>{nomesVendedorasLinha(linha)}</td>
                         <td>{linha.cliente?.nome || linha.cliente?.razao_social || '-'}</td>
                         <td>{fmtTexto(linha.nome)}</td>
@@ -715,7 +725,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                         <td>{fmtTexto(linha.promessa_cumprida)}</td>
                         <td>{fmtTexto(linha.observacoes)}</td>
                         <td>{fmtTexto(linha.motivo_retorno)}</td>
-                        <td>{fmtTexto(linha.status_anterior_retorno)}</td>
+                        <td>{fmtEtapaFunil(linha.status_anterior_retorno)}</td>
                         <td>{linha.chip_index}</td>
                         <td>{linha.numero_ativado || '-'}</td>
                         <td>{linha.ddd || '-'}</td>

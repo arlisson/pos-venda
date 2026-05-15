@@ -87,7 +87,7 @@ function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, secao, lo
       {loading ? (
         <div className="fechamento-empty">Carregando...</div>
       ) : linhas.length === 0 ? (
-        <div className="fechamento-empty">Nenhuma venda no periodo.</div>
+        <div className="fechamento-empty">Nenhuma venda no período.</div>
       ) : (
         <>
           <EtapasResumo etapas={etapas} />
@@ -100,7 +100,7 @@ function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, secao, lo
                   <th rowSpan={2}>Contratos Finalizados</th>
                   <th rowSpan={2}>UGRs</th>
                   <th colSpan={3} className="group-product">Produto</th>
-                  <th colSpan={2} className="group-service">Servico</th>
+                  <th colSpan={2} className="group-service">Serviço</th>
                   <th rowSpan={2}>Receita</th>
                 </tr>
                 <tr>

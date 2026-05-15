@@ -19,8 +19,8 @@ function vendaTeveRetorno(venda = {}) {
 }
 
 function fmtRetornoBadge(venda = {}) {
-  if (venda.retornou_em) return `Ja retornou em ${fmtData(venda.retornou_em)}`;
-  return 'Ja retornou';
+  if (venda.retornou_em) return `Já retornou em ${fmtData(venda.retornou_em)}`;
+  return 'Já retornou';
 }
 
 const STATUS_LABEL = {
@@ -94,15 +94,15 @@ function DetalhesModal({ secao, periodo, onClose }) {
           {loading ? (
             <div className="fechamento-empty">Carregando...</div>
           ) : dados.length === 0 ? (
-            <div className="fechamento-empty">Nenhuma venda nessa seção.</div>
+            <div className="fechamento-empty">Nenhuma venda nesta seção.</div>
           ) : (
             <div style={{ overflow: 'auto', maxHeight: '60vh' }}>
               <table className="fechamento-modal-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Data venda</th>
-                    <th>Data ativacao</th>
+                    <th>Data da venda</th>
+                    <th>Data de ativação</th>
                     <th>Vendedora</th>
                     <th>Cliente</th>
                     <th>CNPJ</th>
@@ -140,7 +140,7 @@ function DetalhesModal({ secao, periodo, onClose }) {
                             {STATUS_LABEL[venda.status_funil] || venda.status_funil}
                           </span>
                           {vendaTeveRetorno(venda) && (
-                            <span className="fechamento-etapa-badge is-return" title={venda.motivo_retorno || ''}>
+                            <span className="fechamento-etapa-badge is-return is-return-history" title={venda.motivo_retorno || ''}>
                               {fmtRetornoBadge(venda)}
                             </span>
                           )}
