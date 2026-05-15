@@ -42,6 +42,7 @@ const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPO_VENDA_PARADA = 'venda_parada_funil';
 const RETORNO_PRE_AVISO_MINUTOS = 15;
+const NOTIFICATION_DRAWER_KEYS = ['retornos', 'fidelidade', 'ligacoes', 'vendas-paradas', 'problemas'];
 
 function getCampanhaKey(campanha) {
   return campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`;
@@ -388,6 +389,14 @@ function DashboardPage() {
   const [usuarioCampanhaBusca, setUsuarioCampanhaBusca] = useState('');
   const [notificacoes, setNotificacoes] = useState([]);
   const [contatosMarcadosOpen, setContatosMarcadosOpen] = useState(false);
+  const [openNotificationDrawers, setOpenNotificationDrawers] = useState(() => (
+    typeof window !== 'undefined' && window.innerWidth > 760
+      ? new Set(NOTIFICATION_DRAWER_KEYS)
+      : new Set()
+  ));
+  const [openTeamGoalDrawers, setOpenTeamGoalDrawers] = useState(() => (
+    typeof window !== 'undefined' && window.innerWidth > 760 ? 'all' : new Set()
+  ));
   const [vendasRetorno, setVendasRetorno] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [vendas, setVendas] = useState([]);
@@ -762,6 +771,40 @@ function DashboardPage() {
       onItemClick: abrirNotificacaoNoDashboard
     }
   ];
+
+  function toggleNotificationDrawer(key) {
+    setOpenNotificationDrawers(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function isTeamGoalDrawerOpen(id) {
+    return openTeamGoalDrawers === 'all' || openTeamGoalDrawers.has(String(id));
+  }
+
+  function toggleTeamGoalDrawer(id) {
+    const key = String(id);
+    setOpenTeamGoalDrawers(prev => {
+      const next = prev === 'all'
+        ? new Set(progressoUsuarios.map(item => String(item.id)))
+        : new Set(prev);
+
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+
+      return next;
+    });
+  }
+
   const proximaFidelidade = notificacoesFidelidade[0];
   const proximoRetorno = notificacoesRetorno[0];
   const proximoProblema = notificacoesProblema[0];
@@ -898,18 +941,32 @@ function DashboardPage() {
             </div>
 
             <div className="home-notifications__list">
-              {notificacaoCards.map(card => (
-                <article key={card.key} className={`home-notification-card home-notification-card--${card.variant}`}>
-                  <div className="home-notification-card__top">
+              {notificacaoCards.map(card => {
+                const drawerOpen = openNotificationDrawers.has(card.key);
+                const drawerId = `home-notification-card-${card.key}`;
+
+                return (
+                <article key={card.key} className={`home-notification-card home-notification-card--${card.variant} ${drawerOpen ? 'is-open' : ''}`}>
+                  <button
+                    type="button"
+                    className="home-notification-card__top"
+                    aria-expanded={drawerOpen}
+                    aria-controls={drawerId}
+                    onClick={() => toggleNotificationDrawer(card.key)}
+                  >
                     <span className="home-notification-card__icon">{card.icon}</span>
                     <span className="home-notification-card__title">
                       <strong>{card.title}</strong>
                       <em>{card.subtitle}</em>
                     </span>
                     <span className="home-notification-card__count">{card.count}</span>
-                  </div>
+                    <span className="home-notification-card__chevron" aria-hidden="true">
+                      <I.ChevronDown size={14} />
+                    </span>
+                  </button>
 
-                  <div className={`home-notification-card__items ${card.scrollable ? 'is-scrollable' : ''}`}>
+                  <div id={drawerId} className="home-notification-card__drawer">
+                    <div className={`home-notification-card__items ${card.scrollable ? 'is-scrollable' : ''}`}>
                     {card.items.length === 0 ? (
                       <div className="home-notification-card__empty">Nenhuma notificação ativa.</div>
                     ) : card.items.map(notificacao => (
@@ -929,8 +986,10 @@ function DashboardPage() {
                   <button type="button" className="home-notification-card__action" disabled={card.count === 0} onClick={card.onAction}>
                     {card.actionLabel} <I.ArrowRight size={13} />
                   </button>
+                  </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}
@@ -1220,10 +1279,18 @@ function DashboardPage() {
                 const total = item.resumo?.total || 0;
                 const atingidas = item.resumo?.atingidas || 0;
                 const pct = total > 0 ? Math.round((atingidas / total) * 100) : 0;
+                const drawerOpen = isTeamGoalDrawerOpen(item.id);
+                const drawerId = `team-goal-drawer-${item.id}`;
 
                 return (
-                  <article key={item.id} className="team-goal-card">
-                    <div className="team-goal-card__top">
+                  <article key={item.id} className={`team-goal-card ${drawerOpen ? 'is-open' : ''}`}>
+                    <button
+                      type="button"
+                      className="team-goal-card__top"
+                      aria-expanded={drawerOpen}
+                      aria-controls={drawerId}
+                      onClick={() => toggleTeamGoalDrawer(item.id)}
+                    >
                       <div className="mini-avatar">
                         {item.foto_perfil ? (
                           <img src={item.foto_perfil} alt={item.nome || 'Usuário'} />
@@ -1236,8 +1303,12 @@ function DashboardPage() {
                         <span>{atingidas}/{total} campanhas atingidas · {item.resumo?.resgatadas || 0} resgatadas</span>
                       </div>
                       <b>{pct}%</b>
-                    </div>
+                      <span className="team-goal-card__chevron" aria-hidden="true">
+                        <I.ChevronDown size={14} />
+                      </span>
+                    </button>
 
+                    <div id={drawerId} className="team-goal-card__drawer">
                     <div className="progress-track">
                       <div className="progress-fill" style={{ width: `${pct}%` }} />
                     </div>
@@ -1260,6 +1331,7 @@ function DashboardPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
                     </div>
                   </article>
                 );

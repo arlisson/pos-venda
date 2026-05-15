@@ -100,11 +100,52 @@
 
 .home-notification-card__top {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: 30px minmax(0, 1fr) auto 18px;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding-bottom: 14px;
+  border: 0;
   border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-notification-card__top:focus-visible {
+  outline: 2px solid var(--card-color);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.home-notification-card__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  transition: transform 160ms ease, color 160ms ease;
+}
+
+.home-notification-card.is-open .home-notification-card__chevron {
+  color: var(--card-color);
+  transform: rotate(180deg);
+}
+
+.home-notification-card__drawer {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.home-notification-card:not(.is-open) .home-notification-card__drawer {
+  display: none;
+}
+
+.home-notification-card:not(.is-open) {
+  min-height: auto;
 }
 
 .home-notification-card__icon,
@@ -827,9 +868,23 @@
 
 .team-goal-card__top {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr) auto 18px;
   gap: 10px;
   align-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.team-goal-card__top:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 .team-goal-card__top .mini-avatar {
@@ -864,6 +919,34 @@
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+.team-goal-card__chevron {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  overflow: visible !important;
+  transition: transform 160ms ease, color 160ms ease;
+}
+
+.team-goal-card.is-open .team-goal-card__chevron {
+  color: var(--text);
+  transform: rotate(180deg);
+}
+
+.team-goal-card__drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.team-goal-card:not(.is-open) {
+  gap: 0;
+}
+
+.team-goal-card:not(.is-open) .team-goal-card__drawer {
+  display: none;
 }
 
 .team-goal-list {
@@ -946,6 +1029,18 @@
   }
   .home-notification-card {
     min-height: auto;
+    padding: 0;
+  }
+  .home-notification-card__top {
+    min-height: 72px;
+    padding: 14px 16px;
+    border-bottom: 0;
+  }
+  .home-notification-card.is-open .home-notification-card__top {
+    border-bottom: 1px solid var(--border);
+  }
+  .home-notification-card__drawer {
+    padding: 0 16px 16px;
   }
   .home-notification {
     min-height: auto;

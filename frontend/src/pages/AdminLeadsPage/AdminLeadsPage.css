@@ -732,7 +732,15 @@
 
 @media (max-width: 780px) {
   .admin-leads-page {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
     padding: 14px;
+  }
+
+  .admin-leads-page > * {
+    flex-shrink: 0;
   }
 
   .lead-doc-strip {
@@ -764,8 +772,15 @@
     grid-template-columns: 1fr;
   }
 
+  .lead-table {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
   .lead-table .scroll {
-    overflow: auto;
+    flex: 0 0 auto;
+    overflow-x: auto;
+    overflow-y: visible;
   }
 
   .lead-table table {
@@ -798,7 +813,7 @@
   }
 
   /* Lead table mantém scroll horizontal (escape hatch já marcado no JSX) */
-  .lead-table table { min-width: 720px; }
+  .admin-leads-page .lead-table table { min-width: 720px !important; }
 
   .lead-table th,
   .lead-table td {

@@ -103,8 +103,6 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
             ))}
           </div>
         )}
-      </div>
-
       {podeVerCampanhas && giftCampanhas.length > 0 && (
         <div className="sidebar-goals">
           <div className="header-row">
@@ -138,6 +136,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
           })}
         </div>
       )}
+      </div>
 
       <div className="sidebar-footer" style={{ borderTop: '1px solid var(--border)' }}>
         <div className="user-card">
@@ -160,6 +159,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
             </div>
             <div className="user-info">
               <div className="user-name">{usuario?.nome || 'Usuário'}</div>
+              <div className="user-email">{usuario?.email || 'Email nao informado'}</div>
               <div className="user-role">{usuario?.role?.nome || 'Perfil'}</div>
             </div>
           </button>
