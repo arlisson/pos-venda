@@ -120,7 +120,7 @@
 }
 
 .config-form-grid--commission {
-  grid-template-columns: repeat(4, minmax(140px, 1fr)) 110px 120px;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
 }
 
 .config-form .form-field {
@@ -128,13 +128,15 @@
   margin-bottom: 0;
 }
 
-.config-form .form-field input {
+.config-form .form-field input,
+.config-form .form-field select {
   width: 100%;
   height: 38px;
   background: var(--surface);
 }
 
-.config-form .form-field input:focus {
+.config-form .form-field input:focus,
+.config-form .form-field select:focus {
   border-color: var(--text);
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
 }

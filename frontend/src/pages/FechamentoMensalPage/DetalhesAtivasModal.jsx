@@ -116,7 +116,10 @@ function fmtRegra(regra) {
 }
 
 function fmtRepasse(linha) {
-  return linha.cliente_base_operadora ? 'Base da operadora' : 'Cliente novo/portabilidade';
+  if (linha.cliente_base_propria && linha.cliente_base_operadora) return 'Nossa base + base da operadora';
+  if (linha.cliente_base_propria) return 'Nossa base';
+  if (linha.cliente_base_operadora) return 'Base da operadora';
+  return 'Cliente novo/portabilidade';
 }
 
 function fmtEtapaFunil(codigo) {
@@ -248,11 +251,14 @@ function valoresBuscaLinha(linha) {
     fmtMoeda(linha.valor_unitario),
     linha.regra_comissao?.valor_min,
     linha.regra_comissao?.valor_max,
+    linha.regra_comissao?.operadora_nome,
     fmtRegra(linha.regra_comissao),
     linha.comissao_integral,
     linha.comissao_base,
+    linha.comissao_base_propria,
     linha.comissao,
-    fmtMoeda(linha.comissao)
+    fmtMoeda(linha.comissao),
+    fmtRepasse(linha)
   ].map(valor => normalizarBusca(valor)).join(' ');
 }
 
@@ -369,8 +375,10 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
     tiposVenda: criarOpcoes(linhasBase, linha => linha.tipo_venda),
     servicos: criarOpcoes(linhasBase, linha => linha.servico),
     repasses: [
-      { value: 'base', label: 'Base da operadora' },
-      { value: 'novo', label: 'Cliente novo/portabilidade' }
+      { value: 'base_propria', label: 'Nossa base' },
+      { value: 'base_operadora', label: 'Base da operadora' },
+      { value: 'base_propria_operadora', label: 'Nossa base + base da operadora' },
+      { value: 'cliente_novo_portabilidade', label: 'Cliente novo/portabilidade' }
     ],
     regras: [
       { value: 'com_regra', label: 'Com regra' },
@@ -411,8 +419,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
       if (filtros.etapa && chaveOpcao(linha.status_funil) !== filtros.etapa) return false;
       if (filtros.tipoVenda && chaveOpcao(linha.tipo_venda) !== filtros.tipoVenda) return false;
       if (filtros.servico && chaveOpcao(linha.servico) !== filtros.servico) return false;
-      if (filtros.repasse === 'base' && !linha.cliente_base_operadora) return false;
-      if (filtros.repasse === 'novo' && linha.cliente_base_operadora) return false;
+      if (filtros.repasse && linha.tipo_repasse !== filtros.repasse) return false;
       if (filtros.regra === 'com_regra' && linha.sem_regra) return false;
       if (filtros.regra === 'sem_regra' && !linha.sem_regra) return false;
       if (termo && !valoresBuscaLinha(linha).includes(termo)) return false;

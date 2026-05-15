@@ -18,6 +18,7 @@ import {
   excluirRegraComissao,
   excluirServico,
   excluirTipoVenda,
+  listarOperadoras,
   listarLinksExternosAdmin,
   listarOperadorasAdmin,
   listarRegrasComissaoAdmin,
@@ -42,13 +43,20 @@ const LINK_VAZIO = {
 };
 
 const REGRA_COMISSAO_VAZIA = {
+  operadora_id: '',
   valor_min: '',
   valor_max: '',
   valor_comissao: '',
   valor_comissao_base: '',
-  ordem: 0,
+  valor_comissao_base_propria: '',
+  prioridade_base_dupla: 'base_propria',
   ativo: true
 };
+
+const PRIORIDADES_BASE_DUPLA = [
+  { value: 'base_propria', label: 'Nossa base' },
+  { value: 'base_operadora', label: 'Base da operadora' }
+];
 
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -56,7 +64,25 @@ function fmtMoeda(valor) {
 
 function valorForm(valor) {
   if (valor === null || valor === undefined || valor === '') return '';
-  return String(valor).replace('.', ',');
+  return fmtMoeda(valor);
+}
+
+function mascararBRL(valor) {
+  const digits = String(valor || '').replace(/\D/g, '');
+  if (!digits) return '';
+
+  return fmtMoeda(Number(digits) / 100);
+}
+
+function moedaParaNumero(valor) {
+  const digits = String(valor || '').replace(/\D/g, '');
+  if (!digits) return '';
+
+  return Number((Number(digits) / 100).toFixed(2));
+}
+
+function labelPrioridadeBaseDupla(valor) {
+  return PRIORIDADES_BASE_DUPLA.find(item => item.value === valor)?.label || 'Nossa base';
 }
 
 function StatusPill({ ativo }) {
@@ -169,7 +195,11 @@ function ConfiguracoesPage() {
 
     try {
       const [operadoras, tiposVenda, servicos, links, regrasComissao] = await Promise.all([
-        permissoes.operadoras ? listarOperadorasAdmin() : Promise.resolve([]),
+        permissoes.operadoras
+          ? listarOperadorasAdmin()
+          : permissoes.regrasComissao
+            ? listarOperadoras()
+            : Promise.resolve([]),
         permissoes.tiposVenda ? listarTiposVendaAdmin() : Promise.resolve([]),
         permissoes.servicos ? listarServicosAdmin() : Promise.resolve([]),
         permissoes.links ? listarLinksExternosAdmin() : Promise.resolve([]),
@@ -220,11 +250,13 @@ function ConfiguracoesPage() {
 
     if (aba === 'regrasComissao') {
       setRegraComissaoForm({
+        operadora_id: item.operadora_id || '',
         valor_min: valorForm(item.valor_min),
         valor_max: valorForm(item.valor_max),
         valor_comissao: valorForm(item.valor_comissao),
         valor_comissao_base: valorForm(item.valor_comissao_base ?? item.valor_comissao),
-        ordem: item.ordem || 0,
+        valor_comissao_base_propria: valorForm(item.valor_comissao_base_propria ?? item.valor_comissao_base ?? item.valor_comissao),
+        prioridade_base_dupla: item.prioridade_base_dupla || 'base_propria',
         ativo: Boolean(item.ativo)
       });
       return;
@@ -325,7 +357,13 @@ function ConfiguracoesPage() {
     const editando = Boolean(editandoId);
     const payload = {
       ...regraComissaoForm,
-      ordem: Number(regraComissaoForm.ordem || 0)
+      operadora_id: regraComissaoForm.operadora_id || null,
+      valor_min: moedaParaNumero(regraComissaoForm.valor_min),
+      valor_max: moedaParaNumero(regraComissaoForm.valor_max),
+      valor_comissao: moedaParaNumero(regraComissaoForm.valor_comissao),
+      valor_comissao_base: moedaParaNumero(regraComissaoForm.valor_comissao_base),
+      valor_comissao_base_propria: moedaParaNumero(regraComissaoForm.valor_comissao_base_propria),
+      prioridade_base_dupla: regraComissaoForm.prioridade_base_dupla || 'base_propria'
     };
 
     try {
@@ -456,13 +494,25 @@ function ConfiguracoesPage() {
           {renderFormHeader('Adicionar regra de comissão', 'Editar regra de comissão', 'Organize faixas de valor e comissão para vendas novas e clientes da base.')}
           <div className="config-form-grid config-form-grid--commission">
           <div className="form-field">
+            <label>Operadora</label>
+            <select
+              value={regraComissaoForm.operadora_id}
+              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, operadora_id: e.target.value })}
+            >
+              <option value="">Todas</option>
+              {dados.operadoras.map(operadora => (
+                <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-field">
             <label>Valor inicial</label>
             <input
               type="text"
-              inputMode="decimal"
+              inputMode="numeric"
               value={regraComissaoForm.valor_min}
-              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_min: e.target.value })}
-              placeholder="29,99"
+              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_min: mascararBRL(e.target.value) })}
+              placeholder="R$ 29,99"
               required
             />
           </div>
@@ -470,10 +520,10 @@ function ConfiguracoesPage() {
             <label>Valor final</label>
             <input
               type="text"
-              inputMode="decimal"
+              inputMode="numeric"
               value={regraComissaoForm.valor_max}
-              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_max: e.target.value })}
-              placeholder="59,99"
+              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_max: mascararBRL(e.target.value) })}
+              placeholder="R$ 59,99"
               required
             />
           </div>
@@ -481,27 +531,45 @@ function ConfiguracoesPage() {
             <label>Comissao integral</label>
             <input
               type="text"
-              inputMode="decimal"
+              inputMode="numeric"
               value={regraComissaoForm.valor_comissao}
-              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_comissao: e.target.value })}
-              placeholder="10,00"
+              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_comissao: mascararBRL(e.target.value) })}
+              placeholder="R$ 10,00"
               required
             />
           </div>
           <div className="form-field">
-            <label>Comissao cliente da base</label>
+            <label>Comissao base da operadora</label>
             <input
               type="text"
-              inputMode="decimal"
+              inputMode="numeric"
               value={regraComissaoForm.valor_comissao_base}
-              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_comissao_base: e.target.value })}
-              placeholder="5,00"
+              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_comissao_base: mascararBRL(e.target.value) })}
+              placeholder="R$ 5,00"
               required
             />
           </div>
           <div className="form-field">
-            <label>Ordem</label>
-            <input type="number" value={regraComissaoForm.ordem} onChange={e => setRegraComissaoForm({ ...regraComissaoForm, ordem: e.target.value })} />
+            <label>Comissao nossa base</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={regraComissaoForm.valor_comissao_base_propria}
+              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, valor_comissao_base_propria: mascararBRL(e.target.value) })}
+              placeholder="R$ 5,00"
+              required
+            />
+          </div>
+          <div className="form-field">
+            <label>Se estiver nas duas bases</label>
+            <select
+              value={regraComissaoForm.prioridade_base_dupla}
+              onChange={e => setRegraComissaoForm({ ...regraComissaoForm, prioridade_base_dupla: e.target.value })}
+            >
+              {PRIORIDADES_BASE_DUPLA.map(item => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
           </div>
           <label className="config-toggle">
             <input type="checkbox" checked={regraComissaoForm.ativo} onChange={e => setRegraComissaoForm({ ...regraComissaoForm, ativo: e.target.checked })} />
@@ -520,27 +588,33 @@ function ConfiguracoesPage() {
 
         <div className="list-table config-table">
           <table>
-            <thead><tr><th>Faixa</th><th>Integral</th><th>Cliente da base</th><th>Ordem</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Operadora</th><th>Faixa</th><th>Integral</th><th>Base operadora</th><th>Nossa base</th><th>Prioridade</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {listaAtual.map(item => (
                 <tr key={item.id}>
+                  <td data-label="Operadora" data-mobile-hidden="true">{item.operadora_nome || 'Todas'}</td>
                   <td data-label="Faixa" className="m-primary">
                     {fmtMoeda(item.valor_min)} até {fmtMoeda(item.valor_max)}
                     <details className="mobile-row-drawer">
                       <summary>Ver detalhes</summary>
                       <dl>
+                        <dt>Operadora</dt>
+                        <dd>{item.operadora_nome || 'Todas'}</dd>
                         <dt>Integral</dt>
                         <dd>{fmtMoeda(item.valor_comissao)}</dd>
-                        <dt>Cliente da base</dt>
+                        <dt>Base da operadora</dt>
                         <dd>{fmtMoeda(item.valor_comissao_base ?? item.valor_comissao)}</dd>
-                        <dt>Ordem</dt>
-                        <dd>{item.ordem}</dd>
+                        <dt>Nossa base</dt>
+                        <dd>{fmtMoeda(item.valor_comissao_base_propria ?? item.valor_comissao_base ?? item.valor_comissao)}</dd>
+                        <dt>Se estiver nas duas bases</dt>
+                        <dd>{labelPrioridadeBaseDupla(item.prioridade_base_dupla)}</dd>
                       </dl>
                     </details>
                   </td>
                   <td data-label="Integral" data-mobile-hidden="true">{fmtMoeda(item.valor_comissao)}</td>
-                  <td data-label="Cliente da base" data-mobile-hidden="true">{fmtMoeda(item.valor_comissao_base ?? item.valor_comissao)}</td>
-                  <td data-label="Ordem" data-mobile-hidden="true">{item.ordem}</td>
+                  <td data-label="Base operadora" data-mobile-hidden="true">{fmtMoeda(item.valor_comissao_base ?? item.valor_comissao)}</td>
+                  <td data-label="Nossa base" data-mobile-hidden="true">{fmtMoeda(item.valor_comissao_base_propria ?? item.valor_comissao_base ?? item.valor_comissao)}</td>
+                  <td data-label="Prioridade" data-mobile-hidden="true">{labelPrioridadeBaseDupla(item.prioridade_base_dupla)}</td>
                   <td data-label="Status" className="m-meta"><StatusPill ativo={item.ativo} /></td>
                   <td data-label="Acoes" className="row-actions m-actions">
                     <button type="button" className="btn btn-sm config-edit" onClick={() => editarItem(item)}><I.Edit size={13} /> Editar</button>

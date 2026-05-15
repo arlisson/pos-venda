@@ -51,6 +51,13 @@ function valorBoolean(valor) {
   return '-';
 }
 
+function fmtRepasse(linha) {
+  if (linha.cliente_base_propria && linha.cliente_base_operadora) return 'Nossa base + base da operadora';
+  if (linha.cliente_base_propria) return 'Nossa base';
+  if (linha.cliente_base_operadora) return 'Base da operadora';
+  return 'Cliente novo/portabilidade';
+}
+
 function juntarValores(valores, separador = ', ') {
   const texto = (valores || [])
     .map(item => String(item || '').trim())
@@ -253,7 +260,7 @@ function LinhasTab({ dossie }) {
               <td>{linha.tipo_linha || '-'}</td>
               <td>{linha.ddd || '-'}</td>
               <td>{linha.gb || '-'}</td>
-              <td>{linha.cliente_base_operadora ? 'Base da operadora' : 'Cliente novo/portabilidade'}</td>
+              <td>{fmtRepasse(linha)}</td>
               <td className="num">{fmtMoeda(linha.valor_unitario)}</td>
               <td>{linha.regra_comissao ? `${fmtMoeda(linha.regra_comissao.valor_min)} até ${fmtMoeda(linha.regra_comissao.valor_max)}` : 'Sem regra'}</td>
               <td className="num">{linha.comissao != null ? fmtMoeda(linha.comissao) : '-'}</td>

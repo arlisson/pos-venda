@@ -43,9 +43,15 @@ async function listarFunilEtapas() {
 
 async function listarRegrasComissao() {
   return RegraComissao.query()
-    .orderBy('ordem', 'asc')
-    .orderBy('valor_min', 'asc')
-    .orderBy('valor_max', 'asc');
+    .alias('rc')
+    .leftJoin('operadoras as o', 'rc.operadora_id', 'o.id')
+    .select('rc.*', 'o.nome as operadora_nome')
+    .orderByRaw('rc.operadora_id IS NOT NULL DESC')
+    .orderBy('o.ordem', 'asc')
+    .orderBy('o.nome', 'asc')
+    .orderBy('rc.ordem', 'asc')
+    .orderBy('rc.valor_min', 'asc')
+    .orderBy('rc.valor_max', 'asc');
 }
 
 async function listarOperadorasAtivas() {
@@ -83,10 +89,16 @@ async function listarLinksExternosAtivos() {
 
 async function listarRegrasComissaoAtivas() {
   return RegraComissao.query()
-    .where('ativo', true)
-    .orderBy('ordem', 'asc')
-    .orderBy('valor_min', 'asc')
-    .orderBy('valor_max', 'asc');
+    .alias('rc')
+    .leftJoin('operadoras as o', 'rc.operadora_id', 'o.id')
+    .select('rc.*', 'o.nome as operadora_nome')
+    .where('rc.ativo', true)
+    .orderByRaw('rc.operadora_id IS NOT NULL DESC')
+    .orderBy('o.ordem', 'asc')
+    .orderBy('o.nome', 'asc')
+    .orderBy('rc.ordem', 'asc')
+    .orderBy('rc.valor_min', 'asc')
+    .orderBy('rc.valor_max', 'asc');
 }
 
 async function criarOperadora(dados) {
@@ -268,7 +280,7 @@ async function excluirFunilEtapa(id) {
 
 function parseValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
-  const texto = String(valor).trim();
+  const texto = String(valor).trim().replace(/[^\d,.-]/g, '');
 
   if (!texto) return null;
   if (texto.includes(',')) {
@@ -283,6 +295,12 @@ function normalizarRegraComissao(dados) {
   const valorMax = parseValorMonetario(dados.valor_max);
   const valorComissao = parseValorMonetario(dados.valor_comissao);
   const valorComissaoBase = parseValorMonetario(dados.valor_comissao_base ?? dados.valor_comissao);
+  const valorComissaoBasePropria = parseValorMonetario(
+    dados.valor_comissao_base_propria ?? dados.valor_comissao_base ?? dados.valor_comissao
+  );
+  const prioridadeBaseDupla = ['base_propria', 'base_operadora'].includes(dados.prioridade_base_dupla)
+    ? dados.prioridade_base_dupla
+    : 'base_propria';
 
   if (!Number.isFinite(valorMin) || valorMin < 0) {
     throw new Error('Informe um valor inicial valido.');
@@ -301,14 +319,26 @@ function normalizarRegraComissao(dados) {
   }
 
   if (!Number.isFinite(valorComissaoBase) || valorComissaoBase < 0) {
-    throw new Error('Informe uma comissao de cliente da base valida.');
+    throw new Error('Informe uma comissao de base da operadora valida.');
+  }
+
+  if (!Number.isFinite(valorComissaoBasePropria) || valorComissaoBasePropria < 0) {
+    throw new Error('Informe uma comissao da nossa base valida.');
+  }
+
+  const operadoraId = dados.operadora_id ? Number(dados.operadora_id) : null;
+  if (operadoraId !== null && !Number.isFinite(operadoraId)) {
+    throw new Error('Informe uma operadora valida.');
   }
 
   return {
+    operadora_id: operadoraId,
     valor_min: Number(valorMin.toFixed(2)),
     valor_max: Number(valorMax.toFixed(2)),
     valor_comissao: Number(valorComissao.toFixed(2)),
     valor_comissao_base: Number(valorComissaoBase.toFixed(2)),
+    valor_comissao_base_propria: Number(valorComissaoBasePropria.toFixed(2)),
+    prioridade_base_dupla: prioridadeBaseDupla,
     ativo: dados.ativo ?? true,
     ordem: Number(dados.ordem || 0)
   };
@@ -323,11 +353,16 @@ async function validarSobreposicaoRegraComissao(regra, ignorarId = null) {
     .where('valor_max', '>=', regra.valor_min)
     .modify(query => {
       if (ignorarId) query.whereNot('id', Number(ignorarId));
+      if (regra.operadora_id) {
+        query.where('operadora_id', regra.operadora_id);
+      } else {
+        query.whereNull('operadora_id');
+      }
     })
     .first();
 
   if (sobreposta) {
-    throw new Error('Ja existe uma regra ativa que sobrepoe essa faixa de valor.');
+    throw new Error('Ja existe uma regra ativa que sobrepoe essa faixa de valor para essa operadora.');
   }
 }
 
@@ -344,10 +379,13 @@ async function atualizarRegraComissao(id, dados) {
   if (!atual) return null;
 
   const regra = normalizarRegraComissao({
+    operadora_id: dados.operadora_id !== undefined ? dados.operadora_id : atual.operadora_id,
     valor_min: dados.valor_min ?? atual.valor_min,
     valor_max: dados.valor_max ?? atual.valor_max,
     valor_comissao: dados.valor_comissao ?? atual.valor_comissao,
     valor_comissao_base: dados.valor_comissao_base ?? atual.valor_comissao_base ?? atual.valor_comissao,
+    valor_comissao_base_propria: dados.valor_comissao_base_propria ?? atual.valor_comissao_base_propria ?? atual.valor_comissao_base ?? atual.valor_comissao,
+    prioridade_base_dupla: dados.prioridade_base_dupla ?? atual.prioridade_base_dupla ?? 'base_propria',
     ativo: dados.ativo ?? atual.ativo,
     ordem: dados.ordem ?? atual.ordem
   });

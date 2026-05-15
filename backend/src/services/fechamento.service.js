@@ -160,10 +160,16 @@ function gigasUnitarios(gbPrincipal, quantidade, gbFallback = '') {
 
 async function carregarRegrasComissaoAtivas() {
   return RegraComissao.query()
-    .where('ativo', true)
-    .orderBy('ordem', 'asc')
-    .orderBy('valor_min', 'asc')
-    .orderBy('valor_max', 'asc');
+    .alias('rc')
+    .leftJoin('operadoras as o', 'rc.operadora_id', 'o.id')
+    .select('rc.*', 'o.nome as operadora_nome')
+    .where('rc.ativo', true)
+    .orderByRaw('rc.operadora_id IS NOT NULL DESC')
+    .orderBy('o.ordem', 'asc')
+    .orderBy('o.nome', 'asc')
+    .orderBy('rc.ordem', 'asc')
+    .orderBy('rc.valor_min', 'asc')
+    .orderBy('rc.valor_max', 'asc');
 }
 
 async function obterCodigoEtapaFinal() {
@@ -307,14 +313,19 @@ async function anexarVendedorasVendas(vendas = []) {
   }));
 }
 
-function encontrarRegraComissao(regras, valorUnitario) {
+function encontrarRegraComissao(regras, valorUnitario, operadoraId) {
   const valor = Number(valorUnitario || 0);
   if (!Number.isFinite(valor)) return null;
 
-  return regras.find(regra => (
+  const candidatas = regras.filter(regra => (
     valor >= Number(regra.valor_min || 0)
     && valor <= Number(regra.valor_max || 0)
-  )) || null;
+  ));
+  const operadora = operadoraId ? Number(operadoraId) : null;
+
+  return candidatas.find(regra => regra.operadora_id && Number(regra.operadora_id) === operadora)
+    || candidatas.find(regra => !regra.operadora_id)
+    || null;
 }
 
 function montarRegraComissaoResumo(regra) {
@@ -322,10 +333,14 @@ function montarRegraComissaoResumo(regra) {
 
   return {
     id: regra.id,
+    operadora_id: regra.operadora_id ? Number(regra.operadora_id) : null,
+    operadora_nome: regra.operadora_nome || null,
     valor_min: Number(regra.valor_min || 0),
     valor_max: Number(regra.valor_max || 0),
     valor_comissao: Number(regra.valor_comissao || 0),
-    valor_comissao_base: Number(regra.valor_comissao_base ?? regra.valor_comissao ?? 0)
+    valor_comissao_base: Number(regra.valor_comissao_base ?? regra.valor_comissao ?? 0),
+    valor_comissao_base_propria: Number(regra.valor_comissao_base_propria ?? regra.valor_comissao_base ?? regra.valor_comissao ?? 0),
+    prioridade_base_dupla: regra.prioridade_base_dupla || 'base_propria'
   };
 }
 
@@ -457,6 +472,7 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro', opcoe
       'c.cnpj as cliente_cnpj',
       'c.fidelidade_fim as cliente_fidelidade_fim',
       'c.operadora_atual_id as cliente_operadora_atual_id',
+      'c.base_anterior_sistema as cliente_base_anterior_sistema',
       'oc.nome as cliente_operadora_atual_nome'
     );
 
@@ -579,6 +595,7 @@ async function carregarVendaFechamentoPorId(id) {
       'c.cnpj as cliente_cnpj',
       'c.fidelidade_fim as cliente_fidelidade_fim',
       'c.operadora_atual_id as cliente_operadora_atual_id',
+      'c.base_anterior_sistema as cliente_base_anterior_sistema',
       'oc.nome as cliente_operadora_atual_nome'
     )
     .first();
@@ -973,7 +990,7 @@ function montarLinhasChips(vendas, regrasComissao = []) {
 
   function montarLinhaComRegra(venda, chip) {
     const linha = montarLinhaChip(venda, chip);
-    const regra = encontrarRegraComissao(regrasComissao, linha.valor_unitario);
+    const regra = encontrarRegraComissao(regrasComissao, linha.valor_unitario, linha.operadora?.id);
 
     if (!regra) {
       return {
@@ -981,6 +998,7 @@ function montarLinhasChips(vendas, regrasComissao = []) {
         regra_comissao: null,
         comissao_integral: null,
         comissao_base: null,
+        comissao_base_propria: null,
         comissao: null,
         sem_regra: true
       };
@@ -988,14 +1006,35 @@ function montarLinhasChips(vendas, regrasComissao = []) {
 
     const comissaoIntegral = Number(regra.valor_comissao || 0);
     const comissaoBase = Number(regra.valor_comissao_base ?? regra.valor_comissao ?? 0);
-    const comissaoAplicada = linha.cliente_base_operadora ? comissaoBase : comissaoIntegral;
+    const comissaoBasePropria = Number(regra.valor_comissao_base_propria ?? regra.valor_comissao_base ?? regra.valor_comissao ?? 0);
+    const prioridadeBaseDupla = regra.prioridade_base_dupla || 'base_propria';
+    let comissaoAplicada = comissaoIntegral;
+    let tipoComissao = 'integral';
+
+    if (linha.cliente_base_propria && linha.cliente_base_operadora) {
+      if (prioridadeBaseDupla === 'base_operadora') {
+        comissaoAplicada = comissaoBase;
+        tipoComissao = 'base_operadora';
+      } else {
+        comissaoAplicada = comissaoBasePropria;
+        tipoComissao = 'base_propria';
+      }
+    } else if (linha.cliente_base_propria) {
+      comissaoAplicada = comissaoBasePropria;
+      tipoComissao = 'base_propria';
+    } else if (linha.cliente_base_operadora) {
+      comissaoAplicada = comissaoBase;
+      tipoComissao = 'base_operadora';
+    }
 
     return {
       ...linha,
       regra_comissao: montarRegraComissaoResumo(regra),
       comissao_integral: Number(comissaoIntegral.toFixed(2)),
       comissao_base: Number(comissaoBase.toFixed(2)),
+      comissao_base_propria: Number(comissaoBasePropria.toFixed(2)),
       comissao: Number(comissaoAplicada.toFixed(2)),
+      tipo_comissao: tipoComissao,
       sem_regra: false
     };
   }
@@ -1101,6 +1140,7 @@ function montarLinhaChip(venda, chip) {
   const operadoraVendaId = venda.operadora_id ? Number(venda.operadora_id) : null;
   const operadoraAtualClienteId = venda.cliente_operadora_atual_id ? Number(venda.cliente_operadora_atual_id) : null;
   const clienteBaseOperadora = Boolean(operadoraVendaId && operadoraAtualClienteId && operadoraVendaId === operadoraAtualClienteId);
+  const clienteBasePropria = Boolean(venda.cliente_base_anterior_sistema);
   const vendedoras = normalizarVendedorasVenda(venda);
   const vendedoraChip = chip.vendedora_id
     ? vendedoras.find(item => Number(item.id) === Number(chip.vendedora_id))
@@ -1192,13 +1232,21 @@ function montarLinhaChip(venda, chip) {
       razao_social: venda.cliente_razao_social,
       cnpj: venda.cliente_cnpj,
       fidelidade_fim: venda.cliente_fidelidade_fim,
+      base_anterior_sistema: clienteBasePropria,
       operadora_atual: operadoraAtualClienteId ? {
         id: operadoraAtualClienteId,
         nome: venda.cliente_operadora_atual_nome
       } : null
     } : null,
+    cliente_base_propria: clienteBasePropria,
     cliente_base_operadora: clienteBaseOperadora,
-    tipo_repasse: clienteBaseOperadora ? 'base_operadora' : 'cliente_novo_portabilidade',
+    tipo_repasse: clienteBasePropria && clienteBaseOperadora
+      ? 'base_propria_operadora'
+      : clienteBasePropria
+        ? 'base_propria'
+        : clienteBaseOperadora
+          ? 'base_operadora'
+          : 'cliente_novo_portabilidade',
     tipo_venda: venda.tipo_venda_nome || null,
     servico: venda.servico_nome || null
   };
