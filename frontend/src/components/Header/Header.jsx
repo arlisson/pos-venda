@@ -79,6 +79,19 @@ function getNotificationTarget(notification) {
   return null;
 }
 
+function getNotificationTooltip(notification) {
+  const titulo = String(notification?.titulo || '').trim();
+  const descricao = TIPOS_PROBLEMA_VENDA.includes(notification?.tipo)
+    ? notification?.dados?.mensagem || notification?.mensagem
+    : notification?.mensagem;
+
+  return [titulo, descricao]
+    .map(valor => String(valor || '').trim())
+    .filter(Boolean)
+    .filter((valor, indice, lista) => lista.indexOf(valor) === indice)
+    .join('\n');
+}
+
 function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen = false }) {
   const navigate = useNavigate();
   const [linksExternos, setLinksExternos] = useState([]);
@@ -298,6 +311,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
                       className={`notification-item notification-item--${tomNotificacao(notification)} ${notification.lida ? '' : 'is-unread'}`}
                       onClick={() => handleMarkRead(notification)}
                       role="menuitem"
+                      title={getNotificationTooltip(notification) || undefined}
                     >
                       <span className="notification-dot"></span>
                       <span className="notification-item__body">
