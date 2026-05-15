@@ -630,7 +630,7 @@ input, select, textarea { font-family: inherit; }
     inset: 0 auto 0 0;
     width: min(320px, calc(100vw - 44px));
     max-width: 88vw;
-    padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     transform: translateX(-100%);
     border-right: 1px solid var(--border);
     box-shadow: var(--shadow-lg);
@@ -655,11 +655,8 @@ input, select, textarea { font-family: inherit; }
   }
 
   .sidebar-footer {
-    position: absolute;
-    right: 0;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    left: 0;
     margin-top: 0;
+    margin-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     padding-bottom: 14px;
     background: var(--surface);
     box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.04);
