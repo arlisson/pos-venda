@@ -285,6 +285,25 @@ function getNotificacaoDescricao(notificacao) {
   return notificacao.mensagem;
 }
 
+function montarTooltipNotificacao(titulo, descricao) {
+  return [titulo, descricao]
+    .map(valor => String(valor || '').trim())
+    .filter(Boolean)
+    .filter((valor, indice, lista) => lista.indexOf(valor) === indice)
+    .join('\n');
+}
+
+function getNotificacaoTooltip(notificacao) {
+  if (!notificacao) return '';
+
+  const titulo = getNotificacaoTitulo(notificacao);
+  const descricao = TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo)
+    ? notificacao.dados?.mensagem || notificacao.mensagem
+    : getNotificacaoDescricao(notificacao);
+
+  return montarTooltipNotificacao(titulo, descricao);
+}
+
 function getFidelidadePrazo(notificacao) {
   const dias = Number(notificacao?.dados?.dias_restantes);
   if (!Number.isFinite(dias)) return 'Sem data';
@@ -721,6 +740,7 @@ function DashboardPage() {
       items: notificacoesFidelidade,
       getTitle: getNotificacaoTitulo,
       getDescription: getNotificacaoDescricao,
+      getTooltip: getNotificacaoTooltip,
       metric: getFidelidadePrazo,
       actionLabel: 'Iniciar abordagem de renovação',
       onAction: () => navigate('/clientes?fidelidade=alerta'),
@@ -736,6 +756,7 @@ function DashboardPage() {
       items: notificacoesRetorno,
       getTitle: getNotificacaoTitulo,
       getDescription: getNotificacaoDescricao,
+      getTooltip: getNotificacaoTooltip,
       metric: getRetornoPrazo,
       actionLabel: 'Ver contatos marcados',
       onAction: () => setContatosMarcadosOpen(true),
@@ -751,6 +772,7 @@ function DashboardPage() {
       items: notificacoesVendasParadas,
       getTitle: getNotificacaoTitulo,
       getDescription: getNotificacaoDescricao,
+      getTooltip: getNotificacaoTooltip,
       metric: getVendaParadaPrazo,
       actionLabel: 'Ver vendas paradas',
       onAction: () => {
@@ -772,6 +794,7 @@ function DashboardPage() {
       items: notificacoesProblema,
       getTitle: getNotificacaoTitulo,
       getDescription: getNotificacaoDescricao,
+      getTooltip: getNotificacaoTooltip,
       metric: notificacao => formatarPrazoRelativo(notificacao.updated_at),
       actionLabel: 'Resolver pendências',
       onAction: () => {
@@ -980,18 +1003,28 @@ function DashboardPage() {
                     <div className="home-notification-card__items is-scrollable">
                     {card.items.length === 0 ? (
                       <div className="home-notification-card__empty">Nenhuma notificação ativa.</div>
-                    ) : card.items.map(notificacao => (
-                      <button
-                        type="button"
-                        key={notificacao.destinatario_id || notificacao.id}
-                        className={`home-notification-card__item ${notificacao.lida === false ? 'is-unread' : ''}`}
-                        onClick={() => card.onItemClick(notificacao)}
-                      >
-                        <strong>{card.getTitle(notificacao)}</strong>
-                        <span>{card.getDescription(notificacao)}</span>
-                        <em>{card.metric(notificacao)}</em>
-                      </button>
-                    ))}
+                    ) : card.items.map(notificacao => {
+                      const itemTitle = card.getTitle(notificacao);
+                      const itemDescription = card.getDescription(notificacao);
+                      const itemTooltip = card.getTooltip
+                        ? card.getTooltip(notificacao)
+                        : montarTooltipNotificacao(itemTitle, itemDescription);
+
+                      return (
+                        <button
+                          type="button"
+                          key={notificacao.destinatario_id || notificacao.id}
+                          className={`home-notification-card__item ${notificacao.lida === false ? 'is-unread' : ''}`}
+                          onClick={() => card.onItemClick(notificacao)}
+                          title={itemTooltip || undefined}
+                          aria-label={itemTooltip || itemTitle}
+                        >
+                          <strong>{itemTitle}</strong>
+                          <span>{itemDescription}</span>
+                          <em>{card.metric(notificacao)}</em>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <button type="button" className="home-notification-card__action" disabled={card.count === 0} onClick={card.onAction}>
