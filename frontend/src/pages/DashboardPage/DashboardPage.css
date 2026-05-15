@@ -1024,6 +1024,11 @@
 }
 
 @media (max-width: 760px) {
+  .dashboard-container {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
   .home-notifications__list {
     grid-template-columns: 1fr;
   }
