@@ -61,7 +61,8 @@ function getNotificationTarget(notification) {
     }
 
     if (TIPOS_PROBLEMA_VENDA.includes(notification.tipo)) {
-      return `/vendas?venda_id=${vendaId}&aba=problema`;
+      const problemaId = notification.dados?.problema_id;
+      return `/vendas?venda_id=${vendaId}&aba=problema${problemaId ? `&problema_id=${problemaId}` : ''}`;
     }
 
     if (TIPOS_RETORNO_NOTA.includes(notification.tipo)) {
@@ -78,7 +79,7 @@ function getNotificationTarget(notification) {
   return null;
 }
 
-function Header({ title, subtitle, onNew, usuario }) {
+function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen = false }) {
   const navigate = useNavigate();
   const [linksExternos, setLinksExternos] = useState([]);
   const [linksOpen, setLinksOpen] = useState(false);
@@ -174,17 +175,19 @@ function Header({ title, subtitle, onNew, usuario }) {
   }
 
   async function handleMarkRead(notification) {
-    if (!notification.lida) {
-      await marcarNotificacaoLida(notification.id);
-      await carregarNotificacoes();
-      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
-    }
-
     const target = getNotificationTarget(notification);
 
     if (target) {
       setNotificationsOpen(false);
       navigate(target);
+    }
+
+    if (!notification.lida) {
+      try {
+        await marcarNotificacaoLida(notification.id);
+        await carregarNotificacoes();
+        window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+      } catch {}
     }
   }
 
@@ -196,6 +199,19 @@ function Header({ title, subtitle, onNew, usuario }) {
 
   return (
     <header className="header">
+      {onMenuClick && (
+        <button
+          type="button"
+          className="btn btn-icon btn-ghost header-menu-btn"
+          aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-controls="app-sidebar"
+          aria-expanded={mobileMenuOpen}
+          onClick={onMenuClick}
+        >
+          {mobileMenuOpen ? <I.Close size={16} /> : <I.Menu size={16} />}
+        </button>
+      )}
+
       <div className="header-info">
         <div className="header-title">{title}</div>
         {subtitle && <div className="header-subtitle">{subtitle}</div>}

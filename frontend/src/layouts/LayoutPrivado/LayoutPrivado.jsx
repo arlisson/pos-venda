@@ -96,6 +96,7 @@ function LayoutPrivado({ children }) {
   const [servicosNovaVenda, setServicosNovaVenda] = useState([]);
   const [clienteRapidoAberto, setClienteRapidoAberto] = useState(false);
   const [, setResolverClienteRapido] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const vendasPorClienteNovaVenda = useMemo(() => contarVendasPorCliente(vendasNovaVenda), [vendasNovaVenda]);
 
   useEffect(() => {
@@ -115,6 +116,7 @@ function LayoutPrivado({ children }) {
   }, []);
 
   function handleLogout() {
+    setMobileMenuOpen(false);
     logout();
     navigate('/login');
   }
@@ -137,8 +139,31 @@ function LayoutPrivado({ children }) {
       leads: '/admin/leads',
     };
 
-    if (routeMap[id]) navigate(routeMap[id]);
+    if (routeMap[id]) {
+      setMobileMenuOpen(false);
+      navigate(routeMap[id]);
+    }
   };
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.classList.toggle('mobile-menu-open', mobileMenuOpen);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, [mobileMenuOpen]);
 
   async function carregarDadosNovaVenda() {
     const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
@@ -255,10 +280,22 @@ function LayoutPrivado({ children }) {
     return () => clearInterval(timer);
   }, [usuario?.id]);
 
-  async function fecharAlertaUrgente(notificacao) {
-    await marcarPopupNotificacaoVisto(notificacao.id);
-    setAlertasUrgentes(prev => prev.filter(item => item.id !== notificacao.id));
-    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+  function ocultarAlertaUrgente(notificacao) {
+    const chave = notificacao.destinatario_id || notificacao.id;
+    setAlertasUrgentes(prev => prev.filter(item => (item.destinatario_id || item.id) !== chave));
+  }
+
+  function confirmarPopupNotificacao(notificacao) {
+    marcarPopupNotificacaoVisto(notificacao.id)
+      .then(() => {
+        window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+      })
+      .catch(() => {});
+  }
+
+  function fecharAlertaUrgente(notificacao) {
+    ocultarAlertaUrgente(notificacao);
+    confirmarPopupNotificacao(notificacao);
   }
 
   function tomAlerta(notificacao) {
@@ -281,50 +318,79 @@ function LayoutPrivado({ children }) {
     }
   }
 
+  function getDadosAlerta(notificacao) {
+    if (!notificacao?.dados) return {};
+    if (typeof notificacao.dados === 'string') {
+      try {
+        return JSON.parse(notificacao.dados) || {};
+      } catch {
+        return {};
+      }
+    }
+    return notificacao.dados;
+  }
+
   function montarRotaAlerta(notificacao) {
-    const id = notificacao.entidade_id || notificacao.dados?.venda_id || notificacao.dados?.cliente_id || '';
+    const dados = getDadosAlerta(notificacao);
+    const entidadeId = notificacao.entidade_id || dados.entidade_id || '';
+    const vendaId = dados.venda_id || (notificacao.entidade === 'vendas' ? entidadeId : '') || entidadeId;
+    const clienteId = dados.cliente_id || (notificacao.entidade === 'clientes' ? entidadeId : '');
 
     switch (notificacao.tipo) {
       case 'venda_problema_aberto':
       case 'venda_problema_resolvido':
       case 'venda_problema_correcao':
-        return `/vendas?venda_id=${id}&aba=problema`;
+        return vendaId
+          ? `/vendas?venda_id=${vendaId}&aba=problema${dados.problema_id ? `&problema_id=${dados.problema_id}` : ''}`
+          : '/vendas';
       case 'venda_aprovacao_pendente':
         return '/vendas/aprovacoes';
       case 'venda_parada_funil':
         return '/funil';
       case 'venda_retorno_registrado':
-        return id ? `/retornos?venda_id=${id}` : '/retornos';
+        return vendaId ? `/retornos?venda_id=${vendaId}` : '/retornos';
       case 'cliente_fidelidade':
-        return id ? `/clientes/${id}/editar` : '/clientes';
+        return clienteId ? `/clientes/${clienteId}/editar` : '/clientes';
       case 'nota_retorno_pre':
       case 'nota_retorno_due':
         if (notificacao.entidade === 'clientes') {
-          return id ? `/clientes/${id}/editar` : '/clientes';
+          return clienteId ? `/clientes/${clienteId}/editar` : '/clientes';
         }
-        return id ? `/vendas?venda_id=${id}` : '/vendas';
+        return vendaId ? `/vendas?venda_id=${vendaId}` : '/vendas';
       default:
-        if (notificacao.entidade === 'clientes') return '/clientes';
-        if (notificacao.entidade === 'vendas') return '/vendas';
+        if (notificacao.entidade === 'clientes') return clienteId ? `/clientes/${clienteId}/editar` : '/clientes';
+        if (notificacao.entidade === 'vendas') return vendaId ? `/vendas?venda_id=${vendaId}` : '/vendas';
         return '/';
     }
   }
 
-  async function abrirVendaAlerta(notificacao) {
+  function abrirVendaAlerta(notificacao) {
     const rota = montarRotaAlerta(notificacao);
-    await fecharAlertaUrgente(notificacao);
+    ocultarAlertaUrgente(notificacao);
     navigate(rota);
+    confirmarPopupNotificacao(notificacao);
   }
 
   return (
-    <div className="app">
+    <div className={`app ${mobileMenuOpen ? 'is-mobile-menu-open' : ''}`}>
+      <button
+        type="button"
+        className="sidebar-mobile-backdrop"
+        aria-label="Fechar menu"
+        onClick={() => setMobileMenuOpen(false)}
+      />
       <Sidebar
         page={currentConfig.id}
         setPage={handleSetPage}
         counts={{ active: 0, returns: 0, aprovacoes: aprovacoesPendentes }}
         usuario={usuario}
         onLogout={handleLogout}
-        onPerfilClick={() => navigate('/perfil')}
+        isMobileOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        onPerfilClick={() => {
+          setMobileMenuOpen(false);
+          navigate('/perfil');
+        }}
       />
       <div className="main">
         <Header
@@ -332,6 +398,8 @@ function LayoutPrivado({ children }) {
           subtitle={currentConfig.sub}
           onNew={podeCriarVenda ? handleNewSale : null}
           usuario={usuario}
+          onMenuClick={() => setMobileMenuOpen(open => !open)}
+          mobileMenuOpen={mobileMenuOpen}
         />
         <div className="content">
           {sucessoNovaVenda && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucessoNovaVenda}</div>}
@@ -339,6 +407,18 @@ function LayoutPrivado({ children }) {
           {children}
         </div>
       </div>
+
+      {podeCriarVenda && location.pathname === '/vendas' && (
+        <button
+          type="button"
+          className="mobile-fab"
+          aria-label="Nova venda"
+          onClick={handleNewSale}
+          disabled={carregandoNovaVenda}
+        >
+          <I.Plus size={22} />
+        </button>
+      )}
 
       {novaVendaAberta && (
         <VendaModal
@@ -386,8 +466,14 @@ function LayoutPrivado({ children }) {
                 <button type="button" className="btn btn-sm" onClick={() => abrirVendaAlerta(alerta)}>
                   {alerta.entidade === 'clientes' ? 'Abrir cliente' : 'Abrir'}
                 </button>
-                <button type="button" className="btn btn-icon btn-ghost" onClick={() => fecharAlertaUrgente(alerta)} title="Fechar aviso">
-                  <I.Close size={13} />
+                <button
+                  type="button"
+                  className="btn btn-icon btn-ghost urgent-alert-card__close"
+                  onClick={() => fecharAlertaUrgente(alerta)}
+                  title="Fechar aviso"
+                  aria-label="Fechar aviso"
+                >
+                  <span className="urgent-alert-card__close-mark" aria-hidden="true">X</span>
                 </button>
               </div>
             </div>

@@ -367,11 +367,26 @@
     justify-content: center;
   }
 
-  .config-table {
+  .config-tabs {
     overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .config-table {
+    overflow: visible;
   }
 
   .config-table table {
-    min-width: 680px;
+    min-width: 0;
+  }
+
+  .config-table td.row-actions {
+    display: flex !important;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .config-table .row-actions .btn + .btn {
+    margin-left: 0;
   }
 }

@@ -240,8 +240,8 @@ function VendasAprovacoesPage() {
   return (
     <LayoutPrivado>
       <div className="vendas-page">
-        <div className="vendas-toolbar">
-          <div className="filter-field" style={{ margin: 0, minWidth: 220 }}>
+        <div className="vendas-toolbar vendas-toolbar--approval-status">
+          <div className="filter-field vendas-toolbar-status">
             <label>Status</label>
             <select value={status} onChange={event => setStatus(event.target.value)}>
               <option value="">Todos</option>
@@ -252,8 +252,8 @@ function VendasAprovacoesPage() {
             </select>
           </div>
 
-          <button type="button" className="btn" onClick={carregar} style={{ alignSelf: 'end', height: 38 }}>
-            <I.Return size={14} /> Atualizar
+          <button type="button" className="btn vendas-toolbar-refresh" onClick={carregar} title="Atualizar solicitações">
+            <I.Refresh size={14} /> <span>Atualizar</span>
           </button>
         </div>
 
@@ -294,31 +294,50 @@ function VendasAprovacoesPage() {
                   </tr>
                 ) : solicitacoesOrdenadas.map(solicitacao => (
                   <tr key={solicitacao.id} className={String(solicitacao.id) === String(solicitacaoFoco) ? 'row-highlight' : ''}>
-                    <td>
+                    <td data-label="Venda" className="m-primary">
                       <div className="vendas-table-name">
                         <div className="vendas-table-name__title">
                           <strong>{nomeVenda(solicitacao.venda)}</strong>
                         </div>
                         <span>{solicitacao.venda?.cliente?.razao_social || solicitacao.venda?.razao_social || `Venda #${solicitacao.venda_id}`}</span>
+                        <details className="mobile-row-drawer">
+                          <summary>Ver detalhes da solicitacao</summary>
+                          <dl>
+                            <dt>Motivos</dt>
+                            <dd>{(solicitacao.motivos || []).map(motivo => MOTIVO_LABEL[motivo] || motivo).join(', ') || '-'}</dd>
+                            <dt>Vendedoras</dt>
+                            <dd>{nomesVendedoras(solicitacao.venda)}</dd>
+                            <dt>Solicitante</dt>
+                            <dd>{solicitacao.solicitante?.nome || '-'}</dd>
+                            <dt>Solicitada em</dt>
+                            <dd>{formatarData(solicitacao.solicitado_em)}</dd>
+                            <dt>Decisao</dt>
+                            <dd>
+                              {solicitacao.decisor?.nome
+                                ? `${solicitacao.decisor.nome} - ${formatarData(solicitacao.decidido_em)}`
+                                : '-'}
+                            </dd>
+                          </dl>
+                        </details>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Motivos" data-mobile-hidden="true">
                       {(solicitacao.motivos || []).map(motivo => (
                         <span key={motivo} className="tag" style={{ marginRight: 6 }}>
                           {MOTIVO_LABEL[motivo] || motivo}
                         </span>
                       ))}
                     </td>
-                    <td>{nomesVendedoras(solicitacao.venda)}</td>
-                    <td>{solicitacao.solicitante?.nome || '-'}</td>
-                    <td>
+                    <td data-label="Vendedoras" data-mobile-hidden="true">{nomesVendedoras(solicitacao.venda)}</td>
+                    <td data-label="Solicitante" className="m-secondary">{solicitacao.solicitante?.nome || '-'} · {formatarData(solicitacao.solicitado_em)}</td>
+                    <td data-label="Status" className="m-meta">
                       <span className={`pill ${STATUS_CLASS[solicitacao.status] || ''}`}>
                         <span className="pill-dot"></span>
                         {STATUS_LABEL[solicitacao.status] || solicitacao.status}
                       </span>
                     </td>
-                    <td>{formatarData(solicitacao.solicitado_em)}</td>
-                    <td>
+                    <td data-label="Solicitada em" data-mobile-hidden="true">{formatarData(solicitacao.solicitado_em)}</td>
+                    <td data-label="Decisao" data-mobile-hidden="true">
                       {solicitacao.decisor?.nome ? (
                         <div>
                           <strong style={{ fontSize: 12 }}>{solicitacao.decisor.nome}</strong>
@@ -329,7 +348,7 @@ function VendasAprovacoesPage() {
                         </div>
                       ) : '-'}
                     </td>
-                    <td className="aprovacoes-actions-col">
+                    <td data-label="Acoes" className="aprovacoes-actions-col m-actions">
                       <div className="aprovacoes-actions">
                         <button
                           type="button"

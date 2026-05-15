@@ -1,0 +1,82 @@
+.admin-campanhas-page .panel {
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.admin-campanhas-page .panel:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+.admin-campanhas-page .list-table tbody tr td {
+  transition: background 140ms ease;
+}
+
+.admin-campanhas-page .list-table tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+.admin-campanhas-control {
+  width: 100%;
+  height: 32px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+select.admin-campanhas-control {
+  cursor: pointer;
+}
+
+.admin-campanhas-control:not(:disabled):hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.admin-campanhas-control:focus {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.06);
+}
+
+.admin-campanhas-page .btn:not(:disabled) {
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.admin-campanhas-page .btn:not(.btn-primary):not(:disabled):hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.admin-campanhas-page .btn-primary:not(:disabled):hover {
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+}
+
+@media (max-width: 760px) {
+  .admin-campanhas-page .panel-header .btn {
+    width: 100%;
+  }
+
+  .admin-campanhas-page .list-table td:last-child {
+    text-align: left !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-campanhas-page {
+    padding: 12px;
+  }
+
+  /* Scroll horizontal preservado pelo list-table--scroll-mobile */
+  .admin-campanhas-page .list-table table {
+    min-width: 720px;
+  }
+
+  .admin-campanhas-control { font-size: 14px; height: 38px; }
+}

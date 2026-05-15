@@ -286,7 +286,7 @@ function Usuarios() {
       )}
 
       <div className="users-page">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div className="users-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
             {usuarios.length} usuários · {usuarios.filter(u => u.ativo).length} ativos
           </div>
@@ -328,7 +328,7 @@ function Usuarios() {
                 ) : (
                   usuarios.map(u => (
                     <tr key={u.id}>
-                      <td>
+                      <td data-label="Usuario" className="m-primary">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="avatar" style={{ width: 28, height: 28, fontSize: 11, overflow: 'hidden' }}>
                             {u.foto_perfil ? (
@@ -343,17 +343,26 @@ function Usuarios() {
                           </span>
                           <span style={{ fontWeight: 500 }}>{u.nome}</span>
                         </div>
+                        <details className="mobile-row-drawer">
+                          <summary>Ver dados do usuario</summary>
+                          <dl>
+                            <dt>E-mail</dt>
+                            <dd>{u.email}</dd>
+                            <dt>Perfil</dt>
+                            <dd>{u.role?.nome || 'Nenhum'}</dd>
+                          </dl>
+                        </details>
                       </td>
-                      <td className="muted">{u.email}</td>
-                      <td><span className="tag">{u.role?.nome || 'Nenhum'}</span></td>
-                      <td>
+                      <td data-label="E-mail" className="muted m-secondary">{u.email}</td>
+                      <td data-label="Perfil" data-mobile-hidden="true"><span className="tag">{u.role?.nome || 'Nenhum'}</span></td>
+                      <td data-label="Status" className="m-meta">
                         <span className={`pill ${u.ativo ? 'success' : ''}`}>
                           <span className="pill-dot"></span>
                           {u.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
                       {podeMostrarAcoesUsuarios && (
-                        <td className="row-actions">
+                        <td data-label="Acoes" className="row-actions m-actions">
                           {podeEditarUsuarios && (
                             <button className="btn btn-icon btn-ghost users-edit-btn" title="Editar" onClick={() => navigate(`/usuarios/${u.id}/editar`)}>
                               <I.Edit size={13} />
@@ -380,7 +389,7 @@ function Usuarios() {
                               </button>
                             </>
                           ) : podeExcluirUsuarios && Number(usuarioLogado?.id) !== Number(u.id) && (usuarioLogadoEhAdmin || u.role?.nome !== 'admin') ? (
-                            <button className="btn btn-icon btn-ghost btn-danger-icon" title="Excluir" onClick={() => handleDelete(u)}>
+                            <button className="btn btn-icon btn-ghost btn-danger-icon users-delete-btn" title="Excluir" onClick={() => handleDelete(u)}>
                               <I.Trash size={13} />
                             </button>
                           ) : null}

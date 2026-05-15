@@ -278,6 +278,16 @@
 }
 
 @media (max-width: 780px) {
+  .futuros-clientes-page,
+  .clientes-leads-page {
+    padding: 16px;
+    overflow-y: auto;
+  }
+
+  .futuros-clientes-view {
+    overflow: visible;
+  }
+
   .clientes-leads-toolbar,
   .clientes-leads-actions {
     align-items: stretch;
@@ -286,6 +296,48 @@
 
   .clientes-search {
     width: 100%;
+  }
+
+  .lead-doc-strip {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .clientes-leads-table table,
+  .futuros-clientes-table table {
+    min-width: 0;
+  }
+
+  .clientes-leads-table,
+  .futuros-clientes-table {
+    flex: none;
+    overflow: visible;
+  }
+
+  .clientes-leads-table .scroll,
+  .futuros-clientes-table .scroll {
+    overflow: visible;
+  }
+
+  .clientes-leads-table td,
+  .futuros-clientes-table td {
+    text-align: left !important;
+  }
+
+  .futuros-clientes-actions,
+  .lead-pagination {
+    flex-wrap: wrap;
+  }
+
+  .adicionar-lead-dados {
+    grid-template-columns: 1fr;
+  }
+
+  .adicionar-lead-campo__label,
+  .adicionar-lead-campo__valor {
+    white-space: normal;
   }
 }
 

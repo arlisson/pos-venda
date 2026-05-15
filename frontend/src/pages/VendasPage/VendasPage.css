@@ -79,6 +79,12 @@
   border-color: #fed7aa;
 }
 
+.vendas-page .btn-danger-icon:not(:disabled):hover,
+.venda-modal .btn-danger-icon:not(:disabled):hover {
+  box-shadow: none;
+  transform: none;
+}
+
 .venda-modal input,
 .venda-modal select,
 .venda-modal textarea {
@@ -147,6 +153,24 @@
 
 .vendas-toolbar .search-box {
   width: 100%;
+}
+
+.vendas-toolbar-status {
+  margin: 0;
+  min-width: 220px;
+}
+
+.vendas-toolbar-refresh {
+  align-self: end;
+  height: 34px;
+}
+
+.vendas-page .vendas-toolbar-status select:not(:disabled):hover,
+.vendas-page .vendas-toolbar-refresh:not(:disabled):hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  transform: none;
 }
 
 .vendas-page .list-table .scroll {
@@ -243,9 +267,30 @@
 }
 
 .vendas-retorno-badge {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #c2410c;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 4px;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  color: #9a3412;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(194, 65, 12, 0.08);
+}
+
+.vendas-retorno-badge svg {
+  width: 15px;
+  height: 15px;
+  padding: 2px;
+  border-radius: 999px;
+  background: #f97316;
+  color: #fff;
+  stroke-width: 2.6;
+  flex: 0 0 15px;
 }
 
 .vendas-cliente-excluido-badge {
@@ -275,8 +320,8 @@
 
 .vendas-page .list-table .vendas-email-actions-col {
   right: 0;
-  min-width: 76px;
-  width: 76px;
+  min-width: 104px;
+  width: 104px;
 }
 
 .vendas-page .list-table .vendas-email-actions-col.has-delete {
@@ -314,6 +359,8 @@
 }
 
 .vendas-page .list-table td.vendas-email-actions-col {
+  padding-left: 6px;
+  padding-right: 6px;
   white-space: nowrap;
 }
 
@@ -383,10 +430,27 @@
   width: 100%;
 }
 
+.mobile-action-label,
+.vendas-mobile-problem-btn {
+  display: none;
+}
+
 .vendas-contact-actions .btn-icon {
   width: 28px;
   height: 28px;
   flex: 0 0 28px;
+  transform: none;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.vendas-page .vendas-contact-actions .btn-icon:not(:disabled):hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.vendas-contact-actions .btn-icon svg {
+  display: block;
+  flex: 0 0 auto;
 }
 
 .vendas-whatsapp-btn {
@@ -1685,6 +1749,15 @@ input.is-invalid {
   white-space: nowrap;
 }
 
+.chip-item-field {
+  min-width: 0;
+  display: contents;
+}
+
+.chip-item-field__label {
+  display: none;
+}
+
 .chip-item-row {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
@@ -2534,6 +2607,10 @@ input.is-invalid {
     display: none;
   }
 
+  .chip-item-field {
+    display: block;
+  }
+
   .chip-item-row {
     grid-template-columns: 1fr 1fr 32px;
     align-items: end;
@@ -2543,8 +2620,9 @@ input.is-invalid {
     grid-template-columns: 1fr 1fr 32px;
   }
 
-  .chip-item-row input:nth-of-type(3),
-  .chip-item-row select {
+  .chip-item-field--tipo,
+  .chip-item-field--valor,
+  .chip-item-field--vendedora {
     grid-column: 1 / 3;
   }
 
@@ -2606,5 +2684,775 @@ input.is-invalid {
 
   .responsaveis-add-btn {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .vendas-page {
+    padding: 16px;
+  }
+
+  .vendas-toolbar .btn,
+  .vendas-toolbar .search-box {
+    width: 100%;
+  }
+
+  .vendas-page .list-table table {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .vendas-page .list-table .vendas-table-name {
+    min-width: 0;
+  }
+
+  .vendas-page .list-table .vendas-actions-col,
+  .vendas-page .list-table .vendas-email-actions-col,
+  .vendas-page .list-table .vendas-delete-actions-col,
+  .vendas-page .list-table .vendas-trash-actions-col {
+    position: static;
+    width: 100% !important;
+    min-width: 0 !important;
+    border-left: 0;
+  }
+
+  .vendas-contact-actions {
+    justify-content: flex-start;
+    width: auto;
+  }
+
+  .vendas-page .list-table:not(.list-table--scroll-mobile) td.vendas-mobile-actions {
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: auto;
+    margin-top: 6px;
+    padding-top: 8px !important;
+    border-top: 1px solid var(--border) !important;
+  }
+
+  .vendas-page .list-table:not(.list-table--scroll-mobile) td.vendas-mobile-actions .vendas-contact-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+
+  .vendas-page .list-table:not(.list-table--scroll-mobile) td.vendas-mobile-actions .btn {
+    width: 100%;
+    min-height: 34px;
+    height: auto;
+    padding: 6px 8px;
+    border-radius: 8px;
+    gap: 6px;
+  }
+
+  .vendas-page .list-table:not(.list-table--scroll-mobile) td.vendas-mobile-actions .btn-icon {
+    flex: 1 1 auto;
+  }
+
+  .vendas-page .list-table:not(.list-table--scroll-mobile) td.vendas-mobile-actions .mobile-action-label {
+    display: inline;
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+
+  .vendas-page .list-table:not(.list-table--scroll-mobile) td.vendas-mobile-actions .vendas-mobile-problem-btn {
+    display: inline-flex;
+  }
+
+  .aprovacoes-actions {
+    justify-content: flex-start;
+  }
+
+  .venda-email-preview {
+    min-height: 260px;
+  }
+}
+
+/* ===== Mobile (<= 640px) — refatoração ===== */
+@media (max-width: 640px) {
+  .vendas-page {
+    padding: 14px 12px;
+  }
+
+  .vendas-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .vendas-toolbar .search-box,
+  .vendas-toolbar .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Neutraliza sticky de ações em mobile (vira slot ou some) */
+  .vendas-page .list-table .vendas-actions-col,
+  .vendas-page .list-table .vendas-email-actions-col,
+  .vendas-page .list-table .vendas-delete-actions-col,
+  .vendas-page .list-table .vendas-trash-actions-col {
+    position: static !important;
+    width: auto !important;
+    min-width: 0 !important;
+    border-left: 0;
+    box-shadow: none !important;
+  }
+
+  /* Tags e badges dentro do m-primary ficam menores e quebram linha */
+  .vendas-page .list-table .vendas-table-name__title {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .vendas-page .list-table .vendas-pos-venda-pending,
+  .vendas-page .list-table .vendas-cliente-repeat-badge,
+  .vendas-page .list-table .vendas-cliente-concluidas-badge,
+  .vendas-page .list-table .vendas-retorno-badge,
+  .vendas-page .list-table .vendas-cliente-excluido-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+
+  /* Modal de filtros vira bottom sheet (já herda do global) — ajustes específicos */
+  .filtros-popup {
+    max-width: none;
+  }
+
+  /* === Padrão iOS Settings / Linear: lista agrupada ===
+     - cada .vendas-form-grid vira um card único com divisores internos
+     - inputs ficam borderless dentro do card
+     - labels mini uppercase em cima
+     - sections viram cabeçalhos entre grupos */
+
+  /* Body em surface-2 para o card branco se destacar */
+  .venda-modal .modal-body {
+    background: var(--surface-2);
+    padding: 4px 10px 14px;
+  }
+
+  /* Grid vira um card único */
+  .venda-modal .vendas-form-grid,
+  .venda-modal .vendas-form-grid--cobertura {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  /* Cada form-field vira uma linha do card com divisor inferior */
+  .venda-modal .vendas-form-grid .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px 12px 7px;
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .venda-modal .vendas-form-grid .form-field:last-child {
+    border-bottom: 0;
+  }
+
+  /* Linha do card antes de section header: sem borda inferior (a section cria a quebra visual) */
+  .venda-modal .vendas-form-grid .form-field:has(+ .vendas-form-section) {
+    border-bottom: 0;
+  }
+
+  /* Inputs borderless dentro do card */
+  .venda-modal .vendas-form-grid .form-field input,
+  .venda-modal .vendas-form-grid .form-field select,
+  .venda-modal .vendas-form-grid .form-field textarea,
+  .venda-modal .vendas-form-grid .form-field .auto-resize-textarea {
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    min-height: 26px;
+    font-size: 15px;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    color: var(--text);
+  }
+
+  .venda-modal .vendas-form-grid .form-field textarea,
+  .venda-modal .vendas-form-grid .form-field .auto-resize-textarea {
+    min-height: 48px;
+    padding: 2px 0 !important;
+  }
+
+  .venda-modal .vendas-form-grid .form-field input:focus,
+  .venda-modal .vendas-form-grid .form-field select:focus,
+  .venda-modal .vendas-form-grid .form-field textarea:focus {
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
+  /* Label mini uppercase em cima */
+  .venda-modal .vendas-form-grid .form-field label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  /* Hint de erro: linha fina embaixo dentro da própria row */
+  .venda-modal .vendas-form-grid .field-hint {
+    font-size: 10.5px;
+    margin-top: 2px;
+    line-height: 1.2;
+  }
+
+  /* Section header inline dentro do card (faz quebra visual entre grupos lógicos) */
+  .venda-modal .vendas-form-grid .vendas-form-section {
+    grid-column: 1 / -1;
+    padding: 10px 12px 6px !important;
+    margin: 0 !important;
+    border-top: 1px solid var(--border) !important;
+    background: var(--surface-2);
+    color: var(--text-3);
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .venda-modal .vendas-form-grid .vendas-form-section:first-child {
+    border-top: 0 !important;
+    padding-top: 8px !important;
+  }
+
+  /* Estado inválido: linha inteira fica tingida */
+  .venda-modal .vendas-form-grid .form-field.is-invalid {
+    background: #fff7f7;
+  }
+  .venda-modal .vendas-form-grid .form-field.is-invalid input,
+  .venda-modal .vendas-form-grid .form-field.is-invalid select,
+  .venda-modal .vendas-form-grid .form-field.is-invalid textarea {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* span-2 colapsa naturalmente porque o grid é 1 coluna */
+  .venda-modal .vendas-form-grid .span-2 { grid-column: auto; }
+
+  /* Formularios FORA da .vendas-form-grid (componentes auxiliares):
+     ainda compactos, mas mantém bordas individuais */
+  .venda-modal .form-field input,
+  .venda-modal .form-field select,
+  .venda-modal .form-field textarea,
+  .venda-modal .auto-resize-textarea {
+    min-height: 36px;
+    padding: 7px 10px;
+  }
+
+  .venda-modal .form-field {
+    gap: 4px;
+    margin-bottom: 0;
+  }
+
+  .venda-modal .form-field label {
+    font-size: 11px;
+    margin-bottom: 0;
+  }
+
+  .venda-modal .field-hint {
+    font-size: 10.5px;
+    margin-top: 2px;
+  }
+
+  .venda-modal .venda-pos-venda-banner {
+    font-size: 11.5px;
+    padding: 6px 8px;
+    margin-bottom: 8px;
+  }
+
+  /* Header e tabs mais compactos do venda-modal */
+  .venda-modal .modal-header { padding: 8px 12px; }
+  .venda-modal .modal-client { font-size: 15px; }
+  .venda-modal .modal-sub { font-size: 12px; margin-top: 2px; }
+  .venda-modal .modal-tabs { padding: 0 8px; gap: 4px; }
+  .venda-modal .modal-tab { padding: 7px 10px; font-size: 12.5px; }
+
+  /* Chip-item-row mais denso */
+  .venda-modal .chip-item-row {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .venda-modal .chip-item-row input,
+  .venda-modal .chip-item-row select {
+    min-height: 34px;
+    padding: 6px 8px;
+  }
+  .venda-modal .chip-item-row .btn-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Section title fora de form-grid (componentes auxiliares) */
+  .venda-modal .venda-arquivos-title { font-size: 13px; }
+  .venda-modal .cliente-solicitou-numeros__title { font-size: 12.5px; }
+
+  .venda-modal-alert {
+    margin: 8px 12px 0;
+    padding: 10px;
+    gap: 8px;
+    grid-template-columns: 24px minmax(0, 1fr) 28px;
+  }
+  .venda-modal-alert__icon { width: 24px; height: 24px; }
+  .venda-modal-alert__content strong { font-size: 12.5px; }
+  .venda-modal-alert__content span { font-size: 11.5px; line-height: 1.3; }
+
+  .venda-address-toggle { gap: 8px; }
+  .venda-address-toggle label { font-size: 12.5px; }
+
+  /* ===== Responsáveis pelo recebimento ===== */
+  .venda-modal .responsaveis-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .venda-modal .responsavel-row {
+    display: grid;
+    grid-template-columns: 24px 1fr 28px;
+    grid-template-rows: auto auto;
+    gap: 6px 8px;
+    align-items: center;
+    padding: 10px 12px;
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--surface);
+  }
+
+  .venda-modal .responsavel-row:last-of-type { border-bottom: 0; }
+
+  /* Badge numérico no canto superior esquerdo */
+  .venda-modal .responsavel-row__num {
+    grid-column: 1;
+    grid-row: 1;
+    width: 22px;
+    height: 22px;
+    font-size: 10.5px;
+    font-weight: 700;
+    border-color: var(--border);
+  }
+
+  /* Select de tipo (RL/ADM/Outra) com largura auto, alinhado à esquerda */
+  .venda-modal .responsavel-row > select {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: start;
+    width: auto;
+    min-width: 110px;
+    max-width: 100%;
+    min-height: 30px;
+    padding: 4px 28px 4px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  /* Botão trash (só aparece quando há mais de 1 responsável) */
+  .venda-modal .responsavel-row > .btn-icon {
+    grid-column: 3;
+    grid-row: 1;
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Container dos campos nome + RG, em 2 colunas */
+  .venda-modal .responsavel-row__campos {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .venda-modal .responsavel-row__campos input {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 6px;
+  }
+
+  /* Quando readonly (RL/ADM já preenchidos via venda):
+     mostra como texto formatado, não como input */
+  .venda-modal .responsavel-row__campos input[readonly] {
+    background: transparent;
+    color: var(--text);
+    border-color: transparent;
+    padding: 4px 0;
+    font-weight: 500;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  /* Pill informativo "Dados preenchidos pela venda" */
+  .venda-modal .responsavel-row__source {
+    position: static;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-self: flex-start;
+    font-size: 10px;
+    padding: 2px 8px;
+    margin-top: 2px;
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--text-3);
+    line-height: 1.4;
+  }
+
+  .venda-modal .responsaveis-add-btn {
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    align-self: stretch;
+    width: 100%;
+    justify-content: flex-start;
+    min-height: 36px;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    color: var(--text-3);
+    background: var(--surface);
+  }
+  .venda-modal .responsaveis-add-btn:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  /* ===== Aceite bloco (Disponibilidade) ===== */
+  .venda-modal .aceite-bloco {
+    padding: 8px 10px;
+    gap: 6px;
+    border-radius: 10px;
+  }
+
+  .venda-modal .aceite-bloco__toggle .btn {
+    min-height: 28px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+  }
+
+  .venda-modal .aceite-bloco__row {
+    gap: 6px;
+  }
+  .venda-modal .aceite-bloco__row-label {
+    font-size: 11px;
+    width: 44px;
+  }
+  .venda-modal .aceite-bloco__inputs { gap: 6px; }
+  .venda-modal .aceite-bloco__inputs input,
+  .venda-modal .aceite-bloco__inputs select,
+  .venda-modal .aceite-bloco__fixo select,
+  .venda-modal .aceite-bloco__fixo input {
+    height: 32px;
+    min-height: 32px;
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+  .venda-modal .aceite-bloco__sep { font-size: 11.5px; color: var(--text-3); }
+  .venda-modal .aceite-bloco__fixo { gap: 6px; }
+
+  /* ===== Chip items (chips, gigas, valores unitários) ===== */
+  .venda-modal .chip-items {
+    gap: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px;
+  }
+
+  .venda-modal .chip-items__head { display: none; }
+
+  .venda-modal .chip-item-row,
+  .venda-modal .chip-items--com-vendedora .chip-item-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 34px;
+    grid-template-rows: auto;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+  .venda-modal .chip-item-row:last-of-type { border-bottom: 1px solid var(--border); }
+
+  .venda-modal .chip-item-field {
+    display: block;
+    min-width: 0;
+  }
+
+  .venda-modal .chip-item-field__label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-3);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  .venda-modal .chip-item-field--quantidade { grid-column: 1; grid-row: 1; }
+  .venda-modal .chip-item-field--gb { grid-column: 2; grid-row: 1; }
+  .venda-modal .chip-item-field--valor { grid-column: 3; grid-row: 1; }
+  .venda-modal .chip-item-field--tipo { grid-column: 1 / -1; grid-row: 2; }
+  .venda-modal .chip-item-field--vendedora { grid-column: 1 / -1; grid-row: 3; }
+  .venda-modal .chip-items--sem-tipo .chip-item-field--vendedora { grid-row: 2; }
+  .venda-modal .chip-item-row > .btn,
+  .venda-modal .chip-item-row > .btn-icon {
+    grid-column: 4;
+    grid-row: 1;
+    align-self: end;
+    width: 34px;
+    height: 34px;
+  }
+  .venda-modal .chip-item-subtotal {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    height: auto;
+    min-height: 34px;
+    padding: 7px 10px;
+    border-color: #e5e7eb;
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 12.5px;
+    justify-content: space-between;
+  }
+
+  .venda-modal .chip-items--com-vendedora .chip-item-subtotal {
+    grid-row: 4;
+  }
+
+  .venda-modal .chip-items--sem-tipo .chip-item-subtotal {
+    grid-row: 2;
+  }
+
+  .venda-modal .chip-items--sem-tipo.chip-items--com-vendedora .chip-item-subtotal {
+    grid-row: 3;
+  }
+
+  .venda-modal .chip-item-subtotal::before {
+    content: "Subtotal";
+    color: var(--text-3);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .venda-modal .chip-item-row input,
+  .venda-modal .chip-item-row select {
+    height: 34px;
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .venda-modal .chip-item-field--quantidade input,
+  .venda-modal .chip-item-field--gb input,
+  .venda-modal .chip-item-field--valor input {
+    text-align: center;
+  }
+
+  .venda-modal .chip-item-row select { padding-right: 24px; }
+
+  .venda-modal .chip-items__footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    gap: 8px;
+    padding-top: 0;
+  }
+
+  .venda-modal .chip-items__footer .btn {
+    width: 100%;
+  }
+
+  .venda-modal .chip-items__summary {
+    justify-content: space-between;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  /* ===== Venda cliente card (cliente selecionado) ===== */
+  .venda-modal .venda-cliente-card {
+    grid-template-columns: 1fr 28px;
+    gap: 4px 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+  .venda-modal .venda-cliente-card > div {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    line-height: 1.35;
+  }
+  .venda-modal .venda-cliente-card > div:first-child {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: column;
+    gap: 0;
+  }
+  .venda-modal .venda-cliente-card > .btn-icon {
+    grid-column: 2;
+    grid-row: 1;
+    width: 28px;
+    height: 28px;
+    align-self: start;
+  }
+  .venda-modal .venda-cliente-card strong { font-size: 12.5px; }
+  .venda-modal .venda-cliente-card span { font-size: 11.5px; }
+
+  .venda-arquivos-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .venda-arquivos-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .venda-arquivos-actions select {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+  }
+
+  .venda-arquivos-actions .btn {
+    flex: 0 1 auto;
+    width: auto;
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: 8px;
+  }
+
+  .venda-arquivos-actions .btn-primary {
+    flex: 1 1 100%;
+    width: 100%;
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 640px) {
+  .venda-problema-modal {
+    height: auto;
+    max-height: calc(100dvh - 12px);
+    max-height: calc(100svh - 12px);
+  }
+
+  .venda-problema-modal .modal-body {
+    flex: 0 1 auto;
+    max-height: calc(100dvh - 176px);
+    max-height: calc(100svh - 176px);
+    overflow-y: auto;
+  }
+
+  .venda-problema-modal .modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background: var(--surface);
+  }
+
+  .venda-problema-modal .modal-footer .btn {
+    min-height: 42px;
+  }
+
+  .venda-modal .venda-arquivos-actions .btn {
+    width: auto;
+  }
+
+  .venda-modal .venda-arquivos-actions .btn-primary {
+    width: 100%;
+  }
+
+  .vendas-toolbar--approval-status {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px;
+    align-items: end;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .vendas-toolbar--approval-status .vendas-toolbar-status {
+    min-width: 0;
+  }
+
+  .vendas-toolbar--approval-status .vendas-toolbar-status label {
+    margin-bottom: 5px;
+    color: var(--text-3);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .vendas-toolbar--approval-status .vendas-toolbar-status select {
+    height: 40px;
+    min-height: 40px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    font-size: 13px;
+  }
+
+  .vendas-toolbar--approval-status .vendas-toolbar-refresh {
+    width: 42px;
+    min-width: 42px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    border-radius: 10px;
+    border-color: #bbf7d0;
+    background: var(--success-bg);
+    color: var(--success);
+  }
+
+  .vendas-toolbar--approval-status .vendas-toolbar-refresh span {
+    display: none;
+  }
+
+  .vendas-toolbar--approval-status .vendas-toolbar-refresh:not(:disabled):hover,
+  .vendas-toolbar--approval-status .vendas-toolbar-refresh:focus-visible {
+    border-color: #86efac;
+    background: #dcfce7;
+    color: var(--success);
+    box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+    transform: none;
+    outline: none;
   }
 }

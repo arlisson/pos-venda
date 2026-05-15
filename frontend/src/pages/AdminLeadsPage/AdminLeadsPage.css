@@ -763,4 +763,63 @@
   .lead-summary-panel {
     grid-template-columns: 1fr;
   }
+
+  .lead-table .scroll {
+    overflow: auto;
+  }
+
+  .lead-table table {
+    min-width: 900px;
+  }
+
+  .lead-pagination {
+    flex-wrap: wrap;
+  }
+}
+
+/* ===== Mobile (<= 640px) — refatoração ===== */
+@media (max-width: 640px) {
+  .admin-leads-page {
+    padding: 12px;
+  }
+
+  /* Doc cards: cards menores em scroll horizontal compacto */
+  .lead-doc-list {
+    gap: 12px;
+    padding: 4px 0 10px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .lead-doc-card {
+    width: 120px;
+    min-width: 120px;
+    min-height: 130px;
+    scroll-snap-align: start;
+  }
+
+  /* Lead table mantém scroll horizontal (escape hatch já marcado no JSX) */
+  .lead-table table { min-width: 720px; }
+
+  .lead-table th,
+  .lead-table td {
+    position: static !important;
+    box-shadow: none !important;
+  }
+
+  .lead-pagination {
+    justify-content: center;
+    gap: 8px;
+  }
+  .lead-pagination .btn { flex: 1 1 auto; }
+
+  .leads-divide-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .leads-toolbar-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .leads-toolbar-actions .btn { width: 100%; }
 }

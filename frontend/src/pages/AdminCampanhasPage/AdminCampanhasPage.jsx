@@ -3,6 +3,7 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { createCampanha, deleteCampanha, getCampanhas, updateCampanhas } from '../../services/campanha.service';
 import { listarOperadoras } from '../../services/config.service';
 import * as I from '../../components/Icons';
+import './AdminCampanhasPage.css';
 
 const PERIODOS = [
   { value: 'diaria', label: 'Diária' },
@@ -16,13 +17,6 @@ const CATEGORIAS = [
   { value: 'portabilidade', label: 'Portabilidade' },
   { value: 'internet', label: 'Internet' },
 ];
-
-const inputStyle = {
-  width: '100%',
-  padding: '6px 10px',
-  border: '1px solid var(--border)',
-  borderRadius: '4px'
-};
 
 function AdminCampanhasPage() {
   const [campanhas, setCampanhas] = useState([]);
@@ -140,7 +134,7 @@ function AdminCampanhasPage() {
 
   return (
     <LayoutPrivado>
-      <div className="page" style={{ padding: 24, overflowY: 'auto' }}>
+      <div className="page admin-campanhas-page" style={{ padding: 24, overflowY: 'auto' }}>
         {message && (
           <div
             className={`alert-${message.type === 'success' ? 'success' : 'error'} alert-timed alert-timed--${message.type === 'success' ? 'success' : 'error'}`}
@@ -167,6 +161,7 @@ function AdminCampanhasPage() {
                 <div className="form-field">
                   <label>Alvo (Quantidade de Vendas)</label>
                   <input
+                    className="admin-campanhas-control"
                     type="number"
                     value={diaria.target}
                     onChange={event => handleCampanhasChange(diaria.id, 'target', parseInt(event.target.value, 10) || 0)}
@@ -190,7 +185,7 @@ function AdminCampanhasPage() {
             </button>
           </div>
           <div className="panel-body" style={{ padding: 0 }}>
-            <div className="list-table" style={{ margin: 0, borderRadius: 0, border: 'none' }}>
+            <div className="list-table list-table--scroll-mobile" style={{ margin: 0, borderRadius: 0, border: 'none' }}>
               <table>
                 <thead>
                   <tr>
@@ -206,9 +201,9 @@ function AdminCampanhasPage() {
                 <tbody>
                   {gifts.map(gift => (
                     <tr key={gift.id}>
-                      <td>
+                      <td data-label="Periodo">
                         <select
-                          style={inputStyle}
+                          className="admin-campanhas-control"
                           value={gift.periodo || 'diaria'}
                           onChange={event => handleCampanhasChange(gift.id, 'periodo', event.target.value)}
                         >
@@ -217,9 +212,9 @@ function AdminCampanhasPage() {
                           ))}
                         </select>
                       </td>
-                      <td>
+                      <td data-label="Categoria">
                         <select
-                          style={inputStyle}
+                          className="admin-campanhas-control"
                           value={gift.categoria || 'registro_cliente'}
                           onChange={event => handleCampanhasChange(gift.id, 'categoria', event.target.value)}
                         >
@@ -228,9 +223,9 @@ function AdminCampanhasPage() {
                           ))}
                         </select>
                       </td>
-                      <td>
+                      <td data-label="Operadora">
                         <select
-                          style={inputStyle}
+                          className="admin-campanhas-control"
                           value={gift.operadora_id || ''}
                           onChange={event => handleCampanhasChange(gift.id, 'operadora_id', event.target.value || null)}
                         >
@@ -240,31 +235,31 @@ function AdminCampanhasPage() {
                           ))}
                         </select>
                       </td>
-                      <td>
+                      <td data-label="Alvo">
                         <input
+                          className="admin-campanhas-control"
                           type="number"
-                          style={inputStyle}
                           value={gift.target}
                           onChange={event => handleCampanhasChange(gift.id, 'target', parseInt(event.target.value, 10) || 0)}
                         />
                       </td>
-                      <td>
+                      <td data-label="Descricao exibida">
                         <input
+                          className="admin-campanhas-control"
                           type="text"
-                          style={inputStyle}
                           value={gift.desc}
                           onChange={event => handleCampanhasChange(gift.id, 'desc', event.target.value)}
                         />
                       </td>
-                      <td>
+                      <td data-label="Recompensa">
                         <input
+                          className="admin-campanhas-control"
                           type="text"
-                          style={inputStyle}
                           value={gift.reward || ''}
                           onChange={event => handleCampanhasChange(gift.id, 'reward', event.target.value)}
                         />
                       </td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td data-label="Acoes" style={{ textAlign: 'right' }}>
                         <button
                           type="button"
                           className="btn btn-icon btn-ghost btn-danger-icon"
