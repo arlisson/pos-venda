@@ -29,7 +29,6 @@ import './ConfiguracoesPage.css';
 
 const FORM_SIMPLES = {
   nome: '',
-  ordem: 0,
   ativo: true
 };
 
@@ -38,7 +37,6 @@ const LINK_VAZIO = {
   nome: '',
   url: '',
   dot: '',
-  ordem: 0,
   ativo: true
 };
 
@@ -242,7 +240,6 @@ function ConfiguracoesPage() {
         nome: item.nome || '',
         url: item.url || '',
         dot: item.dot || '',
-        ordem: item.ordem || 0,
         ativo: Boolean(item.ativo)
       });
       return;
@@ -264,7 +261,6 @@ function ConfiguracoesPage() {
 
     setFormSimples({
       nome: item.nome || '',
-      ordem: item.ordem || 0,
       ativo: Boolean(item.ativo)
     });
   }
@@ -313,7 +309,7 @@ function ConfiguracoesPage() {
       servicos: [criarServico, atualizarServico]
     };
     const [criar, atualizar] = mapa[aba];
-    const payload = { ...formSimples, ordem: Number(formSimples.ordem || 0) };
+    const payload = { ...formSimples };
 
     try {
       if (editandoId) {
@@ -334,7 +330,7 @@ function ConfiguracoesPage() {
     event.preventDefault();
     setErro('');
     const editando = Boolean(editandoId);
-    const payload = { ...linkForm, ordem: Number(linkForm.ordem || 0) };
+    const payload = { ...linkForm };
 
     try {
       if (editandoId) {
@@ -433,10 +429,6 @@ function ConfiguracoesPage() {
           <div className="form-field">
             <label>Marcador</label>
             <input value={linkForm.dot} onChange={e => setLinkForm({ ...linkForm, dot: e.target.value })} placeholder="vivo, tim, claro, gov, abr" />
-          </div>
-          <div className="form-field">
-            <label>Ordem</label>
-            <input type="number" value={linkForm.ordem} onChange={e => setLinkForm({ ...linkForm, ordem: e.target.value })} />
           </div>
           <label className="config-toggle">
             <input type="checkbox" checked={linkForm.ativo} onChange={e => setLinkForm({ ...linkForm, ativo: e.target.checked })} />
@@ -635,15 +627,11 @@ function ConfiguracoesPage() {
     return (
       <>
         <form className="config-form" onSubmit={salvarSimples}>
-          {renderFormHeader(`Adicionar ${labelAtual.toLowerCase()}`, `Editar ${labelAtual.toLowerCase()}`, 'Cadastre o nome, defina a ordem de exibição e controle se o item fica disponível no sistema.')}
+          {renderFormHeader(`Adicionar ${labelAtual.toLowerCase()}`, `Editar ${labelAtual.toLowerCase()}`, 'Cadastre o nome e controle se o item fica disponível no sistema.')}
           <div className="config-form-grid config-form-grid--simple">
           <div className="form-field">
             <label>Nome</label>
             <input value={formSimples.nome} onChange={e => setFormSimples({ ...formSimples, nome: e.target.value })} required />
-          </div>
-          <div className="form-field">
-            <label>Ordem</label>
-            <input type="number" value={formSimples.ordem} onChange={e => setFormSimples({ ...formSimples, ordem: e.target.value })} />
           </div>
           <label className="config-toggle">
             <input type="checkbox" checked={formSimples.ativo} onChange={e => setFormSimples({ ...formSimples, ativo: e.target.checked })} />
@@ -662,21 +650,13 @@ function ConfiguracoesPage() {
 
         <div className="list-table config-table">
           <table>
-            <thead><tr><th>Nome</th><th>Ordem</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {listaAtual.map(item => (
                 <tr key={item.id}>
                   <td data-label="Nome" className="m-primary">
                     {item.nome}
-                    <details className="mobile-row-drawer">
-                      <summary>Ver detalhes</summary>
-                      <dl>
-                        <dt>Ordem</dt>
-                        <dd>{item.ordem}</dd>
-                      </dl>
-                    </details>
                   </td>
-                  <td data-label="Ordem" data-mobile-hidden="true">{item.ordem}</td>
                   <td data-label="Status" className="m-meta"><StatusPill ativo={item.ativo} /></td>
                   <td data-label="Acoes" className="row-actions m-actions">
                     <button type="button" className="btn btn-sm config-edit" onClick={() => editarItem(item)}><I.Edit size={13} /> Editar</button>

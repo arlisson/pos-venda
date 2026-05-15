@@ -112,11 +112,11 @@
 }
 
 .config-form-grid--simple {
-  grid-template-columns: minmax(240px, 1fr) 140px 120px;
+  grid-template-columns: minmax(240px, 1fr) 120px;
 }
 
 .config-form-grid--links {
-  grid-template-columns: minmax(160px, 0.9fr) minmax(180px, 1fr) minmax(280px, 1.6fr) minmax(140px, 0.8fr) 110px 120px;
+  grid-template-columns: minmax(160px, 0.9fr) minmax(180px, 1fr) minmax(280px, 1.6fr) minmax(140px, 0.8fr) 120px;
 }
 
 .config-form-grid--commission {
