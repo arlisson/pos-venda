@@ -1023,6 +1023,33 @@
   }
 }
 
+@media (min-width: 761px) {
+  .home-notification-card:not(.is-open) .home-notification-card__drawer {
+    display: flex;
+  }
+
+  .home-notification-card:not(.is-open) {
+    min-height: 368px;
+  }
+
+  .home-notification-card__chevron {
+    display: none;
+  }
+
+  .home-notification-card__top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .home-notification-card__title {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 @media (max-width: 760px) {
   .dashboard-container {
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));

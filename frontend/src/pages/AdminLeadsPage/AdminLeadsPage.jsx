@@ -19,13 +19,13 @@ import './AdminLeadsPage.css';
 const PAGE_SIZE = 200;
 const OPS = {
   string: [
-    ['contains', 'Contem'],
+    ['contains', 'Contém'],
     ['exact', 'Exato'],
     ['starts', 'Comeca com'],
     ['ends', 'Termina com']
   ],
   number: [
-    ['contains', 'Contem'],
+    ['contains', 'Contém'],
     ['exact', 'Exato'],
     ['starts', 'Comeca com'],
     ['ends', 'Termina com']
@@ -402,10 +402,10 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
             </div>
             <div>
               <strong>{planilha.nome}</strong>
-              <span>{planilha.total_linhas || 0} linha(s)</span>
-              <small>Se houver leads distribuidos, eles deixarao de aparecer para os vendedores.</small>
+              <span>{planilha.total_linhas || 0} {(planilha.total_linhas || 0) === 1 ? 'linha' : 'linhas'}</span>
+              <small>Se houver leads distribuídos, eles deixarão de aparecer para os vendedores.</small>
               {planilha.status === 'processando' && (
-                <small>A planilha ainda esta processando e o backend vai bloquear a exclusao.</small>
+                <small>A planilha ainda está processando e o backend vai bloquear a exclusão.</small>
               )}
             </div>
             <button type="button" className="leads-delete-trash-icon" disabled={carregando} onClick={onConfirm} title="Excluir planilha">
@@ -950,7 +950,7 @@ function AdminLeadsPage() {
                 <small>
                   {planilha.status === 'processando'
                     ? 'Processando...'
-                    : `${planilha.total_linhas} linhas`}
+                    : `${planilha.total_linhas} ${planilha.total_linhas === 1 ? 'linha' : 'linhas'}`}
                 </small>
               </div>
             ))}
@@ -1041,7 +1041,7 @@ function AdminLeadsPage() {
         )}
 
         <div className="lead-results-meta">
-          {totalLinhas} lead(s) encontrados
+          {totalLinhas} {totalLinhas === 1 ? 'lead encontrado' : 'leads encontrados'}
         </div>
 
         {resumoLeads.total > 0 && (

@@ -451,6 +451,11 @@
   text-overflow: ellipsis;
 }
 
+.lead-table td:nth-child(n + 5),
+.lead-table th:nth-child(n + 5) {
+  text-align: center;
+}
+
 .lead-table th:nth-child(-n + 4),
 .lead-table td:nth-child(-n + 4) {
   position: sticky;
