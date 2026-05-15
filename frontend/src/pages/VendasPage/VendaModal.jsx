@@ -700,22 +700,37 @@ function obterTipoVendaTabela(venda = {}) {
     || '-';
 }
 
-function getChaveClienteVenda(venda = {}) {
-  if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
-  if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
-
+function getChavesClienteVenda(venda = {}) {
+  const chaves = new Set();
+  const clienteId = venda.cliente_id || venda.cliente?.id;
   const cnpj = sanitizarCnpj(venda.cnpj || venda.cliente?.cnpj || '');
-  if (cnpj) return `cnpj:${cnpj}`;
+  const nomes = [
+    venda.nome,
+    venda.cliente?.nome,
+    venda.razao_social,
+    venda.cliente?.razao_social
+  ];
 
-  const nome = normalizarTextoBusca(venda.nome || venda.cliente?.nome || venda.razao_social || venda.cliente?.razao_social || '');
-  return nome ? `nome:${nome}` : '';
+  if (clienteId) chaves.add(`cliente:${clienteId}`);
+  if (cnpj) chaves.add(`cnpj:${cnpj}`);
+
+  if (!clienteId && !cnpj) {
+    nomes
+      .map(nome => normalizarTextoBusca(nome))
+      .filter(Boolean)
+      .forEach(nome => chaves.add(`nome:${nome}`));
+  }
+
+  return chaves;
 }
 
 function contarVendasPorCliente(vendas = []) {
   return vendas.reduce((acc, venda) => {
-    const chave = getChaveClienteVenda(venda);
-    if (!chave) return acc;
-    acc.set(chave, (acc.get(chave) || 0) + 1);
+    const chaves = getChavesClienteVenda(venda);
+    if (chaves.size === 0) return acc;
+    chaves.forEach(chave => {
+      acc.set(chave, (acc.get(chave) || 0) + 1);
+    });
     return acc;
   }, new Map());
 }
@@ -1792,7 +1807,15 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
   );
 }
 
-function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, vendasEmAndamento = 0, onChange, onCreateClient }) {
+function ClienteVendaSelect({
+  value,
+  clientes,
+  vendasRegistradas = 0,
+  vendasEmAndamento = 0,
+  clienteBaseAnterior = false,
+  onChange,
+  onCreateClient
+}) {
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
   const [busca, setBusca] = useState('');
@@ -1974,6 +1997,14 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, vendasEmAn
             <I.Close size={13} />
           </button>
         </div>
+        {clienteBaseAnterior && (
+          <div className="venda-cliente-repeat-alert">
+            <I.AlertTriangle size={13} />
+            <span>
+              Este cliente veio da base anterior e ja é cliente. Confira as vendas existentes antes de prosseguir.
+            </span>
+          </div>
+        )}
         {vendasEmAndamento > 0 && (
           <div className="venda-cliente-repeat-alert venda-cliente-repeat-alert--andamento">
             <I.AlertTriangle size={13} />
@@ -2589,11 +2620,32 @@ function VendaModal({
   const statusVendaAtual = venda?.status_funil || form.status_funil || '';
   const vendaEmEtapaFinal = Boolean(venda?.id && statusVendaAtual && codigosEtapasFinais.has(statusVendaAtual));
   const vendaAtivada = Boolean(normalizarDataVendaInput(form.data_ativacao));
-  const chaveClienteSelecionado = form.cliente_id ? `cliente:${form.cliente_id}` : '';
-  const totalVendasClienteSelecionado = chaveClienteSelecionado ? (vendasPorCliente.get(chaveClienteSelecionado) || 0) : 0;
-  const vendasRegistradasClienteSelecionado = venda?.id
-    ? Math.max(totalVendasClienteSelecionado - 1, 0)
-    : totalVendasClienteSelecionado;
+  const clienteSelecionadoModal = clientesDisponiveis.find(cliente => String(cliente.id) === String(form.cliente_id));
+  const chavesClienteSelecionado = useMemo(() => getChavesClienteVenda({
+    ...form,
+    cliente_id: form.cliente_id || clienteSelecionadoModal?.id || venda?.cliente_id,
+    cliente: clienteSelecionadoModal || venda?.cliente
+  }), [form, clienteSelecionadoModal, venda?.cliente, venda?.cliente_id]);
+  const vendasRegistradasClienteSelecionado = useMemo(() => {
+    if (chavesClienteSelecionado.size === 0) return 0;
+
+    if (Array.isArray(vendas) && vendas.length > 0) {
+      return vendas.filter(item => {
+        if (venda?.id && Number(item.id) === Number(venda.id)) return false;
+        const chavesVenda = getChavesClienteVenda(item);
+        return Array.from(chavesClienteSelecionado).some(chave => chavesVenda.has(chave));
+      }).length;
+    }
+
+    const totalVendasClienteSelecionado = Array.from(chavesClienteSelecionado).reduce((maior, chave) => (
+      Math.max(maior, vendasPorCliente?.get(chave) || 0)
+    ), 0);
+
+    return venda?.id
+      ? Math.max(totalVendasClienteSelecionado - 1, 0)
+      : totalVendasClienteSelecionado;
+  }, [chavesClienteSelecionado, vendas, venda?.id, vendasPorCliente]);
+  const clienteBaseAnteriorSelecionado = Boolean(clienteSelecionadoModal?.base_anterior_sistema);
   const vendasEmAndamentoPorClienteDerivado = useMemo(() => {
     if (!Array.isArray(vendas) || vendas.length === 0) return new Map();
     if (!Array.isArray(etapasFunilModal) || etapasFunilModal.length === 0) return new Map();
@@ -2610,7 +2662,11 @@ function VendaModal({
   const mapaEmAndamentoEfetivo = vendasEmAndamentoPorClienteDerivado.size > 0
     ? vendasEmAndamentoPorClienteDerivado
     : vendasEmAndamentoPorCliente;
-  const totalEmAndamentoClienteSelecionado = chaveClienteSelecionado ? (mapaEmAndamentoEfetivo.get(chaveClienteSelecionado) || 0) : 0;
+  const totalEmAndamentoClienteSelecionado = chavesClienteSelecionado.size > 0
+    ? Array.from(chavesClienteSelecionado).reduce((maior, chave) => (
+      Math.max(maior, mapaEmAndamentoEfetivo.get(chave) || 0)
+    ), 0)
+    : 0;
   const vendaAtualEmAndamento = Boolean(venda?.id && statusVendaAtual && !codigosEtapasFinais.has(statusVendaAtual));
   const vendasEmAndamentoClienteSelecionado = venda?.id && vendaAtualEmAndamento
     ? Math.max(totalEmAndamentoClienteSelecionado - 1, 0)
@@ -3580,6 +3636,7 @@ function VendaModal({
                         clientes={clientesDisponiveis}
                         vendasRegistradas={vendasRegistradasClienteSelecionado}
                         vendasEmAndamento={vendasEmAndamentoClienteSelecionado}
+                        clienteBaseAnterior={clienteBaseAnteriorSelecionado}
                         onChange={atualizarClienteVenda}
                         onCreateClient={async () => {
                           const clienteCriado = await onCreateClient?.(clientePreenchido);
