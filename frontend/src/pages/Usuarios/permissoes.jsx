@@ -168,6 +168,11 @@ export const GRUPOS_PERMISSOES = [
             descricao: 'Permite editar clientes acessíveis.'
           },
           {
+            chave: 'clientes_atribuir_vendedora',
+            nome: 'Atribuir vendedora',
+            descricao: 'Permite transferir o dono do cliente para uma vendedora.'
+          },
+          {
             chave: 'clientes_excluir',
             nome: 'Excluir clientes',
             descricao: 'Permite enviar clientes para a lixeira e excluir definitivamente.'

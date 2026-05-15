@@ -175,6 +175,11 @@ const PERMISSOES = [
     descricao: 'Permite editar clientes acessíveis pelo usuário.'
   },
   {
+    chave: 'clientes_atribuir_vendedora',
+    nome: 'Clientes: atribuir vendedora',
+    descricao: 'Permite definir qual usuario sera o dono do cliente para acesso e registro de vendas.'
+  },
+  {
     chave: 'clientes_excluir',
     nome: 'Clientes: excluir',
     descricao: 'Permite excluir clientes acessíveis pelo usuário.'

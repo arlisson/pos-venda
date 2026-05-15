@@ -175,6 +175,17 @@
   color: #047857;
 }
 
+.cliente-owner-select {
+  width: min(220px, 100%);
+  min-width: 150px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+}
+
 .required-mark {
   color: #dc2626;
   margin-left: 3px;
