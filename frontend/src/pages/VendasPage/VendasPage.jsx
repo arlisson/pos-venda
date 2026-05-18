@@ -3001,7 +3001,7 @@ function VendasPage() {
                           </details>
                         </div>
                       </td>
-                      <td data-label="Operadora" className="m-secondary"><span className="tag">{venda.operadora?.nome || '-'}</span> · {obterTipoVendaTabela(venda)}</td>
+                      <td data-label="Operadora" className="m-secondary"><span className="tag">{venda.operadora?.nome || '-'}</span></td>
                       <td data-label="Tipo" data-mobile-hidden="true">{obterTipoVendaTabela(venda)}</td>
                       <td data-label="Produto" data-mobile-hidden="true">{venda.servico?.nome || '-'}</td>
                       <td data-label="Linhas" data-mobile-hidden="true">{venda.quantidade_linhas || '-'}</td>
