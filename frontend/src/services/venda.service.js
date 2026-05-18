@@ -153,6 +153,29 @@ export async function criarVenda(dados) {
   return apiPost('/vendas', dados);
 }
 
+function montarFormDataImportacao(arquivo, mapeamento) {
+  const formData = new FormData();
+  formData.append('arquivo', arquivo);
+  if (mapeamento) {
+    formData.append('mapeamento', JSON.stringify(mapeamento));
+  }
+  return formData;
+}
+
+export async function previewImportacaoVendasEmpresas(arquivo, mapeamento) {
+  return apiRequest('/vendas/importar-empresas/preview', {
+    method: 'POST',
+    body: montarFormDataImportacao(arquivo, mapeamento)
+  });
+}
+
+export async function importarVendasEmpresas(arquivo, mapeamento) {
+  return apiRequest('/vendas/importar-empresas', {
+    method: 'POST',
+    body: montarFormDataImportacao(arquivo, mapeamento)
+  });
+}
+
 export async function atualizarVenda(id, dados) {
   return apiPut(`/vendas/${id}`, dados);
 }

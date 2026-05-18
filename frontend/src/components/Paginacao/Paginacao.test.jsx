@@ -27,10 +27,10 @@ describe('Paginacao', () => {
       <Paginacao total={55} paginaAtual={1} itensPorPagina={20} onPagina={vi.fn()} onItensPorPagina={vi.fn()} />
     );
 
-    expect(screen.getAllByRole('button')[0]).toBeDisabled();
+    expect(screen.getByRole('button', { name: /página anterior/i })).toBeDisabled();
 
     rerender(<Paginacao total={55} paginaAtual={3} itensPorPagina={20} onPagina={vi.fn()} onItensPorPagina={vi.fn()} />);
-    expect(screen.getAllByRole('button').at(-1)).toBeDisabled();
+    expect(screen.getByRole('button', { name: /próxima página/i })).toBeDisabled();
   });
 
   it('chama callbacks ao trocar pagina e itens por pagina', async () => {

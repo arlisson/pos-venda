@@ -15,7 +15,12 @@ import {
   previewImportacaoBaseAnterior
 } from '../../services/cliente.service';
 import { listarOperadoras } from '../../services/config.service';
-import { contarVendasConcluidasPorCliente, listarVendedoras } from '../../services/venda.service';
+import {
+  contarVendasConcluidasPorCliente,
+  importarVendasEmpresas,
+  listarVendedoras,
+  previewImportacaoVendasEmpresas
+} from '../../services/venda.service';
 import { formatUtcDateTime, getUtcDateTimeTimestamp, parseUtcDateTime } from '../../utils/datetime';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './Clientes.css';
@@ -169,8 +174,8 @@ function ConfirmarLimpezaBaseModal({ aberto, limpando, onClose, onConfirm }) {
         <div className="modal-header">
           <div className="modal-header-row">
             <div>
-              <div className="modal-client">Limpar clientes da base?</div>
-              <div className="modal-sub">Clientes marcados como base anterior serao apagados.</div>
+              <div className="modal-client">Apagar base anterior?</div>
+              <div className="modal-sub">Clientes da base anterior e vendas vinculadas serao apagados.</div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={limpando}>
               <I.Close size={14} />
@@ -182,8 +187,8 @@ function ConfirmarLimpezaBaseModal({ aberto, limpando, onClose, onConfirm }) {
           <div className="trash-warning">
             <I.AlertTriangle size={20} />
             <div>
-              <strong>Esta acao apaga permanentemente os clientes da base anterior.</strong>
-              <span>As vendas vinculadas deixarao de apontar para esses clientes.</span>
+              <strong>Esta acao apaga permanentemente os clientes da base anterior e todas as vendas relacionadas.</strong>
+              <span>Use apenas quando precisar desfazer uma importacao da planilha.</span>
             </div>
           </div>
         </div>
@@ -191,7 +196,7 @@ function ConfirmarLimpezaBaseModal({ aberto, limpando, onClose, onConfirm }) {
         <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose} disabled={limpando}>Cancelar</button>
           <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={limpando}>
-            {limpando ? 'Limpando...' : 'Limpar clientes da base'}
+            {limpando ? 'Apagando...' : 'Apagar base e vendas'}
           </button>
         </div>
       </div>
@@ -370,6 +375,213 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
   );
 }
 
+function ListaAvisosImportacao({ titulo, itens }) {
+  if (!itens?.length) return null;
+
+  return (
+    <span title={itens.join(', ')}>
+      {titulo}: <strong>{itens.slice(0, 5).join(', ')}{itens.length > 5 ? ` +${itens.length - 5}` : ''}</strong>
+    </span>
+  );
+}
+
+function ImportarVendasEmpresasModal({ onClose, onImported }) {
+  const [arquivo, setArquivo] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [mapeamento, setMapeamento] = useState({});
+  const [resultado, setResultado] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const camposMapeamento = preview?.campos_mapeamento || [];
+  const colunas = preview?.colunas || [];
+  const camposObrigatoriosOk = camposMapeamento
+    .filter(campo => campo.required)
+    .every(campo => mapeamento[campo.name]);
+  const podeImportar = Boolean(arquivo && preview && camposObrigatoriosOk && !carregando);
+  const avisos = preview?.avisos || resultado?.avisos || {};
+  const amostras = preview?.amostras || [];
+
+  async function carregarPreview(file) {
+    setArquivo(file || null);
+    setPreview(null);
+    setMapeamento({});
+    setResultado(null);
+    setErro('');
+
+    if (!file) return;
+
+    setCarregando(true);
+    try {
+      const data = await previewImportacaoVendasEmpresas(file);
+      setPreview(data);
+      setMapeamento(data.mapeamento || data.sugestoes || {});
+    } catch (error) {
+      setErro(error.message || 'Erro ao ler planilha.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function atualizarMapeamento(campo, coluna) {
+    const proximo = { ...mapeamento, [campo]: coluna };
+    setMapeamento(proximo);
+
+    if (!arquivo) return;
+
+    setCarregando(true);
+    setErro('');
+    try {
+      const data = await previewImportacaoVendasEmpresas(arquivo, proximo);
+      setPreview(data);
+      setMapeamento(data.mapeamento || proximo);
+    } catch (error) {
+      setErro(error.message || 'Erro ao atualizar mapeamento.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function executarImportacao(event) {
+    event.preventDefault();
+    if (!podeImportar) return;
+
+    setCarregando(true);
+    setErro('');
+    setResultado(null);
+
+    try {
+      const data = await importarVendasEmpresas(arquivo, mapeamento);
+      setResultado(data);
+      await onImported(data);
+    } catch (error) {
+      setErro(error.message || 'Erro ao importar vendas.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && !carregando && onClose()}>
+      <form className="modal cliente-import-modal" onSubmit={executarImportacao}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Importar planilha</div>
+              <div className="modal-sub">Cria ou atualiza clientes e registra as vendas da planilha de controle.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={carregando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div className="form-field">
+            <label>Arquivo .xlsx</label>
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={event => carregarPreview(event.target.files?.[0])}
+              disabled={carregando}
+            />
+          </div>
+
+          {preview && (
+            <>
+              <div className="cliente-import-summary">
+                <span>Aba: <strong>{preview.aba}</strong></span>
+                <span>Linhas validas: <strong>{preview.linhas_validas}</strong></span>
+                <span>CNPJs unicos: <strong>{preview.cnpjs_unicos}</strong></span>
+                <span>Vendas detectadas: <strong>{preview.vendas_detectadas}</strong></span>
+                <span>Para criar: <strong>{preview.vendas_para_criar}</strong></span>
+                <span>Ja importadas: <strong>{preview.vendas_ja_importadas}</strong></span>
+                <ListaAvisosImportacao titulo="Consultores nao encontrados" itens={avisos.consultores_nao_encontrados} />
+                <ListaAvisosImportacao titulo="Operadoras nao encontradas" itens={avisos.operadoras_nao_encontradas} />
+                <ListaAvisosImportacao titulo="Produtos a cadastrar" itens={avisos.produtos_a_cadastrar} />
+              </div>
+
+              <div className="cliente-import-map">
+                <div className="cliente-import-map__head">
+                  <span>Campo do sistema</span>
+                  <span>Coluna da planilha</span>
+                  <span>Status</span>
+                </div>
+                {camposMapeamento.map(campo => (
+                  <div className="cliente-import-map__row" key={campo.name}>
+                    <label>
+                      {campo.label}
+                      {campo.required && <span className="required-mark">*</span>}
+                    </label>
+                    <select
+                      value={mapeamento[campo.name] || ''}
+                      onChange={event => atualizarMapeamento(campo.name, event.target.value)}
+                      required={campo.required}
+                      disabled={carregando}
+                    >
+                      <option value="">Nao importar</option>
+                      {colunas.map(coluna => (
+                        <option key={`${campo.name}:${coluna.index}`} value={coluna.nome}>{coluna.nome}</option>
+                      ))}
+                    </select>
+                    <span>{mapeamento[campo.name] ? 'Mapeado' : (campo.required ? 'Obrigatorio' : 'Opcional')}</span>
+                  </div>
+                ))}
+              </div>
+
+              {amostras.length > 0 && (
+                <div className="cliente-import-map cliente-import-map--vendas">
+                  <div className="cliente-import-map__head">
+                    <span>Cliente</span>
+                    <span>Venda</span>
+                    <span>Resumo</span>
+                  </div>
+                  {amostras.map(amostra => (
+                    <div className="cliente-import-map__row" key={amostra.linhas.join('-')}>
+                      <label title={`${amostra.cliente} - ${amostra.cnpj}`}>{amostra.cliente}</label>
+                      <span title={`${amostra.data_venda || '-'} - ${amostra.produto || '-'}`}>
+                        {amostra.data_venda || '-'} - {amostra.produto || '-'}
+                      </span>
+                      <span title={amostra.status || '-'}>
+                        {amostra.chips} chip(s), {formatarMoeda(amostra.valor_total)} - {amostra.status || '-'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {resultado && (
+            <div className="cliente-import-result">
+              <span>Clientes criados: <strong>{resultado.clientes_criados}</strong></span>
+              <span>Clientes atualizados: <strong>{resultado.clientes_atualizados}</strong></span>
+              <span>Vendas criadas: <strong>{resultado.vendas_criadas}</strong></span>
+              <span>Duplicadas ignoradas: <strong>{resultado.vendas_ignoradas_duplicadas}</strong></span>
+              <span>Linhas ignoradas: <strong>{resultado.linhas_ignoradas}</strong></span>
+              {resultado.produtos_cadastrados?.length > 0 && (
+                <span>Produtos cadastrados: <strong>{resultado.produtos_cadastrados.join(', ')}</strong></span>
+              )}
+              {resultado.erros?.length > 0 && (
+                <span>Erros: <strong>{resultado.erros.slice(0, 3).map(item => `linha ${item.row_index}`).join(', ')}</strong></span>
+              )}
+            </div>
+          )}
+
+          {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={carregando}>Fechar</button>
+          <button type="submit" className="btn btn-primary" disabled={!podeImportar}>
+            {carregando ? 'Processando...' : 'Importar clientes e vendas'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function Clientes() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -408,6 +620,7 @@ function Clientes() {
   const [modalAberto, setModalAberto] = useState(false);
   const [clienteCadastroDraft, setClienteCadastroDraft] = useState(null);
   const [importModalAberto, setImportModalAberto] = useState(false);
+  const mostrarImportacaoSomenteClientes = importModalAberto && searchParams.get('modo_importacao') === 'clientes';
   const [limparBaseModalAberto, setLimparBaseModalAberto] = useState(false);
   const [clienteParaLixeira, setClienteParaLixeira] = useState(null);
   const [excluindo, setExcluindo] = useState(false);
@@ -617,8 +830,18 @@ function Clientes() {
   }
 
   async function finalizarImportacaoBaseAnterior(resultado) {
+    setImportModalAberto(false);
     await carregarClientes(filtros);
     setSucesso(`Importacao concluida: ${resultado.criados || 0} criado(s) e ${resultado.atualizados || 0} atualizado(s).`);
+  }
+
+  async function finalizarImportacaoVendasEmpresas(resultado) {
+    setImportModalAberto(false);
+    await Promise.all([
+      carregarClientes(filtros),
+      contarVendasConcluidasPorCliente().then(data => setVendasConcluidasContagem(data || {}))
+    ]);
+    setSucesso(`Importacao concluida: ${resultado.vendas_criadas || 0} venda(s), ${resultado.clientes_criados || 0} cliente(s) novo(s) e ${resultado.clientes_atualizados || 0} atualizado(s).`);
   }
 
   async function confirmarExclusaoCliente() {
@@ -642,12 +865,15 @@ function Clientes() {
     setErro('');
 
     try {
-      const resultado = await limparClientesBaseAnterior();
+      const resultado = await limparClientesBaseAnterior({ excluirVendasRelacionadas: true });
       setLimparBaseModalAberto(false);
-      await carregarClientes(filtros);
-      setSucesso(`${resultado.excluidos || 0} cliente(s) da base anterior apagado(s).`);
+      await Promise.all([
+        carregarClientes(filtros),
+        contarVendasConcluidasPorCliente().then(data => setVendasConcluidasContagem(data || {}))
+      ]);
+      setSucesso(`${resultado.excluidos || 0} cliente(s) e ${resultado.vendas_excluidas || 0} venda(s) da base anterior apagado(s).`);
     } catch (error) {
-      setErro(error.message || 'Erro ao limpar clientes da base anterior.');
+      setErro(error.message || 'Erro ao apagar base anterior.');
     } finally {
       setLimpandoBase(false);
     }
@@ -691,10 +917,17 @@ function Clientes() {
         />
       )}
 
-      {importModalAberto && (
+      {mostrarImportacaoSomenteClientes && (
         <ImportarBaseAnteriorModal
           onClose={() => setImportModalAberto(false)}
           onImported={finalizarImportacaoBaseAnterior}
+        />
+      )}
+
+      {importModalAberto && !mostrarImportacaoSomenteClientes && (
+        <ImportarVendasEmpresasModal
+          onClose={() => setImportModalAberto(false)}
+          onImported={finalizarImportacaoVendasEmpresas}
         />
       )}
 
@@ -816,13 +1049,13 @@ function Clientes() {
             {podeCriar && (
               <>
                 <button className="btn" type="button" onClick={() => setImportModalAberto(true)}>
-                  <I.TableSheet size={14} /> Importar base
+                  <I.TableSheet size={14} /> Importar planilha
                 </button>
-                {/* {isAdmin && (
+                {isAdmin && (
                   <button className="btn btn-danger" type="button" onClick={() => setLimparBaseModalAberto(true)}>
                     <I.Trash size={14} /> Apagar base anterior
                   </button>
-                )} */}
+                )}
                 <button className="btn btn-primary" type="button" onClick={abrirNovoCliente}>
                   <I.Plus size={14} /> Novo cliente
                 </button>

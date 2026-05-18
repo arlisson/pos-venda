@@ -33,6 +33,18 @@ router.get('/relatorios', exigirUmaPermissao(['relatorios_visualizar']), vendaCo
 router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.lixeira);
 router.get('/contagem-por-cliente', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), vendaController.contagemPorCliente);
 router.get('/referencias-clientes', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.referenciasClientes);
+router.post('/importar-empresas/preview', exigirUmaPermissao(['vendas_criar']), vendaController.previewImportacaoEmpresas);
+router.post(
+  '/importar-empresas',
+  exigirUmaPermissao(['vendas_criar']),
+  auditar({
+    acao: 'vendas.empresas_importadas',
+    entidade: 'vendas',
+    entidade_id: null,
+    dados: (req, resultado) => resultado
+  }),
+  vendaController.importarEmpresas
+);
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.index);
 router.get('/problemas/destinatarios', exigirUmaPermissao(['pos_venda']), vendaProblemaController.destinatarios);
 router.get('/aprovacoes', exigirUmaPermissao(['vendas_aprovacoes_visualizar']), vendaAprovacaoController.index);

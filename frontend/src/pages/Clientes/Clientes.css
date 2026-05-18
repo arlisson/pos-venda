@@ -168,6 +168,13 @@
   white-space: nowrap;
 }
 
+.cliente-import-map--vendas .cliente-import-map__row label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .clientes-base-tag {
   margin-left: 6px;
   background: #ecfdf5;

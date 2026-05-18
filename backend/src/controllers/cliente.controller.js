@@ -214,7 +214,12 @@ async function destroyDefinitivo(req, res) {
 
 async function limparBaseAnterior(req, res) {
   try {
-    const resultado = await clienteService.limparClientesBaseAnterior();
+    const excluirVendasRelacionadas = ['1', 'true', true, 1].includes(
+      req.query.excluir_vendas_relacionadas ?? req.body?.excluir_vendas_relacionadas
+    );
+    const resultado = await clienteService.limparClientesBaseAnterior({
+      excluirVendasRelacionadas
+    });
     return res.json(resultado);
   } catch (error) {
     console.error(error);

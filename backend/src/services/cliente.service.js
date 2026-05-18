@@ -1184,28 +1184,39 @@ async function excluirClienteDefinitivo(id, usuarioId, opcoes = {}) {
   });
 }
 
-async function limparClientesBaseAnterior() {
+async function limparClientesBaseAnterior(opcoes = {}) {
   return Cliente.transaction(async trx => {
     const clientes = await Cliente.query(trx)
       .select('id', 'nome', 'razao_social', 'cnpj')
       .where('base_anterior_sistema', true);
     if (clientes.length === 0) {
-      return { excluidos: 0 };
+      return { excluidos: 0, vendas_excluidas: 0 };
     }
 
-    const clientesSemVendas = [];
-    for (const cliente of clientes) {
-      const totalVendas = await contarVendasRelacionadasCliente(cliente.id, trx);
-      if (totalVendas === 0) {
-        clientesSemVendas.push(cliente);
+    const excluirVendasRelacionadas = Boolean(opcoes.excluirVendasRelacionadas);
+    const clienteIdsTodos = clientes.map(cliente => Number(cliente.id)).filter(Boolean);
+    let vendasExcluidas = 0;
+    let clienteIds = clienteIdsTodos;
+
+    if (excluirVendasRelacionadas && clienteIdsTodos.length > 0) {
+      vendasExcluidas = await Venda.query(trx)
+        .whereIn('cliente_id', clienteIdsTodos)
+        .delete();
+    } else {
+      const clientesSemVendas = [];
+      for (const cliente of clientes) {
+        const totalVendas = await contarVendasRelacionadasCliente(cliente.id, trx);
+        if (totalVendas === 0) {
+          clientesSemVendas.push(cliente);
+        }
       }
-    }
 
-    if (clientesSemVendas.length === 0) {
-      return { excluidos: 0, ignorados_com_vendas: clientes.length };
-    }
+      if (clientesSemVendas.length === 0) {
+        return { excluidos: 0, vendas_excluidas: 0, ignorados_com_vendas: clientes.length };
+      }
 
-    const clienteIds = clientesSemVendas.map(cliente => Number(cliente.id)).filter(Boolean);
+      clienteIds = clientesSemVendas.map(cliente => Number(cliente.id)).filter(Boolean);
+    }
 
     const notas = await trx('entidade_notas')
       .select('id')
@@ -1253,7 +1264,11 @@ async function limparClientesBaseAnterior() {
       .whereIn('id', clienteIds)
       .delete();
 
-    return { excluidos, ignorados_com_vendas: clientes.length - clientesSemVendas.length };
+    return {
+      excluidos,
+      vendas_excluidas: vendasExcluidas,
+      ignorados_com_vendas: excluirVendasRelacionadas ? 0 : clientes.length - clienteIds.length
+    };
   });
 }
 
