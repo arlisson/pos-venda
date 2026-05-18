@@ -1,4 +1,5 @@
-import React, { useId } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './Paginacao.css';
 
 const OPCOES_POR_PAGINA = [20, 50, 100];
@@ -15,6 +16,107 @@ function gerarPaginas(total, atual) {
     return [1, 'ellipsis-start', total - 4, total - 3, total - 2, total - 1, total];
   }
   return [1, 'ellipsis-start', atual - 1, atual, atual + 1, 'ellipsis-end', total];
+}
+
+function SeletorItensPorPagina({ id, value, onChange }) {
+  const [aberto, setAberto] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+
+  function calcularPosicao() {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 72) });
+  }
+
+  useLayoutEffect(() => {
+    if (aberto) calcularPosicao();
+  }, [aberto]);
+
+  useEffect(() => {
+    if (!aberto) return;
+
+    function fecharFora(event) {
+      if (
+        !triggerRef.current?.contains(event.target) &&
+        !menuRef.current?.contains(event.target)
+      ) {
+        setAberto(false);
+      }
+    }
+
+    document.addEventListener('mousedown', fecharFora);
+    window.addEventListener('resize', calcularPosicao);
+    window.addEventListener('scroll', calcularPosicao, true);
+
+    return () => {
+      document.removeEventListener('mousedown', fecharFora);
+      window.removeEventListener('resize', calcularPosicao);
+      window.removeEventListener('scroll', calcularPosicao, true);
+    };
+  }, [aberto]);
+
+  function selecionar(n) {
+    onChange(n);
+    setAberto(false);
+    triggerRef.current?.focus();
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === 'Escape') setAberto(false);
+  }
+
+  return (
+    <div className={`paginacao-select${aberto ? ' paginacao-select--open' : ''}`} onKeyDown={handleKeyDown}>
+      <button
+        id={id}
+        ref={triggerRef}
+        type="button"
+        className="paginacao-select__trigger"
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+        onClick={() => setAberto(v => !v)}
+      >
+        <span>{value}</span>
+        <svg className="paginacao-select__chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {aberto && createPortal(
+        <div
+          ref={menuRef}
+          className="paginacao-select__menu"
+          role="listbox"
+          aria-labelledby={id}
+          style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
+        >
+          {OPCOES_POR_PAGINA.map(n => {
+            const ativo = Number(value) === n;
+            return (
+              <button
+                key={n}
+                type="button"
+                role="option"
+                aria-selected={ativo}
+                className={`paginacao-select__opcao${ativo ? ' paginacao-select__opcao--ativa' : ''}`}
+                onClick={() => selecionar(n)}
+              >
+                <span>{n}</span>
+                {ativo && (
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <path d="M2 6.5L4.5 9L10 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
 }
 
 function Paginacao({ total, paginaAtual, itensPorPagina, onPagina, onItensPorPagina }) {
@@ -74,15 +176,11 @@ function Paginacao({ total, paginaAtual, itensPorPagina, onPagina, onItensPorPag
 
       <div className="paginacao__por-pagina">
         <label htmlFor={`${uid}-pp`}>Por página</label>
-        <select
+        <SeletorItensPorPagina
           id={`${uid}-pp`}
           value={itensPorPagina}
-          onChange={e => onItensPorPagina(Number(e.target.value))}
-        >
-          {OPCOES_POR_PAGINA.map(n => (
-            <option key={n} value={n}>{n}</option>
-          ))}
-        </select>
+          onChange={onItensPorPagina}
+        />
       </div>
     </div>
   );
