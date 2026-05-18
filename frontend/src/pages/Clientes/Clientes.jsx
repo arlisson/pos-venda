@@ -1051,11 +1051,11 @@ function Clientes() {
                 <button className="btn" type="button" onClick={() => setImportModalAberto(true)}>
                   <I.TableSheet size={14} /> Importar planilha
                 </button>
-                {isAdmin && (
+                {/* {isAdmin && (
                   <button className="btn btn-danger" type="button" onClick={() => setLimparBaseModalAberto(true)}>
                     <I.Trash size={14} /> Apagar base anterior
                   </button>
-                )}
+                )} */}
                 <button className="btn btn-primary" type="button" onClick={abrirNovoCliente}>
                   <I.Plus size={14} /> Novo cliente
                 </button>
