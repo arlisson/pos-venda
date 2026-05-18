@@ -27,7 +27,12 @@ function SeletorItensPorPagina({ id, value, onChange }) {
   function calcularPosicao() {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 72) });
+    const menuHeight = menuRef.current?.offsetHeight || OPCOES_POR_PAGINA.length * 33;
+    setMenuPos({
+      top: Math.max(8, rect.top - menuHeight - 4),
+      left: rect.left,
+      width: Math.max(rect.width, 72)
+    });
   }
 
   useLayoutEffect(() => {

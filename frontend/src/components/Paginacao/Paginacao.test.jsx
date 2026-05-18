@@ -43,7 +43,8 @@ describe('Paginacao', () => {
     );
 
     await user.click(screen.getByRole('button', { name: '4' }));
-    await user.selectOptions(screen.getByLabelText(/por página/i), '50');
+    await user.click(screen.getByLabelText(/por página/i));
+    await user.click(screen.getByRole('option', { name: '50' }));
 
     expect(onPagina).toHaveBeenCalledWith(4);
     expect(onItensPorPagina).toHaveBeenCalledWith(50);
