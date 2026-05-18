@@ -1,0 +1,73 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('./api', () => ({
+  apiBlob: vi.fn(),
+  apiDelete: vi.fn(),
+  apiGet: vi.fn(),
+  apiPost: vi.fn(),
+  apiPut: vi.fn(),
+  apiRequest: vi.fn(),
+}));
+
+import { apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
+import {
+  atualizarStatusVenda,
+  atualizarVenda,
+  buscarVendaPorId,
+  criarVenda,
+  deletarVenda,
+  gerarEmailVenda,
+  listarAprovacoesVenda,
+  listarVendas,
+  listarVendasLixeira,
+  marcarProblemaVenda,
+  restaurarVenda,
+  urlVisualizarArquivoVenda,
+} from './venda.service';
+
+describe('venda.service', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('monta query de vendas preservando filtros repetidos e ignorando vazios', async () => {
+    await listarVendas({ status: 'aprovacao', vazio: '', pagina: 2 });
+    await listarVendasLixeira({ busca: 'cliente' });
+    await listarAprovacoesVenda({ status: 'pendente' });
+
+    expect(apiGet).toHaveBeenNthCalledWith(1, '/vendas?status=aprovacao&pagina=2');
+    expect(apiGet).toHaveBeenNthCalledWith(2, '/vendas/lixeira?busca=cliente');
+    expect(apiGet).toHaveBeenNthCalledWith(3, '/vendas/aprovacoes?status=pendente');
+  });
+
+  it('usa endpoints principais de venda', async () => {
+    await buscarVendaPorId(5);
+    await criarVenda({ nome: 'Venda' });
+    await atualizarVenda(5, { nome: 'Atualizada' });
+    await deletarVenda(5);
+    await restaurarVenda(5);
+    await gerarEmailVenda(5);
+    await marcarProblemaVenda(5, { motivo: 'Documento' });
+
+    expect(apiGet).toHaveBeenCalledWith('/vendas/5');
+    expect(apiPost).toHaveBeenNthCalledWith(1, '/vendas', { nome: 'Venda' });
+    expect(apiPut).toHaveBeenCalledWith('/vendas/5', { nome: 'Atualizada' });
+    expect(apiDelete).toHaveBeenCalledWith('/vendas/5');
+    expect(apiPost).toHaveBeenNthCalledWith(2, '/vendas/5/restaurar', {});
+    expect(apiPost).toHaveBeenNthCalledWith(3, '/vendas/5/email-template', {});
+    expect(apiPost).toHaveBeenNthCalledWith(4, '/vendas/5/problemas', { motivo: 'Documento' });
+  });
+
+  it('atualiza status via PATCH com body serializado', async () => {
+    await atualizarStatusVenda(7, { status_funil: 'ativacao' });
+
+    expect(apiRequest).toHaveBeenCalledWith('/vendas/7/status', {
+      method: 'PATCH',
+      body: JSON.stringify({ status_funil: 'ativacao' }),
+    });
+  });
+
+  it('monta URL de visualizacao de arquivo com base padrao da API', () => {
+    expect(urlVisualizarArquivoVenda(9, 12)).toBe('http://localhost:3000/api/vendas/9/arquivos/12/view');
+  });
+});

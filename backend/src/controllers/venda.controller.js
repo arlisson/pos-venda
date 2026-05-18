@@ -1,4 +1,5 @@
 const vendaService = require('../services/venda.service');
+const vendaImportacaoEmpresasService = require('../services/venda-importacao-empresas.service');
 const { gerarXlsxClaro } = require('../services/venda-xlsx-claro.service');
 const { _internals } = require('../services/venda-email-template.service');
 
@@ -108,6 +109,30 @@ async function store(req, res) {
 
     return res.status(400).json({
       message: error.message || 'Erro ao criar venda.'
+    });
+  }
+}
+
+async function previewImportacaoEmpresas(req, res) {
+  try {
+    const preview = await vendaImportacaoEmpresasService.preview(req);
+    return res.json(preview);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao ler planilha de vendas.'
+    });
+  }
+}
+
+async function importarEmpresas(req, res) {
+  try {
+    const resultado = await vendaImportacaoEmpresasService.importar(req, req.usuario.id);
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao importar vendas.'
     });
   }
 }
@@ -326,6 +351,8 @@ module.exports = {
   show,
   emailTemplate,
   xlsxClaro,
+  previewImportacaoEmpresas,
+  importarEmpresas,
   store,
   update,
   updateStatus,

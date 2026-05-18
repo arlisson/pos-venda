@@ -56,8 +56,9 @@ export async function importarBaseAnterior(arquivo, mapeamento) {
   });
 }
 
-export async function limparClientesBaseAnterior() {
-  return apiDelete('/clientes/base-anterior');
+export async function limparClientesBaseAnterior(opcoes = {}) {
+  const query = opcoes.excluirVendasRelacionadas ? '?excluir_vendas_relacionadas=1' : '';
+  return apiDelete(`/clientes/base-anterior${query}`);
 }
 
 export async function atualizarCliente(id, dados) {

@@ -1,0 +1,76 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiBlob, apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
+
+function jsonResponse(body, init = {}) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+    ...init,
+  });
+}
+
+describe('api service', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    globalThis.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('envia Content-Type e Authorization quando ha token', async () => {
+    localStorage.setItem('token', 'abc123');
+    fetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await expect(apiPost('/clientes', { nome: 'Cliente' })).resolves.toEqual({ ok: true });
+
+    expect(fetch).toHaveBeenCalledWith('http://localhost:3000/api/clientes', {
+      method: 'POST',
+      body: JSON.stringify({ nome: 'Cliente' }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer abc123',
+      },
+    });
+  });
+
+  it('nao define Content-Type manualmente para FormData', async () => {
+    const formData = new FormData();
+    formData.append('arquivo', new File(['conteudo'], 'teste.txt'));
+    fetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await apiRequest('/upload', { method: 'POST', body: formData });
+
+    expect(fetch.mock.calls[0][1].headers).toEqual({});
+  });
+
+  it('lanca mensagem de erro retornada pela API', async () => {
+    fetch.mockResolvedValueOnce(jsonResponse({ message: 'Falha validada' }, { status: 400 }));
+
+    await expect(apiGet('/clientes')).rejects.toThrow('Falha validada');
+  });
+
+  it('atalhos usam os metodos HTTP esperados', async () => {
+    fetch
+      .mockResolvedValueOnce(jsonResponse({ get: true }))
+      .mockResolvedValueOnce(jsonResponse({ put: true }))
+      .mockResolvedValueOnce(jsonResponse({ delete: true }));
+
+    await expect(apiGet('/x')).resolves.toEqual({ get: true });
+    await expect(apiPut('/x/1', { nome: 'Novo' })).resolves.toEqual({ put: true });
+    await expect(apiDelete('/x/1')).resolves.toEqual({ delete: true });
+
+    expect(fetch.mock.calls[0][1].headers['Content-Type']).toBe('application/json');
+    expect(fetch.mock.calls[1][1].method).toBe('PUT');
+    expect(fetch.mock.calls[2][1].method).toBe('DELETE');
+  });
+
+  it('retorna blob em respostas de arquivo', async () => {
+    const blob = new Blob(['arquivo']);
+    fetch.mockResolvedValueOnce(new Response(blob, { status: 200 }));
+
+    await expect(apiBlob('/arquivo')).resolves.toBeInstanceOf(Blob);
+  });
+});
