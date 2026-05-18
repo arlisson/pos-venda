@@ -51,7 +51,14 @@
       "Bash(npx eslint *)",
       "Bash(python -c ' *)",
       "Bash(cd /d \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\")",
-      "Bash(findstr /s /r /c:\"Ja retornou\" /c:\"retorno_historico\" backend\\\\src\\\\*.js backend\\\\src\\\\**\\\\*.js)"
+      "Bash(findstr /s /r /c:\"Ja retornou\" /c:\"retorno_historico\" backend\\\\src\\\\*.js backend\\\\src\\\\**\\\\*.js)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src\\\\pages\" -Recurse -File)",
+      "Bash(Select-Object -First 50)",
+      "Bash(npx react-scripts *)",
+      "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\backend\\\\src\" -Recurse -ErrorAction SilentlyContinue)",
+      "Bash(xargs grep -l \"\\\\.index\\\\|CREATE INDEX\")",
+      "Bash(xargs grep -H \"\\\\.index\")"
     ]
   }
 }

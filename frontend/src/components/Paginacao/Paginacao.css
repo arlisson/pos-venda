@@ -1,0 +1,167 @@
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 2px 2px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.paginacao__info {
+  font-size: 12.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* ── Grupo de botões de página ── */
+.paginacao__grupo {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.paginacao__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, box-shadow 120ms;
+  user-select: none;
+  line-height: 1;
+}
+
+.paginacao__btn:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.paginacao__btn--ativo {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
+}
+
+.paginacao__btn--ativo:hover:not(:disabled) {
+  background: var(--surface);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+}
+
+.paginacao__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Setas prev/next fora do grupo ── */
+.paginacao__nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 16px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.paginacao__nav:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.paginacao__nav:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.paginacao__ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+  color: var(--text-3);
+  user-select: none;
+  letter-spacing: 0.08em;
+}
+
+/* ── Seletor de itens por página ── */
+.paginacao__por-pagina {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.paginacao__por-pagina select {
+  height: 30px;
+  padding: 0 24px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a3a3a3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: border-color 120ms;
+}
+
+.paginacao__por-pagina select:hover {
+  border-color: var(--border-strong);
+}
+
+.paginacao__por-pagina select:focus {
+  outline: none;
+  border-color: var(--border-strong);
+}
+
+/* ── Navegação central ── */
+.paginacao__nav-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (max-width: 600px) {
+  .paginacao {
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .paginacao__info,
+  .paginacao__por-pagina {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}

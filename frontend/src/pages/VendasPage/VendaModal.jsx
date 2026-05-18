@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
+import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/CnpjSugestoes';
 import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
@@ -1174,14 +1175,12 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
             {mostrarTipoLinha && (
               <label className="chip-item-field chip-item-field--tipo">
                 <span className="chip-item-field__label">Tipo</span>
-                <select
+                <SelectFiltro
                   value={item.tipo_linha || 'novo'}
-                  onChange={e => atualizarItem(index, 'tipo_linha', e.target.value)}
-                >
-                  {TIPOS_LINHA_CHIP.map(tipo => (
-                    <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
-                  ))}
-                </select>
+                  onChange={val => atualizarItem(index, 'tipo_linha', val)}
+                  options={TIPOS_LINHA_CHIP}
+                  placeholder="Novo"
+                />
               </label>
             )}
             <label className="chip-item-field chip-item-field--valor">
@@ -1198,15 +1197,12 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
             {mostrarVendedora && (
               <label className="chip-item-field chip-item-field--vendedora">
                 <span className="chip-item-field__label">Vendedora</span>
-                <select
+                <SelectFiltro
                   value={item.vendedora_id || ''}
-                  onChange={e => atualizarItem(index, 'vendedora_id', e.target.value)}
-                >
-                  <option value="">—</option>
-                  {vendedoras.map(v => (
-                    <option key={v.id} value={String(v.id)}>{v.nome}</option>
-                  ))}
-                </select>
+                  onChange={val => atualizarItem(index, 'vendedora_id', val)}
+                  options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
+                  placeholder="—"
+                />
               </label>
             )}
             <button
@@ -1639,14 +1635,15 @@ function ClienteSolicitouResolucaoTab({ form, onChange, disabled }) {
         <div className="vendas-form-grid cliente-solicitou-resolucao__form">
           <div className="form-field">
             <label>Problema foi resolvido</label>
-            <select
+            <SelectFiltro
               value={form.cliente_solicitou_resolvido || ''}
-              onChange={event => onChange('cliente_solicitou_resolvido', event.target.value)}
-            >
-              <option value="">Selecione</option>
-              <option value="sim">Sim</option>
-              <option value="nao">Não</option>
-            </select>
+              onChange={val => onChange('cliente_solicitou_resolvido', val)}
+              placeholder="Selecione"
+              options={[
+                { value: 'sim', label: 'Sim' },
+                { value: 'nao', label: 'Não' },
+              ]}
+            />
           </div>
 
           {form.cliente_solicitou_resolvido === 'sim' && (
@@ -1761,16 +1758,16 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
       {visiveis.map((slot, index) => (
         <div key={slot.nomeKey} className="responsavel-row">
           <span className="responsavel-row__num">{index + 1}</span>
-          <select
+          <SelectFiltro
             value={obterTipoResponsavel(slot)}
-            onChange={event => selecionarTipo(slot, event.target.value)}
-            aria-label={`Quem vai receber o chip ${index + 1}`}
-          >
-            <option value="">Selecione</option>
-            <option value="rl" disabled={!form.nome_representante_legal && !form.rg_representante_legal}>RL</option>
-            <option value="adm" disabled={!form.nome_administrador && !form.rg_administrador}>ADM</option>
-            <option value="outra">Outra pessoa</option>
-          </select>
+            onChange={val => selecionarTipo(slot, val)}
+            placeholder="Selecione"
+            options={[
+              { value: 'rl', label: 'RL', disabled: !form.nome_representante_legal && !form.rg_representante_legal },
+              { value: 'adm', label: 'ADM', disabled: !form.nome_administrador && !form.rg_administrador },
+              { value: 'outra', label: 'Outra pessoa' },
+            ]}
+          />
           <div className="responsavel-row__campos">
             <input
               type="text"
@@ -2219,12 +2216,18 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) 
         </div>
 
         <div className="venda-arquivos-actions">
-          <select aria-label="Categoria do arquivo" value={categoria} onChange={event => setCategoria(event.target.value)} disabled={!podeAdicionar || enviando}>
-            <option value="documento">Documento</option>
-            <option value="contrato">Contrato</option>
-            <option value="comprovante">Comprovante</option>
-            <option value="outro">Outro</option>
-          </select>
+          <SelectFiltro
+            value={categoria}
+            onChange={setCategoria}
+            disabled={!podeAdicionar || enviando}
+            placeholder="Documento"
+            options={[
+              { value: 'documento', label: 'Documento' },
+              { value: 'contrato', label: 'Contrato' },
+              { value: 'comprovante', label: 'Comprovante' },
+              { value: 'outro', label: 'Outro' },
+            ]}
+          />
           <input
             ref={inputRef}
             type="file"
@@ -3723,15 +3726,21 @@ function VendaModal({
                           <div className="aceite-bloco__row">
                             <span className="aceite-bloco__row-label">Dias</span>
                             <div className="aceite-bloco__inputs">
-                              <select value={form.dia_aceite_inicio || ''} onChange={e => atualizarCampo('dia_aceite_inicio', e.target.value)}>
-                                <option value="">Selecione</option>
-                                {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                              </select>
+                              <SelectFiltro
+                                value={form.dia_aceite_inicio || ''}
+                                onChange={val => atualizarCampo('dia_aceite_inicio', val)}
+                                placeholder="Selecione"
+                                options={DIAS_SEMANA}
+                                className="sf--flex1"
+                              />
                               <span className="aceite-bloco__sep">até</span>
-                              <select value={form.dia_aceite_fim || ''} onChange={e => atualizarCampo('dia_aceite_fim', e.target.value)}>
-                                <option value="">Selecione</option>
-                                {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                              </select>
+                              <SelectFiltro
+                                value={form.dia_aceite_fim || ''}
+                                onChange={val => atualizarCampo('dia_aceite_fim', val)}
+                                placeholder="Selecione"
+                                options={DIAS_SEMANA}
+                                className="sf--flex1"
+                              />
                             </div>
                           </div>
                           <div className="aceite-bloco__row">
@@ -3745,10 +3754,13 @@ function VendaModal({
                         </div>
                       ) : (
                         <div className="aceite-bloco__fixo">
-                          <select value={form.dia_aceite_fixo || ''} onChange={e => atualizarCampo('dia_aceite_fixo', e.target.value)}>
-                            <option value="">Selecione o dia</option>
-                            {DIAS_SEMANA.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                          </select>
+                          <SelectFiltro
+                            value={form.dia_aceite_fixo || ''}
+                            onChange={val => atualizarCampo('dia_aceite_fixo', val)}
+                            placeholder="Selecione o dia"
+                            options={DIAS_SEMANA}
+                            className="sf--flex15"
+                          />
                           <span className="aceite-bloco__sep">às</span>
                           <input type="time" value={form.horario_aceite_fixo || ''} onChange={e => atualizarCampo('horario_aceite_fixo', e.target.value)} />
                         </div>
@@ -3757,32 +3769,25 @@ function VendaModal({
                   ) : campo.type === 'responsaveis' ? (
                     <ResponsaveisRecebimentoInput form={form} onChange={atualizarCampo} />
                   ) : campo.type === 'closedWith' ? (
-                    <select
+                    <SelectFiltro
                       value={FECHOU_VENDA_OPCOES.some(opcao => opcao.value === form[campo.name]) ? form[campo.name] : ''}
-                      onChange={e => atualizarCampo(campo.name, e.target.value)}
-                    >
-                      <option value="">Selecione</option>
-                      {FECHOU_VENDA_OPCOES.map(opcao => (
-                        <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
-                      ))}
-                    </select>
+                      onChange={val => atualizarCampo(campo.name, val)}
+                      placeholder="Selecione"
+                      options={FECHOU_VENDA_OPCOES}
+                    />
                   ) : ['operator', 'saleType', 'service'].includes(campo.type) ? (
-                    <select
-                      value={form[campo.name] ?? ''}
-                      onChange={e => atualizarCampo(campo.name, e.target.value)}
-                      required={campo.required}
-                    >
-                      <option value="">Selecione</option>
-                      {(
+                    <SelectFiltro
+                      value={form[campo.name] != null ? String(form[campo.name]) : ''}
+                      onChange={val => atualizarCampo(campo.name, val)}
+                      placeholder="Selecione"
+                      options={(
                         campo.type === 'operator'
                           ? operadoras
                           : campo.type === 'saleType'
                             ? tiposVenda
                             : servicos
-                      ).map(item => (
-                        <option key={item.id} value={item.id}>{item.nome}</option>
-                      ))}
-                    </select>
+                      ).map(item => ({ value: String(item.id), label: item.nome }))}
+                    />
                   ) : campo.type === 'serviceType' ? (
                     <TiposServicoInput
                       value={form[campo.name]}

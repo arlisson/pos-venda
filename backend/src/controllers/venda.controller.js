@@ -321,5 +321,16 @@ module.exports = {
   lixeira,
   restore,
   destroyDefinitivo,
-  vendedoras
+  vendedoras,
+  contagemPorCliente
 };
+
+async function contagemPorCliente(req, res) {
+  try {
+    const contagem = await vendaService.contarVendasConcluidasPorCliente();
+    return res.json(contagem);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao obter contagem de vendas.' });
+  }
+}

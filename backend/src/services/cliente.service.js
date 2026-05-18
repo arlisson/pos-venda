@@ -794,10 +794,12 @@ function aplicarBuscaClientes(query, termo) {
 
 async function listarClientes(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoClientes(usuarioId);
+  const page = filtros.page ? Number(filtros.page) : null;
+  const perPage = filtros.per_page ? Number(filtros.per_page) : null;
+
   const query = Cliente.query()
     .withGraphFetched('[operadoraAtual, criador]')
-    .whereNull('excluido_em')
-    .orderBy('nome', 'asc');
+    .whereNull('excluido_em');
 
   aplicarEscopoClientes(query, usuarioId, escopo);
 
@@ -833,35 +835,45 @@ async function listarClientes(filtros = {}, usuarioId) {
     query.where('base_anterior_sistema', false);
   }
 
-  const clientes = await adicionarResumoNotasClientes((await query).map(formatarCliente), usuarioId);
-
-  if (filtros.avisos_fidelidade) {
-    return clientes.filter(cliente => cliente.aviso_fidelidade?.deve_avisar);
+  if (filtros.avisos_fidelidade || filtros.fidelidade === 'alerta') {
+    query.whereNotNull('fidelidade_fim')
+      .whereNot('fidelidade_fim', '1899-11-30')
+      .whereRaw('fidelidade_fim <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)');
+  } else if (filtros.fidelidade === 'sem') {
+    query.where(builder => builder.whereNull('fidelidade_fim').orWhere('fidelidade_fim', '1899-11-30'));
+  } else if (filtros.fidelidade === 'vencida') {
+    query.whereNotNull('fidelidade_fim')
+      .whereNot('fidelidade_fim', '1899-11-30')
+      .whereRaw('fidelidade_fim < CURDATE()');
+  } else if (filtros.fidelidade === 'ativa') {
+    query.whereNotNull('fidelidade_fim')
+      .whereNot('fidelidade_fim', '1899-11-30')
+      .whereRaw('fidelidade_fim >= CURDATE()');
   }
 
-  if (filtros.fidelidade === 'sem') {
-    return clientes.filter(cliente => !cliente.fidelidade_fim);
-  }
-
-  if (filtros.fidelidade === 'vencida') {
-    return clientes.filter(cliente => cliente.aviso_fidelidade?.dias_restantes < 0);
-  }
-
-  if (filtros.fidelidade === 'ativa') {
-    return clientes.filter(cliente => cliente.aviso_fidelidade?.dias_restantes >= 0);
+  if (filtros.retorno === 'vencido' && usuarioId) {
+    query.whereExists(
+      Cliente.knex().select(Cliente.knex().raw('1')).from('entidade_notas')
+        .where('entidade_tipo', 'cliente')
+        .where('usuario_id', Number(usuarioId))
+        .whereRaw('entidade_id = clientes.id')
+        .whereRaw('retorno_agendado_para <= NOW()')
+    );
   }
 
   if (filtros.fidelidade === 'alerta') {
-    return clientes
-      .filter(cliente => cliente.aviso_fidelidade?.deve_avisar)
-      .sort((a, b) => a.aviso_fidelidade.dias_restantes - b.aviso_fidelidade.dias_restantes);
+    query.orderBy('fidelidade_fim', 'asc');
+  } else {
+    query.orderBy('nome', 'asc');
   }
 
-  if (filtros.retorno === 'vencido') {
-    return clientes.filter(cliente => Number(cliente.notas_resumo?.notas_retorno_vencido_total || 0) > 0);
+  if (page && perPage) {
+    const result = await query.page(page - 1, perPage);
+    const clientes = await adicionarResumoNotasClientes(result.results.map(formatarCliente), usuarioId);
+    return { data: clientes, total: result.total };
   }
 
-  return clientes;
+  return adicionarResumoNotasClientes((await query).map(formatarCliente), usuarioId);
 }
 
 async function buscarClientePorId(id, usuarioId) {

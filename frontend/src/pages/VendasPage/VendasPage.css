@@ -1332,6 +1332,27 @@ input.is-invalid {
   justify-content: flex-start;
 }
 
+.venda-problema-novo-btn {
+  justify-self: start;
+  margin-top: 4px;
+}
+
+.venda-problema-novo-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--danger);
+  border-radius: 8px;
+  background: #fff7f7;
+  margin-top: 4px;
+}
+
+.venda-problema-novo-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 @media (max-width: 520px) {
   .venda-problema-card-header {
     grid-template-columns: 1fr;
@@ -3449,5 +3470,190 @@ input.is-invalid {
     box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
     transform: none;
     outline: none;
+  }
+
+  /* SelectFiltro — toolbar approval status */
+  .vendas-toolbar--approval-status .vendas-toolbar-status .sf {
+    width: 100%;
+  }
+  .vendas-toolbar--approval-status .vendas-toolbar-status .sf__trigger {
+    height: 40px;
+    min-height: 40px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    font-size: 13px;
+    width: 100%;
+  }
+}
+
+/* ===================================================
+   SelectFiltro — equivalentes às regras de <select>
+   =================================================== */
+
+/* Transição igual aos inputs/selects do modal */
+.venda-modal .sf__trigger {
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+/* Estado aberto = equivalente ao :focus do select */
+.venda-modal .sf--open .sf__trigger {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.08);
+}
+
+/* Fieldset desabilitado */
+.venda-readonly-fieldset:disabled .sf__trigger {
+  cursor: default;
+}
+
+/* Arquivo actions */
+.venda-arquivos-actions .sf {
+  min-width: 140px;
+}
+.venda-arquivos-actions .sf__trigger {
+  height: 36px;
+  min-width: 140px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* Chip item rows */
+.chip-item-row .sf {
+  min-width: 0;
+}
+.chip-item-row .sf__trigger {
+  height: 36px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+}
+
+.chip-items--com-vendedora .chip-item-row .sf__trigger {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* Aceite bloco — intervalo */
+.aceite-bloco__inputs .sf {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+.aceite-bloco__inputs .sf__trigger {
+  height: 34px;
+  width: 100%;
+  background: var(--surface);
+}
+
+/* Aceite bloco — fixo */
+.aceite-bloco__fixo .sf {
+  flex: 1.5;
+  width: auto;
+  min-width: 0;
+}
+.aceite-bloco__fixo .sf__trigger {
+  height: 34px;
+  width: 100%;
+  background: var(--surface);
+}
+
+/* Responsável row */
+.responsavel-row .sf__trigger {
+  min-height: 36px;
+}
+
+/* Arquivo actions — tablet */
+@media (max-width: 720px) {
+  .venda-arquivos-actions .sf {
+    flex: 1 1 150px;
+  }
+}
+
+/* Arquivo actions — mobile */
+@media (max-width: 520px) {
+  .venda-arquivos-actions .sf {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Mobile bottom-sheet — SelectFiltro dentro do modal */
+@media (max-width: 640px) {
+  /* Borderless dentro do card grid */
+  .venda-modal .vendas-form-grid .form-field .sf__trigger {
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    min-height: 26px;
+    font-size: 15px;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    color: var(--text);
+    justify-content: flex-start;
+  }
+  .venda-modal .vendas-form-grid .form-field .sf__trigger .sf__chevron {
+    margin-left: auto;
+  }
+  .venda-modal .vendas-form-grid .form-field .sf--open .sf__trigger {
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
+  /* Estado inválido */
+  .venda-modal .vendas-form-grid .form-field.is-invalid .sf__trigger {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Form-field fora do grid */
+  .venda-modal .form-field .sf__trigger {
+    min-height: 36px;
+    padding: 7px 10px;
+  }
+
+  /* Chip-item-row mobile */
+  .venda-modal .chip-item-row .sf__trigger {
+    height: 34px;
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  /* Responsavel-row mobile: .sf é filho direto */
+  .venda-modal .responsavel-row > .sf {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: start;
+    width: auto;
+    min-width: 110px;
+    max-width: 100%;
+  }
+  .venda-modal .responsavel-row > .sf .sf__trigger {
+    width: auto;
+    min-height: 30px;
+    padding: 4px 24px 4px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  /* Aceite-bloco mobile */
+  .venda-modal .aceite-bloco__inputs .sf__trigger,
+  .venda-modal .aceite-bloco__fixo .sf__trigger {
+    height: 32px;
+    min-height: 32px;
+    padding: 4px 8px;
+    font-size: 13px;
   }
 }

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDebounce } from '../../utils/useDebounce';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import Paginacao from '../../components/Paginacao/Paginacao';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/CnpjSugestoes';
 import NotasEntidadeTab from '../../components/NotasEntidadeTab';
@@ -31,6 +33,7 @@ import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './VendasPage.css';
 
 const VENDA_VAZIA = {
@@ -1048,14 +1051,12 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
               onChange={e => atualizarItem(index, 'gb', formatarCampoVenda('gb', e.target.value))}
               placeholder="20"
             />
-            <select
+            <SelectFiltro
               value={item.tipo_linha || 'novo'}
-              onChange={e => atualizarItem(index, 'tipo_linha', e.target.value)}
-            >
-              {TIPOS_LINHA_CHIP.map(tipo => (
-                <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
-              ))}
-            </select>
+              onChange={val => atualizarItem(index, 'tipo_linha', val)}
+              options={TIPOS_LINHA_CHIP}
+              placeholder="Novo"
+            />
             <input
               type="text"
               inputMode="decimal"
@@ -1065,15 +1066,12 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
             />
             <div className="chip-item-subtotal">{formatarMoeda(subtotal)}</div>
             {mostrarVendedora && (
-              <select
+              <SelectFiltro
                 value={item.vendedora_id || ''}
-                onChange={e => atualizarItem(index, 'vendedora_id', e.target.value)}
-              >
-                <option value="">—</option>
-                {vendedoras.map(v => (
-                  <option key={v.id} value={String(v.id)}>{v.nome}</option>
-                ))}
-              </select>
+                onChange={val => atualizarItem(index, 'vendedora_id', val)}
+                options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
+                placeholder="—"
+              />
             )}
             <button type="button" className="btn btn-icon btn-ghost btn-danger-icon" onClick={() => removerItem(index)} title="Remover item">
               <I.Trash size={13} />
@@ -1827,12 +1825,18 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) 
         </div>
 
         <div className="venda-arquivos-actions">
-          <select aria-label="Categoria do arquivo" value={categoria} onChange={event => setCategoria(event.target.value)} disabled={!podeAdicionar || enviando}>
-            <option value="documento">Documento</option>
-            <option value="contrato">Contrato</option>
-            <option value="comprovante">Comprovante</option>
-            <option value="outro">Outro</option>
-          </select>
+          <SelectFiltro
+            value={categoria}
+            onChange={setCategoria}
+            disabled={!podeAdicionar || enviando}
+            placeholder="Documento"
+            options={[
+              { value: 'documento', label: 'Documento' },
+              { value: 'contrato', label: 'Contrato' },
+              { value: 'comprovante', label: 'Comprovante' },
+              { value: 'outro', label: 'Outro' },
+            ]}
+          />
           <input
             ref={inputRef}
             type="file"
@@ -2219,6 +2223,10 @@ function VendasPage() {
   const [clienteRapidoDraft, setClienteRapidoDraft] = useState(null);
   const [, setResolverClienteRapido] = useState(null);
   const [clientePreenchidoLead] = useState(() => location.state?.clientePreenchido || null);
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(20);
+  const [totalVendas, setTotalVendas] = useState(0);
+  const buscaDebounced = useDebounce(busca, 300);
   const usuarioLogado = getUsuarioLocal();
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, ['vendas_editar', 'pos_venda']);
@@ -2233,7 +2241,7 @@ function VendasPage() {
   const podeFunil = temPermissao(usuarioLogado, 'vendas');
 
   const filtros = useMemo(() => ({
-    busca,
+    busca: buscaDebounced,
     vendedora_id: vendedoraId,
     operadora_id: operadoraId,
     tipo_venda_id: tipoVendaId,
@@ -2246,7 +2254,7 @@ function VendasPage() {
     data_fim: dataFim,
     valor_min: valorMin,
     valor_max: valorMax
-  }), [busca, vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, uf, municipio, dataInicio, dataFim, valorMin, valorMax]);
+  }), [buscaDebounced, vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, uf, municipio, dataInicio, dataFim, valorMin, valorMax]);
 
   const filtrosAtivos = useMemo(() => (
     Object.entries(filtros).filter(([, valor]) => valor !== '').length
@@ -2289,16 +2297,10 @@ function VendasPage() {
     return () => clearTimeout(timer);
   }, [erro]);
 
-  async function carregarDados() {
-    setErro('');
-    setCarregando(true);
-
+  async function carregarDadosEstaticos() {
     try {
-      const vendasPromise = listarVendas(filtros);
-      const vendasReferenciaPromise = filtrosAtivos > 0 ? listarVendas() : vendasPromise;
-      const [vendasData, vendasReferenciaData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData, usuariosProblemaData] = await Promise.all([
-        vendasPromise,
-        vendasReferenciaPromise,
+      const [vendasReferenciaData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData, usuariosProblemaData] = await Promise.all([
+        listarVendas(),
         podeListarClientes ? listarClientes() : Promise.resolve([]),
         listarVendedoras(),
         listarOperadoras(),
@@ -2308,7 +2310,6 @@ function VendasPage() {
         podeOperarPosVenda ? listarDestinatariosProblemaVenda() : Promise.resolve([])
       ]);
 
-      setVendas(vendasData);
       setVendasReferencia(vendasReferenciaData);
       setClientes(clientesData);
       setVendedoras(vendedorasData);
@@ -2319,6 +2320,19 @@ function VendasPage() {
       setEtapasFunil(etapasFunilData || []);
       setUsuariosProblema(usuariosProblemaData || []);
     } catch (error) {
+      setErro(error.message || 'Erro ao carregar dados.');
+    }
+  }
+
+  async function carregarVendas(proximosFiltros = filtros, pagina = paginaAtual, porPagina = itensPorPagina) {
+    setErro('');
+    setCarregando(true);
+
+    try {
+      const vendasData = await listarVendas({ ...proximosFiltros, page: pagina, per_page: porPagina });
+      setVendas(vendasData.data);
+      setTotalVendas(vendasData.total);
+    } catch (error) {
       setErro(error.message || 'Erro ao carregar vendas.');
     } finally {
       setCarregando(false);
@@ -2327,13 +2341,18 @@ function VendasPage() {
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
-    carregarDados();
+    carregarDadosEstaticos();
+  }, []);
+
+  useEffect(() => {
+    setPaginaAtual(1);
+    carregarVendas(filtros, 1);
   }, [filtros]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   useEffect(() => {
     function handleVendasAtualizadas() {
-      carregarDados();
+      carregarVendas();
     }
 
     window.addEventListener('pos-venda:vendas-atualizadas', handleVendasAtualizadas);
@@ -2454,7 +2473,8 @@ function VendasPage() {
     if (!editando) {
       setVendaCadastroDraft(null);
     }
-    await carregarDados();
+    await carregarVendas(filtros, paginaAtual);
+    listarVendas().then(data => setVendasReferencia(data)).catch(() => {});
     setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
   }
 
@@ -2468,7 +2488,8 @@ function VendasPage() {
     setModalProblemaInicial(null);
     setModalModoEdicao(true);
     setVendaInicial(null);
-    await carregarDados();
+    await carregarVendas(filtros, paginaAtual);
+    listarVendas().then(data => setVendasReferencia(data)).catch(() => {});
     window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
     setSucesso(resultado?.status === 'pendente'
       ? (resultado.message || 'Solicitação enviada para aprovação do ADM.')
@@ -2681,7 +2702,7 @@ function VendasPage() {
             setVendaProblema(null);
             setSucesso('Problema da venda enviado aos responsáveis.');
             window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
-            await carregarDados();
+            await carregarVendas(filtros, paginaAtual);
           }}
         />
       )}
@@ -2722,71 +2743,75 @@ function VendasPage() {
               {podeVerTodasVendas && (
                 <div className="filter-field">
                   <label>Vendedor(a)</label>
-                  <select value={vendedoraId} onChange={e => setVendedoraId(e.target.value)}>
-                    <option value="">Todas</option>
-                    {vendedoras.map(vendedora => (
-                      <option key={vendedora.id} value={vendedora.id}>{vendedora.nome}</option>
-                    ))}
-                  </select>
+                  <SelectFiltro
+                    value={vendedoraId}
+                    onChange={setVendedoraId}
+                    placeholder="Todas"
+                    options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
+                  />
                 </div>
               )}
               <div className="filter-field">
                 <label>Operadora</label>
-                <select value={operadoraId} onChange={e => setOperadoraId(e.target.value)}>
-                  <option value="">Todas</option>
-                  {operadoras.map(operadora => (
-                    <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
-                  ))}
-                </select>
+                <SelectFiltro
+                  value={operadoraId}
+                  onChange={setOperadoraId}
+                  placeholder="Todas"
+                  options={operadoras.map(op => ({ value: String(op.id), label: op.nome }))}
+                />
               </div>
               <div className="filter-field">
                 <label>Tipo de venda</label>
-                <select value={tipoVendaId} onChange={e => setTipoVendaId(e.target.value)}>
-                  <option value="">Todos</option>
-                  {tiposVenda.map(tipo => (
-                    <option key={tipo.id} value={tipo.id}>{tipo.nome}</option>
-                  ))}
-                </select>
+                <SelectFiltro
+                  value={tipoVendaId}
+                  onChange={setTipoVendaId}
+                  placeholder="Todos"
+                  options={tiposVenda.map(t => ({ value: String(t.id), label: t.nome }))}
+                />
               </div>
               <div className="filter-field">
                 <label>Produto</label>
-                <select value={servicoId} onChange={e => setServicoId(e.target.value)}>
-                  <option value="">Todos</option>
-                  {servicos.map(servico => (
-                    <option key={servico.id} value={servico.id}>{servico.nome}</option>
-                  ))}
-                </select>
+                <SelectFiltro
+                  value={servicoId}
+                  onChange={setServicoId}
+                  placeholder="Todos"
+                  options={servicos.map(s => ({ value: String(s.id), label: s.nome }))}
+                />
               </div>
               {podeFunil && (
                 <div className="filter-field">
                   <label>Status</label>
-                  <select value={statusFunil} onChange={e => setStatusFunil(e.target.value)}>
-                    <option value="">Todos</option>
-                    {statusFunilFiltros.map(status => (
-                      <option key={status.id} value={status.id}>{status.label}</option>
-                    ))}
-                  </select>
+                  <SelectFiltro
+                    value={statusFunil}
+                    onChange={setStatusFunil}
+                    placeholder="Todos"
+                    options={statusFunilFiltros.map(s => ({ value: String(s.id), label: s.label }))}
+                  />
                 </div>
               )}
               {podeFunil && (
                 <div className="filter-field">
                   <label>Prioridade</label>
-                  <select value={prioridadeFunil} onChange={e => setPrioridadeFunil(e.target.value)}>
-                    <option value="">Todas</option>
-                    <option value="alta">Alta</option>
-                    <option value="media">Média</option>
-                    <option value="baixa">Baixa</option>
-                  </select>
+                  <SelectFiltro
+                    value={prioridadeFunil}
+                    onChange={setPrioridadeFunil}
+                    placeholder="Todas"
+                    options={[
+                      { value: 'alta', label: 'Alta' },
+                      { value: 'media', label: 'Média' },
+                      { value: 'baixa', label: 'Baixa' },
+                    ]}
+                  />
                 </div>
               )}
               <div className="filter-field">
                 <label>UF</label>
-                <select value={uf} onChange={e => setUf(e.target.value)}>
-                  <option value="">Todos</option>
-                  {['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map(estado => (
-                    <option key={estado} value={estado}>{estado}</option>
-                  ))}
-                </select>
+                <SelectFiltro
+                  value={uf}
+                  onChange={setUf}
+                  placeholder="Todos"
+                  options={['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map(e => ({ value: e, label: e }))}
+                />
               </div>
               <div className="filter-field">
                 <label>Município</label>
@@ -2845,7 +2870,7 @@ function VendasPage() {
         </div>
 
         <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>
-          {vendas.length} vendas cadastradas
+          {totalVendas} vendas cadastradas
           {filtrosAtivos > 0 ? ` - ${filtrosAtivos} filtro(s) ativo(s)` : ''}
         </div>
 
@@ -2890,7 +2915,7 @@ function VendasPage() {
                       Carregando vendas...
                     </td>
                   </tr>
-                ) : vendas.length === 0 ? (
+                ) : totalVendas === 0 ? (
                   <tr>
                     <td colSpan={totalColunasVendas} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhuma venda encontrada.
@@ -3080,6 +3105,13 @@ function VendasPage() {
                 )}
               </tbody>
             </table>
+            <Paginacao
+              total={totalVendas}
+              paginaAtual={paginaAtual}
+              itensPorPagina={itensPorPagina}
+              onPagina={pagina => { setPaginaAtual(pagina); carregarVendas(filtros, pagina); }}
+              onItensPorPagina={n => { setItensPorPagina(n); setPaginaAtual(1); carregarVendas(filtros, 1, n); }}
+            />
           </div>
         </div>
       </div>

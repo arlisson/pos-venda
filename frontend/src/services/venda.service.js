@@ -19,6 +19,10 @@ export async function listarVendas(filtros) {
   return apiGet(`/vendas${montarQuery(filtros)}`);
 }
 
+export async function contarVendasConcluidasPorCliente() {
+  return apiGet('/vendas/contagem-por-cliente');
+}
+
 export async function listarVendasLixeira(filtros) {
   return apiGet(`/vendas/lixeira${montarQuery(filtros)}`);
 }

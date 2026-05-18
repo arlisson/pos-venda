@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useDebounce } from '../../utils/useDebounce';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as I from '../../components/Icons';
+import Paginacao from '../../components/Paginacao/Paginacao';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import ClienteModal from './ClienteModal';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -14,8 +16,9 @@ import {
 } from '../../services/cliente.service';
 import { listarNotasEntidade } from '../../services/nota.service';
 import { listarEtapasFunil, listarOperadoras } from '../../services/config.service';
-import { listarVendas, listarVendedoras } from '../../services/venda.service';
+import { contarVendasConcluidasPorCliente, listarVendedoras } from '../../services/venda.service';
 import { formatUtcDateTime, getUtcDateTimeTimestamp } from '../../utils/datetime';
+import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './Clientes.css';
 
 function formatarContato(cliente) {
@@ -411,7 +414,7 @@ function Clientes() {
   const [clientes, setClientes] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
-  const [vendas, setVendas] = useState([]);
+  const [vendasConcluidasContagem, setVendasConcluidasContagem] = useState({});
   const [etapasFunil, setEtapasFunil] = useState([]);
   const [busca, setBusca] = useState('');
   const [operadoraId, setOperadoraId] = useState('');
@@ -439,9 +442,14 @@ function Clientes() {
   const [carregandoNotasCliente, setCarregandoNotasCliente] = useState(false);
   const [erroNotasCliente, setErroNotasCliente] = useState('');
   const [atribuindoDonoId, setAtribuindoDonoId] = useState(null);
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(20);
+  const [totalClientes, setTotalClientes] = useState(0);
+
+  const buscaDebounced = useDebounce(busca, 300);
 
   const filtros = useMemo(() => ({
-    busca,
+    busca: buscaDebounced,
     operadora_atual_id: operadoraId,
     responsavel_tipo: responsavelTipo,
     fidelidade,
@@ -450,7 +458,7 @@ function Clientes() {
     chips_min: chipsMin,
     chips_max: chipsMax,
     cliente_id: clienteIdFiltro
-  }), [busca, operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax, clienteIdFiltro]);
+  }), [buscaDebounced, operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax, clienteIdFiltro]);
 
   const filtrosAtivos = useMemo(() => (
     Object.entries(filtros).filter(([, valor]) => valor !== '').length
@@ -473,23 +481,31 @@ function Clientes() {
     return () => clearTimeout(timer);
   }, [erro]);
 
-  async function carregarClientes(proximosFiltros = filtros) {
+  async function carregarDadosEstaticos() {
+    try {
+      const [operadorasData, contagemData, etapasData, vendedorasData] = await Promise.all([
+        listarOperadoras(),
+        contarVendasConcluidasPorCliente(),
+        listarEtapasFunil(),
+        podeAtribuirVendedora ? listarVendedoras() : Promise.resolve([])
+      ]);
+      setOperadoras(operadorasData);
+      setVendasConcluidasContagem(contagemData || {});
+      setEtapasFunil(etapasData || []);
+      setVendedoras(vendedorasData || []);
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar dados.');
+    }
+  }
+
+  async function carregarClientes(proximosFiltros = filtros, pagina = paginaAtual, porPagina = itensPorPagina) {
     setErro('');
     setCarregando(true);
 
     try {
-      const [dados, operadorasData, vendasData, etapasData, vendedorasData] = await Promise.all([
-        listarClientes(proximosFiltros),
-        listarOperadoras(),
-        listarVendas(),
-        listarEtapasFunil(),
-        podeAtribuirVendedora ? listarVendedoras() : Promise.resolve([])
-      ]);
-      setClientes(dados);
-      setOperadoras(operadorasData);
-      setVendas(vendasData);
-      setEtapasFunil(etapasData || []);
-      setVendedoras(vendedorasData || []);
+      const dados = await listarClientes({ ...proximosFiltros, page: pagina, per_page: porPagina });
+      setClientes(dados.data);
+      setTotalClientes(dados.total);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar clientes.');
     } finally {
@@ -498,6 +514,10 @@ function Clientes() {
   }
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    carregarDadosEstaticos();
+  }, []);
+
   useEffect(() => {
     setClienteIdFiltro(clienteIdParam);
   }, [clienteIdParam]);
@@ -526,7 +546,8 @@ function Clientes() {
   }, [novoClienteParam, podeCriar, searchParams, setSearchParams]);
 
   useEffect(() => {
-    carregarClientes();
+    setPaginaAtual(1);
+    carregarClientes(filtros, 1);
   }, [filtros]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
@@ -563,16 +584,12 @@ function Clientes() {
   ), [clientes]);
 
   const vendasConcluidasPorCliente = useMemo(() => {
-    const codigosFinais = new Set(etapasFunil.filter(e => e.etapa_final).map(e => e.codigo));
-    return vendas
-      .filter(v => codigosFinais.has(v.status_funil))
-      .reduce((acc, v) => {
-        if (!v.cliente_id) return acc;
-        const chave = `cliente:${v.cliente_id}`;
-        acc.set(chave, (acc.get(chave) || 0) + 1);
-        return acc;
-      }, new Map());
-  }, [vendas, etapasFunil]);
+    const mapa = new Map();
+    Object.entries(vendasConcluidasContagem).forEach(([id, total]) => {
+      mapa.set(`cliente:${id}`, total);
+    });
+    return mapa;
+  }, [vendasConcluidasContagem]);
 
   async function handleBuscar(event) {
     event.preventDefault();
@@ -744,38 +761,50 @@ function Clientes() {
             <div className="filtros-popup__body">
               <div className="filter-field">
                 <label>Operadora</label>
-                <select value={operadoraId} onChange={e => setOperadoraId(e.target.value)}>
-                  <option value="">Todas</option>
-                  {operadoras.map(operadora => (
-                    <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
-                  ))}
-                </select>
+                <SelectFiltro
+                  value={operadoraId}
+                  onChange={setOperadoraId}
+                  placeholder="Todas"
+                  options={operadoras.map(op => ({ value: String(op.id), label: op.nome }))}
+                />
               </div>
               <div className="filter-field">
                 <label>Responsavel</label>
-                <select value={responsavelTipo} onChange={e => setResponsavelTipo(e.target.value)}>
-                  <option value="">Todos</option>
-                  <option value="rl">RL</option>
-                  <option value="adm">ADM</option>
-                </select>
+                <SelectFiltro
+                  value={responsavelTipo}
+                  onChange={setResponsavelTipo}
+                  placeholder="Todos"
+                  options={[
+                    { value: 'rl', label: 'RL' },
+                    { value: 'adm', label: 'ADM' },
+                  ]}
+                />
               </div>
               <div className="filter-field">
                 <label>Fidelidade</label>
-                <select value={fidelidade} onChange={e => setFidelidade(e.target.value)}>
-                  <option value="">Todas</option>
-                  <option value="ativa">Ativa</option>
-                  <option value="alerta">Com alerta</option>
-                  <option value="vencida">Vencida</option>
-                  <option value="sem">Sem fidelidade</option>
-                </select>
+                <SelectFiltro
+                  value={fidelidade}
+                  onChange={setFidelidade}
+                  placeholder="Todas"
+                  options={[
+                    { value: 'ativa', label: 'Ativa' },
+                    { value: 'alerta', label: 'Com alerta' },
+                    { value: 'vencida', label: 'Vencida' },
+                    { value: 'sem', label: 'Sem fidelidade' },
+                  ]}
+                />
               </div>
               <div className="filter-field">
                 <label>Base anterior</label>
-                <select value={baseAnterior} onChange={e => setBaseAnterior(e.target.value)}>
-                  <option value="">Todos</option>
-                  <option value="true">Somente base anterior</option>
-                  <option value="false">Sem marcador</option>
-                </select>
+                <SelectFiltro
+                  value={baseAnterior}
+                  onChange={setBaseAnterior}
+                  placeholder="Todos"
+                  options={[
+                    { value: 'true', label: 'Somente base anterior' },
+                    { value: 'false', label: 'Sem marcador' },
+                  ]}
+                />
               </div>
               <div className="filter-field">
                 <label>Chips min.</label>
@@ -801,7 +830,7 @@ function Clientes() {
       <div className="clientes-page">
         <div className="clientes-toolbar">
           <div className="clientes-toolbar__meta">
-            {clientes.length} clientes cadastrados
+            {totalClientes} clientes cadastrados
             {clientesComAviso > 0 ? ` - ${clientesComAviso} aviso(s) de fidelidade` : ''}
             {filtrosAtivos > 0 ? ` - ${filtrosAtivos} filtro(s) ativo(s)` : ''}
           </div>
@@ -907,25 +936,21 @@ function Clientes() {
                           <div className="cliente-primary">
                             <div className="cliente-primary__title">
                               <strong>{cliente.nome}</strong>
-                              <div className="cliente-primary__badges">
-                                {cliente.base_anterior_sistema ? (
-                                  <span className="tag clientes-base-tag">Base anterior</span>
-                                ) : null}
-                                {(() => {
-                                  const n = vendasConcluidasPorCliente.get(`cliente:${cliente.id}`) || 0;
-                                  if (!n) return null;
-                                  return (
-                                    <span className="clientes-concluidas-badge">
-                                      <I.Check size={11} />
-                                      {n} {n === 1 ? 'venda concluída' : 'vendas concluídas'}
-                                    </span>
-                                  );
-                                })()}
-                                <span className={`pill cliente-primary__fidelity-mobile ${fidelidade.className}`}>
-                                  <span className="pill-dot"></span>
-                                  {fidelidade.label}
-                                </span>
-                              </div>
+                            </div>
+                            <div className="cliente-primary__badges">
+                              {cliente.base_anterior_sistema ? (
+                                <span className="tag clientes-base-tag">Base anterior</span>
+                              ) : null}
+                              {(() => {
+                                const n = vendasConcluidasPorCliente.get(`cliente:${cliente.id}`) || 0;
+                                if (!n) return null;
+                                return (
+                                  <span className="clientes-concluidas-badge">
+                                    <I.Check size={11} />
+                                    {n} {n === 1 ? 'venda concluída' : 'vendas concluídas'}
+                                  </span>
+                                );
+                              })()}
                             </div>
                             <span className="cliente-primary__document">{cliente.razao_social || 'Sem razão social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
                             <details className="cliente-mobile-drawer" onClick={event => event.stopPropagation()}>
@@ -940,21 +965,15 @@ function Clientes() {
                                 <dt>Registrado por</dt>
                                 <dd>
                                   {podeAtribuirVendedora ? (
-                                    <select
-                                      className="cliente-owner-select"
-                                      value={cliente.criado_por_id || ''}
-                                      disabled={atribuindoDonoId === cliente.id}
-                                      onClick={event => event.stopPropagation()}
-                                      onChange={event => {
-                                        event.stopPropagation();
-                                        alterarDonoCliente(cliente, event.target.value);
-                                      }}
-                                    >
-                                      <option value="">Sem registro</option>
-                                      {vendedoras.map(vendedora => (
-                                        <option key={vendedora.id} value={vendedora.id}>{vendedora.nome}</option>
-                                      ))}
-                                    </select>
+                                    <div className="cliente-owner-select-wrap" onClick={e => e.stopPropagation()}>
+                                      <SelectFiltro
+                                        value={cliente.criado_por_id ? String(cliente.criado_por_id) : ''}
+                                        disabled={atribuindoDonoId === cliente.id}
+                                        placeholder="Sem registro"
+                                        options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
+                                        onChange={val => alterarDonoCliente(cliente, val)}
+                                      />
+                                    </div>
                                   ) : (
                                     cliente.criador?.nome || 'Sem registro'
                                   )}
@@ -1013,22 +1032,15 @@ function Clientes() {
                         <td data-label="Operadora" data-mobile-hidden="true">{cliente.operadoraAtual?.nome || '-'}</td>
                         <td data-label="Registrado por" data-mobile-hidden="true">
                           {podeAtribuirVendedora ? (
-                            <select
-                              className="cliente-owner-select"
-                              value={cliente.criado_por_id || ''}
-                              disabled={atribuindoDonoId === cliente.id}
-                              onClick={event => event.stopPropagation()}
-                              onChange={event => {
-                                event.stopPropagation();
-                                alterarDonoCliente(cliente, event.target.value);
-                              }}
-                              title="Atribuir cliente a uma vendedora"
-                            >
-                              <option value="">Sem registro</option>
-                              {vendedoras.map(vendedora => (
-                                <option key={vendedora.id} value={vendedora.id}>{vendedora.nome}</option>
-                              ))}
-                            </select>
+                            <div className="cliente-owner-select-wrap" onClick={e => e.stopPropagation()} title="Atribuir cliente a uma vendedora">
+                              <SelectFiltro
+                                value={cliente.criado_por_id ? String(cliente.criado_por_id) : ''}
+                                disabled={atribuindoDonoId === cliente.id}
+                                placeholder="Sem registro"
+                                options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
+                                onChange={val => alterarDonoCliente(cliente, val)}
+                              />
+                            </div>
                           ) : (
                             <span className="tag">{cliente.criador?.nome || 'Sem registro'}</span>
                           )}
@@ -1077,6 +1089,13 @@ function Clientes() {
                 )}
               </tbody>
             </table>
+            <Paginacao
+              total={totalClientes}
+              paginaAtual={paginaAtual}
+              itensPorPagina={itensPorPagina}
+              onPagina={pagina => { setPaginaAtual(pagina); carregarClientes(filtros, pagina); }}
+              onItensPorPagina={n => { setItensPorPagina(n); setPaginaAtual(1); carregarClientes(filtros, 1, n); }}
+            />
           </div>
         </div>
       </div>

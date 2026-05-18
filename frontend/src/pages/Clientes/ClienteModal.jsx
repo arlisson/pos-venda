@@ -7,6 +7,7 @@ import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services
 import { criarCliente, atualizarCliente } from '../../services/cliente.service';
 import { criarNotaEntidade } from '../../services/nota.service';
 import { useFormDraft } from '../../utils/useFormDraft';
+import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './Clientes.css';
 
 
@@ -489,20 +490,25 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
 
             <div className="form-field">
               <label>Operadora atual</label>
-              <select value={form.operadora_atual_id} onChange={event => atualizarCampo('operadora_atual_id', event.target.value)}>
-                <option value="">Selecione</option>
-                {operadoras.map(operadora => (
-                  <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
-                ))}
-              </select>
+              <SelectFiltro
+                value={form.operadora_atual_id ? String(form.operadora_atual_id) : ''}
+                onChange={val => atualizarCampo('operadora_atual_id', val)}
+                placeholder="Selecione"
+                options={operadoras.map(op => ({ value: String(op.id), label: op.nome }))}
+              />
             </div>
 
             <div className="form-field">
               <label>Tipo</label>
-              <select value={form.responsavel_tipo} onChange={event => atualizarCampo('responsavel_tipo', event.target.value)}>
-                <option value="rl">RL</option>
-                <option value="adm">ADM</option>
-              </select>
+              <SelectFiltro
+                value={form.responsavel_tipo || 'rl'}
+                onChange={val => atualizarCampo('responsavel_tipo', val || 'rl')}
+                placeholder="RL"
+                options={[
+                  { value: 'rl', label: 'RL' },
+                  { value: 'adm', label: 'ADM' },
+                ]}
+              />
             </div>
 
             <div className="form-field">

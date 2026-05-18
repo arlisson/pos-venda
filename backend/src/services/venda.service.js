@@ -1245,6 +1245,14 @@ async function listarVendas(filtros = {}, usuarioId) {
     query.where('prioridade_funil', filtros.prioridade_funil);
   }
 
+  const page = filtros.page ? Number(filtros.page) : null;
+  const perPage = filtros.per_page ? Number(filtros.per_page) : null;
+
+  if (page && perPage) {
+    const result = await query.page(page - 1, perPage);
+    return { data: result.results, total: result.total };
+  }
+
   return query;
 }
 
@@ -2080,6 +2088,29 @@ async function statusEhFinal(status) {
   return status === codigoFinal;
 }
 
+async function contarVendasConcluidasPorCliente() {
+  let codigosFinais;
+  try {
+    const etapas = await FunilEtapa.query().where('etapa_final', true).where('ativo', true);
+    codigosFinais = etapas.length ? etapas.map(e => e.codigo) : ['concluido'];
+  } catch {
+    codigosFinais = ['concluido'];
+  }
+
+  const linhas = await Venda.knex()('vendas')
+    .whereNull('excluido_em')
+    .whereNotNull('cliente_id')
+    .whereIn('status_funil', codigosFinais)
+    .groupBy('cliente_id')
+    .select('cliente_id')
+    .count('id as total');
+
+  return linhas.reduce((acc, linha) => {
+    acc[linha.cliente_id] = Number(linha.total);
+    return acc;
+  }, {});
+}
+
 module.exports = {
   listarVendas,
   listarVendasLixeira,
@@ -2095,5 +2126,6 @@ module.exports = {
   restaurarVenda,
   excluirVendaDefinitivo,
   listarVendedoras,
-  listarStatusVendasParaHistorico
+  listarStatusVendasParaHistorico,
+  contarVendasConcluidasPorCliente
 };

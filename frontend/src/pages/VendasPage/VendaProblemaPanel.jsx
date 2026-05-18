@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
+import { temPermissao } from '../../services/auth.service';
 import {
+  listarDestinatariosProblemaVenda,
   listarProblemasVenda,
+  marcarProblemaVenda,
   resolverProblemaVenda,
   solicitarCorrecaoProblemaVenda,
   verificarProblemaVenda
@@ -144,10 +147,116 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
   );
 }
 
+function NovoProblemaForm({ venda, onSalvo }) {
+  const [aberto, setAberto] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [modo, setModo] = useState('responsaveis');
+  const [destinatarios, setDestinatarios] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  async function abrir() {
+    setAberto(true);
+    setErro('');
+    try {
+      setUsuarios(await listarDestinatariosProblemaVenda());
+    } catch {
+      setUsuarios([]);
+    }
+  }
+
+  function fechar() {
+    setAberto(false);
+    setMotivo('');
+    setModo('responsaveis');
+    setDestinatarios([]);
+    setErro('');
+  }
+
+  function toggleUsuario(id) {
+    setDestinatarios(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+  }
+
+  async function salvar() {
+    setErro('');
+    setSalvando(true);
+    try {
+      const novo = await marcarProblemaVenda(venda.id, {
+        motivo,
+        modo_destinatario: modo === 'manual' ? 'manual' : 'responsaveis',
+        destinatarios
+      });
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+      fechar();
+      onSalvo(novo);
+    } catch (error) {
+      setErro(error.message || 'Erro ao marcar problema.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (!aberto) {
+    return (
+      <button type="button" className="btn btn-danger btn-sm venda-problema-novo-btn" onClick={abrir}>
+        + Adicionar problema
+      </button>
+    );
+  }
+
+  return (
+    <div className="venda-problema-novo-form">
+      <div className="form-field">
+        <label>Motivo do problema</label>
+        <AutoResizeTextarea
+          value={motivo}
+          onChange={event => setMotivo(event.target.value)}
+          placeholder="Explique por que esta venda está com problema"
+        />
+      </div>
+      <div className="venda-problema-recipient-mode">
+        <label>
+          <input type="radio" checked={modo === 'responsaveis'} onChange={() => setModo('responsaveis')} />
+          Enviar aos responsáveis da venda
+        </label>
+        <label>
+          <input type="radio" checked={modo === 'manual'} onChange={() => setModo('manual')} />
+          Escolher manualmente
+        </label>
+      </div>
+      {modo === 'manual' && (
+        <div className="venda-problema-user-list">
+          {usuarios.map(u => (
+            <label key={u.id}>
+              <input type="checkbox" checked={destinatarios.includes(u.id)} onChange={() => toggleUsuario(u.id)} />
+              <span>{u.nome}</span>
+              <em>{u.email}</em>
+            </label>
+          ))}
+        </div>
+      )}
+      {erro && <div className="alert-error">{erro}</div>}
+      <div className="venda-problema-novo-form-actions">
+        <button type="button" className="btn" onClick={fechar} disabled={salvando}>Cancelar</button>
+        <button
+          type="button"
+          className="btn btn-danger"
+          disabled={salvando || !motivo.trim() || (modo === 'manual' && destinatarios.length === 0)}
+          onClick={salvar}
+        >
+          {salvando ? 'Enviando...' : 'Marcar problema'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
   const [problemas, setProblemas] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
+  const podeAdicionarProblema = temPermissao(usuario, 'pos_venda');
 
   async function carregar() {
     if (!venda?.id) return;
@@ -191,6 +300,10 @@ function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
     });
   }
 
+  function adicionarProblema(novo) {
+    setProblemas(prev => [...prev, novo]);
+  }
+
   if (!venda?.id) {
     return <div className="venda-problema-empty">Salve a venda antes de acompanhar problemas.</div>;
   }
@@ -200,11 +313,21 @@ function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
   }
 
   if (erro && problemas.length === 0) {
-    return <div className="alert-error">{erro}</div>;
+    return (
+      <>
+        <div className="alert-error">{erro}</div>
+        {podeAdicionarProblema && <NovoProblemaForm venda={venda} onSalvo={adicionarProblema} />}
+      </>
+    );
   }
 
   if (problemas.length === 0) {
-    return <div className="venda-problema-empty">Nenhum problema ativo para esta venda.</div>;
+    return (
+      <div className="venda-problema-panel">
+        <div className="venda-problema-empty">Nenhum problema ativo para esta venda.</div>
+        {podeAdicionarProblema && <NovoProblemaForm venda={venda} onSalvo={adicionarProblema} />}
+      </div>
+    );
   }
 
   return (
@@ -224,6 +347,7 @@ function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
           onAtualizar={atualizarProblema}
         />
       ))}
+      {podeAdicionarProblema && <NovoProblemaForm venda={venda} onSalvo={adicionarProblema} />}
     </div>
   );
 }

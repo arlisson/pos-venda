@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as I from '../../components/Icons';
+import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import { getDetalhesChips } from '../../services/fechamento.service';
 
 const DADOS_VAZIOS = {
@@ -519,52 +520,31 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                   </label>
                   <label>
                     <span>Vendedora</span>
-                    <select value={filtros.vendedora} onChange={event => atualizarFiltro('vendedora', event.target.value)}>
-                      <option value="">Todas</option>
-                      {opcoesFiltro.vendedoras.map(opcao => <option key={opcao.value} value={opcao.value}>{opcao.label}</option>)}
-                    </select>
+                    <SelectFiltro value={filtros.vendedora} onChange={val => atualizarFiltro('vendedora', val)} placeholder="Todas" options={opcoesFiltro.vendedoras} />
                   </label>
                   <label>
                     <span>Operadora</span>
-                    <select value={filtros.operadora} onChange={event => atualizarFiltro('operadora', event.target.value)}>
-                      <option value="">Todas</option>
-                      {opcoesFiltro.operadoras.map(opcao => <option key={opcao.value} value={opcao.value}>{opcao.label}</option>)}
-                    </select>
+                    <SelectFiltro value={filtros.operadora} onChange={val => atualizarFiltro('operadora', val)} placeholder="Todas" options={opcoesFiltro.operadoras} />
                   </label>
                   <label>
                     <span>Etapa</span>
-                    <select value={filtros.etapa} onChange={event => atualizarFiltro('etapa', event.target.value)}>
-                      <option value="">Todas</option>
-                      {opcoesFiltro.etapas.map(opcao => <option key={opcao.value} value={opcao.value}>{opcao.label}</option>)}
-                    </select>
+                    <SelectFiltro value={filtros.etapa} onChange={val => atualizarFiltro('etapa', val)} placeholder="Todas" options={opcoesFiltro.etapas} />
                   </label>
                   <label>
                     <span>Tipo</span>
-                    <select value={filtros.tipoVenda} onChange={event => atualizarFiltro('tipoVenda', event.target.value)}>
-                      <option value="">Todos</option>
-                      {opcoesFiltro.tiposVenda.map(opcao => <option key={opcao.value} value={opcao.value}>{opcao.label}</option>)}
-                    </select>
+                    <SelectFiltro value={filtros.tipoVenda} onChange={val => atualizarFiltro('tipoVenda', val)} placeholder="Todos" options={opcoesFiltro.tiposVenda} />
                   </label>
                   <label>
                     <span>Serviço</span>
-                    <select value={filtros.servico} onChange={event => atualizarFiltro('servico', event.target.value)}>
-                      <option value="">Todos</option>
-                      {opcoesFiltro.servicos.map(opcao => <option key={opcao.value} value={opcao.value}>{opcao.label}</option>)}
-                    </select>
+                    <SelectFiltro value={filtros.servico} onChange={val => atualizarFiltro('servico', val)} placeholder="Todos" options={opcoesFiltro.servicos} />
                   </label>
                   <label>
                     <span>Repasse</span>
-                    <select value={filtros.repasse} onChange={event => atualizarFiltro('repasse', event.target.value)}>
-                      <option value="">Todos</option>
-                      {opcoesFiltro.repasses.map(opcao => <option key={opcao.value} value={opcao.value}>{opcao.label}</option>)}
-                    </select>
+                    <SelectFiltro value={filtros.repasse} onChange={val => atualizarFiltro('repasse', val)} placeholder="Todos" options={opcoesFiltro.repasses} />
                   </label>
                   <label>
                     <span>Regra</span>
-                    <select value={filtros.regra} onChange={event => atualizarFiltro('regra', event.target.value)}>
-                      <option value="">Todas</option>
-                      {opcoesFiltro.regras.map(opcao => <option key={opcao.value} value={opcao.value}>{opcao.label}</option>)}
-                    </select>
+                    <SelectFiltro value={filtros.regra} onChange={val => atualizarFiltro('regra', val)} placeholder="Todas" options={opcoesFiltro.regras} />
                   </label>
                   <label className="fechamento-modal-filters__wide">
                     <span>Busca geral</span>
