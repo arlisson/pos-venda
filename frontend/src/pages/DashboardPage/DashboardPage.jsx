@@ -313,11 +313,11 @@ function getFidelidadePrazo(notificacao) {
 }
 
 function getRetornoPrazo(notificacao) {
-  if (notificacao?.tipo === 'nota_retorno_due') return 'Ligacao vencida';
+  if (notificacao?.tipo === 'nota_retorno_due') return 'Ligação vencida';
 
   const minutos = getRetornoMinutosParaVencer(notificacao);
 
-  if (minutos !== null && minutos <= 0) return 'Ligacao vencida';
+  if (minutos !== null && minutos <= 0) return 'Ligação vencida';
   if (minutos !== null && minutos <= RETORNO_PRE_AVISO_MINUTOS) {
     return minutos === 1 ? 'Falta 1 minuto para vencer' : `Faltam ${minutos} minutos para vencer`;
   }
@@ -748,7 +748,7 @@ function DashboardPage() {
     },
     {
       key: 'ligacoes',
-      title: 'Ligacoes marcadas',
+      title: 'Ligações marcadas',
       subtitle: 'Retornos de contato',
       count: notificacoesRetorno.length,
       variant: 'contact',
