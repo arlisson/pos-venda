@@ -662,15 +662,6 @@
   box-shadow: inset 4px 0 0 #f97316, inset 0 1px 0 #fed7aa, inset 0 -1px 0 #fed7aa;
 }
 
-.clientes-page tbody tr.cliente-row-fidelity-expired td {
-  background: var(--danger-bg);
-  box-shadow: inset 0 1px 0 #fecaca, inset 0 -1px 0 #fecaca;
-}
-
-.clientes-page tbody tr.cliente-row-fidelity-expired td:first-child {
-  box-shadow: inset 4px 0 0 var(--danger), inset 0 1px 0 #fecaca, inset 0 -1px 0 #fecaca;
-}
-
 .clientes-page tbody tr.clickable-row:focus-visible td {
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--border-strong);
@@ -726,6 +717,12 @@
   border-color: #fecaca;
   background: var(--danger-bg);
   color: var(--danger);
+}
+
+.cliente-note-status-btn.warn {
+  border-color: #fde68a;
+  background: var(--warn-bg);
+  color: var(--warn);
 }
 
 .cliente-note-status-btn.muted {

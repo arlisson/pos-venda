@@ -14,10 +14,9 @@ import {
   listarClientes,
   previewImportacaoBaseAnterior
 } from '../../services/cliente.service';
-import { listarNotasEntidade } from '../../services/nota.service';
-import { listarEtapasFunil, listarOperadoras } from '../../services/config.service';
+import { listarOperadoras } from '../../services/config.service';
 import { contarVendasConcluidasPorCliente, listarVendedoras } from '../../services/venda.service';
-import { formatUtcDateTime, getUtcDateTimeTimestamp } from '../../utils/datetime';
+import { formatUtcDateTime, getUtcDateTimeTimestamp, parseUtcDateTime } from '../../utils/datetime';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './Clientes.css';
 
@@ -66,13 +65,46 @@ function formatarDataHoraNota(valor) {
   });
 }
 
+function inicioDoDia(data) {
+  const dia = new Date(data);
+  dia.setHours(0, 0, 0, 0);
+  return dia;
+}
+
+function diferencaDiasCalendario(dataReferencia) {
+  const data = parseUtcDateTime(dataReferencia);
+  if (!data) return null;
+
+  const hoje = inicioDoDia(new Date());
+  const diaRetorno = inicioDoDia(data);
+  return Math.round((diaRetorno.getTime() - hoje.getTime()) / 86400000);
+}
+
 function getRetornoNotaStatus(cliente) {
   const resumo = cliente.notas_resumo || {};
+  const proximoRetorno = resumo.proximo_retorno_agendado_para;
 
   if (Number(resumo.notas_com_retorno_total || 0) > 0) {
+    const diasAteRetorno = diferencaDiasCalendario(proximoRetorno);
+    const dataFormatada = formatarDataHoraNota(proximoRetorno) || 'este cliente';
+
+    if (diasAteRetorno !== null && diasAteRetorno < 0) {
+      return {
+        className: 'danger',
+        title: `Retorno vencido em ${dataFormatada}`
+      };
+    }
+
+    if (diasAteRetorno !== null && diasAteRetorno <= 1) {
+      return {
+        className: 'warn',
+        title: `Retorno marcado para ${dataFormatada}`
+      };
+    }
+
     return {
       className: 'success',
-      title: `Retorno marcado para ${formatarDataHoraNota(resumo.proximo_retorno_agendado_para) || 'este cliente'}`
+      title: `Retorno marcado para ${dataFormatada}`
     };
   }
 
@@ -161,63 +193,6 @@ function ConfirmarLimpezaBaseModal({ aberto, limpando, onClose, onConfirm }) {
           <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={limpando}>
             {limpando ? 'Limpando...' : 'Limpar clientes da base'}
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NotasClienteReadOnlyModal({ cliente, notas, carregando, erro, onClose }) {
-  if (!cliente) return null;
-
-  return (
-    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
-      <div className="modal cliente-notes-readonly-modal">
-        <div className="modal-header">
-          <div className="modal-header-row">
-            <div>
-              <div className="modal-client">Notas do cliente</div>
-              <div className="modal-sub">{cliente.nome || cliente.razao_social || `Cliente #${cliente.id}`}</div>
-            </div>
-            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
-              <I.Close size={14} />
-            </button>
-          </div>
-        </div>
-
-        <div className="modal-body">
-          {erro && <div className="alert-error">{erro}</div>}
-
-          {carregando ? (
-            <div className="notes-loading">Carregando notas...</div>
-          ) : notas.length === 0 ? (
-            <div className="notes-empty notes-empty--compact">
-              <I.Note size={20} />
-              <strong>Nenhuma nota ainda.</strong>
-              <span>Este cliente ainda não tem anotações.</span>
-            </div>
-          ) : (
-            <div className="cliente-notes-readonly-list">
-              {notas.map(nota => (
-                <article key={nota.id} className="cliente-note-readonly-card">
-                  <div className="cliente-note-readonly-card__head">
-                    <strong>{nota.titulo || 'Sem titulo'}</strong>
-                    <span>{formatarDataHoraNota(nota.updated_at)}</span>
-                  </div>
-                  <p>{nota.conteudo || '-'}</p>
-                  {nota.retorno_agendado_para && (
-                    <div className="cliente-note-readonly-card__return">
-                      <I.Calendar size={13} /> Retorno em {formatarDataHoraNota(nota.retorno_agendado_para)}
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="modal-footer">
-          <button type="button" className="btn" onClick={onClose}>Fechar</button>
         </div>
       </div>
     </div>
@@ -415,7 +390,6 @@ function Clientes() {
   const [operadoras, setOperadoras] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
   const [vendasConcluidasContagem, setVendasConcluidasContagem] = useState({});
-  const [etapasFunil, setEtapasFunil] = useState([]);
   const [busca, setBusca] = useState('');
   const [operadoraId, setOperadoraId] = useState('');
   const [responsavelTipo, setResponsavelTipo] = useState('');
@@ -429,6 +403,8 @@ function Clientes() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [clienteModal, setClienteModal] = useState(null);
+  const [clienteModalAba, setClienteModalAba] = useState('cliente');
+  const [clienteModalSomenteNotas, setClienteModalSomenteNotas] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [clienteCadastroDraft, setClienteCadastroDraft] = useState(null);
   const [importModalAberto, setImportModalAberto] = useState(false);
@@ -437,10 +413,6 @@ function Clientes() {
   const [excluindo, setExcluindo] = useState(false);
   const [limpandoBase, setLimpandoBase] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
-  const [clienteNotasModal, setClienteNotasModal] = useState(null);
-  const [notasCliente, setNotasCliente] = useState([]);
-  const [carregandoNotasCliente, setCarregandoNotasCliente] = useState(false);
-  const [erroNotasCliente, setErroNotasCliente] = useState('');
   const [atribuindoDonoId, setAtribuindoDonoId] = useState(null);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(20);
@@ -483,15 +455,13 @@ function Clientes() {
 
   async function carregarDadosEstaticos() {
     try {
-      const [operadorasData, contagemData, etapasData, vendedorasData] = await Promise.all([
+      const [operadorasData, contagemData, vendedorasData] = await Promise.all([
         listarOperadoras(),
         contarVendasConcluidasPorCliente(),
-        listarEtapasFunil(),
         podeAtribuirVendedora ? listarVendedoras() : Promise.resolve([])
       ]);
       setOperadoras(operadorasData);
       setVendasConcluidasContagem(contagemData || {});
-      setEtapasFunil(etapasData || []);
       setVendedoras(vendedorasData || []);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar dados.');
@@ -535,6 +505,8 @@ function Clientes() {
 
     if (podeCriar) {
       setClienteModal(null);
+      setClienteModalAba('cliente');
+      setClienteModalSomenteNotas(false);
       setModalAberto(true);
     } else {
       setErro('Você não tem permissão para cadastrar clientes.');
@@ -610,20 +582,33 @@ function Clientes() {
 
   function abrirNovoCliente() {
     setClienteModal(null);
+    setClienteModalAba('cliente');
+    setClienteModalSomenteNotas(false);
     setModalAberto(true);
   }
 
   function abrirEdicaoCliente(cliente) {
     if (!podeEditar) return;
     setClienteModal(cliente);
+    setClienteModalAba('cliente');
+    setClienteModalSomenteNotas(false);
     setModalAberto(true);
   }
 
-  async function salvarCliente(clienteSalvo) {
+  function abrirNotasCliente(cliente) {
+    setClienteModal(cliente);
+    setClienteModalAba('notas');
+    setClienteModalSomenteNotas(true);
+    setModalAberto(true);
+  }
+
+  async function salvarCliente() {
     setErro('');
     const editando = Boolean(clienteModal);
     setModalAberto(false);
     setClienteModal(null);
+    setClienteModalAba('cliente');
+    setClienteModalSomenteNotas(false);
     if (!editando) {
       setClienteCadastroDraft(null);
     }
@@ -687,30 +672,20 @@ function Clientes() {
     }
   }
 
-  async function abrirNotasCliente(cliente) {
-    setClienteNotasModal(cliente);
-    setNotasCliente([]);
-    setErroNotasCliente('');
-    setCarregandoNotasCliente(true);
-
-    try {
-      const notas = await listarNotasEntidade('cliente', cliente.id);
-      setNotasCliente(Array.isArray(notas) ? notas : []);
-    } catch (error) {
-      setErroNotasCliente(error.message || 'Erro ao carregar notas.');
-    } finally {
-      setCarregandoNotasCliente(false);
-    }
-  }
-
   return (
     <LayoutPrivado>
       {modalAberto && (
         <ClienteModal
           cliente={clienteModal}
           operadoras={operadoras}
+          initialTab={clienteModalAba}
           initialDraft={clienteCadastroDraft}
-          onClose={() => setModalAberto(false)}
+          notesOnly={clienteModalSomenteNotas}
+          onClose={() => {
+            setModalAberto(false);
+            setClienteModalAba('cliente');
+            setClienteModalSomenteNotas(false);
+          }}
           onSave={salvarCliente}
           onDraftChange={setClienteCadastroDraft}
         />
@@ -735,18 +710,6 @@ function Clientes() {
         limpando={limpandoBase}
         onClose={() => setLimparBaseModalAberto(false)}
         onConfirm={confirmarLimpezaBaseAnterior}
-      />
-
-      <NotasClienteReadOnlyModal
-        cliente={clienteNotasModal}
-        notas={notasCliente}
-        carregando={carregandoNotasCliente}
-        erro={erroNotasCliente}
-        onClose={() => {
-          setClienteNotasModal(null);
-          setNotasCliente([]);
-          setErroNotasCliente('');
-        }}
       />
 
       {filtrosAbertos && (
@@ -918,8 +881,7 @@ function Clientes() {
                         key={cliente.id}
                         className={[
                           podeEditar ? 'clickable-row is-tappable' : '',
-                          String(cliente.id) === String(highlightClienteId) ? 'cliente-row-highlight' : '',
-                          fidelidade === 'vencida' && cliente.aviso_fidelidade?.dias_restantes < 0 ? 'cliente-row-fidelity-expired' : ''
+                          String(cliente.id) === String(highlightClienteId) ? 'cliente-row-highlight' : ''
                         ].filter(Boolean).join(' ')}
                         role={podeEditar ? 'button' : undefined}
                         tabIndex={podeEditar ? 0 : undefined}

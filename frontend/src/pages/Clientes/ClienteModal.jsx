@@ -160,7 +160,7 @@ function normalizarClienteForm(cliente) {
   };
 }
 
-function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'cliente', initialDraft = null, onDraftChange }) {
+function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'cliente', initialDraft = null, onDraftChange, notesOnly = false }) {
   const editando = Boolean(cliente);
   const draftKey = 'cliente_novo';
 
@@ -187,7 +187,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
-  const [abaAtiva, setAbaAtiva] = useState(initialTab);
+  const [abaAtiva, setAbaAtiva] = useState(notesOnly ? 'notas' : initialTab);
   const [pendingNotas, setPendingNotas] = useState([]);
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
 
@@ -410,8 +410,12 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
         <div className="modal-header">
           <div className="modal-header-row">
             <div>
-              <div className="modal-client">{editando ? 'Editar cliente' : 'Novo cliente'}</div>
-              <div className="modal-sub">Atualize representantes, contatos e dados de fidelidade.</div>
+              <div className="modal-client">{notesOnly ? 'Notas do cliente' : editando ? 'Editar cliente' : 'Novo cliente'}</div>
+              <div className="modal-sub">
+                {notesOnly
+                  ? (cliente?.nome || cliente?.razao_social || `Cliente #${cliente?.id}`)
+                  : 'Atualize representantes, contatos e dados de fidelidade.'}
+              </div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={handleClose} disabled={salvando}>
               <I.Close size={14} />
@@ -419,6 +423,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
           </div>
         </div>
 
+        {!notesOnly && (
         <div className="modal-tabs">
           <button
             type="button"
@@ -435,6 +440,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
             <I.Note size={14} /> Notas{!cliente?.id && pendingNotas.length > 0 && ` (${pendingNotas.length})`}
           </button>
         </div>
+        )}
 
         <div className="modal-body">
           {erro && <div className="alert-error" style={{ marginBottom: 12 }}>{erro}</div>}
