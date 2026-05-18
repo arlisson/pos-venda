@@ -87,12 +87,26 @@ select.admin-campanhas-control {
 
 @media (max-width: 640px) {
   .admin-campanhas-page {
+    height: 100%;
+    min-height: 0;
     padding: 12px !important;
+    overflow-y: auto;
     overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  .admin-campanhas-panel {
+  .admin-campanhas-page > .panel {
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: visible;
     border-radius: 8px;
+  }
+
+  .admin-campanhas-rewards-panel__body {
+    min-height: 0;
+    overflow: visible;
   }
 
   .admin-campanhas-panel__header {
@@ -138,6 +152,7 @@ select.admin-campanhas-control {
   .admin-campanhas-table {
     overflow: visible;
     background: transparent;
+    max-height: none;
   }
 
   .admin-campanhas-table table,
@@ -147,6 +162,7 @@ select.admin-campanhas-control {
     display: block;
     width: 100%;
     min-width: 0;
+    max-height: none;
   }
 
   .admin-campanhas-table table {
