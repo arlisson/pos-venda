@@ -23,6 +23,7 @@ import {
   gerarEmailVenda,
   listarArquivosVenda,
   listarDestinatariosProblemaVenda,
+  obterReferenciasClientesVendas,
   listarVendas,
   listarVendedoras,
   marcarProblemaVenda,
@@ -31,7 +32,7 @@ import {
 } from '../../services/venda.service';
 import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
-import { listarClientes } from '../../services/cliente.service';
+import { listarClientesSelect } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './VendasPage.css';
@@ -772,23 +773,10 @@ export function montarChecklistWhatsappVenda(venda = {}, documentosFaltantes = o
   ].join('\n');
 }
 
-function getChaveClienteVenda(venda = {}) {
-  if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
-  if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
-
-  const cnpj = sanitizarCnpj(venda.cnpj || venda.cliente?.cnpj || '');
-  if (cnpj) return `cnpj:${cnpj}`;
-
-  const nome = normalizarTextoBusca(venda.nome || venda.cliente?.nome || venda.razao_social || venda.cliente?.razao_social || '');
-  return nome ? `nome:${nome}` : '';
-}
-
-function contarVendasPorCliente(vendas = []) {
-  return vendas.reduce((acc, venda) => {
-    const chave = getChaveClienteVenda(venda);
-    if (!chave) return acc;
-    acc.set(chave, (acc.get(chave) || 0) + 1);
-    return acc;
+function montarMapaReferencias(referencias = [], campo = 'total') {
+  return referencias.reduce((mapa, item) => {
+    if (item?.chave) mapa.set(item.chave, Number(item[campo] || 0));
+    return mapa;
   }, new Map());
 }
 
@@ -2176,7 +2164,7 @@ function VendasPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [vendas, setVendas] = useState([]);
-  const [vendasReferencia, setVendasReferencia] = useState([]);
+  const [referenciasClientes, setReferenciasClientes] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
   const [usuariosProblema, setUsuariosProblema] = useState([]);
@@ -2274,12 +2262,8 @@ function VendasPage() {
     ...(podeFunil ? [statusFunil, prioridadeFunil] : [])
   ].filter(v => v !== '').length;
 
-  const vendasPorCliente = useMemo(() => contarVendasPorCliente(vendasReferencia), [vendasReferencia]);
-  const vendasEmAndamentoPorCliente = useMemo(() => {
-    const codigosFinais = new Set(etapasFunil.filter(e => e.etapa_final).map(e => e.codigo));
-    const ativas = vendasReferencia.filter(v => !codigosFinais.has(v.status_funil));
-    return contarVendasPorCliente(ativas);
-  }, [vendasReferencia, etapasFunil]);
+  const vendasPorCliente = useMemo(() => montarMapaReferencias(referenciasClientes, 'total'), [referenciasClientes]);
+  const vendasEmAndamentoPorCliente = useMemo(() => montarMapaReferencias(referenciasClientes, 'em_andamento_total'), [referenciasClientes]);
   const etapasFinaisSet = useMemo(
     () => new Set(etapasFunil.filter(e => e.etapa_final).map(e => e.codigo)),
     [etapasFunil]
@@ -2299,9 +2283,9 @@ function VendasPage() {
 
   async function carregarDadosEstaticos() {
     try {
-      const [vendasReferenciaData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData, usuariosProblemaData] = await Promise.all([
-        listarVendas(),
-        podeListarClientes ? listarClientes() : Promise.resolve([]),
+      const [referenciasClientesData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData, etapasFunilData, usuariosProblemaData] = await Promise.all([
+        obterReferenciasClientesVendas(),
+        podeListarClientes ? listarClientesSelect() : Promise.resolve([]),
         listarVendedoras(),
         listarOperadoras(),
         listarTiposVenda(),
@@ -2310,7 +2294,7 @@ function VendasPage() {
         podeOperarPosVenda ? listarDestinatariosProblemaVenda() : Promise.resolve([])
       ]);
 
-      setVendasReferencia(vendasReferenciaData);
+      setReferenciasClientes(referenciasClientesData || []);
       setClientes(clientesData);
       setVendedoras(vendedorasData);
       setOperadoras(operadorasData);
@@ -2376,7 +2360,7 @@ function VendasPage() {
   }
 
   async function salvarClienteRapido(clienteCriado) {
-    const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
+    const clientesAtualizados = podeListarClientes ? await listarClientesSelect() : [];
     setClientes(clientesAtualizados);
     if (!clienteRapidoInicial) {
       setClienteRapidoDraft(null);
@@ -2474,7 +2458,7 @@ function VendasPage() {
       setVendaCadastroDraft(null);
     }
     await carregarVendas(filtros, paginaAtual);
-    listarVendas().then(data => setVendasReferencia(data)).catch(() => {});
+    obterReferenciasClientesVendas().then(data => setReferenciasClientes(data || [])).catch(() => {});
     setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
   }
 
@@ -2489,7 +2473,7 @@ function VendasPage() {
     setModalModoEdicao(true);
     setVendaInicial(null);
     await carregarVendas(filtros, paginaAtual);
-    listarVendas().then(data => setVendasReferencia(data)).catch(() => {});
+    obterReferenciasClientesVendas().then(data => setReferenciasClientes(data || [])).catch(() => {});
     window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
     setSucesso(resultado?.status === 'pendente'
       ? (resultado.message || 'Solicitação enviada para aprovação do ADM.')
@@ -2503,7 +2487,7 @@ function VendasPage() {
     try {
       await deletarVenda(vendaParaLixeira.id);
       setVendas(prev => prev.filter(item => item.id !== vendaParaLixeira.id));
-      setVendasReferencia(prev => prev.filter(item => item.id !== vendaParaLixeira.id));
+      obterReferenciasClientesVendas().then(data => setReferenciasClientes(data || [])).catch(() => {});
       setVendaParaLixeira(null);
       setSucesso('Venda enviada para a lixeira.');
     } catch (error) {
@@ -2648,7 +2632,7 @@ function VendasPage() {
           initialValues={vendaInicial}
           initialDraft={vendaCadastroDraft}
           clientes={clientes}
-          vendas={vendas}
+          vendas={[]}
           vendedoras={vendedoras}
           operadoras={operadoras}
           tiposVenda={tiposVenda}
@@ -2923,7 +2907,6 @@ function VendasPage() {
                   </tr>
                 ) : (
                   vendas.map(venda => {
-                    const totalVendasCliente = vendasPorCliente.get(getChaveClienteVenda(venda)) || 0;
                     const solicitacaoAprovacao = obterSolicitacaoAprovacaoAtual(venda);
 
                     return (

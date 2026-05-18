@@ -6,9 +6,9 @@ import * as I from '../../components/Icons';
 import { buscarPerfil, getUsuarioLocal, logout, temPermissao } from '../../services/auth.service';
 import VendaModal from '../../pages/VendasPage/VendaModal';
 import ClienteModal from '../../pages/Clientes/ClienteModal';
-import { listarClientes } from '../../services/cliente.service';
+import { listarClientesSelect } from '../../services/cliente.service';
 import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
-import { criarVenda, listarAprovacoesVenda, listarVendas, listarVendedoras } from '../../services/venda.service';
+import { criarVenda, listarAprovacoesVenda, listarVendedoras, obterReferenciasClientesVendas } from '../../services/venda.service';
 import {
   listarNotificacoesUrgentes,
   marcarPopupNotificacaoVisto
@@ -48,28 +48,10 @@ function getRouteConfig(pathname) {
   );
 }
 
-function getChaveClienteVenda(venda = {}) {
-  if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
-  if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
-
-  const cnpj = String(venda.cnpj || venda.cliente?.cnpj || '').replace(/\D/g, '');
-  if (cnpj) return `cnpj:${cnpj}`;
-
-  const nome = String(venda.nome || venda.cliente?.nome || venda.razao_social || venda.cliente?.razao_social || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-
-  return nome ? `nome:${nome}` : '';
-}
-
-function contarVendasPorCliente(vendas = []) {
-  return vendas.reduce((acc, venda) => {
-    const chave = getChaveClienteVenda(venda);
-    if (!chave) return acc;
-    acc.set(chave, (acc.get(chave) || 0) + 1);
-    return acc;
+function montarMapaReferencias(referencias = [], campo = 'total') {
+  return referencias.reduce((mapa, item) => {
+    if (item?.chave) mapa.set(item.chave, Number(item[campo] || 0));
+    return mapa;
   }, new Map());
 }
 
@@ -89,7 +71,7 @@ function LayoutPrivado({ children }) {
   const [erroNovaVenda, setErroNovaVenda] = useState('');
   const [sucessoNovaVenda, setSucessoNovaVenda] = useState('');
   const [clientesNovaVenda, setClientesNovaVenda] = useState([]);
-  const [vendasNovaVenda, setVendasNovaVenda] = useState([]);
+  const [referenciasClientesNovaVenda, setReferenciasClientesNovaVenda] = useState([]);
   const [vendedorasNovaVenda, setVendedorasNovaVenda] = useState([]);
   const [operadorasNovaVenda, setOperadorasNovaVenda] = useState([]);
   const [tiposVendaNovaVenda, setTiposVendaNovaVenda] = useState([]);
@@ -97,7 +79,8 @@ function LayoutPrivado({ children }) {
   const [clienteRapidoAberto, setClienteRapidoAberto] = useState(false);
   const [, setResolverClienteRapido] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const vendasPorClienteNovaVenda = useMemo(() => contarVendasPorCliente(vendasNovaVenda), [vendasNovaVenda]);
+  const vendasPorClienteNovaVenda = useMemo(() => montarMapaReferencias(referenciasClientesNovaVenda, 'total'), [referenciasClientesNovaVenda]);
+  const vendasEmAndamentoPorClienteNovaVenda = useMemo(() => montarMapaReferencias(referenciasClientesNovaVenda, 'em_andamento_total'), [referenciasClientesNovaVenda]);
 
   useEffect(() => {
     let ativo = true;
@@ -166,16 +149,16 @@ function LayoutPrivado({ children }) {
   }, [mobileMenuOpen]);
 
   async function carregarDadosNovaVenda() {
-    const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
-      podeListarVendas ? listarVendas() : Promise.resolve([]),
-      podeListarClientes ? listarClientes() : Promise.resolve([]),
+    const [referenciasClientesData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
+      podeListarVendas ? obterReferenciasClientesVendas() : Promise.resolve([]),
+      podeListarClientes ? listarClientesSelect() : Promise.resolve([]),
       listarVendedoras(),
       listarOperadoras(),
       listarTiposVenda(),
       listarServicos()
     ]);
 
-    setVendasNovaVenda(vendasData);
+    setReferenciasClientesNovaVenda(referenciasClientesData || []);
     setClientesNovaVenda(clientesData);
     setVendedorasNovaVenda(vendedorasData);
     setOperadorasNovaVenda(operadorasData);
@@ -224,7 +207,7 @@ function LayoutPrivado({ children }) {
   }
 
   async function salvarClienteRapido(clienteCriado) {
-    const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
+    const clientesAtualizados = podeListarClientes ? await listarClientesSelect() : [];
     setClientesNovaVenda(clientesAtualizados);
     fecharClienteRapido(clienteCriado);
     setSucessoNovaVenda('Cliente cadastrado com sucesso.');
@@ -424,12 +407,13 @@ function LayoutPrivado({ children }) {
         <VendaModal
           venda={null}
           clientes={clientesNovaVenda}
-          vendas={vendasNovaVenda}
+          vendas={[]}
           vendedoras={vendedorasNovaVenda}
           operadoras={operadorasNovaVenda}
           tiposVenda={tiposVendaNovaVenda}
           servicos={servicosNovaVenda}
           vendasPorCliente={vendasPorClienteNovaVenda}
+          vendasEmAndamentoPorCliente={vendasEmAndamentoPorClienteNovaVenda}
           podeEditarVenda={podeEditarVenda}
           podeVerDocumentosVenda={podeVerDocumentosVenda}
           podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}

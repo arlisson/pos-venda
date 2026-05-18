@@ -17,6 +17,8 @@ exports.up = async function (knex) {
   await addIndex('vendas', ['servico_id'], 'idx_vendas_servico_id');
   await addIndex('vendas', ['criado_por_id'], 'idx_vendas_criado_por_id');
   await addIndex('vendas', ['cliente_id'], 'idx_vendas_cliente_id');
+  await addIndex('vendas', ['excluido_em', 'data_venda', 'id'], 'idx_vendas_excluido_data_id');
+  await addIndex('vendas', ['excluido_em', 'status_funil'], 'idx_vendas_excluido_status');
 
   await addIndex('clientes', ['operadora_atual_id'], 'idx_clientes_operadora_atual_id');
   await addIndex('clientes', ['responsavel_tipo'], 'idx_clientes_responsavel_tipo');
@@ -24,9 +26,11 @@ exports.up = async function (knex) {
   await addIndex('clientes', ['quantidade_chips'], 'idx_clientes_quantidade_chips');
   await addIndex('clientes', ['fidelidade_fim'], 'idx_clientes_fidelidade_fim');
   await addIndex('clientes', ['criado_por_id'], 'idx_clientes_criado_por_id');
+  await addIndex('clientes', ['excluido_em', 'nome'], 'idx_clientes_excluido_nome');
 
   await addIndex('entidade_notas', ['entidade_tipo', 'entidade_id', 'usuario_id'], 'idx_notas_entidade_usuario');
   await addIndex('entidade_notas', ['retorno_agendado_para'], 'idx_notas_retorno_agendado_para');
+  await addIndex('entidade_notas', ['entidade_tipo', 'usuario_id', 'retorno_agendado_para'], 'idx_notas_tipo_usuario_retorno');
 };
 
 exports.down = async function (knex) {
@@ -45,6 +49,8 @@ exports.down = async function (knex) {
   await dropIfExists('vendas', 'idx_vendas_servico_id');
   await dropIfExists('vendas', 'idx_vendas_criado_por_id');
   await dropIfExists('vendas', 'idx_vendas_cliente_id');
+  await dropIfExists('vendas', 'idx_vendas_excluido_data_id');
+  await dropIfExists('vendas', 'idx_vendas_excluido_status');
 
   await dropIfExists('clientes', 'idx_clientes_operadora_atual_id');
   await dropIfExists('clientes', 'idx_clientes_responsavel_tipo');
@@ -52,7 +58,9 @@ exports.down = async function (knex) {
   await dropIfExists('clientes', 'idx_clientes_quantidade_chips');
   await dropIfExists('clientes', 'idx_clientes_fidelidade_fim');
   await dropIfExists('clientes', 'idx_clientes_criado_por_id');
+  await dropIfExists('clientes', 'idx_clientes_excluido_nome');
 
   await dropIfExists('entidade_notas', 'idx_notas_entidade_usuario');
   await dropIfExists('entidade_notas', 'idx_notas_retorno_agendado_para');
+  await dropIfExists('entidade_notas', 'idx_notas_tipo_usuario_retorno');
 };

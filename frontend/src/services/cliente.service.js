@@ -17,6 +17,10 @@ export async function listarClientes(filtros = {}) {
   return apiGet(`/clientes${montarQuery(filtros)}`);
 }
 
+export async function listarClientesSelect(filtros = {}) {
+  return apiGet(`/clientes/select${montarQuery(filtros)}`);
+}
+
 export async function listarClientesLixeira(filtros = {}) {
   return apiGet(`/clientes/lixeira${montarQuery(filtros)}`);
 }

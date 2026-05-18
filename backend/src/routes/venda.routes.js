@@ -32,6 +32,7 @@ router.get('/resumo', exigirUmaPermissao(['dashboard_resumo_vendas', 'vendas', '
 router.get('/relatorios', exigirUmaPermissao(['relatorios_visualizar']), vendaController.relatorios);
 router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.lixeira);
 router.get('/contagem-por-cliente', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), vendaController.contagemPorCliente);
+router.get('/referencias-clientes', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.referenciasClientes);
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.index);
 router.get('/problemas/destinatarios', exigirUmaPermissao(['pos_venda']), vendaProblemaController.destinatarios);
 router.get('/aprovacoes', exigirUmaPermissao(['vendas_aprovacoes_visualizar']), vendaAprovacaoController.index);

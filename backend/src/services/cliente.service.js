@@ -177,6 +177,14 @@ function criarHttpError(statusCode, message) {
   return error;
 }
 
+function normalizarPaginacao(filtros = {}) {
+  const opcoesPorPagina = new Set([20, 50, 100]);
+  const page = Math.max(Number.parseInt(filtros.page, 10) || 1, 1);
+  const perPageInformado = Number.parseInt(filtros.per_page, 10);
+  const perPage = opcoesPorPagina.has(perPageInformado) ? perPageInformado : 20;
+  return { page, perPage };
+}
+
 function lerArquivoMultipart(req) {
   return new Promise((resolve, reject) => {
     const busboy = Busboy({ headers: req.headers });
@@ -794,8 +802,8 @@ function aplicarBuscaClientes(query, termo) {
 
 async function listarClientes(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoClientes(usuarioId);
-  const page = filtros.page ? Number(filtros.page) : null;
-  const perPage = filtros.per_page ? Number(filtros.per_page) : null;
+  const paginar = filtros.page !== undefined || filtros.per_page !== undefined;
+  const { page, perPage } = normalizarPaginacao(filtros);
 
   const query = Cliente.query()
     .withGraphFetched('[operadoraAtual, criador]')
@@ -867,13 +875,49 @@ async function listarClientes(filtros = {}, usuarioId) {
     query.orderBy('nome', 'asc');
   }
 
-  if (page && perPage) {
+  if (paginar) {
     const result = await query.page(page - 1, perPage);
     const clientes = await adicionarResumoNotasClientes(result.results.map(formatarCliente), usuarioId);
     return { data: clientes, total: result.total };
   }
 
   return adicionarResumoNotasClientes((await query).map(formatarCliente), usuarioId);
+}
+
+async function listarClientesSelect(filtros = {}, usuarioId) {
+  const escopo = await buscarEscopoClientes(usuarioId);
+  const limite = Math.min(Math.max(Number.parseInt(filtros.limite, 10) || 300, 1), 500);
+  const query = Cliente.query()
+    .select(
+      'id',
+      'nome',
+      'razao_social',
+      'cnpj',
+      'responsavel_tipo',
+      'responsavel_nome',
+      'email',
+      'whatsapp_ddd',
+      'whatsapp_numero',
+      'fixo_ddd',
+      'fixo_numero',
+      'operadora_atual_id',
+      'valor_pago',
+      'quantidade_chips',
+      'base_anterior_sistema',
+      'criado_por_id'
+    )
+    .withGraphFetched('operadoraAtual')
+    .whereNull('excluido_em')
+    .orderBy('nome', 'asc')
+    .limit(limite);
+
+  aplicarEscopoClientes(query, usuarioId, escopo);
+
+  if (filtros.busca) {
+    aplicarBuscaClientes(query, filtros.busca);
+  }
+
+  return query;
 }
 
 async function buscarClientePorId(id, usuarioId) {
@@ -1215,6 +1259,7 @@ async function limparClientesBaseAnterior() {
 
 module.exports = {
   listarClientes,
+  listarClientesSelect,
   listarClientesLixeira,
   buscarClientePorId,
   criarCliente,

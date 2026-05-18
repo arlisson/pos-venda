@@ -16,6 +16,19 @@ async function index(req, res) {
   }
 }
 
+async function referenciasClientes(req, res) {
+  try {
+    const referencias = await vendaService.obterReferenciasClientes(req.usuario.id);
+    return res.json(referencias);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao carregar referencias de clientes.'
+    });
+  }
+}
+
 async function resumo(req, res) {
   try {
     const resumoDashboard = await vendaService.obterResumoDashboard(req.usuario.id);
@@ -322,7 +335,8 @@ module.exports = {
   restore,
   destroyDefinitivo,
   vendedoras,
-  contagemPorCliente
+  contagemPorCliente,
+  referenciasClientes
 };
 
 async function contagemPorCliente(req, res) {

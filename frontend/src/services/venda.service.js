@@ -23,6 +23,10 @@ export async function contarVendasConcluidasPorCliente() {
   return apiGet('/vendas/contagem-por-cliente');
 }
 
+export async function obterReferenciasClientesVendas() {
+  return apiGet('/vendas/referencias-clientes');
+}
+
 export async function listarVendasLixeira(filtros) {
   return apiGet(`/vendas/lixeira${montarQuery(filtros)}`);
 }

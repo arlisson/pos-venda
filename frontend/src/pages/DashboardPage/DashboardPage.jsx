@@ -2,10 +2,11 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getCampanhas, getProgresso, getProgressoUsuarios, resgatarCampanha } from '../../services/campanha.service';
-import { buscarVendaPorId, enviarVendaParaPosVenda, listarVendas, listarVendedoras, obterResumoVendas } from '../../services/venda.service';
-import { buscarClientePorId, listarClientes } from '../../services/cliente.service';
+import { buscarVendaPorId, enviarVendaParaPosVenda, listarVendedoras, obterResumoVendas } from '../../services/venda.service';
+import { buscarClientePorId } from '../../services/cliente.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarNotificacoes, marcarNotificacaoLida } from '../../services/notificacao.service';
+import { obterContextoNotificacoesDashboard } from '../../services/dashboard.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import ClienteModal from '../Clientes/ClienteModal';
 import VendaModal from '../VendasPage/VendaModal';
@@ -361,35 +362,10 @@ function getVendaRetornoDescricao(venda) {
   return venda?.motivo_retorno || 'Sem motivo informado';
 }
 
-function sanitizarChave(valor) {
-  return String(valor || '').replace(/\D/g, '');
-}
-
-function normalizarChaveTexto(valor) {
-  return String(valor || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
-}
-
-function getChaveClienteVenda(venda = {}) {
-  if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
-  if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
-
-  const cnpj = sanitizarChave(venda.cnpj || venda.cliente?.cnpj || '');
-  if (cnpj) return `cnpj:${cnpj}`;
-
-  const nome = normalizarChaveTexto(venda.nome || venda.cliente?.nome || venda.razao_social || venda.cliente?.razao_social || '');
-  return nome ? `nome:${nome}` : '';
-}
-
-function contarVendasPorCliente(vendas = []) {
-  return vendas.reduce((acc, venda) => {
-    const chave = getChaveClienteVenda(venda);
-    if (!chave) return acc;
-    acc.set(chave, (acc.get(chave) || 0) + 1);
-    return acc;
+function montarMapaReferencias(referencias = [], campo = 'total') {
+  return referencias.reduce((mapa, item) => {
+    if (item?.chave) mapa.set(item.chave, Number(item[campo] || 0));
+    return mapa;
   }, new Map());
 }
 
@@ -420,6 +396,8 @@ function DashboardPage() {
   const [vendasRetorno, setVendasRetorno] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [vendas, setVendas] = useState([]);
+  const [referenciasClientes, setReferenciasClientes] = useState([]);
+  const [vendasAtivasIdsLista, setVendasAtivasIdsLista] = useState([]);
   const [vendasCarregadas, setVendasCarregadas] = useState(false);
   const [vendedoras, setVendedoras] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
@@ -479,37 +457,32 @@ function DashboardPage() {
       obterResumoVendas().then(setStats).catch(console.error);
     }
 
-    if (podeVerRetornos) {
-      listarVendas({ status_funil: 'retorno' })
-        .then(data => setVendasRetorno(Array.isArray(data) ? data : []))
-        .catch(console.error);
-    }
-
   }, [podeVerCampanhas, podeVerResumoVendas, podeVerRetornos]);
 
   useEffect(() => {
     if (!podeVerNotificacoes) return undefined;
 
     Promise.all([
-      listarClientes().catch(() => []),
-      listarVendas({}).catch(() => []),
+      obterContextoNotificacoesDashboard().catch(() => ({})),
       listarVendedoras().catch(() => []),
       listarOperadoras().catch(() => []),
       listarTiposVenda().catch(() => []),
       listarServicos().catch(() => []),
       listarEtapasFunil().catch(() => [])
     ]).then(([
-      clientesData,
-      vendasData,
+      contextoData,
       vendedorasData,
       operadorasData,
       tiposVendaData,
       servicosData,
       etapasData
     ]) => {
-      setClientes(Array.isArray(clientesData) ? clientesData : []);
-      setVendas(Array.isArray(vendasData) ? vendasData : []);
-      setVendasCarregadas(true);
+      setClientes(Array.isArray(contextoData.clientes) ? contextoData.clientes : []);
+      setReferenciasClientes(Array.isArray(contextoData.referencias_clientes) ? contextoData.referencias_clientes : []);
+      setVendasAtivasIdsLista(Array.isArray(contextoData.vendas_ativas_ids) ? contextoData.vendas_ativas_ids : []);
+      setVendasRetorno(Array.isArray(contextoData.vendas_retorno) ? contextoData.vendas_retorno : []);
+      setVendas([]);
+      setVendasCarregadas(Array.isArray(contextoData.vendas_ativas_ids) && contextoData.vendas_ativas_ids.length > 0);
       setVendedoras(Array.isArray(vendedorasData) ? vendedorasData : []);
       setOperadoras(Array.isArray(operadorasData) ? operadorasData : []);
       setTiposVenda(Array.isArray(tiposVendaData) ? tiposVendaData : []);
@@ -676,11 +649,8 @@ function DashboardPage() {
   const doneCount = campanhasComProgresso.filter(m => m.achieved).length;
   const totalCount = campanhasComProgresso.length;
   const overallPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
-  const vendasPorCliente = useMemo(() => contarVendasPorCliente(vendas), [vendas]);
-  const vendasEmAndamentoPorCliente = useMemo(() => {
-    const codigosFinais = new Set(etapasFunil.filter(etapa => etapa.etapa_final).map(etapa => etapa.codigo));
-    return contarVendasPorCliente(vendas.filter(venda => !codigosFinais.has(venda.status_funil)));
-  }, [vendas, etapasFunil]);
+  const vendasPorCliente = useMemo(() => montarMapaReferencias(referenciasClientes, 'total'), [referenciasClientes]);
+  const vendasEmAndamentoPorCliente = useMemo(() => montarMapaReferencias(referenciasClientes, 'em_andamento_total'), [referenciasClientes]);
 
   const firstName = usuario?.nome?.split(' ')[0] || 'você';
   const notificacoesFidelidade = notificacoes
@@ -693,8 +663,8 @@ function DashboardPage() {
     .slice()
     .sort((a, b) => getVendaRetornoTimestamp(b) - getVendaRetornoTimestamp(a));
   const vendasAtivasIds = useMemo(
-    () => new Set(vendas.map(v => String(v.id))),
-    [vendas]
+    () => new Set(vendasAtivasIdsLista.map(id => String(id))),
+    [vendasAtivasIdsLista]
   );
   const notificacoesProblema = notificacoes
     .filter(notificacao => {
@@ -892,7 +862,7 @@ function DashboardPage() {
         <VendaModal
           venda={vendaModal}
           clientes={clientes}
-          vendas={vendas}
+          vendas={[]}
           vendedoras={vendedoras}
           operadoras={operadoras}
           tiposVenda={tiposVenda}

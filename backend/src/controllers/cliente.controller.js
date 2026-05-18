@@ -34,6 +34,19 @@ async function show(req, res) {
   }
 }
 
+async function select(req, res) {
+  try {
+    const clientes = await clienteService.listarClientesSelect(req.query, req.usuario.id);
+    return res.json(clientes);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao listar clientes para selecao.'
+    });
+  }
+}
+
 async function store(req, res) {
   try {
     const cliente = await clienteService.criarCliente(req.body, req.usuario.id);
@@ -214,6 +227,7 @@ async function limparBaseAnterior(req, res) {
 
 module.exports = {
   index,
+  select,
   show,
   store,
   previewImportacaoBaseAnterior,

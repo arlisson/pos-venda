@@ -9,6 +9,7 @@ const vendaNotificacaoParadaService = require('./venda-notificacao-parada.servic
 const vendaNotificacaoRetornoService = require('./venda-notificacao-retorno.service');
 const vendaAprovacaoService = require('./venda-aprovacao.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
+const { parseUtcDateTime } = require('../utils/datetime');
 
 const CAMPOS = [
   'nome',
@@ -115,6 +116,7 @@ const FUNIL_STATUS_LABELS = {
   retorno: 'Retorno recebido'
 };
 
+const DIAS_OCULTAR_CONCLUIDAS_FUNIL = 14;
 const FUNIL_PRIORIDADES = ['alta', 'media', 'baixa'];
 const PROMESSA_CUMPRIDA_OPCOES = ['pendente', 'sim', 'nao'];
 const CLIENTE_SOLICITOU_RESOLVIDO_OPCOES = ['sim', 'nao'];
@@ -670,6 +672,14 @@ function parsePermissoes(permissoes) {
     .map(([chave]) => chave);
 }
 
+function normalizarPaginacao(filtros = {}) {
+  const opcoesPorPagina = new Set([20, 50, 100]);
+  const page = Math.max(Number.parseInt(filtros.page, 10) || 1, 1);
+  const perPageInformado = Number.parseInt(filtros.per_page, 10);
+  const perPage = opcoesPorPagina.has(perPageInformado) ? perPageInformado : 20;
+  return { page, perPage };
+}
+
 async function buscarEscopoVendas(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -815,6 +825,26 @@ function adicionarDias(data, dias) {
   const novaData = new Date(data);
   novaData.setDate(novaData.getDate() + dias);
   return novaData;
+}
+
+function obterDataLimiteConcluidaAntiga(referencia = new Date()) {
+  const dataReferencia = parseUtcDateTime(referencia) || new Date();
+  return adicionarDias(dataReferencia, -DIAS_OCULTAR_CONCLUIDAS_FUNIL);
+}
+
+function obterUltimaAtividadeFunil(venda = {}) {
+  return parseUtcDateTime(venda.ultima_atividade_em)
+    || parseUtcDateTime(venda.updated_at)
+    || parseUtcDateTime(venda.created_at);
+}
+
+function vendaDeveAparecerNoFunil(venda = {}, etapaFinal = 'concluido', referencia = new Date()) {
+  if (venda.status_funil !== etapaFinal) return true;
+
+  const ultimaAtividade = obterUltimaAtividadeFunil(venda);
+  if (!ultimaAtividade) return true;
+
+  return ultimaAtividade > obterDataLimiteConcluidaAntiga(referencia);
 }
 
 function resolverPeriodoRelatorio(filtros = {}) {
@@ -1144,12 +1174,10 @@ async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario, aprovacaoSolicitacoes]')
+    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, aprovacaoSolicitacoes]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
-    .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
-    .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
-    .modifyGraph('aprovacaoSolicitacoes', builder => builder.orderBy('id', 'desc'))
+    .modifyGraph('aprovacaoSolicitacoes', builder => builder.select('id', 'venda_id', 'status', 'motivos', 'created_at').whereNot('status', 'obsoleta').orderBy('id', 'desc'))
     .whereNull('excluido_em')
     .orderBy('data_venda', 'desc')
     .orderBy('id', 'desc');
@@ -1245,14 +1273,145 @@ async function listarVendas(filtros = {}, usuarioId) {
     query.where('prioridade_funil', filtros.prioridade_funil);
   }
 
-  const page = filtros.page ? Number(filtros.page) : null;
-  const perPage = filtros.per_page ? Number(filtros.per_page) : null;
+  if (['1', 'true', true, 1].includes(filtros.ocultar_concluidas_antigas)) {
+    const etapaFinal = await obterCodigoEtapaFinal();
+    query.where(builder => {
+      builder
+        .whereNot('status_funil', etapaFinal)
+        .orWhereNull('status_funil')
+        .orWhereRaw(
+          'COALESCE(ultima_atividade_em, updated_at, created_at) > DATE_SUB(NOW(), INTERVAL ? DAY)',
+          [DIAS_OCULTAR_CONCLUIDAS_FUNIL]
+        );
+    });
+  }
 
-  if (page && perPage) {
+  const paginar = filtros.page !== undefined || filtros.per_page !== undefined;
+  const { page, perPage } = normalizarPaginacao(filtros);
+
+  if (paginar) {
     const result = await query.page(page - 1, perPage);
     return { data: result.results, total: result.total };
   }
 
+  return query;
+}
+
+async function obterReferenciasClientes(usuarioId) {
+  const escopo = await buscarEscopoVendas(usuarioId);
+  const etapaFinal = await obterCodigoEtapaFinal();
+  const knex = Venda.knex();
+  const montarBase = () => {
+    const query = Venda.query().whereNull('excluido_em');
+    aplicarEscopoVendas(query, usuarioId, escopo);
+    return query;
+  };
+
+  const porChave = new Map();
+  const adicionar = (chave, linha) => {
+    if (!chave) return;
+    porChave.set(chave, {
+      chave,
+      total: Number(linha.total || 0),
+      em_andamento_total: Number(linha.em_andamento_total || 0)
+    });
+  };
+
+  const camposAgregados = [
+    knex.raw('COUNT(*) as total'),
+    knex.raw('SUM(CASE WHEN status_funil = ? THEN 0 ELSE 1 END) as em_andamento_total', [etapaFinal])
+  ];
+
+  const porCliente = await montarBase()
+    .whereNotNull('cliente_id')
+    .select('cliente_id')
+    .select(camposAgregados)
+    .groupBy('cliente_id');
+
+  porCliente.forEach(linha => adicionar(`cliente:${linha.cliente_id}`, linha));
+
+  const porCnpj = await montarBase()
+    .whereNotNull('cnpj')
+    .whereNot('cnpj', '')
+    .select(knex.raw("REPLACE(REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', ''), ' ', '') as cnpj_chave"))
+    .select(camposAgregados)
+    .groupBy('cnpj_chave');
+
+  porCnpj.forEach(linha => adicionar(linha.cnpj_chave ? `cnpj:${linha.cnpj_chave}` : '', linha));
+
+  const porNome = await montarBase()
+    .whereNull('cliente_id')
+    .where(builder => builder.whereNotNull('nome').orWhereNotNull('razao_social'))
+    .select(knex.raw("LOWER(TRIM(COALESCE(NULLIF(nome, ''), NULLIF(razao_social, ''), ''))) as nome_chave"))
+    .select(camposAgregados)
+    .groupBy('nome_chave');
+
+  porNome.forEach(linha => adicionar(linha.nome_chave ? `nome:${linha.nome_chave}` : '', linha));
+
+  return Array.from(porChave.values());
+}
+
+async function verificarIdsVendasAtivas(ids = [], usuarioId) {
+  const vendaIds = Array.from(new Set(ids.map(Number).filter(Number.isInteger).filter(id => id > 0)));
+
+  if (vendaIds.length === 0) {
+    return [];
+  }
+
+  const escopo = await buscarEscopoVendas(usuarioId);
+  const query = Venda.query()
+    .select('id')
+    .whereIn('id', vendaIds)
+    .whereNull('excluido_em');
+
+  aplicarEscopoVendas(query, usuarioId, escopo);
+  const linhas = await query;
+  return linhas.map(linha => Number(linha.id)).filter(Boolean);
+}
+
+async function obterContextoDashboard({ usuarioId, vendaIds = [] }) {
+  const [clientes, referenciasClientes, vendasAtivasIds, vendasRetorno] = await Promise.all([
+    clienteService.listarClientesSelect({ limite: 300 }, usuarioId),
+    obterReferenciasClientes(usuarioId),
+    verificarIdsVendasAtivas(vendaIds, usuarioId),
+    listarVendasRetornoResumo(usuarioId)
+  ]);
+
+  return {
+    clientes,
+    referencias_clientes: referenciasClientes,
+    vendas_ativas_ids: vendasAtivasIds,
+    vendas_retorno: vendasRetorno
+  };
+}
+
+async function listarVendasRetornoResumo(usuarioId) {
+  const escopo = await buscarEscopoVendas(usuarioId);
+  const query = Venda.query()
+    .select(
+      'id',
+      'nome',
+      'razao_social',
+      'cnpj',
+      'status_funil',
+      'motivo_retorno',
+      'retornou_em',
+      'ultima_atividade_em',
+      'updated_at',
+      'cliente_id',
+      'vendedora_id',
+      'criado_por_id'
+    )
+    .withGraphFetched('[cliente, vendedora]')
+    .modifyGraph('cliente', builder => builder.select('id', 'nome', 'razao_social', 'cnpj'))
+    .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
+    .whereNull('excluido_em')
+    .where('status_funil', 'retorno')
+    .orderBy('retornou_em', 'desc')
+    .orderBy('id', 'desc')
+    .limit(100);
+
+  aplicarEscopoVendas(query, usuarioId, escopo);
   return query;
 }
 
@@ -2113,6 +2272,9 @@ async function contarVendasConcluidasPorCliente() {
 
 module.exports = {
   listarVendas,
+  obterReferenciasClientes,
+  listarVendasRetornoResumo,
+  obterContextoDashboard,
   listarVendasLixeira,
   obterResumoDashboard,
   obterRelatoriosVendas,
@@ -2127,5 +2289,27 @@ module.exports = {
   excluirVendaDefinitivo,
   listarVendedoras,
   listarStatusVendasParaHistorico,
-  contarVendasConcluidasPorCliente
+  contarVendasConcluidasPorCliente,
+  _internals: {
+    aplicarDadosClienteNaVenda,
+    calcularTotalChips,
+    limparValor,
+    montarPayload,
+    normalizarClienteSolicitouNumeros,
+    normalizarClienteSolicitouServicos,
+    normalizarData,
+    normalizarGigas,
+    normalizarIdsVendedoras,
+    normalizarItensChips,
+    normalizarNumerosLista,
+    normalizarTipoLinhaChip,
+    obterDataLimiteConcluidaAntiga,
+    obterQuantidadeChipsVenda,
+    obterUltimaAtividadeFunil,
+    parseValorMonetario,
+    resumirGigasItensChips,
+    somarQuantidadeItensChips,
+    validarVendedorasNosChips,
+    vendaDeveAparecerNoFunil
+  }
 };

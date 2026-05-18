@@ -105,8 +105,6 @@ function montarStageLabels(stages = []) {
   };
 }
 
-const SEIS_MESES_MS = 14 * 24 * 60 * 60 * 1000; // 2 semanas
-
 const PRIORITIES = {
   alta: { label: 'Prioridade Alta', color: '#ef4444' },
   media: { label: 'Prioridade Média', color: '#3b82f6' },
@@ -940,7 +938,6 @@ function FunilPage() {
   const [copiandoEmail, setCopiandoEmail] = useState(false);
   const [whatsappMensagem, setWhatsappMensagem] = useState(null);
   const [copiandoWhatsapp, setCopiandoWhatsapp] = useState(false);
-  const [mostrarArquivadas, setMostrarArquivadas] = useState(false);
   const [agora, setAgora] = useState(Date.now);
   const [baixandoXlsxId, setBaixandoXlsxId] = useState(null);
   const [vendaCompleta, setVendaCompleta] = useState(null);
@@ -1213,7 +1210,7 @@ function FunilPage() {
 
     try {
       const [vendas, etapas] = await Promise.all([
-        listarVendas({ enviadas_pos_venda: '1' }),
+        listarVendas({ enviadas_pos_venda: '1', ocultar_concluidas_antigas: '1' }),
         podeGerenciarEtapas ? listarEtapasFunilAdmin() : listarEtapasFunil()
       ]);
       const labels = sincronizarEtapas(etapas, { atualizarAdmin: podeGerenciarEtapas });
@@ -1418,7 +1415,7 @@ function FunilPage() {
     () => stagesVisiveis.filter(stage => stage.ativo !== false),
     [stagesVisiveis]
   );
-  const { filtradas, arquivadas, total } = useMemo(() => {
+  const { filtradas, total } = useMemo(() => {
     let etapasFinaisIds = new Set(stagesVisiveis.filter(st => st.etapaFinal).map(st => st.id));
     if (etapasFinaisIds.size === 0) {
       const validas = stagesVisiveis.filter(st => st.id !== 'retorno');
@@ -1429,20 +1426,12 @@ function FunilPage() {
     }
     const filtered = sales.filter(s => {
       if (s.stage === 'retorno') return false;
-      if (!mostrarArquivadas
-        && etapasFinaisIds.has(s.stage)
-        && (agora - s.updated.getTime()) > SEIS_MESES_MS) return false;
       if (filter !== 'todas' && s.operator !== filter) return false;
       if (!vendaCorrespondeBusca(s, busca)) return false;
       return true;
     });
-    const archived = mostrarArquivadas ? 0 : sales.filter(s =>
-      s.stage !== 'retorno'
-        && etapasFinaisIds.has(s.stage)
-        && (agora - s.updated.getTime()) > SEIS_MESES_MS
-    ).length;
-    return { filtradas: filtered, arquivadas: archived, total: filtered.reduce((sum, s) => sum + s.value, 0) };
-  }, [sales, stagesVisiveis, mostrarArquivadas, filter, busca, agora]);
+    return { filtradas: filtered, total: filtered.reduce((sum, s) => sum + s.value, 0) };
+  }, [sales, stagesVisiveis, filter, busca, agora]);
   const stageLabels = montarStageLabels(stagesVisiveis);
   const operators = useMemo(
     () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),
@@ -1534,16 +1523,6 @@ function FunilPage() {
                 {op === 'todas' ? 'Todas' : op}
               </button>
             ))}
-            {(arquivadas > 0 || mostrarArquivadas) && (
-              <button
-                type="button"
-                className={`filter-chip${mostrarArquivadas ? ' active' : ''}`}
-                onClick={() => setMostrarArquivadas(v => !v)}
-                title="Vendas na etapa final sem atividade há mais de 6 meses"
-              >
-                {mostrarArquivadas ? 'Ocultar arquivadas' : `Arquivadas (${arquivadas})`}
-              </button>
-            )}
             <div className="funil-stats" style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 12.5, flexShrink: 0 }}>
               <span className="muted">{filtradas.length} vendas</span>
               <span style={{ color: 'var(--border-strong)' }}>·</span>
