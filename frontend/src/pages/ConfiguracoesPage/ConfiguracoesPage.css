@@ -344,6 +344,20 @@
 }
 
 @media (max-width: 720px) {
+  .configuracoes-page {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .config-panel {
+    min-height: 0;
+    overflow: visible;
+  }
+
   .config-panel-header,
   .config-form-header {
     align-items: stretch;
@@ -382,10 +396,21 @@
     min-width: 0;
   }
 
-  .config-table td.row-actions {
+  .config-table.list-table td.row-actions.m-actions {
     display: flex !important;
+    grid-column: 1 / -1;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 10px !important;
+    border-top: 1px solid var(--border) !important;
     text-align: left;
     white-space: normal;
+  }
+
+  .config-table.list-table td.row-actions.m-actions .btn {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 36px;
   }
 
   .config-table .row-actions .btn + .btn {
