@@ -385,6 +385,115 @@ function getEtapasPuladas(item, stages) {
   return stages.slice(origem + 1, destino);
 }
 
+function buildSaleDeliveryProgress(sale, stages) {
+  const etapas = stages.filter(stage => stage.id !== 'retorno');
+  const etapaAtualIndex = Math.max(0, etapas.findIndex(stage => stage.id === sale.stage));
+  const reached = new Map();
+  const skipped = new Set();
+
+  sale.historico.forEach(item => {
+    if (item.tipo === 'create' && etapas[0] && !reached.has(etapas[0].id)) {
+      reached.set(etapas[0].id, { data: item.data, autor: item.autor });
+    }
+
+    if (item.statusNovo && etapas.some(stage => stage.id === item.statusNovo)) {
+      reached.set(item.statusNovo, { data: item.data, autor: item.autor });
+    }
+
+    getEtapasPuladas(item, etapas).forEach(stage => skipped.add(stage.id));
+  });
+
+  if (sale.stage && etapas.some(stage => stage.id === sale.stage) && !reached.has(sale.stage)) {
+    reached.set(sale.stage, { data: sale.updated, autor: 'Sistema' });
+  }
+
+  etapas.slice(0, etapaAtualIndex + 1).forEach((stage, index) => {
+    if (!skipped.has(stage.id) && !reached.has(stage.id)) {
+      reached.set(stage.id, { data: index === etapaAtualIndex ? sale.updated : null, autor: null });
+    }
+  });
+
+  const progressStages = etapas.map((stage, index) => {
+    const isSkipped = skipped.has(stage.id);
+    const isReached = reached.has(stage.id);
+    const isCurrent = stage.id === sale.stage;
+    const status = isSkipped ? 'skipped' : isCurrent ? 'current' : isReached || index < etapaAtualIndex ? 'done' : 'pending';
+
+    return {
+      ...stage,
+      status,
+      ...reached.get(stage.id)
+    };
+  });
+
+  return {
+    stages: progressStages,
+    skippedCount: skipped.size
+  };
+}
+
+function getDeliveryConnectorType(stageA, stageB) {
+  if (stageA.status === 'skipped' || stageB.status === 'skipped') return 'skip';
+  if (
+    ['done', 'current'].includes(stageA.status) &&
+    ['done', 'current'].includes(stageB.status)
+  ) return 'done';
+  return 'pending';
+}
+
+function SaleDeliveryTracker({ sale, stages, stageLabels }) {
+  const progress = buildSaleDeliveryProgress(sale, stages);
+
+  return (
+    <div className="sale-delivery">
+      <aside className="sale-delivery__summary">
+        <strong title={sale.client}>{sale.client}</strong>
+        <span>#{sale.id}</span>
+        <span className="sale-delivery__stage-badge">{stageLabels[sale.stage] || sale.stage}</span>
+        {progress.skippedCount > 0 && (
+          <span className="sale-delivery__skip-badge">
+            <I.AlertTriangle size={11} />
+            {progress.skippedCount} pulada{progress.skippedCount > 1 ? 's' : ''}
+          </span>
+        )}
+        <span className="sale-delivery__events">
+          <I.ChevronDown size={12} />
+          {sale.historico.length} eventos
+        </span>
+      </aside>
+
+      <div className="sale-delivery__track" role="list" aria-label={`Acompanhamento da venda ${sale.id}`}>
+        {progress.stages.map((stage, index) => {
+          const connectorType = index < progress.stages.length - 1
+            ? getDeliveryConnectorType(stage, progress.stages[index + 1])
+            : null;
+
+          return (
+            <div
+              key={stage.id}
+              className={`sale-delivery__step sale-delivery__step--${stage.status}`}
+              data-connector={connectorType}
+              role="listitem"
+            >
+              <div className="sale-delivery__dot">
+                {stage.status === 'skipped' ? (
+                  <I.AlertTriangle size={11} />
+                ) : ['done', 'current'].includes(stage.status) ? (
+                  <I.Check size={11} />
+                ) : (
+                  <span />
+                )}
+              </div>
+              <strong>{stage.name}</strong>
+              <small>{stage.data ? formatDateTime(stage.data) : ''}</small>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
   const sellers = getSellers(venda);
   const seller = sellers[0];
@@ -599,35 +708,11 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
           )}
 
           {tab === 'historico' && (
-            <div className="sale-timeline">
-              {sale.historico.map((item, i) => {
-                const etapasPuladas = getEtapasPuladas(item, stages);
-
-                return (
-                <div key={i} className={`sale-tl-item ${etapasPuladas.length > 0 ? 'sale-tl-item--skipped' : ''}`}>
-                  <div className={`sale-tl-dot ${item.tipo} ${i === 0 ? 'current' : ''}`}>
-                    {i === 0 ? (
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />
-                    ) : (
-                      <I.Check size={11} style={{ color: '#fff', strokeWidth: 2.5 }} />
-                    )}
-                  </div>
-                  <div className="sale-tl-content">
-                    <div className="sale-tl-title">
-                      {item.acao}
-                      {etapasPuladas.length > 0 && (
-                        <span className="sale-tl-skip-badge">
-                          <I.AlertTriangle size={11} />
-                          Etapa pulada: {etapasPuladas.map(stage => stage.name).join(', ')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="sale-tl-meta">{item.autor} · {formatDateTime(item.data)}</div>
-                  </div>
-                </div>
-              );
-              })}
-            </div>
+            <SaleDeliveryTracker
+              sale={sale}
+              stages={stages}
+              stageLabels={stageLabels}
+            />
           )}
 
           {tab === 'status' && (
