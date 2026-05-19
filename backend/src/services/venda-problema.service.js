@@ -136,6 +136,11 @@ async function registrarHistoricoVenda({ vendaId, usuarioId, acao, observacao, d
 }
 
 async function criarNotificacaoProblema({ tipo, problema, evento, destinatariosIds, titulo, mensagem, nivel = 'danger', trx }) {
+  await Notificacao.query(trx)
+    .where('source_key', 'like', `venda_problema:%:${problema.id}:%`)
+    .where('ativa', true)
+    .patch({ ativa: false, updated_at: new Date() });
+
   const sourceKey = `venda_problema:${tipo}:${problema.id}:${evento.id}`;
   const notificacao = await Notificacao.query(trx).insertAndFetch({
     tipo,

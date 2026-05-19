@@ -162,6 +162,71 @@ function ContatosMarcadosModal({ open, notificacoes, onClose, onOpenNotification
   );
 }
 
+function ProblemasModal({ open, notificacoes, onClose, onOpenNotification }) {
+  if (!open) return null;
+
+  async function handleOpen(notificacao) {
+    onClose();
+    await onOpenNotification(notificacao);
+  }
+
+  return (
+    <div className="modal-overlay contatos-marcados-overlay" onClick={onClose}>
+      <div
+        className="modal contatos-marcados-modal problemas-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="problemas-modal-title"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client" id="problemas-modal-title">Vendas com problema</div>
+              <div className="modal-sub">
+                {notificacoes.length} venda{notificacoes.length === 1 ? '' : 's'} precisando de ação
+              </div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} title="Fechar">
+              <I.Close size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body contatos-marcados-body">
+          {notificacoes.length === 0 ? (
+            <div className="contatos-marcados-empty">Nenhuma venda com problema.</div>
+          ) : (
+            <div className="contatos-marcados-list">
+              {notificacoes.map(notificacao => (
+                <button
+                  key={notificacao.destinatario_id || notificacao.id}
+                  type="button"
+                  className={`contatos-marcados-item ${notificacao.lida === false ? 'is-unread' : ''}`}
+                  onClick={() => handleOpen(notificacao)}
+                >
+                  <span className="contatos-marcados-item__icon">
+                    <I.AlertTriangle size={15} />
+                  </span>
+                  <span className="contatos-marcados-item__content">
+                    <strong>{getNotificacaoTitulo(notificacao)}</strong>
+                    <span>{getNotificacaoDescricao(notificacao)}</span>
+                    <em>{formatarPrazoRelativo(notificacao.updated_at)}</em>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getInitials(name) {
   if (!name) return '??';
   return name
@@ -384,6 +449,7 @@ function DashboardPage() {
   const [usuarioCampanhaBusca, setUsuarioCampanhaBusca] = useState('');
   const [notificacoes, setNotificacoes] = useState([]);
   const [contatosMarcadosOpen, setContatosMarcadosOpen] = useState(false);
+  const [problemasModalOpen, setProblemasModalOpen] = useState(false);
   const [openNotificationDrawers, setOpenNotificationDrawers] = useState(() => (
     typeof window !== 'undefined' && window.innerWidth > 760
       ? new Set(NOTIFICATION_DRAWER_KEYS)
@@ -668,6 +734,7 @@ function DashboardPage() {
   );
   const notificacoesProblema = notificacoes
     .filter(notificacao => {
+      if (notificacao.tipo === 'venda_problema_resolvido') return false;
       if (!TIPOS_PROBLEMA_VENDA.includes(notificacao.tipo)) return false;
       if (!vendasCarregadas) return true;
       const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id;
@@ -767,13 +834,7 @@ function DashboardPage() {
       getTooltip: getNotificacaoTooltip,
       metric: notificacao => formatarPrazoRelativo(notificacao.updated_at),
       actionLabel: 'Resolver pendências',
-      onAction: () => {
-        if (notificacoesProblema[0]) {
-          abrirNotificacaoNoDashboard(notificacoesProblema[0]);
-          return;
-        }
-        navigate('/vendas');
-      },
+      onAction: () => setProblemasModalOpen(true),
       onItemClick: abrirNotificacaoNoDashboard
     }
   ];
@@ -897,6 +958,12 @@ function DashboardPage() {
           open={contatosMarcadosOpen}
           notificacoes={notificacoesRetorno}
           onClose={() => setContatosMarcadosOpen(false)}
+          onOpenNotification={abrirNotificacaoNoDashboard}
+        />
+        <ProblemasModal
+          open={problemasModalOpen}
+          notificacoes={notificacoesProblema}
+          onClose={() => setProblemasModalOpen(false)}
           onOpenNotification={abrirNotificacaoNoDashboard}
         />
         {feedback && (

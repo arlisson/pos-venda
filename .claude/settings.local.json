@@ -58,7 +58,10 @@
       "Bash(grep -E \"\\\\.\\(jsx|js\\)$\")",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\backend\\\\src\" -Recurse -ErrorAction SilentlyContinue)",
       "Bash(xargs grep -l \"\\\\.index\\\\|CREATE INDEX\")",
-      "Bash(xargs grep -H \"\\\\.index\")"
+      "Bash(xargs grep -H \"\\\\.index\")",
+      "Skill(brainstorming)",
+      "Skill(brainstorming:*)",
+      "Bash(node -e ' *)"
     ]
   }
 }

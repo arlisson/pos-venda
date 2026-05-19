@@ -439,6 +439,24 @@
   font-weight: 800;
 }
 
+.problemas-modal .contatos-marcados-item__icon {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.problemas-modal .contatos-marcados-item__content em {
+  color: #2563eb;
+}
+
+.problemas-modal .contatos-marcados-item:hover,
+.problemas-modal .contatos-marcados-item:focus-visible,
+.problemas-modal .contatos-marcados-item.is-unread:hover,
+.problemas-modal .contatos-marcados-item.is-unread:focus-visible {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+}
+
 .contatos-marcados-empty {
   display: flex;
   align-items: center;
