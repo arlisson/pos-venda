@@ -1002,7 +1002,7 @@ function DashboardPage() {
           </div>
         )}
 
-        {(notificacoesFidelidade.length > 0 || retornosVenda.length > 0 || notificacoesRetorno.length > 0 || notificacoesProblema.length > 0) && (
+        {podeVerNotificacoes && notificacaoCards.length > 0 && (
           <section className="home-notifications">
             <div className="home-notifications__header">
               <div>

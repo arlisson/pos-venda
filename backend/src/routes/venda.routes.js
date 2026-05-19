@@ -134,6 +134,33 @@ router.patch(
   }),
   vendaController.updateStatus
 );
+router.post(
+  '/:id/cancelar',
+  exigirUmaPermissao(['vendas_cancelar']),
+  auditar({
+    acao: 'venda.cancelada',
+    entidade: 'vendas',
+    entidade_id: req => req.params.id,
+    dados: req => ({
+      id: req.params.id,
+      motivo: req.body?.motivo
+    })
+  }),
+  vendaController.cancelar
+);
+router.post(
+  '/:id/reverter-cancelamento',
+  exigirUmaPermissao(['vendas_reverter_cancelamento']),
+  auditar({
+    acao: 'venda.cancelamento_revertido',
+    entidade: 'vendas',
+    entidade_id: req => req.params.id,
+    dados: req => ({
+      id: req.params.id
+    })
+  }),
+  vendaController.reverterCancelamento
+);
 router.delete(
   '/:id/definitivo',
   exigirUmaPermissao(['vendas_excluir']),

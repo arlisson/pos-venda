@@ -23,6 +23,8 @@ import {
 import { listarClientes } from '../../services/cliente.service';
 import {
   atualizarStatusVenda,
+  cancelarVenda,
+  reverterCancelamentoVenda,
   atualizarVenda,
   baixarXlsxClaro,
   buscarVendaPorId,
@@ -413,11 +415,14 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
     priority: venda.prioridade_funil || 'media',
     lancadaEm: created,
     updated,
+    canceladaEm: venda.cancelada_em || null,
+    motivoCancelamento: venda.motivo_cancelamento || null,
+    canceladaPorId: venda.cancelada_por_id || null,
     historico: mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabels),
   };
 }
 
-function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFullSale, openingFullSale }) {
+function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFullSale, openingFullSale, podeCancelar, podeReverterCancelamento, onCancelSale, onReverterCancelamento }) {
   const [tab, setTab] = useState('info');
   const [novaFase, setNovaFase] = useState(sale.stage);
   const [novaPrioridade, setNovaPrioridade] = useState(sale.priority || 'media');
@@ -425,6 +430,8 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const cancelada = Boolean(sale.canceladaEm);
 
   const alterou = novaFase !== sale.stage
     || novaPrioridade !== (sale.priority || 'media')
@@ -454,6 +461,36 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
     return submitStatus('retorno', observacaoRetorno, motivo, { rethrow: true });
   }
 
+  async function handleConfirmCancelamento({ motivo }) {
+    setSaving(true);
+    setError('');
+
+    try {
+      await onCancelSale(sale.id, motivo);
+      setCancelModalOpen(false);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Erro ao cancelar venda.');
+      setSaving(false);
+      throw err;
+    }
+  }
+
+  async function handleReverterCancelamento() {
+    if (!window.confirm('Reverter o cancelamento desta venda?')) return;
+
+    setSaving(true);
+    setError('');
+
+    try {
+      await onReverterCancelamento(sale.id);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Erro ao reverter cancelamento.');
+      setSaving(false);
+    }
+  }
+
   return (
     <div
       className="modal-overlay"
@@ -465,6 +502,14 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
           saving={saving}
           onClose={() => setReturnModalOpen(false)}
           onConfirm={handleConfirmRetorno}
+        />
+      )}
+      {cancelModalOpen && (
+        <CancelReasonModal
+          sale={sale}
+          saving={saving}
+          onClose={() => setCancelModalOpen(false)}
+          onConfirm={handleConfirmCancelamento}
         />
       )}
 
@@ -639,17 +684,48 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
 
               {error && <div className="alert-error" style={{ marginTop: 12 }}>{error}</div>}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{ color: 'var(--danger)', borderColor: '#fecaca' }}
-                  onClick={() => setReturnModalOpen(true)}
-                  disabled={saving}
-                >
-                  <I.AlertTriangle size={13} /> Marcar como retorno
-                </button>
-                {alterou && (
+              {cancelada && (
+                <div className="alert-error" style={{ marginTop: 16 }}>
+                  <strong>Venda cancelada.</strong> Motivo: {sale.motivoCancelamento || '(não informado)'}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {!cancelada && (
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{ color: 'var(--danger)', borderColor: '#fecaca' }}
+                      onClick={() => setReturnModalOpen(true)}
+                      disabled={saving}
+                    >
+                      <I.AlertTriangle size={13} /> Marcar como retorno
+                    </button>
+                  )}
+                  {!cancelada && podeCancelar && (
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{ color: '#fff', background: '#dc2626', borderColor: '#dc2626' }}
+                      onClick={() => setCancelModalOpen(true)}
+                      disabled={saving}
+                    >
+                      <I.AlertTriangle size={13} /> Cancelar venda
+                    </button>
+                  )}
+                  {cancelada && podeReverterCancelamento && (
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={handleReverterCancelamento}
+                      disabled={saving}
+                    >
+                      Reverter cancelamento
+                    </button>
+                  )}
+                </div>
+                {!cancelada && alterou && (
                   <button type="button" className="btn btn-primary btn-sm" onClick={handleAtualizar} disabled={saving}>
                     {saving ? 'Salvando...' : 'Confirmar mudança'}
                   </button>
@@ -759,6 +835,83 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
   );
 }
 
+function CancelReasonModal({ sale, saving, onClose, onConfirm }) {
+  const [motivo, setMotivo] = useState('');
+  const [error, setError] = useState('');
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    const motivoLimpo = motivo.trim();
+
+    if (!motivoLimpo) {
+      setError('Informe o motivo do cancelamento.');
+      return;
+    }
+
+    setError('');
+
+    try {
+      await onConfirm({ motivo: motivoLimpo });
+    } catch (err) {
+      setError(err.message || 'Erro ao cancelar venda.');
+    }
+  }
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={event => !saving && event.target === event.currentTarget && onClose()}
+      style={{ zIndex: 60 }}
+    >
+      <form className="modal" onSubmit={handleSubmit}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Cancelar venda</div>
+              <div className="modal-sub">{sale.client} · #{sale.id}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={saving}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 8 }}>
+            A venda permanecerá no funil, marcada como cancelada. Informe o motivo:
+          </div>
+          <div className="form-field">
+            <label>Motivo do cancelamento</label>
+            <textarea
+              className="obs-textarea"
+              placeholder="Ex: cliente desistiu, problema cadastral, etc."
+              value={motivo}
+              onChange={event => setMotivo(event.target.value)}
+              disabled={saving}
+              rows={4}
+              autoFocus
+            />
+          </div>
+
+          {error && <div className="alert-error">{error}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={saving}>Voltar</button>
+          <button
+            type="submit"
+            className="btn"
+            style={{ color: '#fff', background: '#dc2626', borderColor: '#dc2626' }}
+            disabled={saving || !motivo.trim()}
+          >
+            {saving ? 'Cancelando...' : 'Confirmar cancelamento'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
   const vendasCount = Number(stage?.vendasCount || 0);
 
@@ -808,8 +961,16 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
 
 function SaleCard({ sale, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp }) {
   const priorityColor = PRIORITIES[sale.priority || 'media']?.color || '#3b82f6';
+  const cancelada = Boolean(sale.canceladaEm);
   return (
-    <div className="sale-card" onClick={onClick}>
+    <div
+      className={`sale-card${cancelada ? ' sale-card-cancelada' : ''}`}
+      onClick={onClick}
+      title={cancelada && sale.motivoCancelamento ? `Cancelada: ${sale.motivoCancelamento}` : undefined}
+    >
+      {cancelada && (
+        <span className="sale-card-cancelada-tag">Cancelada</span>
+      )}
       <div className="sale-card-top">
         <div className="client" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: priorityColor, flexShrink: 0 }}></span>
@@ -912,6 +1073,8 @@ function FunilPage() {
     'vendas_excluir'
   ]);
   const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
+  const podeCancelarVenda = temPermissao(usuario, 'vendas_cancelar');
+  const podeReverterCancelamentoVenda = temPermissao(usuario, 'vendas_reverter_cancelamento');
   const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
   const podeAdicionarDocumentosVenda = temPermissao(usuario, 'adicionar_documentos');
   const podeListarClientes = temPermissao(usuario, ['clientes_ver_proprios', 'clientes_ver_todos']);
@@ -1389,6 +1552,28 @@ function FunilPage() {
     }));
   }
 
+  async function handleCancelarVenda(saleId, motivo) {
+    const vendaAtualizada = await cancelarVenda(saleId, motivo);
+    setSales(prev => prev.map(sale => {
+      if (sale.id !== saleId) return sale;
+      return {
+        ...sale,
+        ...mapVendaToSale(vendaAtualizada, stageLabels)
+      };
+    }));
+  }
+
+  async function handleReverterCancelamentoVenda(saleId) {
+    const vendaAtualizada = await reverterCancelamentoVenda(saleId);
+    setSales(prev => prev.map(sale => {
+      if (sale.id !== saleId) return sale;
+      return {
+        ...sale,
+        ...mapVendaToSale(vendaAtualizada, stageLabels)
+      };
+    }));
+  }
+
   const selectedSale = selectedSaleId ? sales.find(s => s.id === selectedSaleId) : null;
   const adminStagesByCode = useMemo(
     () => new Map(adminStages.map(stage => [stage.id, stage])),
@@ -1426,7 +1611,11 @@ function FunilPage() {
     }
     const filtered = sales.filter(s => {
       if (s.stage === 'retorno') return false;
-      if (filter !== 'todas' && s.operator !== filter) return false;
+      if (filter === 'canceladas') {
+        if (!s.canceladaEm) return false;
+      } else if (filter !== 'todas' && s.operator !== filter) {
+        return false;
+      }
       if (!vendaCorrespondeBusca(s, busca)) return false;
       return true;
     });
@@ -1449,6 +1638,10 @@ function FunilPage() {
           onUpdateSale={handleUpdateSale}
           onOpenFullSale={podeAbrirVendaCompleta ? () => abrirVendaCompleta(selectedSale) : null}
           openingFullSale={abrindoVendaCompletaId === selectedSale.id}
+          podeCancelar={podeCancelarVenda}
+          podeReverterCancelamento={podeReverterCancelamentoVenda}
+          onCancelSale={handleCancelarVenda}
+          onReverterCancelamento={handleReverterCancelamentoVenda}
         />
       )}
       {vendaCompleta && (
@@ -1523,6 +1716,15 @@ function FunilPage() {
                 {op === 'todas' ? 'Todas' : op}
               </button>
             ))}
+            <button
+              type="button"
+              className={`filter-chip ${filter === 'canceladas' ? 'active' : ''}`}
+              onClick={() => setFilter('canceladas')}
+              title="Mostrar somente vendas canceladas"
+              style={filter === 'canceladas' ? { background: '#dc2626', borderColor: '#dc2626', color: '#fff' } : { color: '#dc2626', borderColor: '#fecaca' }}
+            >
+              Canceladas
+            </button>
             <div className="funil-stats" style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 12.5, flexShrink: 0 }}>
               <span className="muted">{filtradas.length} vendas</span>
               <span style={{ color: 'var(--border-strong)' }}>·</span>

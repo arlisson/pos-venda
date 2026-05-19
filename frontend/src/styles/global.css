@@ -745,6 +745,48 @@ input, select, textarea { font-family: inherit; }
   display: flex; flex-direction: column; gap: 6px; box-shadow: var(--shadow-sm);
 }
 .sale-card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.sale-card-cancelada {
+  position: relative;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border-color: #dc2626;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.15);
+}
+.sale-card-cancelada:hover {
+  border-color: #b91c1c;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+.sale-card-cancelada .client,
+.sale-card-cancelada .value {
+  color: #7f1d1d;
+}
+.sale-card-cancelada .sale-card-meta,
+.sale-card-cancelada .sale-card-bottom,
+.sale-card-cancelada .seller-name {
+  color: #991b1b;
+}
+.sale-card-cancelada-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  background: #dc2626;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(127, 29, 29, 0.3);
+}
+.sale-card-cancelada-tag::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+}
 .sale-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sale-card .client { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
 .sale-card .value { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text); flex-shrink: 0; }
