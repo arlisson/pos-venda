@@ -1285,15 +1285,85 @@ async function excluirCliente(id, usuarioId) {
 
   const agora = new Date();
 
-  return Cliente.knex()('clientes')
-    .where('id', id)
-    .whereNull('excluido_em')
-    .update({
-      excluido_em: formatarDateTimeSQL(agora),
-      excluir_definitivo_em: formatarDateTimeSQL(adicionarUmMes(agora)),
-      excluido_por_id: usuarioId,
-      updated_at: formatarDateTimeSQL(agora)
+  return Cliente.transaction(async trx => {
+    const atualizados = await trx('clientes')
+      .where('id', id)
+      .whereNull('excluido_em')
+      .update({
+        excluido_em: formatarDateTimeSQL(agora),
+        excluir_definitivo_em: formatarDateTimeSQL(adicionarUmMes(agora)),
+        excluido_por_id: usuarioId,
+        updated_at: formatarDateTimeSQL(agora)
+      });
+
+    if (atualizados) {
+      await excluirNotificacoesClientes(id, trx);
+    }
+
+    return atualizados;
+  });
+}
+
+function normalizarClienteIds(ids) {
+  return [...new Set([ids]
+    .flat()
+    .map(item => Number(item))
+    .filter(Boolean))];
+}
+
+async function buscarSourceKeysNotificacoesCliente(clienteIds, trx) {
+  const notas = await trx('entidade_notas')
+    .select('id')
+    .where('entidade_tipo', 'cliente')
+    .whereIn('entidade_id', clienteIds);
+
+  const sourceKeys = [];
+
+  notas.forEach(nota => {
+    sourceKeys.push(`nota_retorno_pre:${nota.id}`);
+    sourceKeys.push(`nota_retorno_due:${nota.id}`);
+  });
+
+  return sourceKeys;
+}
+
+async function excluirNotificacoesClientes(clienteIdsEntrada, trx) {
+  const clienteIds = normalizarClienteIds(clienteIdsEntrada);
+  if (clienteIds.length === 0) return 0;
+
+  const sourceKeys = await buscarSourceKeysNotificacoesCliente(clienteIds, trx);
+
+  const notificacoes = await trx('notificacoes')
+    .select('id')
+    .where(builder => {
+      builder.where(function () {
+        this.where('entidade', 'clientes').whereIn('entidade_id', clienteIds);
+      });
+
+      if (sourceKeys.length > 0) {
+        builder.orWhereIn('source_key', sourceKeys);
+      }
+
+      clienteIds.forEach(clienteId => {
+        builder
+          .orWhere('source_key', `cliente_fidelidade:${clienteId}`)
+          .orWhere('source_key', 'like', `cliente_fidelidade:${clienteId}:%`);
+      });
     });
+
+  const notificacaoIds = notificacoes.map(notificacao => Number(notificacao.id)).filter(Boolean);
+
+  if (notificacaoIds.length > 0) {
+    await trx('notificacao_destinatarios')
+      .whereIn('notificacao_id', notificacaoIds)
+      .delete();
+
+    await trx('notificacoes')
+      .whereIn('id', notificacaoIds)
+      .delete();
+  }
+
+  return notificacaoIds.length;
 }
 
 async function contarVendasRelacionadasCliente(clienteId, trx = null) {
@@ -1324,6 +1394,8 @@ async function limparClientesVencidosDaLixeira() {
     if (clientesSemVendas.length === 0) {
       return 0;
     }
+
+    await excluirNotificacoesClientes(clientesSemVendas.map(cliente => cliente.id), trx);
 
     return Cliente.query(trx)
       .delete()
@@ -1410,6 +1482,8 @@ async function excluirClienteDefinitivo(id, usuarioId, opcoes = {}) {
       await vendasRelacionadas.delete();
     }
 
+    await excluirNotificacoesClientes(id, trx);
+
     return Cliente.query(trx)
       .delete()
       .where('id', id)
@@ -1451,41 +1525,13 @@ async function limparClientesBaseAnterior(opcoes = {}) {
       clienteIds = clientesSemVendas.map(cliente => Number(cliente.id)).filter(Boolean);
     }
 
+    await excluirNotificacoesClientes(clienteIds, trx);
+
     const notas = await trx('entidade_notas')
       .select('id')
       .where('entidade_tipo', 'cliente')
       .whereIn('entidade_id', clienteIds);
     const notaIds = notas.map(nota => Number(nota.id)).filter(Boolean);
-    const sourceKeys = clienteIds.map(id => `cliente_fidelidade:${id}`);
-
-    notaIds.forEach(id => {
-      sourceKeys.push(`nota_retorno_pre:${id}`);
-      sourceKeys.push(`nota_retorno_due:${id}`);
-    });
-
-    const notificacoesQuery = trx('notificacoes')
-      .select('id')
-      .where(builder => {
-        builder
-          .where(function () {
-            this.where('entidade', 'clientes').whereIn('entidade_id', clienteIds);
-          });
-
-        if (sourceKeys.length > 0) {
-          builder.orWhereIn('source_key', sourceKeys);
-        }
-      });
-    const notificacoes = await notificacoesQuery;
-    const notificacaoIds = notificacoes.map(notificacao => Number(notificacao.id)).filter(Boolean);
-
-    if (notificacaoIds.length > 0) {
-      await trx('notificacao_destinatarios')
-        .whereIn('notificacao_id', notificacaoIds)
-        .delete();
-      await trx('notificacoes')
-        .whereIn('id', notificacaoIds)
-        .delete();
-    }
 
     if (notaIds.length > 0) {
       await trx('entidade_notas')
