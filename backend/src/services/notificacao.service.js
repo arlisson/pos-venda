@@ -1,4 +1,5 @@
 const Cliente = require('../models/Cliente');
+const ClienteOperadora = require('../models/ClienteOperadora');
 const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
@@ -152,7 +153,10 @@ async function listarUsuariosDestinatarios(cliente) {
 
 async function desativarNotificacaoFidelidadeCliente(clienteId, trx = null) {
   return Notificacao.query(trx)
-    .where('source_key', `${TIPO_FIDELIDADE_CLIENTE}:${clienteId}`)
+    .where(function () {
+      this.where('source_key', `${TIPO_FIDELIDADE_CLIENTE}:${clienteId}`)
+        .orWhere('source_key', 'like', `${TIPO_FIDELIDADE_CLIENTE}:${clienteId}:%`);
+    })
     .patch({ ativa: false, updated_at: new Date() });
 }
 
@@ -180,89 +184,124 @@ async function desativarNotificacoesRetornoNota(notaId, trx = null) {
 async function sincronizarFidelidadeCliente(clienteId, trx = null) {
   const cliente = await Cliente.query(trx)
     .findById(clienteId)
-    .whereNull('excluido_em');
+    .whereNull('excluido_em')
+    .withGraphFetched('operadorasAtuais.operadora');
 
   if (!cliente) {
     await desativarNotificacaoFidelidadeCliente(clienteId, trx);
     return null;
   }
 
-  const diasRestantes = calcularDiasRestantes(cliente.fidelidade_fim);
+  await Notificacao.query(trx)
+    .where('source_key', `${TIPO_FIDELIDADE_CLIENTE}:${cliente.id}`)
+    .patch({ ativa: false, updated_at: new Date() });
 
-  if (diasRestantes === null || diasRestantes > 30) {
-    await desativarNotificacaoFidelidadeCliente(cliente.id, trx);
-    return null;
-  }
+  const operadoras = cliente.operadorasAtuais?.length > 0
+    ? cliente.operadorasAtuais
+    : [];
+  const sourceKeysAtivas = [];
+  let ultimaNotificacao = null;
 
-  const nomeCliente = cliente.nome || cliente.razao_social || `Cliente #${cliente.id}`;
-  const sourceKey = `${TIPO_FIDELIDADE_CLIENTE}:${cliente.id}`;
-  const dados = {
-    cliente_id: cliente.id,
-    cliente_nome: nomeCliente,
-    fidelidade_fim: cliente.fidelidade_fim,
-    dias_restantes: diasRestantes
-  };
+  for (const clienteOperadora of operadoras) {
+    const diasRestantes = calcularDiasRestantes(clienteOperadora.fidelidade_fim);
+    const sourceKey = `${TIPO_FIDELIDADE_CLIENTE}:${cliente.id}:${clienteOperadora.id}`;
+    sourceKeysAtivas.push(sourceKey);
 
-  let notificacao = await Notificacao.query(trx)
-    .where('source_key', sourceKey)
-    .first();
+    if (diasRestantes === null || diasRestantes > 30) {
+      await Notificacao.query(trx)
+        .where('source_key', sourceKey)
+        .patch({ ativa: false, updated_at: new Date() });
+      continue;
+    }
 
-  const payload = {
-    tipo: TIPO_FIDELIDADE_CLIENTE,
-    titulo: diasRestantes < 0 ? 'Fidelidade de cliente vencida' : 'Fidelidade de cliente perto do fim',
-    mensagem: `A fidelidade de ${nomeCliente} ${montarTextoDias(diasRestantes)}.`,
-    nivel: montarNivel(diasRestantes),
-    entidade: 'clientes',
-    entidade_id: cliente.id,
-    source_key: sourceKey,
-    dados: JSON.stringify(dados),
-    ativa: true,
-    updated_at: new Date()
-  };
+    const nomeCliente = cliente.nome || cliente.razao_social || `Cliente #${cliente.id}`;
+    const nomeOperadora = clienteOperadora.operadora?.nome || 'Operadora';
+    const dados = {
+      cliente_id: cliente.id,
+      cliente_operadora_id: clienteOperadora.id,
+      operadora_id: clienteOperadora.operadora_id,
+      operadora_nome: nomeOperadora,
+      cliente_nome: nomeCliente,
+      fidelidade_fim: clienteOperadora.fidelidade_fim,
+      dias_restantes: diasRestantes
+    };
 
-  if (notificacao) {
-    notificacao = await Notificacao.query(trx)
-      .patchAndFetchById(notificacao.id, payload);
-  } else {
-    notificacao = await Notificacao.query(trx)
-      .insertAndFetch(payload);
-  }
-
-  const destinatarios = await listarUsuariosDestinatarios(cliente);
-
-  const destinatariosQuery = NotificacaoDestinatario.query(trx)
-    .where('notificacao_id', notificacao.id);
-
-  if (destinatarios.length > 0) {
-    destinatariosQuery.whereNotIn('usuario_id', destinatarios);
-  }
-
-  await destinatariosQuery.delete();
-
-  for (const usuarioId of destinatarios) {
-    const existente = await NotificacaoDestinatario.query(trx)
-      .where('notificacao_id', notificacao.id)
-      .where('usuario_id', usuarioId)
+    let notificacao = await Notificacao.query(trx)
+      .where('source_key', sourceKey)
       .first();
 
-    if (!existente) {
-      await NotificacaoDestinatario.query(trx).insert({
-        notificacao_id: notificacao.id,
-        usuario_id: usuarioId
-      });
+    const payload = {
+      tipo: TIPO_FIDELIDADE_CLIENTE,
+      titulo: diasRestantes < 0 ? 'Fidelidade de cliente vencida' : 'Fidelidade de cliente perto do fim',
+      mensagem: `A fidelidade de ${nomeCliente} na ${nomeOperadora} ${montarTextoDias(diasRestantes)}.`,
+      nivel: montarNivel(diasRestantes),
+      entidade: 'clientes',
+      entidade_id: cliente.id,
+      source_key: sourceKey,
+      dados: JSON.stringify(dados),
+      ativa: true,
+      updated_at: new Date()
+    };
+
+    if (notificacao) {
+      notificacao = await Notificacao.query(trx)
+        .patchAndFetchById(notificacao.id, payload);
+    } else {
+      notificacao = await Notificacao.query(trx)
+        .insertAndFetch(payload);
     }
+
+    const destinatarios = await listarUsuariosDestinatarios(cliente);
+
+    const destinatariosQuery = NotificacaoDestinatario.query(trx)
+      .where('notificacao_id', notificacao.id);
+
+    if (destinatarios.length > 0) {
+      destinatariosQuery.whereNotIn('usuario_id', destinatarios);
+    }
+
+    await destinatariosQuery.delete();
+
+    for (const usuarioId of destinatarios) {
+      const existente = await NotificacaoDestinatario.query(trx)
+        .where('notificacao_id', notificacao.id)
+        .where('usuario_id', usuarioId)
+        .first();
+
+      if (!existente) {
+        await NotificacaoDestinatario.query(trx).insert({
+          notificacao_id: notificacao.id,
+          usuario_id: usuarioId
+        });
+      }
+    }
+
+    notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
+    ultimaNotificacao = notificacao;
   }
 
-  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
+  const queryInativas = Notificacao.query(trx)
+    .where('source_key', 'like', `${TIPO_FIDELIDADE_CLIENTE}:${cliente.id}:%`);
 
-  return notificacao;
+  if (sourceKeysAtivas.length > 0) {
+    queryInativas.whereNotIn('source_key', sourceKeysAtivas);
+  }
+
+  await queryInativas.patch({ ativa: false, updated_at: new Date() });
+
+  return ultimaNotificacao;
 }
 
 async function sincronizarNotificacoesFidelidade() {
   const clientes = await Cliente.query()
     .select('id')
     .whereNull('excluido_em')
-    .whereNotNull('fidelidade_fim');
+    .whereExists(
+      ClienteOperadora.query()
+        .select(db.raw('1'))
+        .whereRaw('cliente_operadoras.cliente_id = clientes.id')
+        .whereNotNull('fidelidade_fim')
+    );
 
   for (const cliente of clientes) {
     await sincronizarFidelidadeCliente(cliente.id);

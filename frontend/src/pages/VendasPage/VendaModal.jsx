@@ -999,7 +999,34 @@ function normalizarVenda(venda) {
   };
 }
 
-function montarDadosClienteVenda(cliente, clienteId = '') {
+function obterOperadorasCliente(cliente) {
+  return cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
+}
+
+function resolverOperadoraAtualCliente(cliente, operadoraVendaId) {
+  const operadorasCliente = obterOperadorasCliente(cliente);
+  const operadoraVenda = operadoraVendaId ? Number(operadoraVendaId) : null;
+  const match = operadoraVenda
+    ? operadorasCliente.find(item => Number(item.operadora_id || item.operadora?.id) === operadoraVenda)
+    : null;
+
+  if (match) return match.operadora_id || match.operadora?.id || '';
+  return cliente?.operadora_atual_id || cliente?.operadoraAtual?.id || '';
+}
+
+function formatarResumoOperadorasCliente(cliente) {
+  const operadorasCliente = obterOperadorasCliente(cliente);
+  if (operadorasCliente.length === 0) {
+    return `${cliente?.operadoraAtual?.nome || 'Sem operadora'} - ${cliente?.quantidade_chips ?? 0} chips`;
+  }
+
+  const nomes = operadorasCliente.map(item => item.operadora?.nome).filter(Boolean);
+  const titulo = `${nomes.slice(0, 2).join(', ') || 'Sem operadora'}${nomes.length > 2 ? ` +${nomes.length - 2}` : ''}`;
+  const chips = operadorasCliente.reduce((total, item) => total + Number(item.quantidade_chips || 0), 0);
+  return `${titulo} - ${chips} chips`;
+}
+
+function montarDadosClienteVenda(cliente, clienteId = '', operadoraVendaId = '') {
   const telefoneWhatsapp = cliente
     ? formatarTelefoneComDdd([cliente.whatsapp_ddd, cliente.whatsapp_numero].filter(Boolean).join(''), true)
     : '';
@@ -1014,7 +1041,7 @@ function montarDadosClienteVenda(cliente, clienteId = '') {
   const telefoneRl = responsavelTipo === 'rl' ? telefoneWhatsapp : '';
   const telefoneAdm = responsavelTipo === 'adm' ? telefoneWhatsapp : '';
   const fechouVenda = responsavelTipo === 'rl' ? 'RL' : responsavelTipo === 'adm' ? 'ADM' : '';
-  const operadoraAtualId = cliente?.operadora_atual_id || cliente?.operadoraAtual?.id || '';
+  const operadoraAtualId = resolverOperadoraAtualCliente(cliente, operadoraVendaId);
 
   return {
     cliente_id: clienteId ? String(clienteId) : '',
@@ -1949,7 +1976,7 @@ function ClienteVendaSelect({
                       </span>
                       <span className="venda-cliente-option__meta">
                         <span>{cliente.email || cliente.responsavel_nome || 'Sem contato principal'}</span>
-                        <span>{cliente.operadoraAtual?.nome || 'Sem operadora'} - {cliente.quantidade_chips ?? 0} chips</span>
+                        <span>{formatarResumoOperadorasCliente(cliente)}</span>
                       </span>
                       {selecionado && <I.Check size={14} />}
                     </button>
@@ -1988,7 +2015,7 @@ function ClienteVendaSelect({
           </div>
           <div>
             <span>{clienteSelecionado.email || 'Sem e-mail'}</span>
-            <span>{clienteSelecionado.operadoraAtual?.nome || 'Sem operadora'} - {clienteSelecionado.quantidade_chips ?? 0} chips</span>
+            <span>{formatarResumoOperadorasCliente(clienteSelecionado)}</span>
           </div>
           <button type="button" className="btn btn-icon btn-ghost" onClick={limparCliente} title="Trocar cliente">
             <I.Close size={13} />
@@ -2768,6 +2795,15 @@ function VendaModal({
         }
       }
 
+      if (campo === 'operadora_id' && prev.cliente_id) {
+        const cliente = clientesDisponiveis.find(item => String(item.id) === String(prev.cliente_id));
+        const anteriorAuto = resolverOperadoraAtualCliente(cliente, prev.operadora_id);
+        const operadoraAtualId = resolverOperadoraAtualCliente(cliente, valorFormatado);
+        if (operadoraAtualId && (!prev.operadora_atual_id || String(prev.operadora_atual_id) === String(anteriorAuto || ''))) {
+          proximo.operadora_atual_id = String(operadoraAtualId);
+        }
+      }
+
       return proximo;
     });
   }
@@ -2812,7 +2848,7 @@ function VendaModal({
       ? clienteSelecionado
       : null;
     const c = clienteSelecionadoValido || clientesDisponiveis.find(cliente => String(cliente.id) === String(valor));
-    const dadosCliente = montarDadosClienteVenda(c, valor);
+    const dadosCliente = montarDadosClienteVenda(c, valor, form.operadora_id);
     const documentoDigitos = sanitizarCnpj(dadosCliente.cnpj);
 
     setForm(prev => {

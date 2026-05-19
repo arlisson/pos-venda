@@ -5,6 +5,7 @@ import * as I from '../../components/Icons';
 import Paginacao from '../../components/Paginacao/Paginacao';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import ClienteModal from './ClienteModal';
+import VendaModal from '../VendasPage/VendaModal';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   atribuirDonoCliente,
@@ -12,13 +13,18 @@ import {
   importarBaseAnterior,
   limparClientesBaseAnterior,
   listarClientes,
+  listarClientesSelect,
   previewImportacaoBaseAnterior
 } from '../../services/cliente.service';
-import { listarOperadoras } from '../../services/config.service';
+import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import {
+  atualizarVenda,
+  buscarVendaPorId,
   contarVendasConcluidasPorCliente,
+  enviarVendaParaPosVenda,
   importarVendasEmpresas,
   listarVendedoras,
+  obterReferenciasClientesVendas,
   previewImportacaoVendasEmpresas
 } from '../../services/venda.service';
 import { formatUtcDateTime, getUtcDateTimeTimestamp, parseUtcDateTime } from '../../utils/datetime';
@@ -58,6 +64,41 @@ function formatarMoeda(valor) {
     style: 'currency',
     currency: 'BRL'
   });
+}
+
+function obterOperadorasCliente(cliente) {
+  return cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
+}
+
+function formatarResumoOperadoras(cliente) {
+  const operadorasCliente = obterOperadorasCliente(cliente);
+  if (operadorasCliente.length === 0) {
+    return {
+      titulo: cliente.operadoraAtual?.nome || '-',
+      detalhe: ''
+    };
+  }
+
+  const nomes = operadorasCliente
+    .map(item => item.operadora?.nome)
+    .filter(Boolean);
+  const principais = nomes.slice(0, 2).join(', ');
+  const restante = Math.max(nomes.length - 2, 0);
+
+  return {
+    titulo: `${principais || '-'}${restante > 0 ? ` +${restante}` : ''}`,
+    detalhe: operadorasCliente
+      .map(item => {
+        const partes = [
+          item.operadora?.nome || 'Operadora',
+          `${item.quantidade_chips ?? 0} chips`,
+          formatarMoeda(item.valor_pago)
+        ];
+        if (item.fidelidade_fim) partes.push(`fid. ${String(item.fidelidade_fim).slice(0, 10).split('-').reverse().join('/')}`);
+        return partes.join(' - ');
+      })
+      .join('\n')
+  };
 }
 
 function formatarDataHoraNota(valor) {
@@ -598,10 +639,22 @@ function Clientes() {
   const podeExcluir = temPermissao(usuario, 'clientes_excluir');
   const isAdmin = usuario?.role?.nome === 'admin';
   const podeAtribuirVendedora = isAdmin || temPermissao(usuario, 'clientes_atribuir_vendedora');
+  const podeListarClientes = temPermissao(usuario, ['clientes_ver_proprios', 'clientes_ver_todos']);
+  const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
+  const podeCompartilharVenda = temPermissao(usuario, 'compartilhar_venda');
+  const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
+  const podeAdicionarDocumentosVenda = temPermissao(usuario, 'adicionar_documentos');
+  const podeListarVendas = temPermissao(usuario, ['vendas_ver_proprias', 'vendas_ver_todas']);
 
   const [clientes, setClientes] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
   const [vendedoras, setVendedoras] = useState([]);
+  const [clientesVenda, setClientesVenda] = useState([]);
+  const [vendedorasVenda, setVendedorasVenda] = useState([]);
+  const [referenciasClientesVenda, setReferenciasClientesVenda] = useState([]);
+  const [tiposVenda, setTiposVenda] = useState([]);
+  const [servicos, setServicos] = useState([]);
+  const [dadosVendaModalCarregados, setDadosVendaModalCarregados] = useState(false);
   const [vendasConcluidasContagem, setVendasConcluidasContagem] = useState({});
   const [busca, setBusca] = useState('');
   const [operadoraId, setOperadoraId] = useState('');
@@ -619,6 +672,9 @@ function Clientes() {
   const [clienteModalAba, setClienteModalAba] = useState('cliente');
   const [clienteModalSomenteNotas, setClienteModalSomenteNotas] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
+  const [vendaModal, setVendaModal] = useState(null);
+  const [vendaModalModoEdicao, setVendaModalModoEdicao] = useState(false);
+  const [carregandoVendaModal, setCarregandoVendaModal] = useState(false);
   const [clienteCadastroDraft, setClienteCadastroDraft] = useState(null);
   const [importModalAberto, setImportModalAberto] = useState(false);
   const mostrarImportacaoSomenteClientes = importModalAberto && searchParams.get('modo_importacao') === 'clientes';
@@ -654,6 +710,22 @@ function Clientes() {
     [operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax]
       .filter(v => v !== '').length
   ), [operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax]);
+
+  const vendasPorClienteModal = useMemo(() => {
+    const mapa = new Map();
+    referenciasClientesVenda.forEach(item => {
+      if (item?.chave) mapa.set(item.chave, Number(item.total || 0));
+    });
+    return mapa;
+  }, [referenciasClientesVenda]);
+
+  const vendasEmAndamentoPorClienteModal = useMemo(() => {
+    const mapa = new Map();
+    referenciasClientesVenda.forEach(item => {
+      if (item?.chave) mapa.set(item.chave, Number(item.em_andamento_total || 0));
+    });
+    return mapa;
+  }, [referenciasClientesVenda]);
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -695,6 +767,25 @@ function Clientes() {
     } finally {
       setCarregando(false);
     }
+  }
+
+  async function carregarDadosVendaModal() {
+    if (dadosVendaModalCarregados) return;
+
+    const [clientesData, vendedorasData, referenciasData, tiposVendaData, servicosData] = await Promise.all([
+      podeListarClientes ? listarClientesSelect() : Promise.resolve([]),
+      listarVendedoras(),
+      obterReferenciasClientesVendas(),
+      listarTiposVenda(),
+      listarServicos()
+    ]);
+
+    setClientesVenda(clientesData || []);
+    setVendedorasVenda(vendedorasData || []);
+    setReferenciasClientesVenda(referenciasData || []);
+    setTiposVenda(tiposVendaData || []);
+    setServicos(servicosData || []);
+    setDadosVendaModalCarregados(true);
   }
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
@@ -830,6 +921,69 @@ function Clientes() {
     setSucesso(editando ? 'Cliente atualizado com sucesso.' : 'Cliente cadastrado com sucesso.');
   }
 
+  async function abrirVendaDoCliente(vendaResumo) {
+    if (!vendaResumo?.id || carregandoVendaModal) return;
+
+    setErro('');
+    setCarregandoVendaModal(true);
+
+    try {
+      await carregarDadosVendaModal();
+      const venda = await buscarVendaPorId(vendaResumo.id);
+      setModalAberto(false);
+      setClienteModalAba('cliente');
+      setClienteModalSomenteNotas(false);
+      setVendaModal(venda || vendaResumo);
+      setVendaModalModoEdicao(false);
+    } catch (error) {
+      setErro(error.message || 'Erro ao abrir venda.');
+    } finally {
+      setCarregandoVendaModal(false);
+    }
+  }
+
+  async function salvarVendaModal(dados) {
+    if (!vendaModal?.id) return;
+
+    setErro('');
+
+    try {
+      await atualizarVenda(vendaModal.id, dados);
+      const atualizada = await buscarVendaPorId(vendaModal.id);
+      setVendaModal(atualizada);
+      setVendaModalModoEdicao(false);
+      await Promise.all([
+        carregarClientes(filtros, paginaAtual),
+        contarVendasConcluidasPorCliente().then(data => setVendasConcluidasContagem(data || {})),
+        obterReferenciasClientesVendas().then(data => setReferenciasClientesVenda(data || []))
+      ]);
+      setSucesso('Venda atualizada com sucesso.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao salvar venda.');
+      throw error;
+    }
+  }
+
+  async function enviarPosVendaModal(venda) {
+    if (!venda?.id) return;
+
+    setErro('');
+
+    try {
+      const resultado = await enviarVendaParaPosVenda(venda.id);
+      const atualizada = await buscarVendaPorId(venda.id);
+      setVendaModal(atualizada);
+      setVendaModalModoEdicao(false);
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+      setSucesso(resultado?.status === 'pendente'
+        ? (resultado.message || 'Solicitacao enviada para aprovacao do ADM.')
+        : 'Venda enviada para o pos-venda.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao enviar venda para o pos-venda.');
+      throw error;
+    }
+  }
+
   async function finalizarImportacaoBaseAnterior(resultado) {
     setImportModalAberto(false);
     await carregarClientes(filtros);
@@ -915,6 +1069,35 @@ function Clientes() {
           }}
           onSave={salvarCliente}
           onDraftChange={setClienteCadastroDraft}
+          onOpenVenda={podeListarVendas ? abrirVendaDoCliente : null}
+        />
+      )}
+
+      {vendaModal && (
+        <VendaModal
+          venda={vendaModal}
+          clientes={clientesVenda}
+          vendas={[]}
+          vendedoras={vendedorasVenda}
+          operadoras={operadoras}
+          tiposVenda={tiposVenda}
+          servicos={servicos}
+          vendasPorCliente={vendasPorClienteModal}
+          vendasEmAndamentoPorCliente={vendasEmAndamentoPorClienteModal}
+          podeEditarVenda={podeEditarVenda}
+          podeCompartilharVenda={podeCompartilharVenda}
+          podeVerDocumentosVenda={podeVerDocumentosVenda}
+          podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
+          usuarioLogado={usuario}
+          initialTab="venda"
+          modoEdicao={vendaModalModoEdicao}
+          onStartEdit={() => setVendaModalModoEdicao(true)}
+          onClose={() => {
+            setVendaModal(null);
+            setVendaModalModoEdicao(false);
+          }}
+          onSave={salvarVendaModal}
+          onSendToPosVenda={enviarPosVendaModal}
         />
       )}
 
@@ -1055,11 +1238,11 @@ function Clientes() {
 
             {podeCriar && (
               <>
-                {/* {isAdmin && (
+                {isAdmin && (
                   <button className="btn btn-danger" type="button" onClick={() => setLimparBaseModalAberto(true)}>
                     <I.Trash size={14} /> Apagar base anterior
                   </button>
-                )} */}
+                )}
                 <button className="btn btn-primary" type="button" onClick={abrirNovoCliente}>
                   <I.Plus size={14} /> Novo cliente
                 </button>
@@ -1112,6 +1295,7 @@ function Clientes() {
                     const contato = formatarContato(cliente);
                     const fidelidade = formatarFidelidade(cliente.aviso_fidelidade);
                     const retornoNota = getRetornoNotaStatus(cliente);
+                    const resumoOperadoras = formatarResumoOperadoras(cliente);
 
                     return (
                       <tr
@@ -1138,7 +1322,7 @@ function Clientes() {
                             </div>
                             <div className="cliente-primary__badges">
                               {cliente.base_anterior_sistema ? (
-                                <span className="tag clientes-base-tag">Base anterior</span>
+                                <span className="tag clientes-base-tag">Já é cliente</span>
                               ) : null}
                               {(() => {
                                 const n = vendasConcluidasPorCliente.get(`cliente:${cliente.id}`) || 0;
@@ -1160,7 +1344,7 @@ function Clientes() {
                                 <dt>Contato</dt>
                                 <dd>{cliente.email || '-'} / {contato.whatsapp || contato.fixo || '-'}</dd>
                                 <dt>Operadora</dt>
-                                <dd>{cliente.operadoraAtual?.nome || '-'}</dd>
+                                <dd title={resumoOperadoras.detalhe}>{resumoOperadoras.titulo}</dd>
                                 <dt>Registrado por</dt>
                                 <dd>
                                   {podeAtribuirVendedora ? (
@@ -1228,7 +1412,12 @@ function Clientes() {
                             <span>{contato.whatsapp || contato.fixo || '-'}</span>
                           </div>
                         </td>
-                        <td data-label="Operadora" data-mobile-hidden="true">{cliente.operadoraAtual?.nome || '-'}</td>
+                        <td data-label="Operadora" data-mobile-hidden="true">
+                          <span title={resumoOperadoras.detalhe} className="cliente-operadoras-summary">
+                            <strong>{resumoOperadoras.titulo}</strong>
+                            {obterOperadorasCliente(cliente).length > 1 && <small>{obterOperadorasCliente(cliente).length} operadoras</small>}
+                          </span>
+                        </td>
                         <td data-label="Registrado por" data-mobile-hidden="true">
                           {podeAtribuirVendedora ? (
                             <div className="cliente-owner-select-wrap" onClick={e => e.stopPropagation()} title="Atribuir cliente a uma vendedora">

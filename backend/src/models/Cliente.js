@@ -45,6 +45,7 @@ class Cliente extends Model {
     const Operadora = require('./Operadora');
     const Usuario = require('./Usuario');
     const Venda = require('./Venda');
+    const ClienteOperadora = require('./ClienteOperadora');
 
     return {
       operadoraAtual: {
@@ -53,6 +54,14 @@ class Cliente extends Model {
         join: {
           from: 'clientes.operadora_atual_id',
           to: 'operadoras.id'
+        }
+      },
+      operadorasAtuais: {
+        relation: Model.HasManyRelation,
+        modelClass: ClienteOperadora,
+        join: {
+          from: 'clientes.id',
+          to: 'cliente_operadoras.cliente_id'
         }
       },
       criador: {

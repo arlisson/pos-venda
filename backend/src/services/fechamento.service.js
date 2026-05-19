@@ -472,7 +472,12 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro', opcoe
       'c.fidelidade_fim as cliente_fidelidade_fim',
       'c.operadora_atual_id as cliente_operadora_atual_id',
       'c.base_anterior_sistema as cliente_base_anterior_sistema',
-      'oc.nome as cliente_operadora_atual_nome'
+      'oc.nome as cliente_operadora_atual_nome',
+      Venda.knex().raw(`(
+        SELECT GROUP_CONCAT(co.operadora_id)
+        FROM cliente_operadoras co
+        WHERE co.cliente_id = c.id
+      ) as cliente_operadoras_ids`)
     );
 
   if (!opcoes.incluirRetornos) {
@@ -595,7 +600,12 @@ async function carregarVendaFechamentoPorId(id) {
       'c.fidelidade_fim as cliente_fidelidade_fim',
       'c.operadora_atual_id as cliente_operadora_atual_id',
       'c.base_anterior_sistema as cliente_base_anterior_sistema',
-      'oc.nome as cliente_operadora_atual_nome'
+      'oc.nome as cliente_operadora_atual_nome',
+      Venda.knex().raw(`(
+        SELECT GROUP_CONCAT(co.operadora_id)
+        FROM cliente_operadoras co
+        WHERE co.cliente_id = c.id
+      ) as cliente_operadoras_ids`)
     )
     .first();
 
@@ -1138,7 +1148,16 @@ function montarRespostaLinhasChips(linhasOrdenadas) {
 function montarLinhaChip(venda, chip) {
   const operadoraVendaId = venda.operadora_id ? Number(venda.operadora_id) : null;
   const operadoraAtualClienteId = venda.cliente_operadora_atual_id ? Number(venda.cliente_operadora_atual_id) : null;
-  const clienteBaseOperadora = Boolean(operadoraVendaId && operadoraAtualClienteId && operadoraVendaId === operadoraAtualClienteId);
+  const operadorasClienteIds = String(venda.cliente_operadoras_ids || '')
+    .split(',')
+    .map(id => Number(id))
+    .filter(Boolean);
+  const clienteBaseOperadora = Boolean(operadoraVendaId && (
+    operadorasClienteIds.includes(operadoraVendaId)
+    || (operadoraAtualClienteId && operadoraVendaId === operadoraAtualClienteId)
+  ));
+  const operadoraAtualExibicaoId = clienteBaseOperadora ? operadoraVendaId : operadoraAtualClienteId;
+  const operadoraAtualExibicaoNome = clienteBaseOperadora ? venda.operadora_nome : venda.cliente_operadora_atual_nome;
   const clienteBasePropria = Boolean(venda.cliente_base_anterior_sistema);
   const vendedoras = normalizarVendedorasVenda(venda);
   const vendedoraChip = chip.vendedora_id
@@ -1232,9 +1251,9 @@ function montarLinhaChip(venda, chip) {
       cnpj: venda.cliente_cnpj,
       fidelidade_fim: venda.cliente_fidelidade_fim,
       base_anterior_sistema: clienteBasePropria,
-      operadora_atual: operadoraAtualClienteId ? {
-        id: operadoraAtualClienteId,
-        nome: venda.cliente_operadora_atual_nome
+      operadora_atual: operadoraAtualExibicaoId ? {
+        id: operadoraAtualExibicaoId,
+        nome: operadoraAtualExibicaoNome
       } : null
     } : null,
     cliente_base_propria: clienteBasePropria,
