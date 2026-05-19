@@ -19,6 +19,8 @@ const ACAO_LABELS = {
   'venda.enviada_pos_venda': 'Venda enviada ao pós-venda',
   'venda.retorno_registrado': 'Venda em retorno',
   'venda.retorno_corrigido': 'Retorno corrigido',
+  'venda.cancelada': 'Venda cancelada',
+  'venda.cancelamento_revertido': 'Cancelamento revertido',
   'venda.enviada_lixeira': 'Venda enviada para lixeira',
   'venda.restaurada': 'Venda restaurada',
   'venda.excluida_definitivamente': 'Venda excluída definitivamente',

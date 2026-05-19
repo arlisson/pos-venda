@@ -373,7 +373,9 @@ async function cancelar(req, res) {
 
 async function reverterCancelamento(req, res) {
   try {
-    const resultado = await vendaService.reverterCancelamentoVenda(req.params.id, req.usuario.id);
+    const resultado = await vendaService.reverterCancelamentoVenda(req.params.id, req.usuario.id, {
+      observacao: req.body?.observacao
+    });
 
     if (resultado.status === 'not_found') {
       return res.status(404).json({ message: 'Venda nao encontrada.' });

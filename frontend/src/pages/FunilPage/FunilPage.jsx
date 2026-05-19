@@ -313,31 +313,22 @@ function getHistoryAuthor(item) {
   return item.usuario?.nome || (item.usuario_id ? `Usuário #${item.usuario_id}` : 'Sistema');
 }
 
-function getHistoryLabel(item, stageLabels = STAGE_LABELS) {
+function getHistoryTitle(item, stageLabels = STAGE_LABELS) {
   if (item.acao === 'venda.criada') return 'Venda cadastrada';
-  if (item.acao === 'venda.retorno_registrado') {
-    return ['Marcada como retorno', item.observacao].filter(Boolean).join(' - ');
-  }
-  if (item.acao === 'venda.retorno_corrigido') {
-    return ['Retorno corrigido', item.observacao].filter(Boolean).join(' - ');
-  }
-  if (item.acao === 'venda.observacao_adicionada') {
-    return ['Observação adicionada', item.observacao].filter(Boolean).join(' - ');
-  }
-  if (item.acao === 'venda.prioridade_atualizada') {
-    return ['Prioridade atualizada', item.observacao].filter(Boolean).join(' - ');
-  }
-
+  if (item.acao === 'venda.retorno_registrado') return 'Marcada como retorno';
+  if (item.acao === 'venda.retorno_corrigido') return 'Retorno corrigido';
+  if (item.acao === 'venda.observacao_adicionada') return 'Observação adicionada';
+  if (item.acao === 'venda.cancelada') return 'Venda cancelada';
+  if (item.acao === 'venda.cancelamento_revertido') return 'Cancelamento revertido';
+  if (item.acao === 'venda.prioridade_atualizada') return 'Prioridade atualizada';
   if (item.acao === 'venda.status_atualizado') {
-    return [
-      `Movido para ${stageLabels[item.status_novo] || item.status_novo}`,
-      item.observacao
-    ].filter(Boolean).join(' - ');
+    return `Movido para ${stageLabels[item.status_novo] || item.status_novo}`;
   }
-
-  if (item.observacao) return item.observacao;
-
   return item.acao || 'Atualização registrada';
+}
+
+function getHistoryLabel(item, stageLabels = STAGE_LABELS) {
+  return [getHistoryTitle(item, stageLabels), item.observacao].filter(Boolean).join(' - ');
 }
 
 function getHistoryType(item) {
@@ -358,6 +349,9 @@ function mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabe
 
   return historico.map(item => ({
     acao: getHistoryLabel(item, stageLabels),
+    titulo: getHistoryTitle(item, stageLabels),
+    acaoRaw: item.acao || null,
+    observacao: item.observacao || null,
     autor: getHistoryAuthor(item),
     data: parseDate(item.created_at),
     tipo: getHistoryType(item),
@@ -439,6 +433,85 @@ function getDeliveryConnectorType(stageA, stageB) {
     ['done', 'current'].includes(stageB.status)
   ) return 'done';
   return 'pending';
+}
+
+function SaleEventItem({ item }) {
+  const [aberto, setAberto] = useState(false);
+  const isCancel = item.acaoRaw === 'venda.cancelada';
+  const isRevert = item.acaoRaw === 'venda.cancelamento_revertido';
+  const variant = isCancel ? 'cancel' : isRevert ? 'revert' : item.tipo || 'move';
+  const icon = isCancel
+    ? <I.AlertTriangle size={11} />
+    : isRevert
+      ? <I.Check size={11} />
+      : variant === 'create'
+        ? <I.Plus size={11} />
+        : <I.ChevronDown size={11} />;
+  const titulo = item.titulo || item.acao || 'Atualização';
+  const temObservacao = Boolean(item.observacao);
+
+  return (
+    <li className={`sale-event-list__item sale-event-list__item--${variant}${aberto ? ' is-open' : ''}`}>
+      <div className="sale-event-list__row">
+        <span className="sale-event-list__icon">{icon}</span>
+        <div className="sale-event-list__body">
+          <div className="sale-event-list__head">
+            <strong>{titulo}</strong>
+            <span className="sale-event-list__date">
+              {item.data ? formatDateTime(item.data) : ''}
+            </span>
+          </div>
+          <div className="sale-event-list__author">por {item.autor}</div>
+        </div>
+        {temObservacao && (
+          <button
+            type="button"
+            className="sale-event-list__toggle"
+            onClick={() => setAberto(v => !v)}
+            aria-expanded={aberto}
+            title={aberto ? 'Ocultar comentário' : 'Ver comentário'}
+          >
+            <I.ChevronDown size={12} className={aberto ? 'is-rotated' : ''} />
+          </button>
+        )}
+      </div>
+      {temObservacao && aberto && (
+        <div className="sale-event-list__comment">
+          <div className="sale-event-list__comment-label">Comentário</div>
+          <p className="sale-event-list__comment-text">{item.observacao}</p>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function SaleEventList({ sale }) {
+  const eventos = Array.isArray(sale.historico) ? sale.historico : [];
+
+  if (eventos.length === 0) {
+    return (
+      <div className="sale-event-list sale-event-list--empty">
+        Sem eventos registrados.
+      </div>
+    );
+  }
+
+  const ordenados = [...eventos].sort((a, b) => {
+    const ta = a.data ? new Date(a.data).getTime() : 0;
+    const tb = b.data ? new Date(b.data).getTime() : 0;
+    return tb - ta;
+  });
+
+  return (
+    <div className="sale-event-list">
+      <div className="sale-event-list__title">Eventos da venda</div>
+      <ol className="sale-event-list__items">
+        {ordenados.map((item, idx) => (
+          <SaleEventItem key={idx} item={item} />
+        ))}
+      </ol>
+    </div>
+  );
 }
 
 function SaleDeliveryTracker({ sale, stages, stageLabels }) {
@@ -540,7 +613,35 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
   const [error, setError] = useState('');
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [revertModalOpen, setRevertModalOpen] = useState(false);
+  const [historicoEventos, setHistoricoEventos] = useState(sale.historico);
+  const [historicoCarregando, setHistoricoCarregando] = useState(false);
   const cancelada = Boolean(sale.canceladaEm);
+
+  useEffect(() => {
+    let cancelado = false;
+    setHistoricoCarregando(true);
+
+    buscarVendaPorId(sale.id)
+      .then(venda => {
+        if (cancelado) return;
+        const sellerName = (venda.vendedoras || []).map(v => v?.nome).filter(Boolean).join(', ')
+          || venda.vendedora?.nome
+          || 'Sem vendedor';
+        const stage = venda.status_funil || sale.stage;
+        const created = venda.criado_em || venda.created_at || venda.data_venda;
+        const updated = venda.ultima_atividade_em || venda.updated_at || venda.created_at;
+        setHistoricoEventos(mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabels));
+      })
+      .catch(() => { /* mantém fallback */ })
+      .finally(() => {
+        if (!cancelado) setHistoricoCarregando(false);
+      });
+
+    return () => { cancelado = true; };
+  }, [sale.id, stageLabels]);
+
+  const saleComHistorico = { ...sale, historico: historicoEventos };
 
   const alterou = novaFase !== sale.stage
     || novaPrioridade !== (sale.priority || 'media')
@@ -585,18 +686,18 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
     }
   }
 
-  async function handleReverterCancelamento() {
-    if (!window.confirm('Reverter o cancelamento desta venda?')) return;
-
+  async function handleConfirmReverter({ observacao }) {
     setSaving(true);
     setError('');
 
     try {
-      await onReverterCancelamento(sale.id);
+      await onReverterCancelamento(sale.id, observacao);
+      setRevertModalOpen(false);
       onClose();
     } catch (err) {
       setError(err.message || 'Erro ao reverter cancelamento.');
       setSaving(false);
+      throw err;
     }
   }
 
@@ -619,6 +720,14 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
           saving={saving}
           onClose={() => setCancelModalOpen(false)}
           onConfirm={handleConfirmCancelamento}
+        />
+      )}
+      {revertModalOpen && (
+        <RevertCancelamentoModal
+          sale={sale}
+          saving={saving}
+          onClose={() => setRevertModalOpen(false)}
+          onConfirm={handleConfirmReverter}
         />
       )}
 
@@ -708,11 +817,18 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
           )}
 
           {tab === 'historico' && (
-            <SaleDeliveryTracker
-              sale={sale}
-              stages={stages}
-              stageLabels={stageLabels}
-            />
+            <>
+              <SaleDeliveryTracker
+                sale={saleComHistorico}
+                stages={stages}
+                stageLabels={stageLabels}
+              />
+              {historicoCarregando && historicoEventos === sale.historico ? (
+                <div className="sale-event-list sale-event-list--empty">Carregando eventos…</div>
+              ) : (
+                <SaleEventList sale={saleComHistorico} />
+              )}
+            </>
           )}
 
           {tab === 'status' && (
@@ -803,7 +919,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
                     <button
                       type="button"
                       className="btn btn-sm"
-                      onClick={handleReverterCancelamento}
+                      onClick={() => setRevertModalOpen(true)}
                       disabled={saving}
                     >
                       Reverter cancelamento
@@ -913,6 +1029,76 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
           <button type="button" className="btn" onClick={onClose} disabled={saving}>Cancelar</button>
           <button type="submit" className="btn btn-primary" disabled={saving || (!motivo && !observacao.trim())}>
             {saving ? 'Salvando...' : 'Confirmar retorno'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function RevertCancelamentoModal({ sale, saving, onClose, onConfirm }) {
+  const [observacao, setObservacao] = useState('');
+  const [error, setError] = useState('');
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError('');
+
+    try {
+      await onConfirm({ observacao: observacao.trim() });
+    } catch (err) {
+      setError(err.message || 'Erro ao reverter cancelamento.');
+    }
+  }
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={event => !saving && event.target === event.currentTarget && onClose()}
+      style={{ zIndex: 60 }}
+    >
+      <form className="modal" onSubmit={handleSubmit}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Reverter cancelamento</div>
+              <div className="modal-sub">{sale.client} · #{sale.id}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={saving}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body">
+          <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 8 }}>
+            A venda voltará ao estado normal na etapa atual. Você pode registrar uma observação explicando o motivo da reversão (opcional).
+          </div>
+          {sale.motivoCancelamento && (
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12 }}>
+              <strong>Motivo do cancelamento original:</strong> {sale.motivoCancelamento}
+            </div>
+          )}
+          <div className="form-field">
+            <label>Observação (opcional)</label>
+            <textarea
+              className="obs-textarea"
+              placeholder="Ex: cliente confirmou que quer prosseguir com a venda."
+              value={observacao}
+              onChange={event => setObservacao(event.target.value)}
+              disabled={saving}
+              rows={4}
+              autoFocus
+            />
+          </div>
+
+          {error && <div className="alert-error">{error}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={saving}>Voltar</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {saving ? 'Revertendo...' : 'Confirmar reversão'}
           </button>
         </div>
       </form>
@@ -1648,8 +1834,8 @@ function FunilPage() {
     }));
   }
 
-  async function handleReverterCancelamentoVenda(saleId) {
-    const vendaAtualizada = await reverterCancelamentoVenda(saleId);
+  async function handleReverterCancelamentoVenda(saleId, observacao) {
+    const vendaAtualizada = await reverterCancelamentoVenda(saleId, observacao);
     setSales(prev => prev.map(sale => {
       if (sale.id !== saleId) return sale;
       return {

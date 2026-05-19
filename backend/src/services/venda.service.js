@@ -2628,7 +2628,7 @@ async function cancelarVenda(id, { motivo, usuarioId }) {
   return { status: 'ok', venda: vendaAtualizada };
 }
 
-async function reverterCancelamentoVenda(id, usuarioId) {
+async function reverterCancelamentoVenda(id, usuarioId, dados = {}) {
   if (!await usuarioTemPermissao(usuarioId, 'vendas_reverter_cancelamento')) {
     return { status: 'forbidden', message: 'Voce nao tem permissao para reverter o cancelamento.' };
   }
@@ -2649,6 +2649,7 @@ async function reverterCancelamentoVenda(id, usuarioId) {
     return { status: 'invalid', message: 'Venda nao esta cancelada.' };
   }
 
+  const observacao = String(dados.observacao || '').trim() || null;
   const agora = formatarDateTimeSQL();
 
   const vendaAtualizada = await Venda.transaction(async trx => {
@@ -2666,8 +2667,11 @@ async function reverterCancelamentoVenda(id, usuarioId) {
       acao: 'venda.cancelamento_revertido',
       statusAnterior: venda.status_funil || null,
       statusNovo: venda.status_funil || null,
-      observacao: null,
-      dados: { motivo_cancelamento_anterior: venda.motivo_cancelamento },
+      observacao,
+      dados: {
+        motivo_cancelamento_anterior: venda.motivo_cancelamento,
+        observacao
+      },
       createdAt: agora,
       trx
     });

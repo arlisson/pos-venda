@@ -207,8 +207,8 @@ export async function cancelarVenda(id, motivo) {
   return apiPost(`/vendas/${id}/cancelar`, { motivo });
 }
 
-export async function reverterCancelamentoVenda(id) {
-  return apiPost(`/vendas/${id}/reverter-cancelamento`, {});
+export async function reverterCancelamentoVenda(id, observacao) {
+  return apiPost(`/vendas/${id}/reverter-cancelamento`, { observacao });
 }
 
 export async function deletarVenda(id) {

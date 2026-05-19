@@ -1011,7 +1011,7 @@ function DashboardPage() {
               </div>
             </div>
 
-            <div className="home-notifications__list">
+            <div className="home-notifications__list" style={{ '--notification-card-count': notificacaoCards.length }}>
               {notificacaoCards.map(card => {
                 const drawerOpen = openNotificationDrawers.has(card.key);
                 const drawerId = `home-notification-card-${card.key}`;

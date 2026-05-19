@@ -156,7 +156,8 @@ router.post(
     entidade: 'vendas',
     entidade_id: req => req.params.id,
     dados: req => ({
-      id: req.params.id
+      id: req.params.id,
+      observacao: req.body?.observacao
     })
   }),
   vendaController.reverterCancelamento
