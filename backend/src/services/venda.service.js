@@ -631,6 +631,7 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
   const telefoneFixo = [cliente.fixo_ddd, cliente.fixo_numero]
     .filter(Boolean)
     .join('');
+  const operadoraAtualId = resolverOperadoraAtualCliente(cliente, payload.operadora_id, payload.operadora_atual_id);
 
   return {
     ...payload,
@@ -657,8 +658,23 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
     ),
     telefone_administrador: payload.telefone_administrador || (
       cliente.responsavel_tipo === 'adm' ? (telefoneWhatsapp || null) : null
-    )
+    ),
+    operadora_atual_id: payload.operadora_atual_id || operadoraAtualId || null
   };
+}
+
+function resolverOperadoraAtualCliente(cliente, operadoraVendaId, valorAtual = null) {
+  if (valorAtual) return Number(valorAtual);
+
+  const operadoras = cliente.operadoras_atuais || cliente.operadorasAtuais || [];
+  const operadoraVenda = operadoraVendaId ? Number(operadoraVendaId) : null;
+  const match = operadoraVenda
+    ? operadoras.find(item => Number(item.operadora_id || item.operadora?.id) === operadoraVenda)
+    : null;
+
+  if (match) return Number(match.operadora_id || match.operadora?.id);
+
+  return cliente.operadora_atual_id || cliente.operadoraAtual?.id || null;
 }
 
 function parsePermissoes(permissoes) {
@@ -1186,7 +1202,7 @@ async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, aprovacaoSolicitacoes]')
+    .withGraphFetched('[cliente.[operadoraAtual, operadorasAtuais.operadora], vendedora, vendedoras, operadora, tipoVenda, servico, criador, aprovacaoSolicitacoes]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
     .modifyGraph('aprovacaoSolicitacoes', builder => builder.select('id', 'venda_id', 'status', 'motivos', 'created_at').whereNot('status', 'obsoleta').orderBy('id', 'desc'))
@@ -1225,6 +1241,10 @@ async function listarVendas(filtros = {}, usuarioId) {
             .where('vv_filter.usuario_id', vendedoraId)
         );
     });
+  }
+
+  if (filtros.cliente_id) {
+    query.where('cliente_id', Number(filtros.cliente_id));
   }
 
   if (filtros.operadora_id) {
@@ -1618,7 +1638,7 @@ async function buscarVendaPorId(id, usuarioId) {
   const query = Venda.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[cliente.operadoraAtual, vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario, aprovacaoSolicitacoes]')
+    .withGraphFetched('[cliente.[operadoraAtual, operadorasAtuais.operadora], vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario, aprovacaoSolicitacoes]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
@@ -2150,7 +2170,7 @@ async function listarVendasLixeira(filtros = {}, usuarioId) {
 
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente.operadoraAtual, vendedora, operadora, tipoVenda, servico, criador, excluidoPor]')
+    .withGraphFetched('[cliente.[operadoraAtual, operadorasAtuais.operadora], vendedora, operadora, tipoVenda, servico, criador, excluidoPor]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .whereNotNull('excluido_em')
     .orderBy('excluido_em', 'desc')

@@ -131,6 +131,27 @@ test('aplica dados do cliente sem sobrescrever campos ja preenchidos', () => {
   assert.equal(payload.email_representante_legal, 'cliente@test.local');
 });
 
+test('aplica operadora atual do cliente casando com operadora da venda', () => {
+  const payload = aplicarDadosClienteNaVenda({ operadora_id: 7 }, {
+    nome: 'Cliente Multi',
+    responsavel_tipo: 'adm',
+    operadoras_atuais: [
+      { operadora_id: 5 },
+      { operadora_id: 7 }
+    ]
+  });
+
+  assert.equal(payload.operadora_atual_id, 7);
+
+  const manual = aplicarDadosClienteNaVenda({ operadora_id: 7, operadora_atual_id: 9 }, {
+    nome: 'Cliente Multi',
+    responsavel_tipo: 'adm',
+    operadoras_atuais: [{ operadora_id: 7 }]
+  });
+
+  assert.equal(manual.operadora_atual_id, 9);
+});
+
 test('obtem quantidade de chips com fallback para quantidade de linhas ou 1', () => {
   assert.equal(obterQuantidadeChipsVenda({
     valores_unitarios_chips: JSON.stringify([{ quantidade: 2 }, { quantidade: 3 }]),

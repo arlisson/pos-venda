@@ -194,6 +194,7 @@ function montarAcao(notificacao) {
           : `/clientes?fidelidade=${Number(dados.dias_restantes ?? 1) < 0 ? 'vencida' : 'alerta'}`,
         detalhes: detalhesFromEntries([
           ['Cliente', dados.cliente_nome],
+          ['Operadora', dados.operadora_nome],
           ['Fim da fidelidade', dados.fidelidade_fim]
         ])
       };

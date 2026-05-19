@@ -127,6 +127,21 @@ const VENDA_VAZIA = {
   vendedoras: []
 };
 
+function obterOperadorasCliente(cliente) {
+  return cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
+}
+
+function formatarResumoOperadorasCliente(cliente) {
+  const operadorasCliente = obterOperadorasCliente(cliente);
+  if (operadorasCliente.length === 0) {
+    return `${cliente?.operadoraAtual?.nome || 'Sem operadora'} - ${cliente?.quantidade_chips ?? 0} chips`;
+  }
+
+  const nomes = operadorasCliente.map(item => item.operadora?.nome).filter(Boolean);
+  const chips = operadorasCliente.reduce((total, item) => total + Number(item.quantidade_chips || 0), 0);
+  return `${nomes.slice(0, 2).join(', ') || 'Sem operadora'}${nomes.length > 2 ? ` +${nomes.length - 2}` : ''} - ${chips} chips`;
+}
+
 const CNPJ_SUGESTOES_VENDA = {
   nomeFantasia: { campo: 'nome', label: 'Nome fantasia' },
   razaoSocial: { campo: 'razao_social', label: 'Razão social' },
@@ -1562,7 +1577,7 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
                       </span>
                       <span className="venda-cliente-option__meta">
                         <span>{cliente.email || cliente.responsavel_nome || 'Sem contato principal'}</span>
-                        <span>{cliente.operadoraAtual?.nome || 'Sem operadora'} - {cliente.quantidade_chips ?? 0} chips</span>
+                        <span>{formatarResumoOperadorasCliente(cliente)}</span>
                       </span>
                       {selecionado && <I.Check size={14} />}
                     </button>
@@ -1601,7 +1616,7 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
           </div>
           <div>
             <span>{clienteSelecionado.email || 'Sem e-mail'}</span>
-            <span>{clienteSelecionado.operadoraAtual?.nome || 'Sem operadora'} - {clienteSelecionado.quantidade_chips ?? 0} chips</span>
+            <span>{formatarResumoOperadorasCliente(clienteSelecionado)}</span>
           </div>
           <button type="button" className="btn btn-icon btn-ghost" onClick={limparCliente} title="Trocar cliente">
             <I.Close size={13} />
