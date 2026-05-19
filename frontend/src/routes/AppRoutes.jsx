@@ -105,7 +105,7 @@ function AppRoutes() {
       <Route path="/historico/lixeira" element={<PrivateRoute permission="historico_visualizar"><HistoricoLixeiraPage /></PrivateRoute>} />
       <Route
         path="/clientes"
-        element={<PrivateRoute permission={['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_editar', 'clientes_excluir']}><Clientes /></PrivateRoute>}
+        element={<PrivateRoute permission={['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_importar_planilhas', 'clientes_editar', 'clientes_excluir']}><Clientes /></PrivateRoute>}
       />
       <Route
         path="/clientes/lixeira"

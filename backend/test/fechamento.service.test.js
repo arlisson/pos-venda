@@ -93,8 +93,9 @@ test('monta linhas de chips com regras, bases e vendedoras', () => {
     cliente_id: 20,
     cliente_nome: 'Cliente A',
     cliente_base_anterior_sistema: true,
-    cliente_operadora_atual_id: 5,
-    cliente_operadora_atual_nome: 'Claro',
+    cliente_operadora_atual_id: 6,
+    cliente_operadora_atual_nome: 'Vivo',
+    cliente_operadoras_ids: '6,5',
     vendedoras: [
       { id: 1, nome: 'Ana', email: 'ana@test.local' },
       { id: 2, nome: 'Bia', email: 'bia@test.local' }
@@ -118,6 +119,7 @@ test('monta linhas de chips com regras, bases e vendedoras', () => {
   assert.equal(linhas[0].comissao, 20);
   assert.equal(linhas[0].tipo_comissao, 'base_operadora');
   assert.equal(linhas[0].tipo_repasse, 'base_propria_operadora');
+  assert.equal(linhas[0].cliente.operadora_atual.id, 5);
   assert.equal(linhas[0].vendedora.nome, 'Ana');
   assert.equal(linhas[1].vendedora.nome, 'Bia');
   assert.equal(linhas[1].numero_ativado, '11888880000');

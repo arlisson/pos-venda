@@ -6,6 +6,7 @@ import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/Cnpj
 import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
 import { criarCliente, atualizarCliente } from '../../services/cliente.service';
 import { criarNotaEntidade } from '../../services/nota.service';
+import { listarVendas } from '../../services/venda.service';
 import { useFormDraft } from '../../utils/useFormDraft';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './Clientes.css';
@@ -23,7 +24,8 @@ const FORM_INICIAL = {
   fidelidade_fim: '',
   operadora_atual_id: '',
   valor_pago: '',
-  quantidade_chips: ''
+  quantidade_chips: '',
+  operadoras_atuais: []
 };
 
 const CNPJ_SUGESTOES_CLIENTE = {
@@ -123,9 +125,44 @@ function formatarValorPagoInput(valor) {
   });
 }
 
+function novaOperadoraCliente(dados = {}) {
+  return {
+    operadora_id: dados.operadora_id ? String(dados.operadora_id) : '',
+    quantidade_chips: dados.quantidade_chips ?? '',
+    valor_pago: formatarValorPagoInput(dados.valor_pago),
+    fidelidade_fim: normalizarDataInput(dados.fidelidade_fim)
+  };
+}
+
+function normalizarOperadorasClienteForm(cliente) {
+  const operadorasCliente = cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
+  if (Array.isArray(operadorasCliente) && operadorasCliente.length > 0) {
+    return operadorasCliente.map(novaOperadoraCliente);
+  }
+
+  if (cliente?.operadora_atual_id || cliente?.quantidade_chips || cliente?.valor_pago || cliente?.fidelidade_fim) {
+    return [novaOperadoraCliente({
+      operadora_id: cliente.operadora_atual_id,
+      quantidade_chips: cliente.quantidade_chips,
+      valor_pago: cliente.valor_pago,
+      fidelidade_fim: cliente.fidelidade_fim
+    })];
+  }
+
+  return [];
+}
+
 function montarPayloadCliente(form) {
   const whatsapp = separarTelefone(form.whatsapp);
   const fixo = separarTelefone(form.fixo);
+  const operadorasAtuais = (form.operadoras_atuais || [])
+    .filter(item => item.operadora_id)
+    .map(item => ({
+      operadora_id: Number(item.operadora_id),
+      quantidade_chips: item.quantidade_chips !== '' ? Number(item.quantidade_chips) : null,
+      valor_pago: parseValorInput(item.valor_pago),
+      fidelidade_fim: item.fidelidade_fim || null
+    }));
 
   return {
     ...form,
@@ -134,10 +171,11 @@ function montarPayloadCliente(form) {
     whatsapp_numero: whatsapp.numero,
     fixo_ddd: fixo.ddd,
     fixo_numero: fixo.numero,
-    fidelidade_fim: form.fidelidade_fim || null,
-    operadora_atual_id: form.operadora_atual_id ? Number(form.operadora_atual_id) : null,
-    valor_pago: parseValorInput(form.valor_pago),
-    quantidade_chips: form.quantidade_chips !== '' ? Number(form.quantidade_chips) : null
+    operadoras_atuais: operadorasAtuais,
+    fidelidade_fim: operadorasAtuais[0]?.fidelidade_fim || null,
+    operadora_atual_id: operadorasAtuais[0]?.operadora_id || null,
+    valor_pago: operadorasAtuais.reduce((total, item) => total + Number(item.valor_pago || 0), 0) || null,
+    quantidade_chips: operadorasAtuais.reduce((total, item) => total + Number(item.quantidade_chips || 0), 0) || null
   };
 }
 
@@ -156,11 +194,65 @@ function normalizarClienteForm(cliente) {
     fidelidade_fim: normalizarDataInput(cliente.fidelidade_fim),
     operadora_atual_id: cliente.operadora_atual_id || '',
     valor_pago: formatarValorPagoInput(cliente.valor_pago),
-    quantidade_chips: cliente.quantidade_chips ?? ''
+    quantidade_chips: cliente.quantidade_chips ?? '',
+    operadoras_atuais: normalizarOperadorasClienteForm(cliente)
   };
 }
 
-function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'cliente', initialDraft = null, onDraftChange, notesOnly = false }) {
+function formatarDataVenda(valor) {
+  if (!valor) return '-';
+
+  const texto = String(valor).slice(0, 10);
+  const partes = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (partes) return `${partes[3]}/${partes[2]}/${partes[1]}`;
+
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return '-';
+
+  return data.toLocaleDateString('pt-BR');
+}
+
+function formatarMoeda(valor) {
+  if (valor === undefined || valor === null || valor === '') return '-';
+
+  return Number(valor).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  });
+}
+
+function obterTimestampVenda(venda) {
+  const valor = venda.data_venda || venda.criado_em || venda.created_at;
+  if (!valor) return 0;
+
+  const texto = String(valor);
+  const data = /^\d{4}-\d{2}-\d{2}$/.test(texto.slice(0, 10))
+    ? new Date(`${texto.slice(0, 10)}T00:00:00`)
+    : new Date(valor);
+
+  return Number.isNaN(data.getTime()) ? 0 : data.getTime();
+}
+
+function ordenarVendasRecentes(vendas) {
+  return [...(vendas || [])].sort((a, b) => (
+    obterTimestampVenda(b) - obterTimestampVenda(a) || Number(b.id || 0) - Number(a.id || 0)
+  ));
+}
+
+function obterTituloVenda(venda) {
+  return venda.servico?.nome || venda.produto_fechado || venda.tipoVenda?.nome || `Venda #${venda.id}`;
+}
+
+function obterResponsaveisVenda(venda) {
+  const nomes = Array.isArray(venda.vendedoras)
+    ? venda.vendedoras.map(item => item?.nome).filter(Boolean)
+    : [];
+
+  if (nomes.length > 0) return nomes.join(', ');
+  return venda.vendedora?.nome || venda.criador?.nome || '-';
+}
+
+function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'cliente', initialDraft = null, onDraftChange, notesOnly = false, onOpenVenda }) {
   const editando = Boolean(cliente);
   const draftKey = 'cliente_novo';
 
@@ -189,7 +281,11 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
   const [abaAtiva, setAbaAtiva] = useState(notesOnly ? 'notas' : initialTab);
   const [pendingNotas, setPendingNotas] = useState([]);
+  const [vendasCliente, setVendasCliente] = useState([]);
+  const [carregandoVendas, setCarregandoVendas] = useState(false);
+  const [erroVendas, setErroVendas] = useState('');
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
+  const podeMostrarHistoricoVendas = Boolean(cliente?.id && onOpenVenda);
 
   // Usar hook para persistência de rascunhos
   const { clearDraft } = useFormDraft(editando ? null : draftKey, form, editando);
@@ -198,6 +294,33 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
     if (editando || !onDraftChange) return;
     onDraftChange(form);
   }, [editando, form, onDraftChange]);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (abaAtiva !== 'vendas' || !cliente?.id) return undefined;
+
+    let ativo = true;
+    setCarregandoVendas(true);
+    setErroVendas('');
+
+    listarVendas({ cliente_id: cliente.id })
+      .then(data => {
+        if (!ativo) return;
+        const lista = Array.isArray(data) ? data : (data?.data || []);
+        setVendasCliente(ordenarVendasRecentes(lista));
+      })
+      .catch(error => {
+        if (ativo) setErroVendas(error.message || 'Erro ao carregar vendas do cliente.');
+      })
+      .finally(() => {
+        if (ativo) setCarregandoVendas(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [abaAtiva, cliente?.id]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleClose() {
     if (!editando && onDraftChange) {
@@ -226,6 +349,29 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
 
   function atualizarCampo(campo, valor) {
     setForm(prev => ({ ...prev, [campo]: valor }));
+  }
+
+  function adicionarOperadoraCliente() {
+    setForm(prev => ({
+      ...prev,
+      operadoras_atuais: [...(prev.operadoras_atuais || []), novaOperadoraCliente()]
+    }));
+  }
+
+  function atualizarOperadoraCliente(index, campo, valor) {
+    setForm(prev => ({
+      ...prev,
+      operadoras_atuais: (prev.operadoras_atuais || []).map((item, idx) => (
+        idx === index ? { ...item, [campo]: valor } : item
+      ))
+    }));
+  }
+
+  function removerOperadoraCliente(index) {
+    setForm(prev => ({
+      ...prev,
+      operadoras_atuais: (prev.operadoras_atuais || []).filter((_, idx) => idx !== index)
+    }));
   }
 
   function formatarMensagemCnpj(dados) {
@@ -439,6 +585,15 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
           >
             <I.Note size={14} /> Notas{!cliente?.id && pendingNotas.length > 0 && ` (${pendingNotas.length})`}
           </button>
+          {podeMostrarHistoricoVendas && (
+            <button
+              type="button"
+              className={`modal-tab ${abaAtiva === 'vendas' ? 'active' : ''}`}
+              onClick={() => setAbaAtiva('vendas')}
+            >
+              <I.History size={14} /> Vendas
+            </button>
+          )}
         </div>
         )}
 
@@ -451,6 +606,40 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
               pendingNotas={pendingNotas}
               onPendingNotasChange={setPendingNotas}
             />
+          ) : abaAtiva === 'vendas' ? (
+            <div className="cliente-vendas-history">
+              {erroVendas && <div className="alert-error">{erroVendas}</div>}
+
+              {carregandoVendas ? (
+                <div className="cliente-vendas-empty">Carregando vendas...</div>
+              ) : vendasCliente.length === 0 ? (
+                <div className="cliente-vendas-empty">Nenhuma venda encontrada para este cliente.</div>
+              ) : (
+                <div className="cliente-vendas-list">
+                  {vendasCliente.map(venda => (
+                    <button
+                      type="button"
+                      key={venda.id}
+                      className="cliente-venda-item"
+                      onClick={() => onOpenVenda?.(venda)}
+                    >
+                      <span className="cliente-venda-item__date">{formatarDataVenda(venda.data_venda || venda.created_at)}</span>
+                      <span className="cliente-venda-item__main">
+                        <strong>{obterTituloVenda(venda)}</strong>
+                        <small>
+                          Protocolo {venda.protocolo || '-'} - {obterResponsaveisVenda(venda)}
+                        </small>
+                      </span>
+                      <span className="cliente-venda-item__meta">
+                        <strong>{formatarMoeda(venda.valor_total)}</strong>
+                        <small>{venda.status_funil || 'sem etapa'}</small>
+                      </span>
+                      <I.ArrowRight size={15} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
           <>
             <div className="cliente-form-grid">
@@ -492,16 +681,6 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
                   {cnpjStatus.mensagem}
                 </span>
               )}
-            </div>
-
-            <div className="form-field">
-              <label>Operadora atual</label>
-              <SelectFiltro
-                value={form.operadora_atual_id ? String(form.operadora_atual_id) : ''}
-                onChange={val => atualizarCampo('operadora_atual_id', val)}
-                placeholder="Selecione"
-                options={operadoras.map(op => ({ value: String(op.id), label: op.nome }))}
-              />
             </div>
 
             <div className="form-field">
@@ -549,24 +728,67 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
               />
             </div>
 
-            <div className="form-field">
-              <label>Quantidade de chip</label>
-              <input type="number" min="0" value={form.quantidade_chips} onChange={event => atualizarCampo('quantidade_chips', event.target.value)} />
-            </div>
+            <div className="form-field span-2 cliente-operadoras-field">
+              <div className="cliente-operadoras-head">
+                <label>Operadoras contratadas</label>
+                <button type="button" className="btn btn-sm" onClick={adicionarOperadoraCliente}>
+                  <I.Plus size={13} /> Adicionar
+                </button>
+              </div>
 
-            <div className="form-field">
-              <label>Valor pago</label>
-              <input
-                value={form.valor_pago}
-                onChange={event => atualizarCampo('valor_pago', formatarInputMoedaBR(event.target.value))}
-                placeholder="0,00"
-                inputMode="decimal"
-              />
-            </div>
-
-            <div className="form-field">
-              <label>Fim da fidelidade</label>
-              <input type="date" value={form.fidelidade_fim} onChange={event => atualizarCampo('fidelidade_fim', event.target.value)} />
+              {(form.operadoras_atuais || []).length === 0 ? (
+                <div className="cliente-operadoras-empty">Nenhuma operadora cadastrada.</div>
+              ) : (
+                <div className="cliente-operadoras-list">
+                  {(form.operadoras_atuais || []).map((item, index) => (
+                    <div className="cliente-operadora-row" key={`operadora-${index}`}>
+                      <div className="form-field">
+                        <label>Operadora</label>
+                        <SelectFiltro
+                          value={item.operadora_id ? String(item.operadora_id) : ''}
+                          onChange={val => atualizarOperadoraCliente(index, 'operadora_id', val)}
+                          placeholder="Selecione"
+                          options={operadoras.map(op => ({ value: String(op.id), label: op.nome }))}
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label>Chips</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.quantidade_chips}
+                          onChange={event => atualizarOperadoraCliente(index, 'quantidade_chips', event.target.value)}
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label>Valor pago</label>
+                        <input
+                          value={item.valor_pago}
+                          onChange={event => atualizarOperadoraCliente(index, 'valor_pago', formatarInputMoedaBR(event.target.value))}
+                          placeholder="0,00"
+                          inputMode="decimal"
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label>Fim da fidelidade</label>
+                        <input
+                          type="date"
+                          value={item.fidelidade_fim}
+                          onChange={event => atualizarOperadoraCliente(index, 'fidelidade_fim', event.target.value)}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-icon btn-ghost btn-danger-icon cliente-operadora-remove"
+                        onClick={() => removerOperadoraCliente(index)}
+                        title="Remover operadora"
+                      >
+                        <I.Trash size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -584,7 +806,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
         </div>
 
         <div className="modal-footer">
-          {abaAtiva === 'notas' && cliente?.id ? (
+          {['notas', 'vendas'].includes(abaAtiva) && cliente?.id ? (
             <button type="button" className="btn" onClick={handleClose}>Fechar</button>
           ) : (
             <>

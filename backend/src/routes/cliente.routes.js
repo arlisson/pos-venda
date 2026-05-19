@@ -13,12 +13,12 @@ router.get('/select', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver
 router.get('/', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), clienteController.index);
 router.post(
   '/importar-base-anterior/preview',
-  exigirUmaPermissao(['clientes_criar']),
+  exigirUmaPermissao(['clientes_importar_planilhas']),
   clienteController.previewImportacaoBaseAnterior
 );
 router.post(
   '/importar-base-anterior',
-  exigirUmaPermissao(['clientes_criar']),
+  exigirUmaPermissao(['clientes_importar_planilhas']),
   auditar({
     acao: 'clientes.base_anterior_importada',
     entidade: 'clientes',

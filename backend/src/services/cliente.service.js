@@ -1,4 +1,5 @@
 const Cliente = require('../models/Cliente');
+const ClienteOperadora = require('../models/ClienteOperadora');
 const Venda = require('../models/Venda');
 const Usuario = require('../models/Usuario');
 const Operadora = require('../models/Operadora');
@@ -159,6 +160,143 @@ function somarNumero(valor) {
 function normalizarInteiro(valor) {
   const numero = Number(String(valor || '').replace(/\D/g, ''));
   return Number.isFinite(numero) ? numero : 0;
+}
+
+function normalizarInteiroOpcional(valor) {
+  if (valor === undefined || valor === null || valor === '') return null;
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return null;
+  return Math.max(Math.trunc(numero), 0);
+}
+
+function normalizarOperadorasCliente(dados = {}) {
+  const fonte = Array.isArray(dados.operadoras_atuais)
+    ? dados.operadoras_atuais
+    : Array.isArray(dados.operadorasAtuais)
+      ? dados.operadorasAtuais
+      : null;
+
+  const linhas = fonte || (
+    dados.operadora_atual_id || dados.quantidade_chips !== undefined || dados.valor_pago !== undefined || dados.fidelidade_fim !== undefined
+      ? [{
+        operadora_id: dados.operadora_atual_id,
+        quantidade_chips: dados.quantidade_chips,
+        valor_pago: dados.valor_pago,
+        fidelidade_fim: dados.fidelidade_fim
+      }]
+      : []
+  );
+
+  const porOperadora = new Map();
+
+  linhas.forEach(item => {
+    const operadoraId = Number(item?.operadora_id || item?.operadora?.id || item?.id_operadora);
+    if (!Number.isFinite(operadoraId) || operadoraId <= 0) return;
+
+    const atual = porOperadora.get(operadoraId) || {
+      operadora_id: operadoraId,
+      quantidade_chips: 0,
+      valor_pago: 0,
+      fidelidade_fim: null
+    };
+    const quantidade = normalizarInteiroOpcional(item.quantidade_chips);
+    const valor = normalizarValorMonetario(item.valor_pago);
+    const fidelidade = normalizarData(item.fidelidade_fim);
+
+    if (quantidade !== null) {
+      atual.quantidade_chips += quantidade;
+    }
+
+    if (valor !== null) {
+      atual.valor_pago = Number((Number(atual.valor_pago || 0) + Number(valor)).toFixed(2));
+    }
+
+    if (fidelidade && (!atual.fidelidade_fim || fidelidade < atual.fidelidade_fim)) {
+      atual.fidelidade_fim = fidelidade;
+    }
+
+    porOperadora.set(operadoraId, atual);
+  });
+
+  return Array.from(porOperadora.values()).map(item => ({
+    ...item,
+    quantidade_chips: item.quantidade_chips > 0 ? item.quantidade_chips : null,
+    valor_pago: item.valor_pago > 0 ? item.valor_pago : null
+  }));
+}
+
+function ordenarOperadorasCliente(operadoras = []) {
+  return [...operadoras].sort((a, b) => (
+    Number(a.id || 0) - Number(b.id || 0)
+    || Number(a.operadora_id || 0) - Number(b.operadora_id || 0)
+  ));
+}
+
+function obterResumoOperadorasCliente(operadoras = []) {
+  const ordenadas = ordenarOperadorasCliente(operadoras);
+  const primeira = ordenadas[0] || null;
+  const quantidade = ordenadas.reduce((total, item) => total + Number(item.quantidade_chips || 0), 0);
+  const valor = ordenadas.reduce((total, item) => total + Number(item.valor_pago || 0), 0);
+  const fidelidades = ordenadas
+    .map(item => normalizarData(item.fidelidade_fim))
+    .filter(Boolean)
+    .sort();
+
+  return {
+    operadora_atual_id: primeira?.operadora_id || null,
+    operadoraAtual: primeira?.operadora || null,
+    quantidade_chips: quantidade > 0 ? quantidade : null,
+    valor_pago: valor > 0 ? Number(valor.toFixed(2)) : null,
+    fidelidade_fim: fidelidades[0] || null
+  };
+}
+
+function formatarOperadorasCliente(operadoras = []) {
+  return ordenarOperadorasCliente(operadoras).map(item => ({
+    id: item.id,
+    cliente_id: item.cliente_id,
+    operadora_id: item.operadora_id,
+    operadora: item.operadora || null,
+    quantidade_chips: item.quantidade_chips ?? null,
+    valor_pago: item.valor_pago ?? null,
+    fidelidade_fim: item.fidelidade_fim || null,
+    aviso_fidelidade: montarAvisoFidelidade({ fidelidade_fim: item.fidelidade_fim })
+  }));
+}
+
+async function sincronizarOperadorasCliente(clienteId, operadoras, trx = null) {
+  const linhas = normalizarOperadorasCliente({ operadoras_atuais: operadoras });
+
+  await ClienteOperadora.query(trx)
+    .delete()
+    .where('cliente_id', clienteId);
+
+  if (linhas.length > 0) {
+    await ClienteOperadora.query(trx).insert(linhas.map(item => ({
+      ...item,
+      cliente_id: clienteId
+    })));
+  }
+
+  await atualizarResumoLegadoCliente(clienteId, trx);
+}
+
+async function atualizarResumoLegadoCliente(clienteId, trx = null) {
+  const operadoras = await ClienteOperadora.query(trx)
+    .where('cliente_id', clienteId)
+    .withGraphFetched('operadora')
+    .orderBy('id', 'asc');
+  const resumo = obterResumoOperadorasCliente(operadoras);
+
+  await Cliente.query(trx).patchAndFetchById(clienteId, {
+    operadora_atual_id: resumo.operadora_atual_id,
+    quantidade_chips: resumo.quantidade_chips,
+    valor_pago: resumo.valor_pago,
+    fidelidade_fim: resumo.fidelidade_fim,
+    updated_at: new Date()
+  });
+
+  return resumo;
 }
 
 function escolherTexto(...valores) {
@@ -363,7 +501,8 @@ function consolidarLinhasImportacao(worksheet, mapeamento, operadorasPorNome) {
       fixo: '',
       quantidade_chips: 0,
       valor_pago: 0,
-      operadora_atual_id: null
+      operadora_atual_id: null,
+      operadoras_atuais: []
     };
 
     atual.nome = escolherTexto(atual.nome, obterValorLinha(row, headerMap, mapeamento.nome));
@@ -372,18 +511,30 @@ function consolidarLinhasImportacao(worksheet, mapeamento, operadorasPorNome) {
     atual.email = escolherTexto(atual.email, obterValorLinha(row, headerMap, mapeamento.email));
     atual.whatsapp = escolherTexto(atual.whatsapp, obterValorLinha(row, headerMap, mapeamento.whatsapp));
     atual.fixo = escolherTexto(atual.fixo, obterValorLinha(row, headerMap, mapeamento.fixo));
-    atual.quantidade_chips += normalizarInteiro(obterValorLinha(row, headerMap, mapeamento.quantidade_chips));
-    atual.valor_pago += somarNumero(obterValorLinha(row, headerMap, mapeamento.valor_pago));
+    const quantidadeLinha = normalizarInteiro(obterValorLinha(row, headerMap, mapeamento.quantidade_chips));
+    const valorLinha = somarNumero(obterValorLinha(row, headerMap, mapeamento.valor_pago));
+    atual.quantidade_chips += quantidadeLinha;
+    atual.valor_pago += valorLinha;
 
-    if (!atual.operadora_atual_id) {
-      const operadoraTexto = obterValorLinha(row, headerMap, mapeamento.operadora_atual);
-      if (operadoraTexto) {
-        const operadora = operadorasPorNome.get(normalizarTexto(operadoraTexto));
-        if (operadora) {
-          atual.operadora_atual_id = operadora.id;
+    const operadoraTexto = obterValorLinha(row, headerMap, mapeamento.operadora_atual);
+    if (operadoraTexto) {
+      const operadora = operadorasPorNome.get(normalizarTexto(operadoraTexto));
+      if (operadora) {
+        atual.operadora_atual_id = atual.operadora_atual_id || operadora.id;
+        const operadoraAtual = atual.operadoras_atuais.find(item => Number(item.operadora_id) === Number(operadora.id));
+        if (operadoraAtual) {
+          operadoraAtual.quantidade_chips = Number(operadoraAtual.quantidade_chips || 0) + quantidadeLinha;
+          operadoraAtual.valor_pago = Number((Number(operadoraAtual.valor_pago || 0) + valorLinha).toFixed(2));
         } else {
-          operadorasNaoEncontradas.add(operadoraTexto);
+          atual.operadoras_atuais.push({
+            operadora_id: operadora.id,
+            quantidade_chips: quantidadeLinha,
+            valor_pago: Number(valorLinha.toFixed(2)),
+            fidelidade_fim: null
+          });
         }
+      } else {
+        operadorasNaoEncontradas.add(operadoraTexto);
       }
     }
 
@@ -479,6 +630,9 @@ async function importarBaseAnterior(req, usuarioId) {
           ...montarPayloadImportacao(dados, existente),
           updated_at: new Date()
         });
+        if (dados.operadoras_atuais?.length > 0) {
+          await sincronizarOperadorasCliente(existente.id, dados.operadoras_atuais, trx);
+        }
         resultado.atualizados += 1;
         continue;
       }
@@ -487,6 +641,7 @@ async function importarBaseAnterior(req, usuarioId) {
         ...montarPayloadImportacao(dados),
         criado_por_id: usuarioId
       });
+      await sincronizarOperadorasCliente(criado.id, dados.operadoras_atuais, trx);
       existentesPorCnpj.set(dados.cnpj_digitos, criado);
       resultado.criados += 1;
     }
@@ -701,10 +856,19 @@ function formatarCliente(cliente) {
   if (!cliente) return cliente;
 
   const json = typeof cliente.toJSON === 'function' ? cliente.toJSON() : cliente;
+  const operadorasAtuais = formatarOperadorasCliente(json.operadorasAtuais || json.operadoras_atuais || []);
+  const resumo = obterResumoOperadorasCliente(operadorasAtuais);
 
   return {
     ...json,
-    aviso_fidelidade: montarAvisoFidelidade(json)
+    operadorasAtuais: operadorasAtuais,
+    operadoras_atuais: operadorasAtuais,
+    operadora_atual_id: resumo.operadora_atual_id ?? json.operadora_atual_id ?? null,
+    operadoraAtual: resumo.operadoraAtual || json.operadoraAtual || null,
+    quantidade_chips: resumo.quantidade_chips ?? json.quantidade_chips ?? null,
+    valor_pago: resumo.valor_pago ?? json.valor_pago ?? null,
+    fidelidade_fim: resumo.fidelidade_fim ?? json.fidelidade_fim ?? null,
+    aviso_fidelidade: montarAvisoFidelidade({ fidelidade_fim: resumo.fidelidade_fim ?? json.fidelidade_fim })
   };
 }
 
@@ -800,13 +964,52 @@ function aplicarBuscaClientes(query, termo) {
   });
 }
 
+function subquerySomaChipsCliente() {
+  return Cliente.knex().raw(`(
+    SELECT COALESCE(SUM(co.quantidade_chips), 0)
+    FROM cliente_operadoras co
+    WHERE co.cliente_id = clientes.id
+  )`);
+}
+
+function aplicarFiltroFidelidadeOperadoras(query, tipo) {
+  const knex = Cliente.knex();
+
+  if (tipo === 'sem') {
+    query.whereNotExists(
+      knex.select(knex.raw('1'))
+        .from('cliente_operadoras as co')
+        .whereRaw('co.cliente_id = clientes.id')
+        .whereNotNull('co.fidelidade_fim')
+        .whereNot('co.fidelidade_fim', '1899-11-30')
+    );
+    return;
+  }
+
+  query.whereExists(function () {
+    this.select(knex.raw('1'))
+      .from('cliente_operadoras as co')
+      .whereRaw('co.cliente_id = clientes.id')
+      .whereNotNull('co.fidelidade_fim')
+      .whereNot('co.fidelidade_fim', '1899-11-30');
+
+    if (tipo === 'alerta') {
+      this.whereRaw('co.fidelidade_fim <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)');
+    } else if (tipo === 'vencida') {
+      this.whereRaw('co.fidelidade_fim < CURDATE()');
+    } else if (tipo === 'ativa') {
+      this.whereRaw('co.fidelidade_fim >= CURDATE()');
+    }
+  });
+}
+
 async function listarClientes(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoClientes(usuarioId);
   const paginar = filtros.page !== undefined || filtros.per_page !== undefined;
   const { page, perPage } = normalizarPaginacao(filtros);
 
   const query = Cliente.query()
-    .withGraphFetched('[operadoraAtual, criador]')
+    .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora, criador]')
     .whereNull('excluido_em');
 
   aplicarEscopoClientes(query, usuarioId, escopo);
@@ -820,7 +1023,12 @@ async function listarClientes(filtros = {}, usuarioId) {
   }
 
   if (filtros.operadora_atual_id) {
-    query.where('operadora_atual_id', Number(filtros.operadora_atual_id));
+    query.whereExists(
+      Cliente.knex().select(Cliente.knex().raw('1'))
+        .from('cliente_operadoras as co')
+        .whereRaw('co.cliente_id = clientes.id')
+        .where('co.operadora_id', Number(filtros.operadora_atual_id))
+    );
   }
 
   if (['adm', 'rl'].includes(filtros.responsavel_tipo)) {
@@ -828,11 +1036,11 @@ async function listarClientes(filtros = {}, usuarioId) {
   }
 
   if (filtros.chips_min) {
-    query.where('quantidade_chips', '>=', Number(filtros.chips_min));
+    query.where(subquerySomaChipsCliente(), '>=', Number(filtros.chips_min));
   }
 
   if (filtros.chips_max) {
-    query.where('quantidade_chips', '<=', Number(filtros.chips_max));
+    query.where(subquerySomaChipsCliente(), '<=', Number(filtros.chips_max));
   }
 
   if (filtros.base_anterior_sistema === 'true' || filtros.base_anterior_sistema === '1') {
@@ -844,19 +1052,13 @@ async function listarClientes(filtros = {}, usuarioId) {
   }
 
   if (filtros.avisos_fidelidade || filtros.fidelidade === 'alerta') {
-    query.whereNotNull('fidelidade_fim')
-      .whereNot('fidelidade_fim', '1899-11-30')
-      .whereRaw('fidelidade_fim <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)');
+    aplicarFiltroFidelidadeOperadoras(query, 'alerta');
   } else if (filtros.fidelidade === 'sem') {
-    query.where(builder => builder.whereNull('fidelidade_fim').orWhere('fidelidade_fim', '1899-11-30'));
+    aplicarFiltroFidelidadeOperadoras(query, 'sem');
   } else if (filtros.fidelidade === 'vencida') {
-    query.whereNotNull('fidelidade_fim')
-      .whereNot('fidelidade_fim', '1899-11-30')
-      .whereRaw('fidelidade_fim < CURDATE()');
+    aplicarFiltroFidelidadeOperadoras(query, 'vencida');
   } else if (filtros.fidelidade === 'ativa') {
-    query.whereNotNull('fidelidade_fim')
-      .whereNot('fidelidade_fim', '1899-11-30')
-      .whereRaw('fidelidade_fim >= CURDATE()');
+    aplicarFiltroFidelidadeOperadoras(query, 'ativa');
   }
 
   if (filtros.retorno === 'vencido' && usuarioId) {
@@ -870,7 +1072,13 @@ async function listarClientes(filtros = {}, usuarioId) {
   }
 
   if (filtros.fidelidade === 'alerta') {
-    query.orderBy('fidelidade_fim', 'asc');
+    query.orderByRaw(`(
+      SELECT MIN(co.fidelidade_fim)
+      FROM cliente_operadoras co
+      WHERE co.cliente_id = clientes.id
+        AND co.fidelidade_fim IS NOT NULL
+        AND co.fidelidade_fim <> '1899-11-30'
+    ) asc`);
   } else {
     query.orderBy('nome', 'asc');
   }
@@ -900,13 +1108,14 @@ async function listarClientesSelect(filtros = {}, usuarioId) {
       'whatsapp_numero',
       'fixo_ddd',
       'fixo_numero',
+      'fidelidade_fim',
       'operadora_atual_id',
       'valor_pago',
       'quantidade_chips',
       'base_anterior_sistema',
       'criado_por_id'
     )
-    .withGraphFetched('operadoraAtual')
+    .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora]')
     .whereNull('excluido_em')
     .orderBy('nome', 'asc')
     .limit(limite);
@@ -917,7 +1126,7 @@ async function listarClientesSelect(filtros = {}, usuarioId) {
     aplicarBuscaClientes(query, filtros.busca);
   }
 
-  return query;
+  return (await query).map(formatarCliente);
 }
 
 async function buscarClientePorId(id, usuarioId) {
@@ -925,7 +1134,7 @@ async function buscarClientePorId(id, usuarioId) {
   const query = Cliente.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[operadoraAtual, criador]');
+    .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora, criador]');
 
   if (usuarioId) {
     aplicarEscopoClientes(query, usuarioId, escopo);
@@ -966,9 +1175,16 @@ async function criarCliente(dados, usuarioId) {
     lancarErroCnpjDuplicado(duplicado);
   }
 
-  const cliente = await Cliente.query().insertAndFetch({
-    ...payload,
-    criado_por_id: usuarioId
+  const cliente = await Cliente.transaction(async trx => {
+    const criado = await Cliente.query(trx).insertAndFetch({
+      ...payload,
+      criado_por_id: usuarioId
+    });
+
+    await sincronizarOperadorasCliente(criado.id, dados.operadoras_atuais || dados.operadorasAtuais || normalizarOperadorasCliente(dados), trx);
+    return formatarCliente(await Cliente.query(trx)
+      .findById(criado.id)
+      .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora, criador]'));
   });
 
   await notificacaoService.sincronizarFidelidadeCliente(cliente.id);
@@ -990,9 +1206,23 @@ async function atualizarCliente(id, dados, usuarioId) {
     lancarErroCnpjDuplicado(duplicado);
   }
 
-  const cliente = await Cliente.query().patchAndFetchById(id, {
-    ...payload,
-    updated_at: new Date()
+  const cliente = await Cliente.transaction(async trx => {
+    const atualizado = await Cliente.query(trx).patchAndFetchById(id, {
+      ...payload,
+      updated_at: new Date()
+    });
+
+    if (!atualizado) return null;
+
+    if (dados.operadoras_atuais !== undefined || dados.operadorasAtuais !== undefined
+      || dados.operadora_atual_id !== undefined || dados.quantidade_chips !== undefined
+      || dados.valor_pago !== undefined || dados.fidelidade_fim !== undefined) {
+      await sincronizarOperadorasCliente(id, dados.operadoras_atuais || dados.operadorasAtuais || normalizarOperadorasCliente(dados), trx);
+    }
+
+    return formatarCliente(await Cliente.query(trx)
+      .findById(id)
+      .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora, criador]'));
   });
 
   if (cliente) {
@@ -1038,7 +1268,7 @@ async function atribuirDonoCliente(id, donoId, usuarioId) {
   const atualizado = formatarCliente(await Cliente.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[operadoraAtual, criador]'));
+    .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora, criador]'));
   const [comNotas] = await adicionarResumoNotasClientes([atualizado], usuarioId);
   return comNotas;
 }
@@ -1103,7 +1333,7 @@ async function listarClientesLixeira(filtros = {}, usuarioId) {
 
   const escopo = await buscarEscopoClientes(usuarioId);
   const query = Cliente.query()
-    .withGraphFetched('[operadoraAtual, criador, excluidoPor]')
+    .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora, criador, excluidoPor]')
     .whereNotNull('excluido_em')
     .orderBy('excluido_em', 'desc')
     .orderBy('id', 'desc');

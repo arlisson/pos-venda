@@ -21,7 +21,8 @@ const FORM_INICIAL = {
   fidelidade_fim: '',
   operadora_atual_id: '',
   valor_pago: '',
-  quantidade_chips: ''
+  quantidade_chips: '',
+  operadoras_atuais: []
 };
 
 const CNPJ_SUGESTOES_CLIENTE = {
@@ -126,9 +127,44 @@ function formatarValorPagoInput(valor) {
   });
 }
 
+function novaOperadoraCliente(dados = {}) {
+  return {
+    operadora_id: dados.operadora_id ? String(dados.operadora_id) : '',
+    quantidade_chips: dados.quantidade_chips ?? '',
+    valor_pago: formatarValorPagoInput(dados.valor_pago),
+    fidelidade_fim: normalizarDataInput(dados.fidelidade_fim)
+  };
+}
+
+function normalizarOperadorasClienteForm(cliente) {
+  const operadorasCliente = cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
+  if (Array.isArray(operadorasCliente) && operadorasCliente.length > 0) {
+    return operadorasCliente.map(novaOperadoraCliente);
+  }
+
+  if (cliente?.operadora_atual_id || cliente?.quantidade_chips || cliente?.valor_pago || cliente?.fidelidade_fim) {
+    return [novaOperadoraCliente({
+      operadora_id: cliente.operadora_atual_id,
+      quantidade_chips: cliente.quantidade_chips,
+      valor_pago: cliente.valor_pago,
+      fidelidade_fim: cliente.fidelidade_fim
+    })];
+  }
+
+  return [];
+}
+
 function montarPayload(form) {
   const whatsapp = separarTelefone(form.whatsapp);
   const fixo = separarTelefone(form.fixo);
+  const operadorasAtuais = (form.operadoras_atuais || [])
+    .filter(item => item.operadora_id)
+    .map(item => ({
+      operadora_id: Number(item.operadora_id),
+      quantidade_chips: item.quantidade_chips !== '' ? Number(item.quantidade_chips) : null,
+      valor_pago: parseValorInput(item.valor_pago),
+      fidelidade_fim: item.fidelidade_fim || null
+    }));
 
   return {
     ...form,
@@ -137,10 +173,11 @@ function montarPayload(form) {
     whatsapp_numero: whatsapp.numero,
     fixo_ddd: fixo.ddd,
     fixo_numero: fixo.numero,
-    fidelidade_fim: form.fidelidade_fim || null,
-    operadora_atual_id: form.operadora_atual_id ? Number(form.operadora_atual_id) : null,
-    valor_pago: parseValorInput(form.valor_pago),
-    quantidade_chips: form.quantidade_chips !== '' ? Number(form.quantidade_chips) : null
+    operadoras_atuais: operadorasAtuais,
+    fidelidade_fim: operadorasAtuais[0]?.fidelidade_fim || null,
+    operadora_atual_id: operadorasAtuais[0]?.operadora_id || null,
+    valor_pago: operadorasAtuais.reduce((total, item) => total + Number(item.valor_pago || 0), 0) || null,
+    quantidade_chips: operadorasAtuais.reduce((total, item) => total + Number(item.quantidade_chips || 0), 0) || null
   };
 }
 
@@ -193,7 +230,8 @@ function ClienteFormPage() {
             fidelidade_fim: normalizarDataInput(clienteData.fidelidade_fim),
             operadora_atual_id: clienteData.operadora_atual_id || '',
             valor_pago: formatarValorPagoInput(clienteData.valor_pago),
-            quantidade_chips: clienteData.quantidade_chips ?? ''
+            quantidade_chips: clienteData.quantidade_chips ?? '',
+            operadoras_atuais: normalizarOperadorasClienteForm(clienteData)
           });
         }
       } catch (error) {
@@ -212,6 +250,29 @@ function ClienteFormPage() {
     setForm(prev => ({
       ...prev,
       [campo]: valor
+    }));
+  }
+
+  function adicionarOperadoraCliente() {
+    setForm(prev => ({
+      ...prev,
+      operadoras_atuais: [...(prev.operadoras_atuais || []), novaOperadoraCliente()]
+    }));
+  }
+
+  function atualizarOperadoraCliente(index, campo, valor) {
+    setForm(prev => ({
+      ...prev,
+      operadoras_atuais: (prev.operadoras_atuais || []).map((item, idx) => (
+        idx === index ? { ...item, [campo]: valor } : item
+      ))
+    }));
+  }
+
+  function removerOperadoraCliente(index) {
+    setForm(prev => ({
+      ...prev,
+      operadoras_atuais: (prev.operadoras_atuais || []).filter((_, idx) => idx !== index)
     }));
   }
 
@@ -447,16 +508,6 @@ function ClienteFormPage() {
                       )}
                     </div>
 
-                    <div className="form-field">
-                      <label>Operadora atual</label>
-                      <select value={form.operadora_atual_id} onChange={event => atualizarCampo('operadora_atual_id', event.target.value)}>
-                        <option value="">Selecione</option>
-                        {operadoras.map(operadora => (
-                          <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
-                        ))}
-                      </select>
-                    </div>
-
                   </div>
 
                   <CnpjSugestoes
@@ -506,21 +557,6 @@ function ClienteFormPage() {
                     </div>
 
                     <div className="form-field">
-                      <label>Quantidade de chip</label>
-                      <input type="number" min="0" value={form.quantidade_chips} onChange={event => atualizarCampo('quantidade_chips', event.target.value)} />
-                    </div>
-
-                    <div className="form-field">
-                      <label>Valor pago</label>
-                      <input
-                        value={form.valor_pago}
-                        onChange={event => atualizarCampo('valor_pago', formatarInputMoedaBR(event.target.value))}
-                        placeholder="0,00"
-                        inputMode="decimal"
-                      />
-                    </div>
-
-                    <div className="form-field">
                       <label>Fixo com DDD</label>
                       <input
                         value={form.fixo}
@@ -533,9 +569,52 @@ function ClienteFormPage() {
                       />
                     </div>
 
-                    <div className="form-field">
-                      <label>Fim da fidelidade</label>
-                      <input type="date" value={form.fidelidade_fim} onChange={event => atualizarCampo('fidelidade_fim', event.target.value)} />
+                    <div className="form-field span-3 cliente-operadoras-field">
+                      <div className="cliente-operadoras-head">
+                        <label>Operadoras contratadas</label>
+                        <button type="button" className="btn btn-sm" onClick={adicionarOperadoraCliente}>
+                          <I.Plus size={13} /> Adicionar
+                        </button>
+                      </div>
+                      {(form.operadoras_atuais || []).length === 0 ? (
+                        <div className="cliente-operadoras-empty">Nenhuma operadora cadastrada.</div>
+                      ) : (
+                        <div className="cliente-operadoras-list">
+                          {(form.operadoras_atuais || []).map((item, index) => (
+                            <div className="cliente-operadora-row" key={`operadora-${index}`}>
+                              <div className="form-field">
+                                <label>Operadora</label>
+                                <select value={item.operadora_id} onChange={event => atualizarOperadoraCliente(index, 'operadora_id', event.target.value)}>
+                                  <option value="">Selecione</option>
+                                  {operadoras.map(operadora => (
+                                    <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="form-field">
+                                <label>Chips</label>
+                                <input type="number" min="0" value={item.quantidade_chips} onChange={event => atualizarOperadoraCliente(index, 'quantidade_chips', event.target.value)} />
+                              </div>
+                              <div className="form-field">
+                                <label>Valor pago</label>
+                                <input
+                                  value={item.valor_pago}
+                                  onChange={event => atualizarOperadoraCliente(index, 'valor_pago', formatarInputMoedaBR(event.target.value))}
+                                  placeholder="0,00"
+                                  inputMode="decimal"
+                                />
+                              </div>
+                              <div className="form-field">
+                                <label>Fim da fidelidade</label>
+                                <input type="date" value={item.fidelidade_fim} onChange={event => atualizarOperadoraCliente(index, 'fidelidade_fim', event.target.value)} />
+                              </div>
+                              <button type="button" className="btn btn-icon btn-ghost btn-danger-icon cliente-operadora-remove" onClick={() => removerOperadoraCliente(index)} title="Remover operadora">
+                                <I.Trash size={13} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </section>

@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const Busboy = require('busboy');
 const ExcelJS = require('exceljs');
 const Cliente = require('../models/Cliente');
+const ClienteOperadora = require('../models/ClienteOperadora');
 const Venda = require('../models/Venda');
 const VendaHistorico = require('../models/VendaHistorico');
 const Usuario = require('../models/Usuario');
@@ -640,7 +641,8 @@ function agruparLinhas(linhas, referencias) {
       whatsapp: '',
       quantidade_chips: 0,
       valor_pago: 0,
-      operadora_atual_id: null
+      operadora_atual_id: null,
+      operadoras_atuais: []
     };
 
     clienteAtual.nome = escolherTexto(clienteAtual.nome, linha.razaoSocial, linha.cnpj);
@@ -651,6 +653,21 @@ function agruparLinhas(linhas, referencias) {
     clienteAtual.quantidade_chips += linha.quantidade;
     clienteAtual.valor_pago += linha.receita || (linha.valor * linha.quantidade);
     clienteAtual.operadora_atual_id = clienteAtual.operadora_atual_id || operadora?.id || null;
+    if (operadora?.id) {
+      const atual = clienteAtual.operadoras_atuais.find(item => Number(item.operadora_id) === Number(operadora.id));
+      const valorLinha = linha.receita || (linha.valor * linha.quantidade);
+      if (atual) {
+        atual.quantidade_chips = Number(atual.quantidade_chips || 0) + linha.quantidade;
+        atual.valor_pago = Number((Number(atual.valor_pago || 0) + valorLinha).toFixed(2));
+      } else {
+        clienteAtual.operadoras_atuais.push({
+          operadora_id: operadora.id,
+          quantidade_chips: linha.quantidade,
+          valor_pago: Number(valorLinha.toFixed(2)),
+          fidelidade_fim: null
+        });
+      }
+    }
     clientesPorCnpj.set(linha.cnpjDigitos, clienteAtual);
 
     const chaveGrupo = [
@@ -819,6 +836,28 @@ function montarPayloadCliente(dados, existente = null) {
   return payload;
 }
 
+async function sincronizarOperadorasClienteImportado(clienteId, operadoras, trx) {
+  if (!Array.isArray(operadoras) || operadoras.length === 0) return;
+
+  await ClienteOperadora.query(trx)
+    .delete()
+    .where('cliente_id', clienteId);
+
+  const linhas = operadoras
+    .filter(item => item.operadora_id)
+    .map(item => ({
+      cliente_id: clienteId,
+      operadora_id: Number(item.operadora_id),
+      quantidade_chips: item.quantidade_chips ? Number(item.quantidade_chips) : null,
+      valor_pago: item.valor_pago ? Number(item.valor_pago) : null,
+      fidelidade_fim: item.fidelidade_fim || null
+    }));
+
+  if (linhas.length > 0) {
+    await ClienteOperadora.query(trx).insert(linhas);
+  }
+}
+
 async function sincronizarClientes(clientes, usuarioId, trx) {
   const existentes = await Cliente.query(trx).whereNotNull('cnpj_digitos');
   const existentesPorCnpj = new Map(existentes.map(cliente => [cliente.cnpj_digitos, cliente]));
@@ -835,9 +874,11 @@ async function sincronizarClientes(clientes, usuarioId, trx) {
           ...payload,
           updated_at: new Date()
         });
+        await sincronizarOperadorasClienteImportado(existente.id, dados.operadoras_atuais, trx);
         clientesPorCnpj.set(dados.cnpj_digitos, atualizado);
         resultado.clientes_atualizados += 1;
       } else {
+        await sincronizarOperadorasClienteImportado(existente.id, dados.operadoras_atuais, trx);
         clientesPorCnpj.set(dados.cnpj_digitos, existente);
       }
       continue;
@@ -847,6 +888,7 @@ async function sincronizarClientes(clientes, usuarioId, trx) {
       ...montarPayloadCliente(dados),
       criado_por_id: usuarioId
     });
+    await sincronizarOperadorasClienteImportado(criado.id, dados.operadoras_atuais, trx);
     existentesPorCnpj.set(dados.cnpj_digitos, criado);
     clientesPorCnpj.set(dados.cnpj_digitos, criado);
     resultado.clientes_criados += 1;
