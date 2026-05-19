@@ -2921,6 +2921,7 @@ function VendasPage() {
                 ) : (
                   vendas.map(venda => {
                     const solicitacaoAprovacao = obterSolicitacaoAprovacaoAtual(venda);
+                    const vendaCancelada = Boolean(venda.cancelada_em);
 
                     return (
                     <tr
@@ -2962,6 +2963,15 @@ function VendasPage() {
                               <span className="vendas-cliente-concluidas-badge">
                                 <I.Check size={11} />
                                 Concluída
+                              </span>
+                            )}
+                            {vendaCancelada && (
+                              <span
+                                className="vendas-cancelada-badge"
+                                title={venda.motivo_cancelamento ? `Cancelada: ${venda.motivo_cancelamento}` : 'Venda cancelada'}
+                              >
+                                <I.Close size={11} />
+                                Cancelada
                               </span>
                             )}
                             {venda.status_funil === 'retorno' && (
