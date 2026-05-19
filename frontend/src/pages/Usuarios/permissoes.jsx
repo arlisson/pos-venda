@@ -82,6 +82,16 @@ export const GRUPOS_PERMISSOES = [
             descricao: 'Permite enviar vendas para a lixeira e excluir definitivamente.'
           },
           {
+            chave: 'vendas_cancelar',
+            nome: 'Cancelar vendas',
+            descricao: 'Permite marcar uma venda como cancelada no funil (mantem a venda visivel, sem excluir).'
+          },
+          {
+            chave: 'vendas_reverter_cancelamento',
+            nome: 'Reverter cancelamento',
+            descricao: 'Permite reverter o cancelamento de uma venda, devolvendo-a ao estado normal.'
+          },
+          {
             chave: 'vendas_documentos',
             nome: 'Visualizar documentos',
             descricao: 'Libera listagem, visualizacao e downloads de documentos da venda.'
@@ -341,6 +351,11 @@ export const GRUPOS_PERMISSOES = [
             chave: 'notificacoes_vendas_paradas',
             nome: 'Vendas paradas',
             descricao: 'Permite receber e visualizar alertas de vendas paradas há mais de 5 dias no funil.'
+          },
+          {
+            chave: 'notificacoes_venda_cancelada',
+            nome: 'Venda cancelada',
+            descricao: 'Permite receber a notificacao no sininho e popup quando uma venda for cancelada.'
           }
         ]
       }

@@ -64,11 +64,14 @@ async function listarDestinatarios(usuarioDisparadorId) {
     }
   });
 
+  const todos = Array.from(ids);
+
   if (usuarioDisparadorId) {
-    ids.delete(Number(usuarioDisparadorId));
+    const semDisparador = todos.filter(id => id !== Number(usuarioDisparadorId));
+    if (semDisparador.length > 0) return semDisparador;
   }
 
-  return Array.from(ids);
+  return todos;
 }
 
 async function criarNotificacaoCancelamento({ venda, motivo, usuarioId, trx = null }) {

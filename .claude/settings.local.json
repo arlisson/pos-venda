@@ -71,7 +71,9 @@
       "Bash(git add *)",
       "Bash(git reset *)",
       "Bash(git commit -m ' *)",
-      "Bash(findstr /n /c:\"export\" \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src\\\\pages\\\\Usuarios\\\\permissoes.jsx\")"
+      "Bash(findstr /n /c:\"export\" \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src\\\\pages\\\\Usuarios\\\\permissoes.jsx\")",
+      "Bash(npm test *)",
+      "Bash(npm install *)"
     ]
   }
 }
