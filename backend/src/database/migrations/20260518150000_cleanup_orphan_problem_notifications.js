@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 exports.up = async function (knex) {
   await knex.raw(`
     UPDATE notificacoes n
@@ -11,3 +12,7 @@ exports.up = async function (knex) {
 };
 
 exports.down = async function () {};
+=======
+exports.up = async function (knex) {};
+exports.down = async function (knex) {};
+>>>>>>> dev
