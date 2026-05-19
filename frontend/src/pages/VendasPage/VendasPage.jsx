@@ -2999,7 +2999,12 @@ function VendasPage() {
                           </details>
                         </div>
                       </td>
-                      <td data-label="Operadora" className="m-secondary"><span className="tag">{venda.operadora?.nome || '-'}</span></td>
+                      <td data-label="Operadora" className="m-secondary">{(() => {
+                        const nome = venda.operadora?.nome;
+                        if (!nome) return <span className="tag">-</span>;
+                        const slug = nome.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-');
+                        return <span className={`tag operadora-tag operadora-${slug}`}>{nome}</span>;
+                      })()}</td>
                       <td data-label="Tipo" data-mobile-hidden="true">{obterTipoVendaTabela(venda)}</td>
                       <td data-label="Produto" data-mobile-hidden="true">{venda.servico?.nome || '-'}</td>
                       <td data-label="Linhas" data-mobile-hidden="true">{venda.quantidade_linhas || '-'}</td>

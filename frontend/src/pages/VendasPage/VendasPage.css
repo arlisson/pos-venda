@@ -3643,3 +3643,15 @@ input.is-invalid {
     font-size: 13px;
   }
 }
+
+.tag.operadora-claro {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.tag.operadora-vivo {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+  border-color: rgba(124, 58, 237, 0.25);
+}

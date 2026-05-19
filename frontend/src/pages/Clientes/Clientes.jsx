@@ -25,9 +25,27 @@ import { formatUtcDateTime, getUtcDateTimeTimestamp, parseUtcDateTime } from '..
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './Clientes.css';
 
+function formatarTelefone(ddd, numero) {
+  const dddDigits = String(ddd || '').replace(/\D/g, '');
+  const numeroDigits = String(numero || '').replace(/\D/g, '');
+
+  if (!dddDigits && !numeroDigits) return '';
+
+  let numeroFormatado = numeroDigits;
+  if (numeroDigits.length === 9) {
+    numeroFormatado = `${numeroDigits.slice(0, 5)}-${numeroDigits.slice(5)}`;
+  } else if (numeroDigits.length === 8) {
+    numeroFormatado = `${numeroDigits.slice(0, 4)}-${numeroDigits.slice(4)}`;
+  }
+
+  if (!dddDigits) return numeroFormatado;
+  if (!numeroFormatado) return `(${dddDigits})`;
+  return `(${dddDigits}) ${numeroFormatado}`;
+}
+
 function formatarContato(cliente) {
-  const whatsapp = [cliente.whatsapp_ddd, cliente.whatsapp_numero].filter(Boolean).join(' ');
-  const fixo = [cliente.fixo_ddd, cliente.fixo_numero].filter(Boolean).join(' ');
+  const whatsapp = formatarTelefone(cliente.whatsapp_ddd, cliente.whatsapp_numero);
+  const fixo = formatarTelefone(cliente.fixo_ddd, cliente.fixo_numero);
 
   return { whatsapp, fixo };
 }
@@ -1224,7 +1242,14 @@ function Clientes() {
                             <span>{contato.whatsapp || contato.fixo || '-'}</span>
                           </div>
                         </td>
-                        <td data-label="Operadora" data-mobile-hidden="true">{cliente.operadoraAtual?.nome || '-'}</td>
+                        <td data-label="Operadora" data-mobile-hidden="true">
+                          {(() => {
+                            const nome = cliente.operadoraAtual?.nome;
+                            if (!nome) return '-';
+                            const slug = nome.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-');
+                            return <span className={`operadora-tag operadora-${slug}`}>{nome}</span>;
+                          })()}
+                        </td>
                         <td data-label="Registrado por" data-mobile-hidden="true">
                           {podeAtribuirVendedora ? (
                             <div className="cliente-owner-select-wrap" onClick={e => e.stopPropagation()} title="Atribuir cliente a uma vendedora">

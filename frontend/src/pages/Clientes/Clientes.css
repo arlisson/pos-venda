@@ -1273,3 +1273,22 @@
   }
 
 }
+
+.operadora-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.operadora-claro {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+
+.operadora-vivo {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
