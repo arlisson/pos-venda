@@ -5,6 +5,7 @@ const Venda = require('../models/Venda');
 const VendaAprovacaoSolicitacao = require('../models/VendaAprovacaoSolicitacao');
 const VendaHistorico = require('../models/VendaHistorico');
 const notificacaoEmailService = require('./notificacao-email.service');
+const notificacaoService = require('./notificacao.service');
 
 const STATUS_PENDENTE = 'pendente';
 const STATUS_APROVADA = 'aprovada';
@@ -177,7 +178,11 @@ async function listarAprovadores(trx = null) {
 
 async function criarOuAtualizarNotificacaoPendente(solicitacao, venda, trx = null) {
   const aprovadores = await listarAprovadores(trx);
-  const destinatariosIds = aprovadores.map(usuario => Number(usuario.id));
+  const adminsIds = await notificacaoService.listarAdminsAtivos(trx);
+  const destinatariosIds = Array.from(new Set([
+    ...aprovadores.map(usuario => Number(usuario.id)),
+    ...adminsIds
+  ]));
 
   if (destinatariosIds.length === 0) {
     return null;

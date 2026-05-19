@@ -73,7 +73,9 @@
       "Bash(git commit -m ' *)",
       "Bash(findstr /n /c:\"export\" \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src\\\\pages\\\\Usuarios\\\\permissoes.jsx\")",
       "Bash(npm test *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)"
     ]
   }
 }

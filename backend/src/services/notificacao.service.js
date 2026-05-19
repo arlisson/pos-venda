@@ -67,6 +67,16 @@ function usuarioTemPermissaoLocal(usuario, permissao) {
   ].includes(permissao);
 }
 
+async function listarAdminsAtivos(trx = null) {
+  const usuarios = await Usuario.query(trx)
+    .withGraphFetched('role')
+    .where('ativo', true);
+
+  return usuarios
+    .filter(usuario => usuario.role?.nome === 'admin')
+    .map(usuario => Number(usuario.id));
+}
+
 function formatarDataISO(data = new Date()) {
   return [
     data.getFullYear(),
@@ -352,16 +362,21 @@ async function salvarNotificacaoRetornoNota(nota, etapa, agora) {
     ? await Notificacao.query().patchAndFetchById(existente.id, payload)
     : await Notificacao.query().insertAndFetch(payload);
 
-  const destinatario = await NotificacaoDestinatario.query()
-    .where('notificacao_id', notificacao.id)
-    .where('usuario_id', nota.usuario_id)
-    .first();
+  const adminsIds = await listarAdminsAtivos();
+  const destinatariosIds = Array.from(new Set([Number(nota.usuario_id), ...adminsIds].filter(Boolean)));
 
-  if (!destinatario) {
-    await NotificacaoDestinatario.query().insert({
-      notificacao_id: notificacao.id,
-      usuario_id: nota.usuario_id
-    });
+  for (const usuarioId of destinatariosIds) {
+    const existente = await NotificacaoDestinatario.query()
+      .where('notificacao_id', notificacao.id)
+      .where('usuario_id', usuarioId)
+      .first();
+
+    if (!existente) {
+      await NotificacaoDestinatario.query().insert({
+        notificacao_id: notificacao.id,
+        usuario_id: usuarioId
+      });
+    }
   }
 
   notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
@@ -652,6 +667,7 @@ module.exports = {
   TIPOS_PROBLEMA_VENDA,
   TIPOS_APROVACAO_VENDA,
   TIPOS_RETORNO_VENDA,
+  listarAdminsAtivos,
   listarNotificacoes,
   listarUrgentes,
   marcarComoLida,

@@ -56,6 +56,12 @@ async function listarDestinatarios(usuarioDisparadorId) {
     .withGraphFetched('role')
     .where('ativo', true);
 
+  const adminsIds = new Set(
+    usuarios
+      .filter(usuario => usuario.role?.nome === 'admin')
+      .map(usuario => Number(usuario.id))
+  );
+
   const ids = new Set();
 
   usuarios.forEach(usuario => {
@@ -67,7 +73,7 @@ async function listarDestinatarios(usuarioDisparadorId) {
   const todos = Array.from(ids);
 
   if (usuarioDisparadorId) {
-    const semDisparador = todos.filter(id => id !== Number(usuarioDisparadorId));
+    const semDisparador = todos.filter(id => id !== Number(usuarioDisparadorId) || adminsIds.has(id));
     if (semDisparador.length > 0) return semDisparador;
   }
 

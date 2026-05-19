@@ -1306,8 +1306,13 @@ function VendedorasSelect({ value = [], options = [], onChange, idProtegido = nu
             <span key={v.id} className="vendedoras-chip">
               {v.nome}
               {!disabled && !protegida && (
-                <button type="button" onClick={() => remover(v.id)} title="Remover">
-                  <I.Close size={11} />
+                <button
+                  type="button"
+                  onClick={() => remover(v.id)}
+                  title={`Remover ${v.nome}`}
+                  aria-label={`Remover ${v.nome}`}
+                >
+                  <I.Close size={12} />
                 </button>
               )}
             </span>

@@ -2,6 +2,7 @@ const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Venda = require('../models/Venda');
 const notificacaoEmailService = require('./notificacao-email.service');
+const notificacaoService = require('./notificacao.service');
 
 const TIPO_NOTIFICACAO = 'venda_retorno_registrado';
 
@@ -36,7 +37,12 @@ async function criarOuAtualizarNotificacaoRetorno({ venda, statusAnterior, motiv
 
   const todosDestinatarios = await listarDestinatariosVenda(venda.id, trx);
   const semDisparador = todosDestinatarios.filter(id => Number(id) !== Number(usuarioId));
-  const destinatariosIds = semDisparador.length > 0 ? semDisparador : todosDestinatarios;
+  const baseDestinatarios = semDisparador.length > 0 ? semDisparador : todosDestinatarios;
+  const adminsIds = await notificacaoService.listarAdminsAtivos(trx);
+  const destinatariosIds = Array.from(new Set([
+    ...baseDestinatarios.map(Number).filter(Boolean),
+    ...adminsIds
+  ]));
 
   if (destinatariosIds.length === 0) return null;
 

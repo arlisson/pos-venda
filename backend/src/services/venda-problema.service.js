@@ -8,6 +8,7 @@ const VendaProblema = require('../models/VendaProblema');
 const VendaProblemaDestinatario = require('../models/VendaProblemaDestinatario');
 const VendaProblemaEvento = require('../models/VendaProblemaEvento');
 const notificacaoEmailService = require('./notificacao-email.service');
+const notificacaoService = require('./notificacao.service');
 
 const STATUS_ATIVOS = ['aberto', 'resolvido', 'correcao_solicitada'];
 const TIPOS_NOTIFICACAO_PROBLEMA = [
@@ -163,7 +164,13 @@ async function criarNotificacaoProblema({ tipo, problema, evento, destinatariosI
     updated_at: new Date()
   });
 
-  for (const usuarioId of [...new Set(destinatariosIds.map(Number).filter(Boolean))]) {
+  const adminsIds = await notificacaoService.listarAdminsAtivos(trx);
+  const idsFinais = [...new Set([
+    ...destinatariosIds.map(Number).filter(Boolean),
+    ...adminsIds
+  ])];
+
+  for (const usuarioId of idsFinais) {
     await NotificacaoDestinatario.query(trx).insert({
       notificacao_id: notificacao.id,
       usuario_id: usuarioId

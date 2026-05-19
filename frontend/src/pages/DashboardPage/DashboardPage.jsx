@@ -769,7 +769,7 @@ function DashboardPage() {
     },
     {
       key: 'fidelidade',
-      title: 'Fim de fidelidade',
+      title: (<>Fim da fidelidade<br />do plano atual</>),
       subtitle: 'Próximos 30 dias',
       count: notificacoesFidelidade.length,
       variant: 'warn',
