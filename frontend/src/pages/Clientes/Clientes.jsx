@@ -593,6 +593,7 @@ function Clientes() {
   const highlightClienteId = searchParams.get('highlight') || clienteIdParam;
 
   const podeCriar = temPermissao(usuario, 'clientes_criar');
+  const podeImportarPlanilhas = temPermissao(usuario, 'clientes_importar_planilhas');
   const podeEditar = temPermissao(usuario, 'clientes_editar');
   const podeExcluir = temPermissao(usuario, 'clientes_excluir');
   const isAdmin = usuario?.role?.nome === 'admin';
@@ -917,14 +918,14 @@ function Clientes() {
         />
       )}
 
-      {mostrarImportacaoSomenteClientes && (
+      {mostrarImportacaoSomenteClientes && podeImportarPlanilhas && (
         <ImportarBaseAnteriorModal
           onClose={() => setImportModalAberto(false)}
           onImported={finalizarImportacaoBaseAnterior}
         />
       )}
 
-      {importModalAberto && !mostrarImportacaoSomenteClientes && (
+      {importModalAberto && !mostrarImportacaoSomenteClientes && podeImportarPlanilhas && (
         <ImportarVendasEmpresasModal
           onClose={() => setImportModalAberto(false)}
           onImported={finalizarImportacaoVendasEmpresas}
@@ -1046,11 +1047,14 @@ function Clientes() {
               {filtrosPopupAtivos > 0 && <span className="filtros-count">{filtrosPopupAtivos}</span>}
             </button>
 
+            {podeImportarPlanilhas && (
+              <button className="btn" type="button" onClick={() => setImportModalAberto(true)}>
+                <I.TableSheet size={14} /> Importar planilha
+              </button>
+            )}
+
             {podeCriar && (
               <>
-                <button className="btn" type="button" onClick={() => setImportModalAberto(true)}>
-                  <I.TableSheet size={14} /> Importar planilha
-                </button>
                 {/* {isAdmin && (
                   <button className="btn btn-danger" type="button" onClick={() => setLimparBaseModalAberto(true)}>
                     <I.Trash size={14} /> Apagar base anterior

@@ -163,6 +163,11 @@ export const GRUPOS_PERMISSOES = [
             descricao: 'Permite cadastrar novos clientes.'
           },
           {
+            chave: 'clientes_importar_planilhas',
+            nome: 'Importar planilhas',
+            descricao: 'Permite visualizar e executar a importacao de planilhas na tela de clientes.'
+          },
+          {
             chave: 'clientes_editar',
             nome: 'Editar clientes',
             descricao: 'Permite editar clientes acessíveis.'
