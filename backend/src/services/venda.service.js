@@ -2287,6 +2287,84 @@ async function enviarVendaParaPosVenda(id, usuarioId) {
   return { status: 'ok', venda: vendaAtualizada };
 }
 
+function normalizarVendaIds(ids) {
+  return [...new Set([ids]
+    .flat()
+    .map(item => Number(item))
+    .filter(Boolean))];
+}
+
+async function buscarSourceKeysNotificacoesVenda(vendaIds, trx) {
+  const sourceKeys = [];
+
+  vendaIds.forEach(vendaId => {
+    sourceKeys.push(`venda_retorno:${vendaId}`);
+  });
+
+  const [notas, solicitacoes] = await Promise.all([
+    trx('entidade_notas')
+      .select('id')
+      .where('entidade_tipo', 'venda')
+      .whereIn('entidade_id', vendaIds),
+    trx('venda_aprovacao_solicitacoes')
+      .select('id')
+      .whereIn('venda_id', vendaIds)
+  ]);
+
+  notas.forEach(nota => {
+    sourceKeys.push(`nota_retorno_pre:${nota.id}`);
+    sourceKeys.push(`nota_retorno_due:${nota.id}`);
+  });
+
+  solicitacoes.forEach(solicitacao => {
+    sourceKeys.push(`venda_aprovacao:${solicitacao.id}`);
+  });
+
+  return sourceKeys;
+}
+
+async function excluirNotificacoesVendas(vendaIdsEntrada, trx) {
+  const vendaIds = normalizarVendaIds(vendaIdsEntrada);
+  if (vendaIds.length === 0) return 0;
+
+  const sourceKeys = await buscarSourceKeysNotificacoesVenda(vendaIds, trx);
+
+  const notificacoes = await trx('notificacoes')
+    .select('id')
+    .where(builder => {
+      builder.where(function () {
+        this.where('entidade', 'vendas').whereIn('entidade_id', vendaIds);
+      });
+
+      if (sourceKeys.length > 0) {
+        builder.orWhereIn('source_key', sourceKeys);
+      }
+
+      vendaIds.forEach(vendaId => {
+        builder
+          .orWhere('source_key', 'like', `venda_parada_funil:${vendaId}:%`);
+      });
+    });
+
+  const notificacaoIds = notificacoes.map(notificacao => Number(notificacao.id)).filter(Boolean);
+
+  if (notificacaoIds.length > 0) {
+    await trx('notificacao_destinatarios')
+      .whereIn('notificacao_id', notificacaoIds)
+      .delete();
+
+    await trx('notificacoes')
+      .whereIn('id', notificacaoIds)
+      .delete();
+  }
+
+  await trx('venda_notificacao_parada')
+    .whereIn('venda_id', vendaIds)
+    .delete();
+
+  return notificacaoIds.length;
+}
+
 async function excluirVenda(id, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
 
@@ -2296,15 +2374,23 @@ async function excluirVenda(id, usuarioId) {
 
   const agora = new Date();
 
-  return Venda.knex()('vendas')
-    .where('id', id)
-    .whereNull('excluido_em')
-    .update({
-      excluido_em: formatarDateTimeSQL(agora),
-      excluir_definitivo_em: formatarDateTimeSQL(adicionarUmMes(agora)),
-      excluido_por_id: usuarioId,
-      updated_at: formatarDateTimeSQL(agora)
-    });
+  return Venda.transaction(async trx => {
+    const atualizados = await trx('vendas')
+      .where('id', id)
+      .whereNull('excluido_em')
+      .update({
+        excluido_em: formatarDateTimeSQL(agora),
+        excluir_definitivo_em: formatarDateTimeSQL(adicionarUmMes(agora)),
+        excluido_por_id: usuarioId,
+        updated_at: formatarDateTimeSQL(agora)
+      });
+
+    if (atualizados) {
+      await excluirNotificacoesVendas(id, trx);
+    }
+
+    return atualizados;
+  });
 }
 
 function adicionarUmMes(data = new Date()) {
@@ -2314,10 +2400,22 @@ function adicionarUmMes(data = new Date()) {
 }
 
 async function limparVendasVencidasDaLixeira() {
-  return Venda.knex()('vendas')
-    .whereNotNull('excluido_em')
-    .where('excluir_definitivo_em', '<=', formatarDateTimeSQL())
-    .delete();
+  return Venda.transaction(async trx => {
+    const vendas = await trx('vendas')
+      .select('id')
+      .whereNotNull('excluido_em')
+      .where('excluir_definitivo_em', '<=', formatarDateTimeSQL());
+
+    const vendaIds = vendas.map(venda => Number(venda.id)).filter(Boolean);
+    if (vendaIds.length === 0) return 0;
+
+    await excluirNotificacoesVendas(vendaIds, trx);
+
+    return trx('vendas')
+      .whereIn('id', vendaIds)
+      .whereNotNull('excluido_em')
+      .delete();
+  });
 }
 
 async function listarVendasLixeira(filtros = {}, usuarioId) {
@@ -2386,10 +2484,14 @@ async function excluirVendaDefinitivo(id, usuarioId) {
     return 0;
   }
 
-  return Venda.knex()('vendas')
-    .where('id', id)
-    .whereNotNull('excluido_em')
-    .delete();
+  return Venda.transaction(async trx => {
+    await excluirNotificacoesVendas(id, trx);
+
+    return trx('vendas')
+      .where('id', id)
+      .whereNotNull('excluido_em')
+      .delete();
+  });
 }
 
 async function listarVendedoras(usuarioId) {
