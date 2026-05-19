@@ -3,11 +3,13 @@ const VendaHistorico = require('../models/VendaHistorico');
 const Usuario = require('../models/Usuario');
 const FunilEtapa = require('../models/FunilEtapa');
 const Cliente = require('../models/Cliente');
+const ClienteOperadora = require('../models/ClienteOperadora');
 const clienteService = require('./cliente.service');
 const vendaArquivoService = require('./venda-arquivo.service');
 const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
 const vendaNotificacaoRetornoService = require('./venda-notificacao-retorno.service');
 const vendaAprovacaoService = require('./venda-aprovacao.service');
+const notificacaoService = require('./notificacao.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
 const { parseUtcDateTime } = require('../utils/datetime');
 
@@ -116,6 +118,7 @@ const FUNIL_STATUS_LABELS = {
   retorno: 'Retorno recebido'
 };
 
+const PERMISSAO_AUTO_POS_VENDA = 'vendas_auto_pos_venda';
 const DIAS_OCULTAR_CONCLUIDAS_FUNIL = 14;
 const FUNIL_PRIORIDADES = ['alta', 'media', 'baixa'];
 const PROMESSA_CUMPRIDA_OPCOES = ['pendente', 'sim', 'nao'];
@@ -843,6 +846,30 @@ function adicionarDias(data, dias) {
   return novaData;
 }
 
+function criarDataLocalISO(dataISO) {
+  const normalizada = normalizarData(dataISO);
+  if (!normalizada) return null;
+
+  const [ano, mes, dia] = normalizada.split('-').map(Number);
+  return new Date(ano, mes - 1, dia);
+}
+
+function adicionarMesesDataISO(dataISO, meses) {
+  const data = criarDataLocalISO(dataISO);
+  if (!data) return null;
+
+  const diaOriginal = data.getDate();
+  const destino = new Date(data);
+
+  destino.setDate(1);
+  destino.setMonth(destino.getMonth() + Number(meses || 0));
+
+  const ultimoDiaMes = new Date(destino.getFullYear(), destino.getMonth() + 1, 0).getDate();
+  destino.setDate(Math.min(diaOriginal, ultimoDiaMes));
+
+  return formatarDataISO(destino);
+}
+
 function obterDataLimiteConcluidaAntiga(referencia = new Date()) {
   const dataReferencia = parseUtcDateTime(referencia) || new Date();
   return adicionarDias(dataReferencia, -DIAS_OCULTAR_CONCLUIDAS_FUNIL);
@@ -929,6 +956,95 @@ function obterQuantidadeChipsVenda(venda) {
   const quantidadeLinhas = Number(venda.quantidade_linhas || 0);
 
   return quantidadeLinhas > 0 ? quantidadeLinhas : 1;
+}
+
+function montarDadosSincronizacaoClienteVenda(venda, dataConclusao = new Date()) {
+  const clienteId = Number(venda?.cliente_id || 0);
+  const operadoraVendidaId = Number(venda?.operadora_id || 0);
+
+  if (!clienteId || !operadoraVendidaId) {
+    return null;
+  }
+
+  const dataBase = normalizarData(venda.data_ativacao)
+    || normalizarData(dataConclusao)
+    || formatarDataISO(new Date());
+  const valorTotal = Number(venda.valor_total || 0);
+
+  return {
+    clienteId,
+    operadoraVendidaId,
+    quantidadeChips: obterQuantidadeChipsVenda(venda),
+    valorPago: Number.isFinite(valorTotal) ? Number(valorTotal.toFixed(2)) : 0,
+    fidelidadeFim: adicionarMesesDataISO(dataBase, 24),
+    dataBase
+  };
+}
+
+async function atualizarResumoLegadoClienteAposVenda(clienteId, operadoraPreferencialId, trx) {
+  const operadoras = await ClienteOperadora.query(trx)
+    .where('cliente_id', clienteId)
+    .orderBy('id', 'asc');
+  const quantidade = operadoras.reduce((total, item) => total + Number(item.quantidade_chips || 0), 0);
+  const valor = operadoras.reduce((total, item) => total + Number(item.valor_pago || 0), 0);
+  const fidelidades = operadoras
+    .map(item => normalizarData(item.fidelidade_fim))
+    .filter(Boolean)
+    .sort();
+  const operadoraPreferencialExiste = operadoras.some(item => Number(item.operadora_id) === Number(operadoraPreferencialId));
+
+  await Cliente.query(trx).patchAndFetchById(clienteId, {
+    operadora_atual_id: operadoraPreferencialExiste ? Number(operadoraPreferencialId) : (operadoras[0]?.operadora_id || null),
+    quantidade_chips: quantidade > 0 ? quantidade : null,
+    valor_pago: valor > 0 ? Number(valor.toFixed(2)) : null,
+    fidelidade_fim: fidelidades[0] || null,
+    updated_at: new Date()
+  });
+}
+
+async function sincronizarClienteComVendaConcluida(venda, dataConclusao, trx) {
+  const dados = montarDadosSincronizacaoClienteVenda(venda, dataConclusao);
+
+  if (!dados) {
+    return null;
+  }
+
+  const existente = await ClienteOperadora.query(trx)
+    .where({
+      cliente_id: Number(dados.clienteId),
+      operadora_id: Number(dados.operadoraVendidaId)
+    })
+    .first();
+  const payload = {
+    quantidade_chips: dados.quantidadeChips,
+    valor_pago: dados.valorPago,
+    fidelidade_fim: dados.fidelidadeFim,
+    updated_at: new Date()
+  };
+
+  if (existente) {
+    await ClienteOperadora.query(trx).patchAndFetchById(existente.id, payload);
+  } else {
+    await ClienteOperadora.query(trx).insert({
+      cliente_id: Number(dados.clienteId),
+      operadora_id: Number(dados.operadoraVendidaId),
+      ...payload
+    });
+  }
+
+  await atualizarResumoLegadoClienteAposVenda(dados.clienteId, dados.operadoraVendidaId, trx);
+
+  return dados.clienteId;
+}
+
+async function sincronizarNotificacaoFidelidadeCliente(clienteId) {
+  if (!clienteId) return;
+
+  try {
+    await notificacaoService.sincronizarFidelidadeCliente(clienteId);
+  } catch (error) {
+    console.error('Erro ao sincronizar notificacao de fidelidade do cliente:', error);
+  }
 }
 
 function somarValorVendas(vendas = []) {
@@ -1056,6 +1172,43 @@ async function solicitarPacoteSeVendaFinalizada(venda, usuarioId, etapaFinal = n
 
 async function statusPreencheDataAtivacao(status, etapaFinal) {
   return Boolean(status && status === etapaFinal);
+}
+
+async function enviarVendaCriadaAutomaticamenteParaPosVenda(venda, usuarioId, agora, trx) {
+  const validacaoAprovacao = await vendaAprovacaoService.validarEnvioPosVenda(venda.id, usuarioId, trx);
+
+  if (validacaoAprovacao.status !== 'liberada') {
+    return venda;
+  }
+
+  const etapas = await listarEtapasFunilOrdenadas();
+  const primeiraEtapa = etapas[0]?.id || 'aprovacao';
+  const atualizada = await Venda.query(trx).patchAndFetchById(venda.id, {
+    status_funil: primeiraEtapa,
+    prioridade_funil: venda.prioridade_funil || 'media',
+    enviada_pos_venda_em: agora,
+    enviada_pos_venda_por_id: usuarioId,
+    ultima_atividade_em: agora,
+    updated_at: agora
+  });
+
+  await registrarHistoricoVenda({
+    vendaId: venda.id,
+    usuarioId,
+    acao: 'venda.enviada_pos_venda',
+    statusAnterior: venda.status_funil || null,
+    statusNovo: primeiraEtapa,
+    observacao: 'Venda enviada automaticamente ao pos-venda',
+    dados: {
+      status_funil: primeiraEtapa,
+      enviada_pos_venda_em: agora,
+      envio_automatico: true
+    },
+    createdAt: agora,
+    trx
+  });
+
+  return atualizada;
 }
 
 async function montarResumoFasesDinamico(vendas = []) {
@@ -1654,6 +1807,7 @@ async function criarVenda(dados, usuarioId) {
   const agora = formatarDateTimeSQL();
   const vendedorasIds = normalizarIdsVendedoras(dados.vendedoras);
   let payload = montarPayload(dados);
+  const deveEnviarAutomaticamente = await usuarioTemPermissao(usuarioId, PERMISSAO_AUTO_POS_VENDA);
 
   delete payload.data_ativacao;
   delete payload.numeros_ativados;
@@ -1719,6 +1873,10 @@ async function criarVenda(dados, usuarioId) {
         createdAt: agora,
         trx
       });
+    }
+
+    if (deveEnviarAutomaticamente) {
+      return enviarVendaCriadaAutomaticamenteParaPosVenda(venda, usuarioId, agora, trx);
     }
 
     return venda;
@@ -1974,15 +2132,22 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 
     const destino = venda.status_anterior_retorno || 'aprovacao';
 
+    let clienteSincronizadoId = null;
     const vendaAtualizada = await Venda.transaction(async trx => {
-      const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+      const dadosAtualizacao = {
         status_funil: destino,
         prioridade_funil: prioridade,
         nota_correcao_retorno: nota,
         corrigido_em: agora,
         ultima_atividade_em: agora,
         updated_at: agora
-      });
+      };
+
+      if (destino === etapaFinal && !venda.data_ativacao) {
+        dadosAtualizacao.data_ativacao = normalizarData(dados.data_ativacao) || agora.slice(0, 10);
+      }
+
+      const atualizada = await Venda.query(trx).patchAndFetchById(id, dadosAtualizacao);
 
       await registrarHistoricoVenda({
         vendaId: id,
@@ -2000,12 +2165,18 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 
       await vendaNotificacaoRetornoService.desativarNotificacaoRetorno(id, trx);
 
+      if (destino === etapaFinal) {
+        clienteSincronizadoId = await sincronizarClienteComVendaConcluida(atualizada, agora, trx);
+      }
+
       return atualizada;
     });
 
+    await sincronizarNotificacaoFidelidadeCliente(clienteSincronizadoId);
     return { status: 'ok', venda: vendaAtualizada };
   }
 
+  let clienteSincronizadoId = null;
   const vendaAtualizada = await Venda.transaction(async trx => {
     const dadosAtualizacao = {
       status_funil: status,
@@ -2051,9 +2222,14 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
       }
     }
 
+    if (status === etapaFinal) {
+      clienteSincronizadoId = await sincronizarClienteComVendaConcluida(atualizada, agora, trx);
+    }
+
     return atualizada;
   });
 
+  await sincronizarNotificacaoFidelidadeCliente(clienteSincronizadoId);
   await solicitarPacoteSeVendaFinalizada(vendaAtualizada, usuarioId, etapaFinal);
   return { status: 'ok', venda: vendaAtualizada };
 }
@@ -2312,8 +2488,10 @@ module.exports = {
   contarVendasConcluidasPorCliente,
   _internals: {
     aplicarDadosClienteNaVenda,
+    adicionarMesesDataISO,
     calcularTotalChips,
     limparValor,
+    montarDadosSincronizacaoClienteVenda,
     montarPayload,
     normalizarClienteSolicitouNumeros,
     normalizarClienteSolicitouServicos,

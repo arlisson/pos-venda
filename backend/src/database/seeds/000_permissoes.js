@@ -20,6 +20,11 @@ const PERMISSOES = [
     descricao: 'Permite registrar novas vendas.'
   },
   {
+    chave: 'vendas_auto_pos_venda',
+    nome: 'Vendas: enviar automaticamente ao pos-venda',
+    descricao: 'Envia automaticamente ao pos-venda as vendas registradas pelo usuario.'
+  },
+  {
     chave: 'vendas_editar',
     nome: 'Vendas: editar',
     descricao: 'Permite editar vendas que o usuário pode acessar.'

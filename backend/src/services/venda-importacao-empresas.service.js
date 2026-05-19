@@ -839,14 +839,16 @@ function montarPayloadCliente(dados, existente = null) {
 async function sincronizarOperadorasClienteImportado(clienteId, operadoras, trx) {
   if (!Array.isArray(operadoras) || operadoras.length === 0) return;
 
+  const clienteIdNormalizado = Number(clienteId);
+
   await ClienteOperadora.query(trx)
     .delete()
-    .where('cliente_id', clienteId);
+    .where('cliente_id', clienteIdNormalizado);
 
   const linhas = operadoras
     .filter(item => item.operadora_id)
     .map(item => ({
-      cliente_id: clienteId,
+      cliente_id: clienteIdNormalizado,
       operadora_id: Number(item.operadora_id),
       quantidade_chips: item.quantidade_chips ? Number(item.quantidade_chips) : null,
       valor_pago: item.valor_pago ? Number(item.valor_pago) : null,
