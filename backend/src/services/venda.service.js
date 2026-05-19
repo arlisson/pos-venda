@@ -7,6 +7,7 @@ const clienteService = require('./cliente.service');
 const vendaArquivoService = require('./venda-arquivo.service');
 const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
 const vendaNotificacaoRetornoService = require('./venda-notificacao-retorno.service');
+const vendaNotificacaoCancelamentoService = require('./venda-notificacao-cancelamento.service');
 const vendaAprovacaoService = require('./venda-aprovacao.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
 const { parseUtcDateTime } = require('../utils/datetime');
@@ -1850,6 +1851,10 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
     return { status: 'not_found' };
   }
 
+  if (venda.cancelada_em) {
+    return { status: 'invalid', message: 'Venda cancelada não pode ser movimentada no funil.' };
+  }
+
   if (!venda.enviada_pos_venda_em) {
     return { status: 'invalid', message: 'Envie a venda ao pós-venda antes de movimentar no funil.' };
   }
@@ -2290,6 +2295,121 @@ async function contarVendasConcluidasPorCliente() {
   }, {});
 }
 
+async function cancelarVenda(id, { motivo, usuarioId }) {
+  const motivoLimpo = String(motivo || '').trim();
+
+  if (!motivoLimpo) {
+    return { status: 'invalid', message: 'Informe o motivo do cancelamento.' };
+  }
+
+  if (!await usuarioTemPermissao(usuarioId, 'vendas_cancelar')) {
+    return { status: 'forbidden', message: 'Voce nao tem permissao para cancelar vendas.' };
+  }
+
+  const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
+
+  if (!permitido) {
+    return { status: 'not_found' };
+  }
+
+  const venda = await Venda.query().findById(id);
+
+  if (!venda || venda.excluido_em) {
+    return { status: 'not_found' };
+  }
+
+  if (venda.cancelada_em) {
+    return { status: 'invalid', message: 'Venda ja esta cancelada.' };
+  }
+
+  const agora = formatarDateTimeSQL();
+
+  const vendaAtualizada = await Venda.transaction(async trx => {
+    const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+      cancelada_em: agora,
+      cancelada_por_id: usuarioId,
+      motivo_cancelamento: motivoLimpo,
+      ultima_atividade_em: agora,
+      updated_at: agora
+    });
+
+    await registrarHistoricoVenda({
+      vendaId: id,
+      usuarioId,
+      acao: 'venda.cancelada',
+      statusAnterior: venda.status_funil || null,
+      statusNovo: venda.status_funil || null,
+      observacao: motivoLimpo,
+      dados: { motivo_cancelamento: motivoLimpo },
+      createdAt: agora,
+      trx
+    });
+
+    await vendaNotificacaoCancelamentoService.criarNotificacaoCancelamento({
+      venda: atualizada,
+      motivo: motivoLimpo,
+      usuarioId,
+      trx
+    });
+
+    return atualizada;
+  });
+
+  return { status: 'ok', venda: vendaAtualizada };
+}
+
+async function reverterCancelamentoVenda(id, usuarioId) {
+  if (!await usuarioTemPermissao(usuarioId, 'vendas_reverter_cancelamento')) {
+    return { status: 'forbidden', message: 'Voce nao tem permissao para reverter o cancelamento.' };
+  }
+
+  const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
+
+  if (!permitido) {
+    return { status: 'not_found' };
+  }
+
+  const venda = await Venda.query().findById(id);
+
+  if (!venda || venda.excluido_em) {
+    return { status: 'not_found' };
+  }
+
+  if (!venda.cancelada_em) {
+    return { status: 'invalid', message: 'Venda nao esta cancelada.' };
+  }
+
+  const agora = formatarDateTimeSQL();
+
+  const vendaAtualizada = await Venda.transaction(async trx => {
+    const atualizada = await Venda.query(trx).patchAndFetchById(id, {
+      cancelada_em: null,
+      cancelada_por_id: null,
+      motivo_cancelamento: null,
+      ultima_atividade_em: agora,
+      updated_at: agora
+    });
+
+    await registrarHistoricoVenda({
+      vendaId: id,
+      usuarioId,
+      acao: 'venda.cancelamento_revertido',
+      statusAnterior: venda.status_funil || null,
+      statusNovo: venda.status_funil || null,
+      observacao: null,
+      dados: { motivo_cancelamento_anterior: venda.motivo_cancelamento },
+      createdAt: agora,
+      trx
+    });
+
+    await vendaNotificacaoCancelamentoService.desativarNotificacaoCancelamento(id, trx);
+
+    return atualizada;
+  });
+
+  return { status: 'ok', venda: vendaAtualizada };
+}
+
 module.exports = {
   listarVendas,
   obterReferenciasClientes,
@@ -2303,6 +2423,8 @@ module.exports = {
   criarVenda,
   atualizarVenda,
   atualizarStatusVenda,
+  cancelarVenda,
+  reverterCancelamentoVenda,
   enviarVendaParaPosVenda,
   excluirVenda,
   restaurarVenda,

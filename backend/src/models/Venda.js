@@ -123,6 +123,9 @@ class Venda extends Model {
         excluido_em: { type: ['string', 'null'] },
         excluir_definitivo_em: { type: ['string', 'null'] },
         excluido_por_id: { type: ['integer', 'null'] },
+        cancelada_em: { type: ['string', 'null'] },
+        motivo_cancelamento: { type: ['string', 'null'] },
+        cancelada_por_id: { type: ['integer', 'null'] },
         created_at: { type: 'string' },
         updated_at: { type: 'string' }
       }

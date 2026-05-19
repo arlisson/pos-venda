@@ -20,9 +20,11 @@ const TIPOS_PROBLEMA_VENDA = [
 ];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPOS_RETORNO_VENDA = ['venda_retorno_registrado'];
+const TIPOS_CANCELAMENTO_VENDA = ['venda_cancelada'];
 const TIPOS_BASE_VENDA = [
   ...TIPOS_PROBLEMA_VENDA,
-  ...TIPOS_RETORNO_VENDA
+  ...TIPOS_RETORNO_VENDA,
+  ...TIPOS_CANCELAMENTO_VENDA
 ];
 const TIPOS_OPERACIONAIS_VENDA = [
   ...TIPOS_BASE_VENDA,
