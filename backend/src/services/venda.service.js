@@ -389,8 +389,9 @@ function conjuntosIguais(a = [], b = []) {
 async function validarPermissaoCompartilharVenda({ usuarioId, vendedorasIds = [], vendaId = null }) {
   if (!Array.isArray(vendedorasIds)) return;
 
-  const podeCompartilhar = await usuarioTemPermissao(usuarioId, 'compartilhar_venda');
-  if (podeCompartilhar) return;
+  // Liberdade total: pode atribuir qualquer vendedor e se excluir da venda
+  const podeAtribuirQualquer = await usuarioTemPermissao(usuarioId, 'vendas_atribuir_qualquer_vendedor');
+  if (podeAtribuirQualquer) return;
 
   if (vendaId) {
     const atuais = await Venda.knex()('venda_vendedoras')
@@ -404,8 +405,19 @@ async function validarPermissaoCompartilharVenda({ usuarioId, vendedorasIds = []
 
   const idsDiferentesDoUsuario = vendedorasIds.filter(id => Number(id) !== Number(usuarioId));
 
-  if (idsDiferentesDoUsuario.length > 0) {
+  if (idsDiferentesDoUsuario.length === 0) return;
+
+  const podeCompartilhar = await usuarioTemPermissao(usuarioId, 'compartilhar_venda');
+  if (!podeCompartilhar) {
     const error = new Error('Você não tem permissão para compartilhar vendas com outras vendedoras.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // compartilhar_venda: pode adicionar outros, mas deve se manter na venda
+  const incluiSiMesmo = vendedorasIds.some(id => Number(id) === Number(usuarioId));
+  if (!incluiSiMesmo) {
+    const error = new Error('Você precisa da permissão "Atribuir qualquer vendedor" para registrar vendas sem se incluir.');
     error.statusCode = 403;
     throw error;
   }
@@ -2210,6 +2222,7 @@ async function listarVendedoras(usuarioId) {
     ? (
       await usuarioTemPermissao(usuarioId, 'compartilhar_venda')
       || await usuarioTemPermissao(usuarioId, 'clientes_atribuir_vendedora')
+      || await usuarioTemPermissao(usuarioId, 'vendas_atribuir_qualquer_vendedor')
     )
     : true;
   const query = Usuario.query()
