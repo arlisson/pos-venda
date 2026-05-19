@@ -1187,14 +1187,13 @@ async function statusPreencheDataAtivacao(status, etapaFinal) {
 }
 
 async function enviarVendaCriadaAutomaticamenteParaPosVenda(venda, usuarioId, agora, trx) {
-  const validacaoAprovacao = await vendaAprovacaoService.validarEnvioPosVenda(venda.id, usuarioId, trx);
+  return enviarVendaParaPosVendaLiberada(venda, usuarioId, agora, trx, { envioAutomatico: true });
+}
 
-  if (validacaoAprovacao.status !== 'liberada') {
-    return venda;
-  }
-
+async function enviarVendaParaPosVendaLiberada(venda, usuarioId, agora, trx, opcoes = {}) {
   const etapas = await listarEtapasFunilOrdenadas();
   const primeiraEtapa = etapas[0]?.id || 'aprovacao';
+  const envioAutomatico = Boolean(opcoes.envioAutomatico);
   const atualizada = await Venda.query(trx).patchAndFetchById(venda.id, {
     status_funil: primeiraEtapa,
     prioridade_funil: venda.prioridade_funil || 'media',
@@ -1210,11 +1209,13 @@ async function enviarVendaCriadaAutomaticamenteParaPosVenda(venda, usuarioId, ag
     acao: 'venda.enviada_pos_venda',
     statusAnterior: venda.status_funil || null,
     statusNovo: primeiraEtapa,
-    observacao: 'Venda enviada automaticamente ao pos-venda',
+    observacao: envioAutomatico
+      ? 'Venda enviada automaticamente ao pos-venda'
+      : 'Venda enviada ao pos-venda',
     dados: {
       status_funil: primeiraEtapa,
       enviada_pos_venda_em: agora,
-      envio_automatico: true
+      ...(envioAutomatico ? { envio_automatico: true } : {})
     },
     createdAt: agora,
     trx
@@ -2264,41 +2265,19 @@ async function enviarVendaParaPosVenda(id, usuarioId) {
   }
 
   const agora = formatarDateTimeSQL();
-  const etapas = await listarEtapasFunilOrdenadas();
-  const primeiraEtapa = etapas[0]?.id || 'aprovacao';
+  const podeEnviarSemAprovacao = await usuarioTemPermissao(usuarioId, PERMISSAO_AUTO_POS_VENDA);
 
   const vendaAtualizada = await Venda.transaction(async trx => {
-    const validacaoAprovacao = await vendaAprovacaoService.validarEnvioPosVenda(id, usuarioId, trx);
+    if (!podeEnviarSemAprovacao) {
+      const validacaoAprovacao = await vendaAprovacaoService.validarEnvioPosVenda(id, usuarioId, trx);
 
-    if (validacaoAprovacao.status !== 'liberada') {
-      return validacaoAprovacao;
+      if (validacaoAprovacao.status !== 'liberada') {
+        return validacaoAprovacao;
+      }
     }
 
-    const atualizada = await Venda.query(trx).patchAndFetchById(id, {
-      status_funil: primeiraEtapa,
-      prioridade_funil: venda.prioridade_funil || 'media',
-      enviada_pos_venda_em: agora,
-      enviada_pos_venda_por_id: usuarioId,
-      ultima_atividade_em: agora,
-      updated_at: agora
-    });
+    return enviarVendaParaPosVendaLiberada(venda, usuarioId, agora, trx);
 
-    await registrarHistoricoVenda({
-      vendaId: id,
-      usuarioId,
-      acao: 'venda.enviada_pos_venda',
-      statusAnterior: venda.status_funil || null,
-      statusNovo: primeiraEtapa,
-      observacao: 'Venda enviada ao pós-venda',
-      dados: {
-        status_funil: primeiraEtapa,
-        enviada_pos_venda_em: agora
-      },
-      createdAt: agora,
-      trx
-    });
-
-    return atualizada;
   });
 
   if (vendaAtualizada?.status && vendaAtualizada.status !== 'liberada') {

@@ -22,7 +22,7 @@ const PERMISSOES = [
   {
     chave: 'vendas_auto_pos_venda',
     nome: 'Vendas: enviar automaticamente ao pos-venda',
-    descricao: 'Envia automaticamente ao pos-venda as vendas registradas pelo usuario.'
+    descricao: 'Envia automaticamente ao pos-venda as vendas registradas pelo usuario, sem exigir liberacao ADM.'
   },
   {
     chave: 'vendas_editar',

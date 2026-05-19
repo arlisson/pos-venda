@@ -59,7 +59,7 @@ export const GRUPOS_PERMISSOES = [
           {
             chave: 'vendas_auto_pos_venda',
             nome: 'Enviar automaticamente',
-            descricao: 'Vendas registradas pelo usuario entram direto no pos-venda quando liberadas.'
+            descricao: 'Vendas registradas pelo usuario entram direto no pos-venda sem liberacao ADM.'
           },
           {
             chave: 'vendas_editar',
