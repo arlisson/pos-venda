@@ -2619,9 +2619,7 @@ function VendasPage() {
   }
 
   const totalColunasVendas = 11 + (podeOperarPosVenda ? 2 : 0) + (podeExcluirVenda ? 1 : 0);
-  const larguraColunaAcao = 60;
   const larguraColunaContato = 104;
-  const offsetAcoesFinais = (podeOperarPosVenda ? larguraColunaAcao : 0) + (podeExcluirVenda ? larguraColunaAcao : 0);
 
   return (
     <LayoutPrivado>
@@ -2878,12 +2876,12 @@ function VendasPage() {
                   <th>Ativação</th>
                   <th>Vendedor(a)</th>
                   {podeOperarPosVenda && (
-                    <th className="vendas-actions-col vendas-email-actions-col" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
+                    <th className="vendas-actions-col vendas-email-actions-col" style={{ width: larguraColunaContato, minWidth: larguraColunaContato }}>
                       Automação
                     </th>
                   )}
                   {podeOperarPosVenda && (
-                    <th className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>
+                    <th className="vendas-actions-col vendas-delete-actions-col">
                       Problema
                     </th>
                   )}
@@ -3012,7 +3010,7 @@ function VendasPage() {
                       <td data-label="Ativacao" data-mobile-hidden="true">{formatarData(venda.data_ativacao)}</td>
                       <td data-label="Vendedor(a)" data-mobile-hidden="true"><span className="tag">{obterVendedorasMensagem(venda)}</span></td>
                       {podeOperarPosVenda && (
-                        <td data-label="Automação" className="vendas-actions-col vendas-email-actions-col vendas-mobile-actions m-actions" style={{ right: offsetAcoesFinais, width: larguraColunaContato, minWidth: larguraColunaContato }}>
+                        <td data-label="Automação" className="vendas-actions-col vendas-email-actions-col vendas-mobile-actions m-actions" style={{ width: larguraColunaContato, minWidth: larguraColunaContato }}>
                           <div className="vendas-contact-actions">
                             <button
                               className="btn btn-icon btn-ghost vendas-whatsapp-btn"
@@ -3055,7 +3053,7 @@ function VendasPage() {
                         </td>
                       )}
                       {podeOperarPosVenda && (
-                        <td data-label="Problema" className="vendas-actions-col vendas-delete-actions-col" style={{ right: podeExcluirVenda ? larguraColunaAcao : 0 }}>
+                        <td data-label="Problema" className="vendas-actions-col vendas-delete-actions-col">
                           <button
                             className="btn btn-icon btn-ghost btn-warn-icon"
                             title="Marcar problema"
