@@ -2738,6 +2738,9 @@ function VendaModal({
     if (editando || somenteVisualizacao || vendaBloqueadaParaUsuario || salvando) return;
 
     const formLimpo = criarVendaVazia();
+    if (usuarioLogado?.id && vendedorasOpcoesModal?.some(v => String(v.id) === String(usuarioLogado.id))) {
+      formLimpo.vendedoras = [String(usuarioLogado.id)];
+    }
 
     clearDraft();
     setForm(formLimpo);
@@ -3748,7 +3751,7 @@ function VendaModal({
                       value={form.vendedoras || []}
                       options={vendedorasOpcoesModal}
                       onChange={atualizarVendedorasVenda}
-                      idProtegido={vendedorasOpcoesModal?.some(v => String(v.id) === String(usuarioLogado?.id)) ? usuarioLogado?.id : null}
+                      idProtegido={!temPermissao(usuarioLogado, 'vendas_atribuir_qualquer_vendedor') && vendedorasOpcoesModal?.some(v => String(v.id) === String(usuarioLogado?.id)) ? usuarioLogado?.id : null}
                       disabled={!podeAlterarVendedorasVenda}
                     />
                   ) : campo.type === 'aceiteRange' ? (

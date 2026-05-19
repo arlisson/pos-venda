@@ -69,7 +69,12 @@ export const GRUPOS_PERMISSOES = [
           {
             chave: 'compartilhar_venda',
             nome: 'Compartilhar vendas',
-            descricao: 'Permite vincular outras vendedoras a uma venda.'
+            descricao: 'Permite vincular outras vendedoras a uma venda (o usuário deve permanecer na venda).'
+          },
+          {
+            chave: 'vendas_atribuir_qualquer_vendedor',
+            nome: 'Atribuir qualquer vendedor',
+            descricao: 'Permite registrar vendas no nome de qualquer vendedor, podendo não se incluir na venda.'
           },
           {
             chave: 'vendas_excluir',

@@ -35,6 +35,11 @@ const PERMISSOES = [
     descricao: 'Permite vincular outras vendedoras a uma venda.'
   },
   {
+    chave: 'vendas_atribuir_qualquer_vendedor',
+    nome: 'Vendas: atribuir qualquer vendedor',
+    descricao: 'Permite registrar vendas no nome de qualquer vendedor, podendo não se incluir na venda.'
+  },
+  {
     chave: 'ver_vendas_compartilhadas',
     nome: 'Vendas: ver compartilhadas',
     descricao: 'Permite ver vendas compartilhadas em que o usuário está vinculado como vendedor.'
