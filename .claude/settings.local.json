@@ -61,7 +61,16 @@
       "Bash(xargs grep -H \"\\\\.index\")",
       "Skill(brainstorming)",
       "Skill(brainstorming:*)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(git -C c:/Users/USERs/Documents/GitHub/pos-venda ls-files)",
+      "Bash(mkdir -p c:/Users/USERs/Documents/GitHub/pos-venda/LixeiraCodigos)",
+      "Bash(git mv *)",
+      "Bash(mkdir -p LixeiraCodigos/plano)",
+      "PowerShell(Move-Item -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\frontend\\\\src_backup\" -Destination \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\LixeiraCodigos\\\\src_backup\" -ErrorAction Stop)",
+      "PowerShell(\"OK\")",
+      "Bash(git add *)",
+      "Bash(git reset *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
