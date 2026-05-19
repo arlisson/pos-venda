@@ -4,7 +4,9 @@ const assert = require('node:assert/strict');
 const vendaService = require('../src/services/venda.service');
 
 const {
+  adicionarMesesDataISO,
   aplicarDadosClienteNaVenda,
+  montarDadosSincronizacaoClienteVenda,
   montarPayload,
   normalizarData,
   normalizarItensChips,
@@ -159,6 +161,55 @@ test('obtem quantidade de chips com fallback para quantidade de linhas ou 1', ()
   }), 5);
   assert.equal(obterQuantidadeChipsVenda({ valores_unitarios_chips: '', quantidade_linhas: 4 }), 4);
   assert.equal(obterQuantidadeChipsVenda({}), 1);
+});
+
+test('calcula fidelidade 24 meses apos a conclusao preservando fim de mes', () => {
+  assert.equal(adicionarMesesDataISO('2026-05-19', 24), '2028-05-19');
+  assert.equal(adicionarMesesDataISO('2026-02-28', 24), '2028-02-28');
+  assert.equal(adicionarMesesDataISO('2026-01-31', 1), '2026-02-28');
+});
+
+test('monta sincronizacao substituindo dados da operadora vendida', () => {
+  const dados = montarDadosSincronizacaoClienteVenda({
+    cliente_id: 10,
+    operadora_id: 5,
+    operadora_atual_id: 5,
+    data_ativacao: '2026-05-19',
+    valor_total: '119.80',
+    quantidade_linhas: 8,
+    valores_unitarios_chips: JSON.stringify([
+      { quantidade: 2, valor_unitario: 59.9 }
+    ])
+  }, '2026-05-20');
+
+  assert.deepEqual(dados, {
+    clienteId: 10,
+    operadoraVendidaId: 5,
+    quantidadeChips: 2,
+    valorPago: 119.8,
+    fidelidadeFim: '2028-05-19',
+    dataBase: '2026-05-19'
+  });
+});
+
+test('monta sincronizacao para adicionar operadora diferente sem remover antigas', () => {
+  const dados = montarDadosSincronizacaoClienteVenda({
+    cliente_id: 10,
+    operadora_id: 7,
+    operadora_atual_id: 5,
+    valor_total: 89.9,
+    quantidade_linhas: 1
+  }, '2026-05-20 14:30:00');
+
+  assert.equal(dados.operadoraVendidaId, 7);
+  assert.equal(dados.quantidadeChips, 1);
+  assert.equal(dados.valorPago, 89.9);
+  assert.equal(dados.fidelidadeFim, '2028-05-20');
+});
+
+test('nao monta sincronizacao sem cliente ou sem operadora vendida', () => {
+  assert.equal(montarDadosSincronizacaoClienteVenda({ cliente_id: 10 }), null);
+  assert.equal(montarDadosSincronizacaoClienteVenda({ operadora_id: 5 }), null);
 });
 
 test('oculta venda concluida parada por duas semanas no funil', () => {

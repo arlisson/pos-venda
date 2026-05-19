@@ -265,30 +265,33 @@ function formatarOperadorasCliente(operadoras = []) {
 }
 
 async function sincronizarOperadorasCliente(clienteId, operadoras, trx = null) {
+  const clienteIdNormalizado = Number(clienteId);
   const linhas = normalizarOperadorasCliente({ operadoras_atuais: operadoras });
 
   await ClienteOperadora.query(trx)
     .delete()
-    .where('cliente_id', clienteId);
+    .where('cliente_id', clienteIdNormalizado);
 
   if (linhas.length > 0) {
     await ClienteOperadora.query(trx).insert(linhas.map(item => ({
       ...item,
-      cliente_id: clienteId
+      cliente_id: clienteIdNormalizado,
+      operadora_id: Number(item.operadora_id)
     })));
   }
 
-  await atualizarResumoLegadoCliente(clienteId, trx);
+  await atualizarResumoLegadoCliente(clienteIdNormalizado, trx);
 }
 
 async function atualizarResumoLegadoCliente(clienteId, trx = null) {
+  const clienteIdNormalizado = Number(clienteId);
   const operadoras = await ClienteOperadora.query(trx)
-    .where('cliente_id', clienteId)
+    .where('cliente_id', clienteIdNormalizado)
     .withGraphFetched('operadora')
     .orderBy('id', 'asc');
   const resumo = obterResumoOperadorasCliente(operadoras);
 
-  await Cliente.query(trx).patchAndFetchById(clienteId, {
+  await Cliente.query(trx).patchAndFetchById(clienteIdNormalizado, {
     operadora_atual_id: resumo.operadora_atual_id,
     quantidade_chips: resumo.quantidade_chips,
     valor_pago: resumo.valor_pago,
