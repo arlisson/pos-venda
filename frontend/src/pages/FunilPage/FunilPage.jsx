@@ -1230,17 +1230,21 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
   );
 }
 
-function SaleCard({ sale, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp }) {
+function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp }) {
   const priorityColor = PRIORITIES[sale.priority || 'media']?.color || '#3b82f6';
   const cancelada = Boolean(sale.canceladaEm);
+  const classeStatus = cancelada ? ' sale-card-cancelada' : finalizada ? ' sale-card-finalizada' : '';
   return (
     <div
-      className={`sale-card${cancelada ? ' sale-card-cancelada' : ''}`}
+      className={`sale-card${classeStatus}`}
       onClick={onClick}
-      title={cancelada && sale.motivoCancelamento ? `Cancelada: ${sale.motivoCancelamento}` : undefined}
+      title={cancelada && sale.motivoCancelamento ? `Cancelada: ${sale.motivoCancelamento}` : finalizada ? 'Venda na etapa final' : undefined}
     >
       {cancelada && (
         <span className="sale-card-cancelada-tag">Cancelada</span>
+      )}
+      {!cancelada && finalizada && (
+        <span className="sale-card-finalizada-tag">Finalizada</span>
       )}
       <div className="sale-card-top">
         <div className="client" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1871,15 +1875,18 @@ function FunilPage() {
     () => stagesVisiveis.filter(stage => stage.ativo !== false),
     [stagesVisiveis]
   );
-  const { filtradas, total } = useMemo(() => {
-    let etapasFinaisIds = new Set(stagesVisiveis.filter(st => st.etapaFinal).map(st => st.id));
-    if (etapasFinaisIds.size === 0) {
+  const etapasFinaisIds = useMemo(() => {
+    const finais = new Set(stagesVisiveis.filter(st => st.etapaFinal).map(st => st.id));
+    if (finais.size === 0) {
       const validas = stagesVisiveis.filter(st => st.id !== 'retorno');
       if (validas.length > 0) {
         const maxOrdem = Math.max(...validas.map(st => st.ordem ?? 0));
-        validas.filter(st => (st.ordem ?? 0) === maxOrdem).forEach(st => etapasFinaisIds.add(st.id));
+        validas.filter(st => (st.ordem ?? 0) === maxOrdem).forEach(st => finais.add(st.id));
       }
     }
+    return finais;
+  }, [stagesVisiveis]);
+  const { filtradas, total } = useMemo(() => {
     const filtered = sales.filter(s => {
       if (s.stage === 'retorno') return false;
       if (filter === 'canceladas') {
@@ -1891,7 +1898,7 @@ function FunilPage() {
       return true;
     });
     return { filtradas: filtered, total: filtered.reduce((sum, s) => sum + s.value, 0) };
-  }, [sales, stagesVisiveis, filter, busca, agora]);
+  }, [sales, filter, busca, agora]);
   const stageLabels = montarStageLabels(stagesVisiveis);
   const operators = useMemo(
     () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),
@@ -2210,6 +2217,7 @@ function FunilPage() {
                       <SaleCard
                         key={s.id}
                         sale={s}
+                        finalizada={etapasFinaisIds.has(s.stage)}
                         onClick={() => setSelectedSaleId(s.id)}
                         onEmail={abrirEmailVenda}
                         gerandoEmailId={gerandoEmailId}

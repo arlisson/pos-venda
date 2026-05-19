@@ -430,10 +430,55 @@ function parseDados(dados) {
   return dados;
 }
 
+async function excluirNotificacoesPorIds(notificacaoIds, trx) {
+  const ids = [...new Set(notificacaoIds.map(id => Number(id)).filter(Boolean))];
+  if (ids.length === 0) return 0;
+
+  await trx('notificacao_destinatarios')
+    .whereIn('notificacao_id', ids)
+    .delete();
+
+  await trx('notificacoes')
+    .whereIn('id', ids)
+    .delete();
+
+  return ids.length;
+}
+
+async function buscarNotificacoesSemEntidade(tabela, trx) {
+  const alias = tabela === 'clientes' ? 'c' : 'v';
+
+  return trx('notificacoes as n')
+    .leftJoin(`${tabela} as ${alias}`, 'n.entidade_id', `${alias}.id`)
+    .where('n.entidade', tabela)
+    .whereNotNull('n.entidade_id')
+    .where(builder => {
+      builder
+        .whereNull(`${alias}.id`)
+        .orWhereNotNull(`${alias}.excluido_em`);
+    })
+    .select('n.id');
+}
+
+async function limparNotificacoesSemObjetoReferente() {
+  return db.transaction(async trx => {
+    const [notificacoesClientes, notificacoesVendas] = await Promise.all([
+      buscarNotificacoesSemEntidade('clientes', trx),
+      buscarNotificacoesSemEntidade('vendas', trx)
+    ]);
+
+    return excluirNotificacoesPorIds([
+      ...notificacoesClientes.map(notificacao => notificacao.id),
+      ...notificacoesVendas.map(notificacao => notificacao.id)
+    ], trx);
+  });
+}
+
 async function listarNotificacoes(usuarioId, filtros = {}) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
   await vendaNotificacaoParadaService.sincronizarVendasParadas();
+  await limparNotificacoesSemObjetoReferente();
 
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -517,6 +562,7 @@ async function listarUrgentes(usuarioId) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
   await vendaNotificacaoParadaService.sincronizarVendasParadas();
+  await limparNotificacoesSemObjetoReferente();
 
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -676,5 +722,6 @@ module.exports = {
   sincronizarFidelidadeCliente,
   sincronizarNotificacoesFidelidade,
   desativarNotificacoesRetornoNota,
-  sincronizarRetornosNotas
+  sincronizarRetornosNotas,
+  limparNotificacoesSemObjetoReferente
 };

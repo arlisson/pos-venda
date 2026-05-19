@@ -745,8 +745,11 @@ input, select, textarea { font-family: inherit; }
   display: flex; flex-direction: column; gap: 6px; box-shadow: var(--shadow-sm);
 }
 .sale-card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
-.sale-card-cancelada {
+.sale-card-cancelada,
+.sale-card-finalizada {
   position: relative;
+}
+.sale-card-cancelada {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   border-color: #dc2626;
   box-shadow: 0 1px 3px rgba(220, 38, 38, 0.15);
@@ -755,22 +758,39 @@ input, select, textarea { font-family: inherit; }
   border-color: #b91c1c;
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
 }
-.sale-card-cancelada .client,
-.sale-card-cancelada .value {
+.sale-card-finalizada {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border-color: #16a34a;
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.15);
+}
+.sale-card-finalizada:hover {
+  border-color: #15803d;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+}
+.sale-card.sale-card-cancelada .client,
+.sale-card.sale-card-cancelada .value {
   color: #7f1d1d;
 }
-.sale-card-cancelada .sale-card-meta,
-.sale-card-cancelada .sale-card-bottom,
-.sale-card-cancelada .seller-name {
+.sale-card.sale-card-cancelada .sale-card-meta,
+.sale-card.sale-card-cancelada .sale-card-bottom,
+.sale-card.sale-card-cancelada .seller-name {
   color: #991b1b;
 }
-.sale-card-cancelada-tag {
+.sale-card.sale-card-finalizada .client,
+.sale-card.sale-card-finalizada .value {
+  color: #14532d;
+}
+.sale-card.sale-card-finalizada .sale-card-meta,
+.sale-card.sale-card-finalizada .sale-card-bottom,
+.sale-card.sale-card-finalizada .seller-name {
+  color: #166534;
+}
+.sale-card-cancelada-tag,
+.sale-card-finalizada-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   align-self: flex-start;
-  background: #dc2626;
-  color: #fff;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.6px;
@@ -778,9 +798,19 @@ input, select, textarea { font-family: inherit; }
   padding: 2px 8px;
   border-radius: 999px;
   line-height: 1.4;
+}
+.sale-card-cancelada-tag {
+  background: #dc2626;
+  color: #fff;
   box-shadow: 0 1px 2px rgba(127, 29, 29, 0.3);
 }
-.sale-card-cancelada-tag::before {
+.sale-card-finalizada-tag {
+  background: #16a34a;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(20, 83, 45, 0.3);
+}
+.sale-card-cancelada-tag::before,
+.sale-card-finalizada-tag::before {
   content: '';
   width: 5px;
   height: 5px;
