@@ -297,7 +297,7 @@ async function reconciliarPlanilhaProcessando(planilha) {
   if (arquivoSumiu && semProgresso) {
     motivo = 'Arquivo temporário não encontrado; o processamento pode ter sido interrompido por reinício do servidor ou falha antes de registrar o erro.';
   } else if (travado) {
-    motivo = `Processamento sem atualizacao ha ${Math.round(tempoOcioso / 1000)}s; provavelmente o processo foi encerrado (reinicio do servidor, falta de memoria ou falha silenciosa).`;
+    motivo = `Processamento sem atualização há ${Math.round(tempoOcioso / 1000)}s; provavelmente o processo foi encerrado (reinicio do servidor, falta de memoria ou falha silenciosa).`;
   }
 
   if (!motivo) return planilha;

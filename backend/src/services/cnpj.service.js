@@ -378,7 +378,7 @@ function combinarResultados(resultados) {
       alertas.push({
         tipo: 'antiguidade',
         campo,
-        mensagem: `${campo} foi atualizado na fonte ha ${idade} dias.`
+        mensagem: `${campo} foi atualizado na fonte há ${idade} dias.`
       });
     }
   });

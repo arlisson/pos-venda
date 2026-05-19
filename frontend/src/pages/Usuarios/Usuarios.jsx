@@ -13,21 +13,15 @@ import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   garantirPermissaoPosVenda as garantirPermissaoPosVendaCompartilhada,
   montarGruposPermissoes as montarGruposPermissoesCompartilhados,
-  PermissaoGrupo as PermissaoGrupoCompartilhado
+  PermissaoGrupo as PermissaoGrupoCompartilhado,
+  CopiarPermissoesSelect,
+  parsePermissoesUsuario,
+  getPermissoesCopiaveis as getPermissoesCopiaveisCompartilhado
 } from './permissoes';
 import './Usuarios.css';
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-  if (typeof permissoes === 'string') {
-    try { return JSON.parse(permissoes); } catch { return []; }
-  }
-  return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
-}
-
 function getPermissoesIniciais(usuario, permissoesDisponiveis) {
-  const permissoesUsuario = parsePermissoes(usuario?.permissoes);
+  const permissoesUsuario = parsePermissoesUsuario(usuario?.permissoes);
 
   if (usuario?.role?.nome === 'admin' && permissoesUsuario.length === 0) {
     return permissoesDisponiveis.map(permissao => permissao.chave);
@@ -83,17 +77,6 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
     });
   }
 
-  function getPermissoesCopiaveis(usuarioOrigem) {
-    const chavesDisponiveis = permissoes.map(permissao => permissao.chave);
-
-    if (usuarioOrigem?.role?.nome === 'admin') {
-      return chavesDisponiveis;
-    }
-
-    const chavesOrigem = new Set(parsePermissoes(usuarioOrigem?.permissoes));
-    return chavesDisponiveis.filter(chave => chavesOrigem.has(chave));
-  }
-
   function copiarPermissoes() {
     const usuarioOrigem = usuarios.find(item => String(item.id) === String(usuarioOrigemId));
 
@@ -102,7 +85,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
       return;
     }
 
-    const proximasPermissoes = getPermissoesCopiaveis(usuarioOrigem);
+    const proximasPermissoes = getPermissoesCopiaveisCompartilhado(usuarioOrigem, permissoes);
     setSelecionadas(proximasPermissoes);
     setAvisoCopia(`Permissões de ${usuarioOrigem.nome} copiadas. Revise e salve para aplicar.`);
   }
@@ -156,14 +139,14 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
               <div className="permissions-copy">
                 <div className="permissions-copy__field">
                   <label>Copiar permissões de</label>
-                  <select value={usuarioOrigemId} onChange={event => setUsuarioOrigemId(event.target.value)}>
-                    <option value="">Selecione um usuário</option>
-                    {usuariosOrigem.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.nome} - {item.role?.nome || 'Sem perfil'}
-                      </option>
-                    ))}
-                  </select>
+                  <CopiarPermissoesSelect
+                    value={usuarioOrigemId}
+                    onChange={setUsuarioOrigemId}
+                    options={usuariosOrigem.map(item => ({
+                      value: item.id,
+                      label: `${item.nome} - ${item.role?.nome || 'Sem perfil'}`,
+                    }))}
+                  />
                 </div>
                 <button className="btn" type="button" onClick={copiarPermissoes} disabled={!usuarioOrigemId}>
                   <I.Users size={14} /> Copiar

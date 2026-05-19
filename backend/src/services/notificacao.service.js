@@ -95,7 +95,7 @@ function calcularDiasRestantes(fidelidadeFim) {
 function montarTextoDias(diasRestantes) {
   if (diasRestantes < 0) {
     const diasVencida = Math.abs(diasRestantes);
-    return diasVencida === 1 ? 'venceu ha 1 dia' : `venceu ha ${diasVencida} dias`;
+    return diasVencida === 1 ? 'venceu há 1 dia' : `venceu há ${diasVencida} dias`;
   }
 
   if (diasRestantes === 0) return 'termina hoje';

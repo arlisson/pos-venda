@@ -705,8 +705,16 @@ function Clientes() {
 
     try {
       const dados = await listarClientes({ ...proximosFiltros, page: pagina, per_page: porPagina });
-      setClientes(dados.data);
-      setTotalClientes(dados.total);
+      const totalPaginas = Math.max(1, Math.ceil(dados.total / porPagina));
+      if (pagina > totalPaginas) {
+        const novosDados = await listarClientes({ ...proximosFiltros, page: totalPaginas, per_page: porPagina });
+        setClientes(novosDados.data);
+        setTotalClientes(novosDados.total);
+        setPaginaAtual(totalPaginas);
+      } else {
+        setClientes(dados.data);
+        setTotalClientes(dados.total);
+      }
     } catch (error) {
       setErro(error.message || 'Erro ao carregar clientes.');
     } finally {

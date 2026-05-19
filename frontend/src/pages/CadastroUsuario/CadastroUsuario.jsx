@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { criarUsuario, listarPermissoes } from '../../services/usuario.service';
+import { criarUsuario, listarPermissoes, listarUsuarios } from '../../services/usuario.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import * as I from '../../components/Icons';
 import {
   garantirPermissaoPosVenda as garantirPermissaoPosVendaCompartilhada,
   montarGruposPermissoes as montarGruposPermissoesCompartilhados,
-  PermissaoGrupo as PermissaoGrupoCompartilhado
+  PermissaoGrupo as PermissaoGrupoCompartilhado,
+  CopiarPermissoesSelect,
+  getPermissoesCopiaveis
 } from '../Usuarios/permissoes';
 import '../Usuarios/Usuarios.css';
 
@@ -23,6 +25,9 @@ function CadastroUsuario() {
   const [roleId, setRoleId] = useState(2);
   const [permissoes, setPermissoes] = useState([]);
   const [permissoesSelecionadas, setPermissoesSelecionadas] = useState([]);
+  const [usuariosOrigem, setUsuariosOrigem] = useState([]);
+  const [usuarioOrigemId, setUsuarioOrigemId] = useState('');
+  const [avisoCopia, setAvisoCopia] = useState('');
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(false);
@@ -49,8 +54,12 @@ function CadastroUsuario() {
       }
 
       try {
-        const permissoesData = await listarPermissoes();
+        const [permissoesData, usuariosData] = await Promise.all([
+          listarPermissoes(),
+          listarUsuarios().catch(() => [])
+        ]);
         setPermissoes(garantirPermissaoPosVendaCompartilhada(permissoesData));
+        setUsuariosOrigem(usuariosData || []);
       } catch (error) {
         setErro(error.message || 'Erro ao carregar permissões.');
       }
@@ -58,6 +67,17 @@ function CadastroUsuario() {
 
     carregarPermissoes();
   }, [podeGerenciarPermissoes]);
+
+  function copiarPermissoesDeUsuario() {
+    const usuarioOrigem = usuariosOrigem.find(item => String(item.id) === String(usuarioOrigemId));
+    if (!usuarioOrigem) {
+      setAvisoCopia('');
+      return;
+    }
+    const proximas = getPermissoesCopiaveis(usuarioOrigem, permissoes);
+    setPermissoesSelecionadas(proximas);
+    setAvisoCopia(`Permissões de ${usuarioOrigem.nome} copiadas. Revise antes de cadastrar.`);
+  }
 
   function togglePermissao(chave, opcoes = {}) {
     setPermissoesSelecionadas(prev => {
@@ -174,6 +194,34 @@ function CadastroUsuario() {
                     <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-2)', marginBottom: 8 }}>
                       Permissoes de acesso
                     </div>
+
+                    {Number(roleId) !== 1 && usuariosOrigem.length > 0 && (
+                      <>
+                        <div className="permissions-copy">
+                          <div className="permissions-copy__field">
+                            <label>Copiar permissões de</label>
+                            <CopiarPermissoesSelect
+                              value={usuarioOrigemId}
+                              onChange={setUsuarioOrigemId}
+                              options={usuariosOrigem.map(item => ({
+                                value: item.id,
+                                label: `${item.nome} - ${item.role?.nome || 'Sem perfil'}`,
+                              }))}
+                            />
+                          </div>
+                          <button
+                            className="btn"
+                            type="button"
+                            onClick={copiarPermissoesDeUsuario}
+                            disabled={!usuarioOrigemId}
+                          >
+                            <I.Users size={14} /> Copiar
+                          </button>
+                        </div>
+                        {avisoCopia && <div className="permissions-copy__notice">{avisoCopia}</div>}
+                      </>
+                    )}
+
                     <div className="permissions-grid">
                       {Number(roleId) === 1 ? (
                         <div style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-2)' }}>

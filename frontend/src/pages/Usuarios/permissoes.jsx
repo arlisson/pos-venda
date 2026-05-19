@@ -1,4 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
+import { useState, useEffect, useRef } from 'react';
+import * as I from '../../components/Icons';
 
 export const PERMISSAO_POS_VENDA = {
   chave: 'pos_venda',
@@ -446,6 +448,87 @@ export function montarGruposPermissoes(permissoes = []) {
         }
       ]
     : gruposSemanticos;
+}
+
+export function CopiarPermissoesSelect({ value, onChange, options, placeholder = 'Selecione um usuário' }) {
+  const [aberto, setAberto] = useState(false);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (!aberto) return undefined;
+    function handleClickFora(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setAberto(false);
+      }
+    }
+    function handleEsc(event) {
+      if (event.key === 'Escape') setAberto(false);
+    }
+    document.addEventListener('mousedown', handleClickFora);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickFora);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [aberto]);
+
+  const selecionado = options.find(opt => String(opt.value) === String(value));
+
+  return (
+    <div className={`permissions-copy__select${aberto ? ' is-open' : ''}`} ref={wrapperRef}>
+      <button
+        type="button"
+        className="permissions-copy__trigger"
+        onClick={() => setAberto(prev => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+      >
+        <span className={`permissions-copy__trigger-label${selecionado ? '' : ' is-placeholder'}`}>
+          {selecionado ? selecionado.label : placeholder}
+        </span>
+        <I.ChevronDown size={14} />
+      </button>
+      {aberto && (
+        <ul className="permissions-copy__menu" role="listbox">
+          <li
+            role="option"
+            aria-selected={!value}
+            className={`permissions-copy__option is-placeholder${!value ? ' is-active' : ''}`}
+            onClick={() => { onChange(''); setAberto(false); }}
+          >
+            {placeholder}
+          </li>
+          {options.map(opt => (
+            <li
+              key={opt.value}
+              role="option"
+              aria-selected={String(opt.value) === String(value)}
+              className={`permissions-copy__option${String(opt.value) === String(value) ? ' is-active' : ''}`}
+              onClick={() => { onChange(opt.value); setAberto(false); }}
+            >
+              {opt.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function parsePermissoesUsuario(permissoes) {
+  if (!permissoes) return [];
+  if (Array.isArray(permissoes)) return permissoes;
+  if (typeof permissoes === 'string') {
+    try { return JSON.parse(permissoes); } catch { return []; }
+  }
+  return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
+}
+
+export function getPermissoesCopiaveis(usuarioOrigem, permissoesDisponiveis) {
+  const chavesDisponiveis = permissoesDisponiveis.map(permissao => permissao.chave);
+  if (usuarioOrigem?.role?.nome === 'admin') return chavesDisponiveis;
+  const chavesOrigem = new Set(parsePermissoesUsuario(usuarioOrigem?.permissoes));
+  return chavesDisponiveis.filter(chave => chavesOrigem.has(chave));
 }
 
 export function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle }) {
