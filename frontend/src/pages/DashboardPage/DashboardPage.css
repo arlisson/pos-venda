@@ -177,14 +177,19 @@
   min-width: 0;
 }
 
+/* Reserva a altura de duas linhas no título para todos os cards: o de
+   fidelidade (duas linhas) preenche naturalmente e os de uma linha ficam
+   centralizados nesse espaço, mantendo todas as divisórias alinhadas. */
 .home-notification-card__title strong {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 2.3em;
   overflow: hidden;
   color: var(--text);
   font-size: 14px;
   font-weight: 800;
   line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .home-notification-card__title em {
