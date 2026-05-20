@@ -113,23 +113,73 @@ function sanitizarCnpj(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 14);
 }
 
+function sanitizarCpf(valor) {
+  return String(valor || '').replace(/\D/g, '').slice(0, 11);
+}
+
 function formatarCnpj(valor) {
   const digitos = sanitizarCnpj(valor);
   if (digitos.length !== 14) return String(valor || '').trim();
   return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
 }
 
-function normalizarCnpjObrigatorio(valor) {
-  const digitos = sanitizarCnpj(valor);
+function formatarCpf(valor) {
+  const digitos = sanitizarCpf(valor);
+  if (digitos.length !== 11) return String(valor || '').trim();
+  return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9)}`;
+}
 
-  if (digitos.length !== 14) {
-    throw criarHttpError(400, 'Informe um CNPJ com 14 digitos.');
+function validarDigitosCnpj(cnpj) {
+  if (!/^\d{14}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
+
+  const calcularDigito = (base) => {
+    const pesos = base === 12
+      ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+      : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const soma = pesos.reduce((total, peso, index) => total + Number(cnpj[index]) * peso, 0);
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+
+  return calcularDigito(12) === Number(cnpj[12]) && calcularDigito(13) === Number(cnpj[13]);
+}
+
+function validarDigitosCpf(cpf) {
+  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  const calc = (n) => {
+    const soma = Array.from({ length: n }, (_, i) => Number(cpf[i]) * (n + 1 - i)).reduce((a, b) => a + b, 0);
+    const r = (soma * 10) % 11;
+    return r >= 10 ? 0 : r;
+  };
+
+  return calc(9) === Number(cpf[9]) && calc(10) === Number(cpf[10]);
+}
+
+function normalizarDocumentoObrigatorio(valor) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+
+  if (digitos.length === 14) {
+    if (!validarDigitosCnpj(digitos)) {
+      throw criarHttpError(400, 'CNPJ invalido.');
+    }
+    return {
+      cnpj: formatarCnpj(digitos),
+      cnpj_digitos: digitos
+    };
   }
 
-  return {
-    cnpj: formatarCnpj(digitos),
-    cnpj_digitos: digitos
-  };
+  if (digitos.length === 11) {
+    if (!validarDigitosCpf(digitos)) {
+      throw criarHttpError(400, 'CPF invalido.');
+    }
+    return {
+      cnpj: formatarCpf(digitos),
+      cnpj_digitos: digitos
+    };
+  }
+
+  throw criarHttpError(400, 'Informe um CPF ou CNPJ valido.');
 }
 
 function textoCelula(valor) {
@@ -687,9 +737,9 @@ function montarPayload(dados) {
   }
 
   if (payload.cnpj !== undefined) {
-    const cnpjNormalizado = normalizarCnpjObrigatorio(payload.cnpj);
-    payload.cnpj = cnpjNormalizado.cnpj;
-    payload.cnpj_digitos = cnpjNormalizado.cnpj_digitos;
+    const documentoNormalizado = normalizarDocumentoObrigatorio(payload.cnpj);
+    payload.cnpj = documentoNormalizado.cnpj;
+    payload.cnpj_digitos = documentoNormalizado.cnpj_digitos;
   }
 
   if (!payload.responsavel_tipo) {
@@ -740,10 +790,10 @@ async function buscarClienteDuplicadoPorCnpj(cnpjDigitos, ignorarId = null, trx 
 function lancarErroCnpjDuplicado(cliente) {
   const nome = cliente.razao_social || cliente.nome || `#${cliente.id}`;
   const sufixo = cliente.excluido_em
-    ? ' O cliente está na lixeira; restaure-o para usar este CNPJ.'
+    ? ' O cliente está na lixeira; restaure-o para usar este documento.'
     : '';
 
-  throw criarHttpError(409, `Ja existe um cliente cadastrado com este CNPJ (${nome}).${sufixo}`);
+  throw criarHttpError(409, `Ja existe um cliente cadastrado com este documento (${nome}).${sufixo}`);
 }
 
 function parsePermissoes(permissoes) {

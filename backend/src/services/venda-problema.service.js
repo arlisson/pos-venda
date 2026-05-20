@@ -58,8 +58,12 @@ async function buscarUsuario(usuarioId) {
   return Usuario.query().findById(usuarioId).withGraphFetched('role');
 }
 
+function usuarioEhAdmin(usuario) {
+  return usuario?.role?.nome === 'admin';
+}
+
 function usuarioPodeVerTodas(usuario) {
-  if (usuario?.role?.nome === 'admin') return true;
+  if (usuarioEhAdmin(usuario)) return true;
 
   return [
     ...parsePermissoes(usuario?.permissoes),
@@ -314,8 +318,11 @@ async function resolverProblema(problemaId, dados, usuarioId) {
       throw erro(404, 'Problema ativo nao encontrado.');
     }
 
-    if (!usuarioEhResponsavel(problema, usuarioId)) {
-      throw erro(403, 'Apenas responsáveis podem marcar o problema como resolvido.');
+    const usuario = await buscarUsuario(usuarioId);
+    const ehResponsavel = usuarioEhResponsavel(problema, usuarioId);
+
+    if (!ehResponsavel && !usuarioEhAdmin(usuario)) {
+      throw erro(403, 'Apenas responsáveis ou administradores podem marcar o problema como resolvido.');
     }
 
     const agora = formatarDateTimeSQL();
@@ -325,10 +332,13 @@ async function resolverProblema(problemaId, dados, usuarioId) {
       updated_at: agora
     });
 
-    await VendaProblemaDestinatario.query(trx)
-      .where('problema_id', problema.id)
-      .where('usuario_id', usuarioId)
-      .patch({ resolvido_em: agora, updated_at: agora });
+    const patchDestinatarios = VendaProblemaDestinatario.query(trx).where('problema_id', problema.id);
+
+    if (ehResponsavel) {
+      patchDestinatarios.where('usuario_id', usuarioId);
+    }
+
+    await patchDestinatarios.patch({ resolvido_em: agora, updated_at: agora });
 
     const evento = await registrarEvento({
       problemaId: problema.id,
@@ -433,8 +443,10 @@ async function verificarProblema(problemaId, usuarioId) {
       throw erro(404, 'Problema ativo nao encontrado.');
     }
 
-    if (Number(problema.solicitante_id) !== Number(usuarioId)) {
-      throw erro(403, 'Apenas o solicitante pode verificar o problema.');
+    const usuario = await buscarUsuario(usuarioId);
+
+    if (Number(problema.solicitante_id) !== Number(usuarioId) && !usuarioEhAdmin(usuario)) {
+      throw erro(403, 'Apenas o solicitante ou administradores podem verificar o problema.');
     }
 
     const agora = formatarDateTimeSQL();

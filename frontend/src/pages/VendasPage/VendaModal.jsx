@@ -1043,22 +1043,31 @@ function montarDadosClienteVenda(cliente, clienteId = '', operadoraVendaId = '')
   const fechouVenda = responsavelTipo === 'rl' ? 'RL' : responsavelTipo === 'adm' ? 'ADM' : '';
   const operadoraAtualId = resolverOperadoraAtualCliente(cliente, operadoraVendaId);
 
+  // Documento do cliente pode ser CPF (11 digitos) ou CNPJ (14). Formata conforme o tamanho.
+  const documentoDigitos = cliente?.cnpj ? sanitizarCnpj(cliente.cnpj) : '';
+  const documentoEhCpf = documentoDigitos.length === 11;
+  const documentoFormatado = cliente?.cnpj
+    ? (documentoEhCpf ? formatarCpf(cliente.cnpj) : formatarCnpj(cliente.cnpj))
+    : '';
+  const cpfDoClienteRl = documentoEhCpf && responsavelTipo === 'rl' ? documentoFormatado : '';
+  const cpfDoClienteAdm = documentoEhCpf && responsavelTipo === 'adm' ? documentoFormatado : '';
+
   return {
     cliente_id: clienteId ? String(clienteId) : '',
     nome: cliente?.nome || '',
     razao_social: cliente?.razao_social || '',
-    cnpj: cliente?.cnpj ? formatarCnpj(cliente.cnpj) : '',
+    cnpj: documentoFormatado,
     email: cliente?.email || '',
     telefone: telefoneWhatsapp || '',
     fixo_ddd: telefoneFixo || '',
     nome_representante_legal: nomeRl,
-    cpf_representante_legal: '',
+    cpf_representante_legal: cpfDoClienteRl,
     rg_representante_legal: '',
     data_nascimento_representante_legal: '',
     telefone_representante_legal: telefoneRl,
     email_representante_legal: emailRl,
     nome_administrador: nomeAdm,
-    cpf_administrador: '',
+    cpf_administrador: cpfDoClienteAdm,
     rg_administrador: '',
     data_nascimento_administrador: '',
     telefone_administrador: telefoneAdm,

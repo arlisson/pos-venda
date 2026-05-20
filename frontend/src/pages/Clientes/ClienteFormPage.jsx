@@ -5,7 +5,7 @@ import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/Cnpj
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { buscarClientePorId, atualizarCliente, criarCliente } from '../../services/cliente.service';
-import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
+import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj, formatarCpf, sanitizarCpf, validarDigitosCpf } from '../../services/cnpj.service';
 import { listarOperadoras } from '../../services/config.service';
 import './Clientes.css';
 
@@ -195,6 +195,7 @@ function ClienteFormPage() {
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
+  const [tipoBusca, setTipoBusca] = useState('cnpj');
   const ultimoCnpjConsultadoRef = useRef('');
 
   useEffect(() => {
@@ -217,11 +218,14 @@ function ClienteFormPage() {
         setOperadoras(operadorasData);
 
         if (clienteData) {
-          ultimoCnpjConsultadoRef.current = sanitizarCnpj(clienteData.cnpj);
+          const documentoDigitos = sanitizarCnpj(clienteData.cnpj);
+          const ehCpf = documentoDigitos.length === 11;
+          ultimoCnpjConsultadoRef.current = documentoDigitos;
+          setTipoBusca(ehCpf ? 'cpf' : 'cnpj');
           setForm({
             nome: clienteData.nome || '',
             razao_social: clienteData.razao_social || '',
-            cnpj: formatarCnpj(clienteData.cnpj),
+            cnpj: ehCpf ? formatarCpf(clienteData.cnpj) : formatarCnpj(clienteData.cnpj),
             responsavel_tipo: clienteData.responsavel_tipo || 'rl',
             responsavel_nome: clienteData.responsavel_nome || '',
             email: clienteData.email || '',
@@ -251,6 +255,15 @@ function ClienteFormPage() {
       ...prev,
       [campo]: valor
     }));
+  }
+
+  function alterarTipoBusca(tipo) {
+    setTipoBusca(tipo);
+    setForm(prev => ({ ...prev, cnpj: '' }));
+    setCnpjStatus({ tipo: '', mensagem: '' });
+    setCnpjDados(null);
+    setCnpjSugestoes({});
+    ultimoCnpjConsultadoRef.current = '';
   }
 
   function adicionarOperadoraCliente() {
@@ -367,6 +380,13 @@ function ClienteFormPage() {
   }
 
   useEffect(() => {
+    if (tipoBusca !== 'cnpj') {
+      setCnpjStatus({ tipo: '', mensagem: '' });
+      setCnpjDados(null);
+      setCnpjSugestoes({});
+      return;
+    }
+
     const cnpj = sanitizarCnpj(form.cnpj);
 
     if (cnpj.length === 0) {
@@ -394,23 +414,38 @@ function ClienteFormPage() {
 
       return () => clearTimeout(timeout);
     }
-  }, [form.cnpj]);
+  }, [form.cnpj, tipoBusca]);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');
 
-    const cnpj = sanitizarCnpj(form.cnpj);
-    if (cnpj.length !== 14) {
-      setErro('Informe um CNPJ com 14 digitos.');
-      setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 digitos.' });
-      return;
-    }
+    if (tipoBusca === 'cpf') {
+      const cpf = sanitizarCpf(form.cnpj);
+      if (cpf.length !== 11) {
+        setErro('Informe um CPF com 11 digitos.');
+        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CPF com 11 digitos.' });
+        return;
+      }
 
-    if (!validarDigitosCnpj(cnpj)) {
-      setErro('CNPJ invalido.');
-      setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
-      return;
+      if (!validarDigitosCpf(cpf)) {
+        setErro('CPF invalido.');
+        setCnpjStatus({ tipo: 'erro', mensagem: 'CPF invalido.' });
+        return;
+      }
+    } else {
+      const cnpj = sanitizarCnpj(form.cnpj);
+      if (cnpj.length !== 14) {
+        setErro('Informe um CNPJ com 14 digitos.');
+        setCnpjStatus({ tipo: 'erro', mensagem: 'Informe um CNPJ com 14 digitos.' });
+        return;
+      }
+
+      if (!validarDigitosCnpj(cnpj)) {
+        setErro('CNPJ invalido.');
+        setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+        return;
+      }
     }
 
     setSalvando(true);
@@ -482,30 +517,58 @@ function ClienteFormPage() {
                       />
                     </div>
 
-                    <div className="form-field">
-                      <label>CNPJ</label>
-                      <input
-                        value={form.cnpj}
-                        onChange={event => atualizarCampo('cnpj', formatarCnpj(event.target.value))}
-                        placeholder="00.000.000/0000-00"
-                        inputMode="numeric"
-                        maxLength={18}
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => buscarDadosCnpj(true)}
-                        disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
-                        style={{ marginTop: 8, alignSelf: 'flex-start' }}
-                      >
-                        {consultandoCnpj ? 'Buscando...' : 'Buscar dados do CNPJ'}
-                      </button>
-                      {cnpjStatus.mensagem && (
-                        <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
-                          {cnpjStatus.mensagem}
-                        </span>
-                      )}
+                    <div className="form-field span-2 cliente-doc-field">
+                      <div className="cliente-doc-field__head">
+                        <label>{tipoBusca === 'cpf' ? 'CPF' : 'CNPJ'}</label>
+                        <div className="doc-tipo-toggle">
+                          <button type="button" className={`btn btn-sm${tipoBusca === 'cnpj' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => alterarTipoBusca('cnpj')}>CNPJ</button>
+                          <button type="button" className={`btn btn-sm${tipoBusca === 'cpf' ? ' btn-primary' : ' btn-ghost'}`} onClick={() => alterarTipoBusca('cpf')}>CPF</button>
+                        </div>
+                      </div>
+                      <div className="cliente-doc-field__control" key={tipoBusca}>
+                        {tipoBusca === 'cpf' ? (
+                          <>
+                            <input
+                              value={form.cnpj}
+                              onChange={event => atualizarCampo('cnpj', formatarCpf(event.target.value))}
+                              placeholder="000.000.000-00"
+                              inputMode="numeric"
+                              maxLength={14}
+                              required
+                            />
+                            {(() => {
+                              const digitos = sanitizarCpf(form.cnpj);
+                              if (digitos.length > 0 && digitos.length < 11) return <span className="field-hint field-hint--error">CPF incompleto</span>;
+                              if (digitos.length === 11 && !validarDigitosCpf(digitos)) return <span className="field-hint field-hint--error">CPF inválido</span>;
+                              return null;
+                            })()}
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              value={form.cnpj}
+                              onChange={event => atualizarCampo('cnpj', formatarCnpj(event.target.value))}
+                              placeholder="00.000.000/0000-00"
+                              inputMode="numeric"
+                              maxLength={18}
+                              required
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => buscarDadosCnpj(true)}
+                              disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
+                            >
+                              {consultandoCnpj ? 'Buscando...' : 'Buscar dados do CNPJ'}
+                            </button>
+                            {cnpjStatus.mensagem && (
+                              <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
+                                {cnpjStatus.mensagem}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
 
                   </div>

@@ -965,6 +965,71 @@
   grid-column: span 3;
 }
 
+/* Campo de documento (CNPJ/CPF) com toggle */
+.cliente-doc-field__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.cliente-doc-field__head label {
+  margin: 0;
+}
+
+.cliente-form-grid .doc-tipo-toggle {
+  display: inline-flex;
+  gap: 2px;
+  margin: 0;
+  padding: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.cliente-form-grid .doc-tipo-toggle .btn {
+  flex: none;
+  min-height: 0;
+  padding: 3px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.4;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cliente-doc-field__control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 340px;
+  animation: cliente-doc-swap 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cliente-doc-swap {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cliente-doc-field__control {
+    animation: none;
+  }
+}
+
+.cliente-doc-field__control .btn {
+  align-self: flex-start;
+}
+
+.cliente-doc-field__control .field-hint {
+  margin: 0;
+}
+
 .cliente-operadoras-field {
   border: 1px solid var(--border);
   border-radius: 8px;

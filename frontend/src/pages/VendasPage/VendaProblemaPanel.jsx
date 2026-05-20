@@ -48,8 +48,9 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
   const solicitanteId = Number(problema.solicitante_id);
   const responsavel = (problema.destinatarios || []).some(item => Number(item.usuario_id) === usuarioId);
   const solicitante = solicitanteId === usuarioId;
-  const podeResolver = responsavel && problema.status !== 'resolvido';
-  const podeRevisar = solicitante && problema.status === 'resolvido';
+  const ehAdmin = usuario?.role?.nome === 'admin';
+  const podeResolver = (responsavel || ehAdmin) && problema.status !== 'resolvido';
+  const podeRevisar = (solicitante || ehAdmin) && problema.status === 'resolvido';
   const detalhesId = `problema-${problema.id}-detalhes`;
 
   async function executar(acao) {

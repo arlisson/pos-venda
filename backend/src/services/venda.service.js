@@ -637,6 +637,10 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
     .join('');
   const operadoraAtualId = resolverOperadoraAtualCliente(cliente, payload.operadora_id, payload.operadora_atual_id);
 
+  // Quando o documento do cliente for um CPF (11 digitos), espelha no campo de CPF do responsavel.
+  const documentoDigitos = String(cliente.cnpj || '').replace(/\D/g, '');
+  const cpfDoCliente = documentoDigitos.length === 11 ? cliente.cnpj : null;
+
   return {
     ...payload,
     nome: payload.nome || cliente.nome,
@@ -648,6 +652,9 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
     nome_representante_legal: payload.nome_representante_legal || (
       cliente.responsavel_tipo === 'rl' ? cliente.responsavel_nome : null
     ),
+    cpf_representante_legal: payload.cpf_representante_legal || (
+      cliente.responsavel_tipo === 'rl' ? cpfDoCliente : null
+    ),
     email_representante_legal: payload.email_representante_legal || (
       cliente.responsavel_tipo === 'rl' ? cliente.email : null
     ),
@@ -656,6 +663,9 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
     ),
     nome_administrador: payload.nome_administrador || (
       cliente.responsavel_tipo === 'adm' ? cliente.responsavel_nome : null
+    ),
+    cpf_administrador: payload.cpf_administrador || (
+      cliente.responsavel_tipo === 'adm' ? cpfDoCliente : null
     ),
     email_administrador: payload.email_administrador || (
       cliente.responsavel_tipo === 'adm' ? cliente.email : null
