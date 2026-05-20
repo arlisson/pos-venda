@@ -73,7 +73,8 @@
   transform: translateY(-1px) scale(1.03);
 }
 
-.vendas-page .btn-warn-icon:not(:disabled):hover {
+.vendas-page .btn-warn-icon:not(:disabled):hover,
+.funil-page .btn-warn-icon:not(:disabled):hover {
   color: #f97316;
   background: #fff7ed;
   border-color: #fed7aa;

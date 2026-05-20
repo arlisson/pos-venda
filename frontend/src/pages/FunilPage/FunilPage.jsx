@@ -5,6 +5,7 @@ import { DEFAULT_OPERATORS as OPERATORS, STAGES as FALLBACK_STAGES } from '../..
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import ClienteModal from '../Clientes/ClienteModal';
 import VendaModal from '../VendasPage/VendaModal';
+import VendaProblemaPanel from '../VendasPage/VendaProblemaPanel';
 import {
   WhatsappMensagemModal,
   montarChecklistWhatsappVenda,
@@ -42,6 +43,31 @@ const STAGE_LABELS = {
   ...Object.fromEntries(FALLBACK_STAGES.map(stage => [stage.id, stage.name])),
   retorno: 'Retorno',
 };
+
+function ProblemaVendaModal({ venda, usuario, onClose }) {
+  if (!venda) return null;
+
+  return (
+    <div className="modal-overlay venda-problema-modal-overlay" onClick={onClose}>
+      <div className="modal venda-problema-modal" onClick={event => event.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div className="modal-client">Problemas da venda</div>
+              <div className="modal-sub">{venda?.cliente?.nome || venda?.nome || `Venda #${venda?.id}`}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+        <div className="modal-body">
+          <VendaProblemaPanel venda={venda} usuario={usuario} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
   if (!dados) return null;
@@ -1230,7 +1256,7 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
   );
 }
 
-function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp }) {
+function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp, onProblema, podeOperarPosVenda }) {
   const priorityColor = PRIORITIES[sale.priority || 'media']?.color || '#3b82f6';
   const cancelada = Boolean(sale.canceladaEm);
   const classeStatus = cancelada ? ' sale-card-cancelada' : finalizada ? ' sale-card-finalizada' : '';
@@ -1267,6 +1293,20 @@ function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, 
           <span>#{sale.id}</span>
         </span>
         <div className="vendas-contact-actions sale-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, width: 'auto' }}>
+          {podeOperarPosVenda && (
+            <button
+              type="button"
+              className="btn btn-icon btn-ghost btn-warn-icon"
+              title="Problemas da venda"
+              onClick={(e) => {
+                e.stopPropagation();
+                onProblema(sale.raw);
+              }}
+              style={{ padding: 4, height: 24, width: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <I.AlertTriangle size={12} />
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-icon btn-ghost vendas-whatsapp-btn"
@@ -1353,12 +1393,14 @@ function FunilPage() {
   const podeVerDocumentosVenda = temPermissao(usuario, 'vendas_documentos');
   const podeAdicionarDocumentosVenda = temPermissao(usuario, 'adicionar_documentos');
   const podeListarClientes = temPermissao(usuario, ['clientes_ver_proprios', 'clientes_ver_todos']);
+  const podeOperarPosVenda = temPermissao(usuario, 'pos_venda');
   const [sales, setSales] = useState([]);
   const [stages, setStages] = useState(FALLBACK_STAGES);
   const [adminStages, setAdminStages] = useState([]);
   const [filter, setFilter] = useState('todas');
   const [busca, setBusca] = useState('');
   const [selectedSaleId, setSelectedSaleId] = useState(null);
+  const [vendaProblema, setVendaProblema] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stagesLoading, setStagesLoading] = useState(false);
   const [stageSavingId, setStageSavingId] = useState(null);
@@ -2224,6 +2266,8 @@ function FunilPage() {
                         onXlsxClaro={handleBaixarXlsxClaro}
                         baixandoXlsxId={baixandoXlsxId}
                         onWhatsapp={abrirMensagemWhatsapp}
+                        onProblema={(raw) => setVendaProblema(raw)}
+                        podeOperarPosVenda={podeOperarPosVenda}
                       />
                     ))
                   )}
@@ -2249,6 +2293,14 @@ function FunilPage() {
         onDocsChange={atualizarDocumentosWhatsapp}
         onCopy={copiarMensagemWhatsapp}
       />
+
+      {vendaProblema && (
+        <ProblemaVendaModal
+          venda={vendaProblema}
+          usuario={usuario}
+          onClose={() => setVendaProblema(null)}
+        />
+      )}
     </LayoutPrivado>
   );
 }
