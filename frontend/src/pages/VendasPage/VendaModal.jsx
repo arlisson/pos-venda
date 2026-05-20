@@ -381,6 +381,21 @@ function formatarData(value) {
   return dia && mes && ano ? `${dia}/${mes}/${ano}` : value;
 }
 
+function formatarDataHora(value) {
+  if (!value) return '-';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return formatarData(value);
+
+  return date.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 function isDataVendaValida(value) {
   if (!value) return false;
 
@@ -1721,6 +1736,83 @@ function ClienteSolicitouResolucaoTab({ form, onChange, disabled }) {
   );
 }
 
+function obterAutorCancelamento(venda, evento) {
+  if (evento?.usuario?.nome) return evento.usuario.nome;
+  if (evento?.usuario_id) return `Usuario #${evento.usuario_id}`;
+  if (venda?.cancelada_por?.nome) return venda.cancelada_por.nome;
+  if (venda?.cancelada_por_id) return `Usuario #${venda.cancelada_por_id}`;
+  return 'Sistema';
+}
+
+function montarEventosCancelamentoVenda(venda) {
+  const historico = Array.isArray(venda?.historico) ? venda.historico : [];
+  const eventos = historico
+    .filter(item => item?.acao === 'venda.cancelada')
+    .map(item => ({
+      id: item.id || `${item.created_at || ''}-${item.observacao || ''}`,
+      data: item.created_at || venda?.cancelada_em,
+      autor: obterAutorCancelamento(venda, item),
+      motivo: item.observacao || item.dados?.motivo_cancelamento || venda?.motivo_cancelamento || ''
+    }));
+
+  if (eventos.length === 0 && (venda?.cancelada_em || venda?.motivo_cancelamento)) {
+    eventos.push({
+      id: 'cancelamento-atual',
+      data: venda.cancelada_em,
+      autor: obterAutorCancelamento(venda, null),
+      motivo: venda.motivo_cancelamento || ''
+    });
+  }
+
+  return eventos;
+}
+
+function VendaCancelamentoTab({ venda }) {
+  const eventos = montarEventosCancelamentoVenda(venda);
+  const motivoAtual = venda?.motivo_cancelamento || eventos[0]?.motivo || '';
+
+  return (
+    <div className="venda-cancelamento">
+      <div className="venda-cancelamento__summary">
+        <div className="venda-cancelamento__icon">
+          <I.AlertTriangle size={18} />
+        </div>
+        <div>
+          <div className="venda-cancelamento__title">Venda cancelada</div>
+          <div className="venda-cancelamento__meta">
+            {formatarDataHora(venda?.cancelada_em)}
+            {venda?.cancelada_por_id ? ` por ${obterAutorCancelamento(venda, null)}` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div className="venda-cancelamento__reason">
+        <span>Motivo atual</span>
+        <p>{motivoAtual || 'Sem motivo informado.'}</p>
+      </div>
+
+      <div className="venda-cancelamento__history">
+        <div className="venda-cancelamento__section-title">Historico de cancelamentos</div>
+        {eventos.length > 0 ? (
+          <div className="venda-cancelamento__list">
+            {eventos.map((evento, index) => (
+              <div key={evento.id || index} className="venda-cancelamento__item">
+                <div className="venda-cancelamento__item-head">
+                  <strong>{formatarDataHora(evento.data)}</strong>
+                  <span>{evento.autor}</span>
+                </div>
+                <p>{evento.motivo || 'Sem motivo informado.'}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="venda-cancelamento__empty">Nenhum motivo de cancelamento registrado.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ResponsaveisRecebimentoInput({ form, onChange }) {
   const slots = [
     { nomeKey: 'responsavel_recebimento', rgKey: 'rg_responsavel_recebimento' },
@@ -2623,6 +2715,7 @@ function VendaModal({
   const podeAdicionarDocumentosVendaEfetivo = Boolean(podeAdicionarDocumentosVenda);
   const podeAcessarDocumentosVenda = Boolean(podeVerDocumentosVenda || podeAdicionarDocumentosVendaEfetivo);
   const vendaBloqueadaParaUsuario = enviadaPosVenda && !usuarioPosVenda;
+  const vendaCancelada = Boolean(venda?.cancelada_em || form.cancelada_em);
   const ultimoCnpjConsultadoRef = useRef(venda ? sanitizarCnpj(form.cnpj) : '');
   const cepPreenchidoPorCnpjRef = useRef('');
   const vendaPortabilidade = temChipPortabilidade(form.valores_unitarios_chips);
@@ -3127,7 +3220,10 @@ function VendaModal({
     if (abaAtiva === 'solicitacao' && !temClienteSolicitouAba) {
       setAbaAtiva('venda');
     }
-  }, [abaAtiva, podeAcessarDocumentosVenda, temClienteSolicitouAba]);
+    if (abaAtiva === 'cancelamento' && !vendaCancelada) {
+      setAbaAtiva('venda');
+    }
+  }, [abaAtiva, podeAcessarDocumentosVenda, temClienteSolicitouAba, vendaCancelada]);
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -3597,6 +3693,15 @@ function VendaModal({
               <I.Folder size={14} /> Documentos
             </button>
           )}
+          {vendaCancelada && (
+            <button
+              type="button"
+              className={`modal-tab ${abaAtiva === 'cancelamento' ? 'active' : ''}`}
+              onClick={() => setAbaAtiva('cancelamento')}
+            >
+              <I.AlertTriangle size={14} /> Cancelamento
+            </button>
+          )}
           <button
             type="button"
             className={`modal-tab ${abaAtiva === 'problema' ? 'active' : ''}`}
@@ -3643,6 +3748,8 @@ function VendaModal({
               podeVisualizar={podeVerDocumentosVenda}
               podeAdicionar={podeAdicionarDocumentosVendaEfetivo}
             />
+          ) : abaAtiva === 'cancelamento' && vendaCancelada ? (
+            <VendaCancelamentoTab venda={venda || form} />
           ) : abaAtiva === 'problema' ? (
             <VendaProblemaPanel venda={venda} usuario={usuarioLogado} initialProblemaId={initialProblemaId} />
           ) : (
@@ -4046,7 +4153,7 @@ function VendaModal({
         )}
 
         <div className="modal-footer">
-          {abaAtiva === 'notas' || abaAtiva === 'arquivos' || abaAtiva === 'problema' ? (
+          {abaAtiva === 'notas' || abaAtiva === 'arquivos' || abaAtiva === 'problema' || abaAtiva === 'cancelamento' ? (
             <button type="button" className="btn" onClick={handleClose}>Fechar</button>
           ) : (somenteVisualizacao || vendaBloqueadaParaUsuario) ? (
             <>

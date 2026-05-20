@@ -2419,7 +2419,7 @@ function VendasPage() {
     const vendaId = searchParams.get('venda_id');
     const abaParam = searchParams.get('aba');
     const problemaId = searchParams.get('problema_id');
-    const abasPermitidas = ['venda', 'notas', ...(podeAcessarDocumentosVenda ? ['arquivos'] : []), 'problema'];
+    const abasPermitidas = ['venda', 'notas', ...(podeAcessarDocumentosVenda ? ['arquivos'] : []), 'problema', 'cancelamento'];
     const aba = abasPermitidas.includes(abaParam) ? abaParam : 'venda';
 
     if (!vendaId) return;
