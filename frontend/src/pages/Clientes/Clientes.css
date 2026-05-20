@@ -1111,6 +1111,24 @@
   color: var(--muted);
 }
 
+.cliente-operadoras-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.clientes-page .tag.operadora-claro {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.clientes-page .tag.operadora-vivo {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+  border-color: rgba(124, 58, 237, 0.25);
+}
+
 @container (max-width: 560px) {
   .cliente-operadora-row {
     grid-template-columns: repeat(6, minmax(0, 1fr));

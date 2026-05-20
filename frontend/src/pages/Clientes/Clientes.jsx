@@ -88,11 +88,17 @@ function obterOperadorasCliente(cliente) {
   return cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
 }
 
+function slugOperadora(nome) {
+  return String(nome).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-');
+}
+
 function formatarResumoOperadoras(cliente) {
   const operadorasCliente = obterOperadorasCliente(cliente);
   if (operadorasCliente.length === 0) {
+    const unico = cliente.operadoraAtual?.nome;
     return {
-      titulo: cliente.operadoraAtual?.nome || '-',
+      titulo: unico || '-',
+      nomes: unico ? [unico] : [],
       detalhe: ''
     };
   }
@@ -105,6 +111,7 @@ function formatarResumoOperadoras(cliente) {
 
   return {
     titulo: `${principais || '-'}${restante > 0 ? ` +${restante}` : ''}`,
+    nomes,
     detalhe: operadorasCliente
       .map(item => {
         const partes = [
@@ -1440,7 +1447,18 @@ function Clientes() {
                         </td>
                         <td data-label="Operadora" data-mobile-hidden="true">
                           <span title={resumoOperadoras.detalhe} className="cliente-operadoras-summary">
-                            <strong>{resumoOperadoras.titulo}</strong>
+                            {resumoOperadoras.nomes.length > 0 ? (
+                              <span className="cliente-operadoras-tags">
+                                {resumoOperadoras.nomes.slice(0, 2).map((nome, idx) => (
+                                  <span key={`${nome}-${idx}`} className={`tag operadora-tag operadora-${slugOperadora(nome)}`}>{nome}</span>
+                                ))}
+                                {resumoOperadoras.nomes.length > 2 && (
+                                  <span className="tag">+{resumoOperadoras.nomes.length - 2}</span>
+                                )}
+                              </span>
+                            ) : (
+                              <strong>-</strong>
+                            )}
                             {obterOperadorasCliente(cliente).length > 1 && <small>{obterOperadorasCliente(cliente).length} operadoras</small>}
                           </span>
                         </td>
