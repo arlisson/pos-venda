@@ -843,26 +843,6 @@ async function buscarEscopoClientes(usuarioId) {
   };
 }
 
-async function usuarioTemPermissao(usuarioId, permissao) {
-  const usuario = await Usuario.query()
-    .findById(usuarioId)
-    .withGraphFetched('role');
-
-  if (!usuario || !usuario.ativo) {
-    return false;
-  }
-
-  if (usuario.role?.nome === 'admin') {
-    return true;
-  }
-
-  const permissoes = [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ];
-
-  return permissoes.includes(permissao);
-}
 
 function aplicarEscopoClientes(query, usuarioId, escopo) {
   if (escopo.podeVerTodos) {
@@ -1285,46 +1265,6 @@ async function atualizarCliente(id, dados, usuarioId) {
   return cliente;
 }
 
-async function atribuirDonoCliente(id, donoId, usuarioId) {
-  const podeAtribuir = await usuarioTemPermissao(usuarioId, 'clientes_atribuir_vendedora');
-
-  if (!podeAtribuir) {
-    throw criarHttpError(403, 'Voce nao tem permissao para atribuir clientes.');
-  }
-
-  if (!donoId) {
-    throw criarHttpError(400, 'Selecione uma vendedora para atribuir o cliente.');
-  }
-
-  const cliente = await Cliente.query()
-    .findById(id)
-    .whereNull('excluido_em')
-    .select('id');
-
-  if (!cliente) {
-    return null;
-  }
-
-  const dono = await Usuario.query()
-    .findById(donoId)
-    .select('id', 'nome', 'email', 'ativo');
-
-  if (!dono || !dono.ativo) {
-    throw criarHttpError(400, 'Selecione uma vendedora ativa para atribuir o cliente.');
-  }
-
-  await Cliente.query().patchAndFetchById(id, {
-    criado_por_id: Number(donoId),
-    updated_at: new Date()
-  });
-
-  const atualizado = formatarCliente(await Cliente.query()
-    .findById(id)
-    .whereNull('excluido_em')
-    .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora, criador]'));
-  const [comNotas] = await adicionarResumoNotasClientes([atualizado], usuarioId);
-  return comNotas;
-}
 
 async function excluirCliente(id, usuarioId) {
   const permitido = await usuarioPodeAcessarCliente(id, usuarioId);
@@ -1608,7 +1548,6 @@ module.exports = {
   buscarClientePorId,
   criarCliente,
   atualizarCliente,
-  atribuirDonoCliente,
   excluirCliente,
   restaurarCliente,
   excluirClienteDefinitivo,

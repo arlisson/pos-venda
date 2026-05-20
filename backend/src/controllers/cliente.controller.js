@@ -108,30 +108,6 @@ async function update(req, res) {
   }
 }
 
-async function atribuirDono(req, res) {
-  try {
-    const cliente = await clienteService.atribuirDonoCliente(
-      req.params.id,
-      req.body?.usuario_id,
-      req.usuario.id
-    );
-
-    if (!cliente) {
-      return res.status(404).json({
-        message: 'Cliente nao encontrado.'
-      });
-    }
-
-    return res.json(cliente);
-  } catch (error) {
-    console.error(error);
-
-    return res.status(error.statusCode || 400).json({
-      message: error.message || 'Erro ao atribuir cliente.'
-    });
-  }
-}
-
 async function destroy(req, res) {
   try {
     const totalExcluido = await clienteService.excluirCliente(req.params.id, req.usuario.id);
@@ -238,7 +214,6 @@ module.exports = {
   previewImportacaoBaseAnterior,
   importarBaseAnterior,
   update,
-  atribuirDono,
   destroy,
   lixeira,
   restore,

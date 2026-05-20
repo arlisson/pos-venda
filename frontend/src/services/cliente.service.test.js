@@ -11,7 +11,6 @@ vi.mock('./api', () => ({
 import { apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
 import {
   atualizarCliente,
-  atribuirDonoCliente,
   buscarClientePorId,
   criarCliente,
   excluirCliente,
@@ -48,10 +47,9 @@ describe('cliente.service', () => {
     expect(apiGet).toHaveBeenNthCalledWith(3, '/clientes/9');
   });
 
-  it('usa endpoints de criacao, atualizacao, dono, exclusao e restauracao', async () => {
+  it('usa endpoints de criacao, atualizacao, exclusao e restauracao', async () => {
     await criarCliente({ nome: 'Cliente' });
     await atualizarCliente(3, { nome: 'Novo' });
-    await atribuirDonoCliente(3, 8);
     await excluirCliente(3);
     await restaurarCliente(3);
     await limparClientesBaseAnterior();
@@ -59,7 +57,6 @@ describe('cliente.service', () => {
 
     expect(apiPost).toHaveBeenNthCalledWith(1, '/clientes', { nome: 'Cliente' });
     expect(apiPut).toHaveBeenNthCalledWith(1, '/clientes/3', { nome: 'Novo' });
-    expect(apiPut).toHaveBeenNthCalledWith(2, '/clientes/3/dono', { usuario_id: 8 });
     expect(apiDelete).toHaveBeenNthCalledWith(1, '/clientes/3');
     expect(apiPost).toHaveBeenNthCalledWith(2, '/clientes/3/restaurar', {});
     expect(apiDelete).toHaveBeenNthCalledWith(2, '/clientes/base-anterior');

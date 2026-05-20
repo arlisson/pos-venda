@@ -79,7 +79,11 @@
       "Bash(grep -E \"\\\\.\\(js\\)$\")",
       "Bash(git stash *)",
       "Bash(node --check src/services/cliente.service.js)",
-      "Bash(node --check src/services/venda.service.js)"
+      "Bash(node --check src/services/venda.service.js)",
+      "Bash(npx vitest *)",
+      "Bash(node --check backend/src/routes/cliente.routes.js)",
+      "Bash(node --check backend/src/controllers/cliente.controller.js)",
+      "Bash(node --check backend/src/services/cliente.service.js)"
     ]
   }
 }

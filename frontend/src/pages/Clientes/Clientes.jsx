@@ -8,7 +8,6 @@ import ClienteModal from './ClienteModal';
 import VendaModal from '../VendasPage/VendaModal';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
-  atribuirDonoCliente,
   excluirCliente,
   importarBaseAnterior,
   limparClientesBaseAnterior,
@@ -663,7 +662,6 @@ function Clientes() {
   const podeEditar = temPermissao(usuario, 'clientes_editar');
   const podeExcluir = temPermissao(usuario, 'clientes_excluir');
   const isAdmin = usuario?.role?.nome === 'admin';
-  const podeAtribuirVendedora = isAdmin || temPermissao(usuario, 'clientes_atribuir_vendedora');
   const podeListarClientes = temPermissao(usuario, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
   const podeCompartilharVenda = temPermissao(usuario, 'compartilhar_venda');
@@ -673,7 +671,6 @@ function Clientes() {
 
   const [clientes, setClientes] = useState([]);
   const [operadoras, setOperadoras] = useState([]);
-  const [vendedoras, setVendedoras] = useState([]);
   const [clientesVenda, setClientesVenda] = useState([]);
   const [vendedorasVenda, setVendedorasVenda] = useState([]);
   const [referenciasClientesVenda, setReferenciasClientesVenda] = useState([]);
@@ -708,7 +705,6 @@ function Clientes() {
   const [excluindo, setExcluindo] = useState(false);
   const [limpandoBase, setLimpandoBase] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
-  const [atribuindoDonoId, setAtribuindoDonoId] = useState(null);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(20);
   const [totalClientes, setTotalClientes] = useState(0);
@@ -766,14 +762,12 @@ function Clientes() {
 
   async function carregarDadosEstaticos() {
     try {
-      const [operadorasData, contagemData, vendedorasData] = await Promise.all([
+      const [operadorasData, contagemData] = await Promise.all([
         listarOperadoras(),
-        contarVendasConcluidasPorCliente(),
-        podeAtribuirVendedora ? listarVendedoras() : Promise.resolve([])
+        contarVendasConcluidasPorCliente()
       ]);
       setOperadoras(operadorasData);
       setVendasConcluidasContagem(contagemData || {});
-      setVendedoras(vendedorasData || []);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar dados.');
     }
@@ -1064,25 +1058,6 @@ function Clientes() {
       setErro(error.message || 'Erro ao apagar base anterior.');
     } finally {
       setLimpandoBase(false);
-    }
-  }
-
-  async function alterarDonoCliente(cliente, usuarioId) {
-    if (!podeAtribuirVendedora || !usuarioId || Number(usuarioId) === Number(cliente.criado_por_id)) return;
-
-    setAtribuindoDonoId(cliente.id);
-    setErro('');
-
-    try {
-      const atualizado = await atribuirDonoCliente(cliente.id, usuarioId);
-      setClientes(prev => prev.map(item => (
-        Number(item.id) === Number(cliente.id) ? atualizado : item
-      )));
-      setSucesso('Cliente atribuido com sucesso.');
-    } catch (error) {
-      setErro(error.message || 'Erro ao atribuir cliente.');
-    } finally {
-      setAtribuindoDonoId(null);
     }
   }
 
@@ -1379,21 +1354,7 @@ function Clientes() {
                                 <dt>Operadora</dt>
                                 <dd title={resumoOperadoras.detalhe}>{resumoOperadoras.titulo}</dd>
                                 <dt>Registrado por</dt>
-                                <dd>
-                                  {podeAtribuirVendedora ? (
-                                    <div className="cliente-owner-select-wrap" onClick={e => e.stopPropagation()}>
-                                      <SelectFiltro
-                                        value={cliente.criado_por_id ? String(cliente.criado_por_id) : ''}
-                                        disabled={atribuindoDonoId === cliente.id}
-                                        placeholder="Sem registro"
-                                        options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
-                                        onChange={val => alterarDonoCliente(cliente, val)}
-                                      />
-                                    </div>
-                                  ) : (
-                                    cliente.criador?.nome || 'Sem registro'
-                                  )}
-                                </dd>
+                                <dd>{cliente.criador?.nome || 'Sem registro'}</dd>
                                 <dt>Valor pago</dt>
                                 <dd>{formatarMoeda(cliente.valor_pago)}</dd>
                                 <dt>Chips</dt>
@@ -1463,19 +1424,7 @@ function Clientes() {
                           </span>
                         </td>
                         <td data-label="Registrado por" data-mobile-hidden="true">
-                          {podeAtribuirVendedora ? (
-                            <div className="cliente-owner-select-wrap" onClick={e => e.stopPropagation()} title="Atribuir cliente a uma vendedora">
-                              <SelectFiltro
-                                value={cliente.criado_por_id ? String(cliente.criado_por_id) : ''}
-                                disabled={atribuindoDonoId === cliente.id}
-                                placeholder="Sem registro"
-                                options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
-                                onChange={val => alterarDonoCliente(cliente, val)}
-                              />
-                            </div>
-                          ) : (
-                            <span className="tag">{cliente.criador?.nome || 'Sem registro'}</span>
-                          )}
+                          <span className="tag">{cliente.criador?.nome || 'Sem registro'}</span>
                         </td>
                         <td data-label="Valor pago" data-mobile-hidden="true">{formatarMoeda(cliente.valor_pago)}</td>
                         <td data-label="Chips" data-mobile-hidden="true">{cliente.quantidade_chips ?? '-'}</td>

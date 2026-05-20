@@ -67,20 +67,6 @@ router.put(
   }),
   clienteController.update
 );
-router.put(
-  '/:id/dono',
-  exigirUmaPermissao(['clientes_atribuir_vendedora']),
-  auditar({
-    acao: 'cliente.dono_atribuido',
-    entidade: 'clientes',
-    entidade_id: req => req.params.id,
-    dados: req => ({
-      id: req.params.id,
-      usuario_id: req.body?.usuario_id
-    })
-  }),
-  clienteController.atribuirDono
-);
 router.delete(
   '/:id/definitivo',
   exigirUmaPermissao(['clientes_excluir']),
