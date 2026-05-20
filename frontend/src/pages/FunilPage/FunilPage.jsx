@@ -139,6 +139,11 @@ const PRIORITIES = {
   baixa: { label: 'Prioridade Baixa', color: '#eab308' },
 };
 
+function getPriorityInfo(priority) {
+  const key = PRIORITIES[priority] ? priority : 'media';
+  return { key, ...PRIORITIES[key] };
+}
+
 const RETURN_REASONS = [
   'Endereço inválido',
   'Cliente recusou',
@@ -620,7 +625,7 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
       venda.uf
     ].filter(Boolean).join(', ') || 'Endereço não informado',
     stage,
-    priority: venda.prioridade_funil || 'media',
+    priority: getPriorityInfo(venda.prioridade_funil).key,
     lancadaEm: created,
     updated,
     canceladaEm: venda.cancelada_em || null,
@@ -643,6 +648,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
   const [historicoEventos, setHistoricoEventos] = useState(sale.historico);
   const [historicoCarregando, setHistoricoCarregando] = useState(false);
   const cancelada = Boolean(sale.canceladaEm);
+  const priorityInfo = getPriorityInfo(sale.priority);
 
   useEffect(() => {
     let cancelado = false;
@@ -678,7 +684,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
     setError('');
 
     try {
-      await onUpdateSale(sale.id, status, novaPrioridade, statusObservacao, motivoRetorno);
+      await onUpdateSale(sale.id, status, options.prioridade || novaPrioridade, statusObservacao, motivoRetorno);
       onClose();
     } catch (err) {
       setError(err.message || 'Erro ao atualizar status.');
@@ -691,6 +697,15 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
 
   function handleAtualizar() {
     submitStatus(novaFase);
+  }
+
+  function handlePrioridadeClick(prioridade) {
+    setNovaPrioridade(prioridade);
+
+    if (prioridade === (sale.priority || 'media')) return;
+    if (novaFase !== sale.stage || observacao.trim()) return;
+
+    submitStatus(sale.stage, '', '', { prioridade });
   }
 
   function handleConfirmRetorno({ motivo, observacao: observacaoRetorno }) {
@@ -769,6 +784,12 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
                 <span className="pill-dot"></span>
                 {stageLabels[sale.stage] || sale.stage}
               </span>
+              <span
+                className={`sale-priority-badge sale-priority-badge--${priorityInfo.key}`}
+                title={priorityInfo.label}
+              >
+                {priorityInfo.label.replace('Prioridade ', '')}
+              </span>
               <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={saving}>
                 <I.Close size={14} />
               </button>
@@ -839,6 +860,14 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
                 <div className="label">ATUALIZADA</div>
                 <div className="value">{timeAgo(sale.updated)}</div>
               </div>
+              <div className="detail-item">
+                <div className="label">PRIORIDADE</div>
+                <div className="value">
+                  <span className={`sale-priority-badge sale-priority-badge--${priorityInfo.key}`}>
+                    {priorityInfo.label.replace('Prioridade ', '')}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -886,7 +915,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
                       type="button"
                       key={key}
                       className={`stage-chip ${novaPrioridade === key ? 'active' : ''}`}
-                      onClick={() => setNovaPrioridade(key)}
+                      onClick={() => handlePrioridadeClick(key)}
                       disabled={saving}
                     >
                       <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: p.color, marginRight: 8 }}></span>
@@ -1257,14 +1286,14 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
 }
 
 function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp, onProblema, podeOperarPosVenda }) {
-  const priorityColor = PRIORITIES[sale.priority || 'media']?.color || '#3b82f6';
+  const priorityInfo = getPriorityInfo(sale.priority);
   const cancelada = Boolean(sale.canceladaEm);
   const classeStatus = cancelada ? ' sale-card-cancelada' : finalizada ? ' sale-card-finalizada' : '';
   return (
     <div
-      className={`sale-card${classeStatus}`}
+      className={`sale-card sale-card-priority-${priorityInfo.key}${classeStatus}`}
       onClick={onClick}
-      title={cancelada && sale.motivoCancelamento ? `Cancelada: ${sale.motivoCancelamento}` : finalizada ? 'Venda na etapa final' : undefined}
+      title={cancelada && sale.motivoCancelamento ? `Cancelada: ${sale.motivoCancelamento}` : finalizada ? `Venda na etapa final - ${priorityInfo.label}` : priorityInfo.label}
     >
       {cancelada && (
         <span className="sale-card-cancelada-tag">Cancelada</span>
@@ -1273,18 +1302,19 @@ function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, 
         <span className="sale-card-finalizada-tag">Finalizada</span>
       )}
       <div className="sale-card-top">
-        <div className="client" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: priorityColor, flexShrink: 0 }}></span>
-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {sale.client}
-          </span>
-        </div>
+        <div className="client">{sale.client}</div>
         <div className="value">{formatBRL(sale.value)}</div>
       </div>
       <div className="sale-card-meta">
         <span className="operator">{sale.operator}</span>
         <span>·</span>
         <span>{sale.plan}</span>
+        <span
+          className={`sale-priority-badge sale-priority-badge--${priorityInfo.key}`}
+          title={priorityInfo.label}
+        >
+          {priorityInfo.label.replace('Prioridade ', '')}
+        </span>
       </div>
       <div className="sale-card-bottom">
         <span className="seller">
