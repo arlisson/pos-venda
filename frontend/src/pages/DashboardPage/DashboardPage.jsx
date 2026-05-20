@@ -66,6 +66,232 @@ const EMPTY_STATS = {
   perda: 0
 };
 
+const TODAY_VIEW_MODES = [
+  { value: 'overview', label: 'Visão Geral' },
+  { value: 'cards', label: 'Card' },
+  { value: 'bar', label: 'Gráfico de Barra' },
+  { value: 'pie', label: 'Gráfico Pizza' },
+];
+
+const TODAY_STATS_COLORS = ['#2563eb', '#16a34a', '#e87900', '#9333ea'];
+
+function TodayDonut({ items }) {
+  const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0);
+  let offset = 0;
+  const pipelineItem = items.find(item => item.key === 'pipeline');
+  const pipelineShare = total > 0 ? (Math.max(0, Number(pipelineItem?.value) || 0) / total) * 100 : 0;
+
+  return (
+    <div className="today-donut">
+      {total === 0 ? (
+        <div className="today-donut__empty" />
+      ) : (
+        <svg viewBox="0 0 42 42" aria-hidden="true">
+          {items.map((item, index) => {
+            const value = Math.max(0, Number(item.value) || 0);
+            const share = (value / total) * 100;
+            const segment = (
+              <circle
+                key={item.key}
+                className="today-donut__segment"
+                cx="21"
+                cy="21"
+                r="15.915"
+                stroke={TODAY_STATS_COLORS[index % TODAY_STATS_COLORS.length]}
+                strokeDasharray={`${share} ${100 - share}`}
+                strokeDashoffset={25 - offset}
+              />
+            );
+            offset += share;
+            return segment;
+          })}
+        </svg>
+      )}
+      <div className="today-donut__center">
+        <strong>{pipelineShare.toFixed(1).replace('.', ',')}%</strong>
+        <span>Pipeline</span>
+      </div>
+    </div>
+  );
+}
+
+function TodayOverview({ items, stats }) {
+  const maxValue = Math.max(...items.map(item => Math.max(0, Number(item.value) || 0)), 1);
+  const salesItems = items.filter(item => ['vendasDia', 'valorDia', 'concluidasDia'].includes(item.key));
+  const pipelineItem = items.find(item => item.key === 'pipeline');
+
+  return (
+    <div className="today-overview">
+      <section className="today-overview-card today-overview-card--performance">
+        <h3>Performance de Vendas</h3>
+        <div className="today-performance">
+          <TodayDonut items={items} />
+          <div className="today-chart__legend">
+            {items.map((item, index) => (
+              <div className={`today-chart__legend-item ${Number(item.value) > 0 ? '' : 'is-empty'}`} key={item.key}>
+                <span className="today-chart__dot" style={{ background: TODAY_STATS_COLORS[index % TODAY_STATS_COLORS.length] }} />
+                <span>{item.label}</span>
+                <strong>{item.formatted}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="today-overview-card today-overview-card--financial">
+        <h3>Visão Financeira</h3>
+        <div className="today-financial">
+          <div>
+            <strong>{formatBRL(stats.valorDia + stats.pipeline)}</strong>
+            <span>Volume Total do Dia</span>
+          </div>
+          <div className="today-status-bars">
+            <div>
+              <span>Recebido</span>
+              <strong>{formatBRL(stats.valorDia)}</strong>
+              <i style={{ height: `${Math.max(6, (Math.max(0, stats.valorDia) / maxValue) * 72)}px`, background: TODAY_STATS_COLORS[1] }} />
+            </div>
+            <div>
+              <span>Pendente</span>
+              <strong>{formatBRL(stats.pipeline)}</strong>
+              <i style={{ height: `${Math.max(6, (Math.max(0, stats.pipeline) / maxValue) * 72)}px`, background: TODAY_STATS_COLORS[3] }} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="today-overview-card">
+        <h3>Vendas vs. Pipeline</h3>
+        <div className="today-mini-bars">
+          {[...salesItems, pipelineItem].filter(Boolean).map((item, index) => {
+            const value = Math.max(0, Number(item.value) || 0);
+            return (
+              <div className={`today-mini-bar ${value > 0 ? '' : 'is-empty'}`} key={item.key}>
+                <span>{item.shortLabel}</span>
+                <i style={{ height: value > 0 ? `${Math.max(8, (value / maxValue) * 78)}px` : '2px', background: TODAY_STATS_COLORS[index % TODAY_STATS_COLORS.length] }} />
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="today-overview-card">
+        <h3>Pipeline de Vendas</h3>
+        <div className="today-pipeline-summary">
+          <div className="today-pipeline-block">
+            <strong>{stats.pipelineCount}</strong>
+            <span>em andamento</span>
+          </div>
+          <div className="today-pipeline-list">
+            <div><span>Valor em pipeline</span><strong>{formatBRL(stats.pipeline)}</strong></div>
+            <div><span>Vendas lançadas</span><strong>{stats.vendasDia}</strong></div>
+            <div><span>Concluídas</span><strong>{stats.concluidasDia}</strong></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TodayStatsChart({ items, type }) {
+  const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0);
+  const maxValue = Math.max(...items.map(item => Math.max(0, Number(item.value) || 0)), 1);
+
+  if (type === 'pie') {
+    let offset = 0;
+
+    return (
+      <div className="today-chart today-chart--pie">
+        <div className="today-chart__pie" aria-hidden="true">
+          {total === 0 ? (
+            <div className="today-chart__pie-empty" />
+          ) : (
+            <svg viewBox="0 0 42 42" role="img">
+              {items.map((item, index) => {
+                const value = Math.max(0, Number(item.value) || 0);
+                const share = (value / total) * 100;
+                const segment = (
+                  <circle
+                    key={item.key}
+                    className="today-chart__pie-segment"
+                    cx="21"
+                    cy="21"
+                    r="15.915"
+                    stroke={TODAY_STATS_COLORS[index % TODAY_STATS_COLORS.length]}
+                    strokeDasharray={`${share} ${100 - share}`}
+                    strokeDashoffset={25 - offset}
+                  />
+                );
+                offset += share;
+                return segment;
+              })}
+            </svg>
+          )}
+        </div>
+        <div className="today-chart__legend">
+          {items.map((item, index) => (
+            <div className={`today-chart__legend-item ${Number(item.value) > 0 ? '' : 'is-empty'}`} key={item.key}>
+              <span className="today-chart__dot" style={{ background: TODAY_STATS_COLORS[index % TODAY_STATS_COLORS.length] }} />
+              <span>{item.label}</span>
+              <strong>{item.formatted}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'vertical') {
+    return (
+      <div className="today-chart today-chart--vertical">
+        {items.map((item, index) => {
+          const value = Math.max(0, Number(item.value) || 0);
+
+          return (
+          <div className={`today-chart__column ${value > 0 ? '' : 'is-empty'}`} key={item.key}>
+            <div className="today-chart__column-label">
+              <span>{item.shortLabel}</span>
+              <strong>{item.formatted}</strong>
+            </div>
+            <div className="today-chart__column-track">
+              <span
+                style={{
+                  height: value > 0 ? `${Math.max(10, (value / maxValue) * 100)}%` : '0%',
+                  background: TODAY_STATS_COLORS[index % TODAY_STATS_COLORS.length],
+                }}
+              />
+            </div>
+          </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="today-chart today-chart--horizontal">
+      {items.map((item, index) => {
+        const value = Math.max(0, Number(item.value) || 0);
+
+        return (
+        <div className={`today-chart__bar-row ${value > 0 ? '' : 'is-empty'}`} key={item.key}>
+          <span className="today-chart__bar-label">{item.label}</span>
+          <div className="today-chart__bar-track">
+            <span
+              style={{
+                width: value > 0 ? `${Math.max(8, (value / maxValue) * 100)}%` : '0%',
+                background: TODAY_STATS_COLORS[index % TODAY_STATS_COLORS.length],
+              }}
+            />
+          </div>
+          <strong className="today-chart__bar-value">{item.formatted}</strong>
+        </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function RewardModal({ gift, onClose }) {
   if (!gift) return null;
   return (
@@ -444,6 +670,7 @@ function DashboardPage() {
   const [claimingId, setClaimingId] = useState(null);
   const [selectedReward, setSelectedReward] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [todayViewMode, setTodayViewMode] = useState('overview');
   const [progressoUsuarios, setProgressoUsuarios] = useState([]);
   const [usuarioCampanhaFiltro, setUsuarioCampanhaFiltro] = useState('');
   const [usuarioCampanhaBusca, setUsuarioCampanhaBusca] = useState('');
@@ -484,6 +711,40 @@ function DashboardPage() {
   const podeVerCampanhasUsuarios = temPermissao(usuario, 'campanhas_ver_usuarios');
   const podeVerVendasParadas = temPermissao(usuario, 'notificacoes_vendas_paradas');
   const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
+  const todayStatsItems = useMemo(() => ([
+    {
+      key: 'vendasDia',
+      label: 'Vendas no dia',
+      shortLabel: 'Vendas',
+      value: stats.vendasDia,
+      formatted: stats.vendasDia,
+      delta: 'Lançadas hoje',
+    },
+    {
+      key: 'valorDia',
+      label: 'Valor vendido hoje',
+      shortLabel: 'Vendido',
+      value: stats.valorDia,
+      formatted: formatBRL(stats.valorDia),
+      delta: 'Soma das vendas do dia',
+    },
+    {
+      key: 'concluidasDia',
+      label: 'Concluídas hoje',
+      shortLabel: 'Concluídas',
+      value: stats.concluidasDia,
+      formatted: stats.concluidasDia,
+      delta: 'Fechadas no dia',
+    },
+    {
+      key: 'pipeline',
+      label: 'Em pipeline',
+      shortLabel: 'Pipeline',
+      value: stats.pipeline,
+      formatted: formatBRL(stats.pipeline),
+      delta: `${stats.pipelineCount} em andamento`,
+    },
+  ]), [stats]);
 
   useEffect(() => {
     if (!feedback) return undefined;
@@ -1181,7 +1442,32 @@ function DashboardPage() {
         {/* KPIs do DIA */}
         {podeVerResumoVendas && (
           <>
-        <h2 className="home-section-title">Hoje</h2>
+            <div className="today-section-header">
+              <div>
+                <h2 className="home-section-title">Hoje</h2>
+                <p>Seu resumo diário</p>
+              </div>
+              <div className="today-view-controls" aria-label="Modo de visualização dos indicadores de hoje">
+                <div className="today-view-toggle" role="group" aria-label="Visualização">
+                  {TODAY_VIEW_MODES.map(mode => (
+                    <button
+                      key={mode.value}
+                      type="button"
+                      className={`today-view-button ${todayViewMode === mode.value ? 'is-active' : ''}`}
+                      aria-pressed={todayViewMode === mode.value}
+                      onClick={() => setTodayViewMode(mode.value)}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+
+              </div>
+            </div>
+
+            {todayViewMode === 'overview' ? (
+              <TodayOverview items={todayStatsItems} stats={stats} />
+            ) : todayViewMode === 'cards' ? (
         <div className="stats-row">
           <div className="stat-card">
             <div className="label">Vendas no dia</div>
@@ -1204,6 +1490,9 @@ function DashboardPage() {
             <div className="delta">{stats.pipelineCount} em andamento</div>
           </div>
         </div>
+            ) : (
+              <TodayStatsChart items={todayStatsItems} type={todayViewMode === 'pie' ? 'pie' : 'horizontal'} />
+            )}
           </>
         )}
 
