@@ -719,12 +719,22 @@
 }
 
 .today-overview-card {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 128px;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
+}
+
+/* Centraliza verticalmente o corpo do gráfico no espaço após o título */
+.today-performance,
+.today-financial,
+.today-mini-bars,
+.today-pipeline-summary {
+  margin-block: auto;
 }
 
 .today-overview-card h3 {
@@ -794,21 +804,24 @@
 
 .today-financial {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(112px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
   align-items: end;
   gap: 12px;
+  min-width: 0;
 }
 
 .today-financial > div:first-child {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .today-financial > div:first-child strong {
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 31px;
+  font-size: clamp(20px, 4.5vw, 31px);
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .today-financial > div:first-child span {
@@ -819,28 +832,59 @@
 .today-status-bars,
 .today-mini-bars {
   display: flex;
-  align-items: end;
+  align-items: stretch;
   justify-content: center;
   gap: 14px;
-  min-height: 86px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.today-status-bars {
+  height: 112px;
 }
 
 .today-status-bars > div,
 .today-mini-bar {
   display: grid;
   justify-items: center;
-  align-content: end;
   gap: 4px;
-  min-width: 48px;
+  height: 100%;
+  min-width: 36px;
+  max-width: 100%;
   color: var(--text-2);
   font-size: 10px;
   text-align: center;
 }
 
+/* Rótulos/valores no topo alinhados; barras crescem da mesma base inferior */
+.today-status-bars > div {
+  grid-template-rows: auto auto 1fr;
+}
+
+.today-mini-bar {
+  grid-template-rows: auto 1fr;
+}
+
+.today-status-bars i,
+.today-mini-bar i {
+  align-self: end;
+}
+
+.today-status-bars span,
+.today-mini-bar span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .today-status-bars strong {
+  max-width: 100%;
+  overflow: hidden;
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 10px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -852,8 +896,9 @@
 }
 
 .today-mini-bars {
-  justify-content: space-around;
-  gap: 8px;
+  justify-content: center;
+  gap: 16px;
+  height: 98px;
 }
 
 .today-mini-bar {
@@ -890,7 +935,7 @@
 
 .today-pipeline-block strong {
   font-family: var(--font-mono);
-  font-size: 26px;
+  font-size: clamp(20px, 4vw, 26px);
   line-height: 1;
 }
 
@@ -1639,6 +1684,37 @@
   .team-goals__filter {
     width: 100%;
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .today-overview-card {
+    min-height: auto;
+    padding: 10px;
+  }
+  .today-performance {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+  .today-status-bars,
+  .today-mini-bars {
+    gap: 10px;
+  }
+  .today-status-bars i,
+  .today-mini-bar i {
+    width: 28px;
+  }
+  .today-pipeline-summary {
+    justify-items: center;
+    text-align: center;
+  }
+  .today-pipeline-block {
+    width: 100%;
+    max-width: 160px;
+  }
+  .today-pipeline-list {
+    width: 100%;
   }
 }
 

@@ -159,6 +159,8 @@ const RETURN_REASONS = [
   'Outro motivo',
 ];
 
+const STATUS_CANCELADA_FILTRO = '__cancelada';
+
 const UFS_BRASIL = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
 function parseDate(value) {
@@ -288,7 +290,12 @@ function vendaCorrespondeFiltros(sale, filtros) {
   if (filtros.operadoraId && String(raw.operadora_id || raw.operadora?.id || '') !== String(filtros.operadoraId)) return false;
   if (filtros.tipoVendaId && String(raw.tipo_venda_id || raw.tipoVenda?.id || '') !== String(filtros.tipoVendaId)) return false;
   if (filtros.servicoId && !servicoIdInclui(filtros.servicoId, raw.servico_id || raw.servico?.id)) return false;
-  if (filtros.statusFunil && String(sale.stage || '') !== String(filtros.statusFunil)) return false;
+  if (filtros.statusFunil === STATUS_CANCELADA_FILTRO && !sale.canceladaEm) return false;
+  if (
+    filtros.statusFunil &&
+    filtros.statusFunil !== STATUS_CANCELADA_FILTRO &&
+    String(sale.stage || '') !== String(filtros.statusFunil)
+  ) return false;
   if (filtros.prioridadeFunil && String(sale.priority || '') !== String(filtros.prioridadeFunil)) return false;
   if (filtros.uf && String(raw.uf || '').toUpperCase() !== String(filtros.uf).toUpperCase()) return false;
   if (filtros.municipio && !normalizarBusca(raw.municipio).includes(normalizarBusca(filtros.municipio))) return false;
@@ -296,8 +303,6 @@ function vendaCorrespondeFiltros(sale, filtros) {
   if (filtros.dataFim && (!dataVenda || dataVenda > filtros.dataFim)) return false;
   if (valorMin !== null && Number(sale.value || 0) < valorMin) return false;
   if (valorMax !== null && Number(sale.value || 0) > valorMax) return false;
-  if (filtros.cancelamento === 'canceladas' && !sale.canceladaEm) return false;
-  if (filtros.cancelamento === 'ativas' && sale.canceladaEm) return false;
 
   return true;
 }
@@ -1495,7 +1500,6 @@ function FunilPage() {
   const [dataFim, setDataFim] = useState('');
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
-  const [cancelamento, setCancelamento] = useState('');
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const buscaDeferred = useDeferredValue(busca);
   const [selectedSaleId, setSelectedSaleId] = useState(null);
@@ -2011,7 +2015,6 @@ function FunilPage() {
     setDataFim('');
     setValorMin('');
     setValorMax('');
-    setCancelamento('');
   }
 
   const selectedSale = selectedSaleId ? sales.find(s => s.id === selectedSaleId) : null;
@@ -2063,9 +2066,8 @@ function FunilPage() {
     dataInicio,
     dataFim,
     valorMin,
-    valorMax,
-    cancelamento
-  }), [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, uf, municipio, dataInicio, dataFim, valorMin, valorMax, cancelamento]);
+    valorMax
+  }), [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, uf, municipio, dataInicio, dataFim, valorMin, valorMax]);
   const filtrosPopupAtivos = Object.values(filtrosFunil).filter(valor => valor !== '').length;
   const { filtradas, total } = useMemo(() => {
     const filtered = sales.filter(s => {
@@ -2078,7 +2080,10 @@ function FunilPage() {
   }, [sales, buscaDeferred, filtrosFunil]);
   const stageLabels = montarStageLabels(stagesVisiveis);
   const statusFunilFiltros = useMemo(
-    () => stagesVisiveis.map(stage => ({ id: stage.id, label: stage.name })),
+    () => [
+      ...stagesVisiveis.map(stage => ({ id: stage.id, label: stage.name })),
+      { id: STATUS_CANCELADA_FILTRO, label: 'Canceladas' }
+    ],
     [stagesVisiveis]
   );
 
@@ -2203,18 +2208,6 @@ function FunilPage() {
                     { value: 'alta', label: 'Alta' },
                     { value: 'media', label: 'Média' },
                     { value: 'baixa', label: 'Baixa' },
-                  ]}
-                />
-              </div>
-              <div className="filter-field">
-                <label>Cancelamento</label>
-                <SelectFiltro
-                  value={cancelamento}
-                  onChange={setCancelamento}
-                  placeholder="Todas"
-                  options={[
-                    { value: 'ativas', label: 'Somente ativas' },
-                    { value: 'canceladas', label: 'Somente canceladas' },
                   ]}
                 />
               </div>
