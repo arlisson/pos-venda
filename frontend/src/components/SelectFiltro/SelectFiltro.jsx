@@ -13,10 +13,12 @@ export default function SelectFiltro({
 }) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState('');
+  const [destaque, setDestaque] = useState(0);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
   const buscaRef = useRef(null);
+  const destaqueRef = useRef(null);
 
   const selecionada = options.find(op => String(op.value) === String(value));
   const labelAtual = selecionada ? selecionada.label : null;
@@ -24,6 +26,23 @@ export default function SelectFiltro({
   const opcoesFiltradas = termoBusca
     ? options.filter(op => normalizarBusca(op.label).includes(termoBusca))
     : options;
+
+  // Lista plana navegável por teclado: placeholder (limpar) + opções filtradas.
+  const itensNavegaveis = [
+    { value: '', disabled: false },
+    ...opcoesFiltradas.map(op => ({ value: String(op.value), disabled: !!op.disabled })),
+  ];
+
+  function proximoSelecionavel(de, dir) {
+    const n = itensNavegaveis.length;
+    if (n === 0) return -1;
+    let i = de;
+    for (let passo = 0; passo < n; passo++) {
+      i = (i + dir + n) % n;
+      if (!itensNavegaveis[i].disabled) return i;
+    }
+    return -1;
+  }
 
   function calcularPosicao() {
     if (!triggerRef.current) return;
@@ -38,6 +57,17 @@ export default function SelectFiltro({
   useEffect(() => {
     if (aberto && searchable) buscaRef.current?.focus();
   }, [aberto, searchable]);
+
+  // Ao abrir ou refiltrar: destaca a 1ª opção real quando há busca, senão o placeholder.
+  useEffect(() => {
+    if (!aberto) return;
+    setDestaque(termoBusca && opcoesFiltradas.length > 0 ? 1 : 0);
+  }, [aberto, busca]);
+
+  // Mantém a opção destacada visível durante a navegação.
+  useEffect(() => {
+    if (aberto) destaqueRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [destaque, aberto]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -73,6 +103,24 @@ export default function SelectFiltro({
     if (e.key === 'Escape') {
       setAberto(false);
       setBusca('');
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setDestaque(d => proximoSelecionavel(d, 1));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setDestaque(d => proximoSelecionavel(d, -1));
+      return;
+    }
+    if (e.key === 'Enter') {
+      const item = itensNavegaveis[destaque];
+      if (item && !item.disabled) {
+        e.preventDefault();
+        selecionar(item.value);
+      }
     }
   }
 
@@ -105,7 +153,6 @@ export default function SelectFiltro({
           className="sf__menu"
           ref={menuRef}
           style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
-          onKeyDown={handleKeyDown}
         >
           {searchable && options.length > 0 && (
             <label className="sf__busca">
@@ -122,21 +169,27 @@ export default function SelectFiltro({
           )}
           <button
             type="button"
-            className={`sf__opcao ${!value ? 'sf__opcao--ativa' : ''}`}
+            className={`sf__opcao ${!value ? 'sf__opcao--ativa' : ''} ${destaque === 0 ? 'sf__opcao--destaque' : ''}`}
+            ref={destaque === 0 ? destaqueRef : null}
             onClick={() => selecionar('')}
+            onMouseEnter={() => setDestaque(0)}
           >
             <span>{placeholder}</span>
             {!value && <CheckIcon />}
           </button>
           <div className="sf__opcoes">
-            {opcoesFiltradas.map(op => {
+            {opcoesFiltradas.map((op, i) => {
               const ativa = String(value) === String(op.value);
+              const idx = i + 1;
+              const destacada = idx === destaque;
               return (
                 <button
                   key={op.value}
                   type="button"
-                  className={`sf__opcao ${ativa ? 'sf__opcao--ativa' : ''} ${op.disabled ? 'sf__opcao--disabled' : ''}`}
+                  className={`sf__opcao ${ativa ? 'sf__opcao--ativa' : ''} ${destacada ? 'sf__opcao--destaque' : ''} ${op.disabled ? 'sf__opcao--disabled' : ''}`}
+                  ref={destacada ? destaqueRef : null}
                   onClick={() => !op.disabled && selecionar(String(op.value))}
+                  onMouseEnter={() => !op.disabled && setDestaque(idx)}
                   aria-disabled={op.disabled ? 'true' : undefined}
                 >
                   <span>{op.label}</span>
@@ -145,7 +198,7 @@ export default function SelectFiltro({
               );
             })}
             {opcoesFiltradas.length === 0 && (
-              <div className="sf__vazio">Nenhuma opcao encontrada</div>
+              <div className="sf__vazio">Nenhuma opção encontrada</div>
             )}
           </div>
         </div>,

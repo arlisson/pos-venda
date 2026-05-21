@@ -128,7 +128,8 @@
   border-bottom: none;
 }
 
-.sf__opcao:hover {
+.sf__opcao:hover,
+.sf__opcao--destaque {
   background: var(--surface-2);
 }
 

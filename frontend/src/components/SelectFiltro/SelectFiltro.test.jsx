@@ -57,7 +57,33 @@ describe('SelectFiltro', () => {
     await user.type(screen.getByRole('searchbox', { name: /buscar filtro/i }), 'inexistente');
 
     expect(screen.getByRole('button', { name: /todas/i })).toBeInTheDocument();
-    expect(screen.getByText(/nenhuma opcao encontrada/i)).toBeInTheDocument();
+    expect(screen.getByText(/nenhuma op[cç][aã]o encontrada/i)).toBeInTheDocument();
+  });
+
+  it('navega com as setas e seleciona com Enter', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(<SelectFiltro value="" onChange={onChange} options={options} placeholder="Todas" />);
+
+    await user.click(screen.getByRole('button', { name: /todas/i }));
+    // 0=placeholder -> 1=Claro -> 2=Vivo
+    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
+
+    expect(onChange).toHaveBeenCalledWith('vivo');
+  });
+
+  it('pula opcao desabilitada na navegacao por teclado', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(<SelectFiltro value="" onChange={onChange} options={options} placeholder="Todas" />);
+
+    await user.click(screen.getByRole('button', { name: /todas/i }));
+    // 0 -> 1(Claro) -> 2(Vivo) -> pula 3(TIM desabilitada) -> volta a 0(placeholder)
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{Enter}');
+
+    expect(onChange).toHaveBeenCalledWith('');
   });
 
   it('ignora opcao desabilitada', async () => {
