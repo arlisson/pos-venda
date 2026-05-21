@@ -35,7 +35,7 @@ function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, 
           <div className="trash-warning">
             <I.AlertTriangle size={20} />
             <div>
-              <strong>Esta exclusao nao pode ser desfeita.</strong>
+              <strong>Esta exclusão não pode ser desfeita.</strong>
               <span>
                 {precisaExcluirVendas
                   ? 'Este cliente possui vendas relacionadas. Para exclui-lo definitivamente, as vendas precisam ser excluidas junto.'
@@ -52,8 +52,8 @@ function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, 
                 disabled={excluindo}
               />
               <span>
-                <strong>Excluir tambem {totalVendasRelacionadas} venda(s) relacionada(s)</strong>
-                <small>Sem esta confirmacao, o cliente permanecera na lixeira.</small>
+                <strong>Excluir também {totalVendasRelacionadas} venda(s) relacionada(s)</strong>
+                <small>Sem esta confirmação, o cliente permanecerá na lixeira.</small>
               </span>
             </label>
           )}
@@ -212,7 +212,7 @@ function ClientesLixeiraPage() {
               <thead>
                 <tr>
                   <th>Cliente</th>
-                  <th>Responsavel</th>
+                  <th>Responsável</th>
                   <th>Contato</th>
                   <th>Enviado em</th>
                   <th>Exclusão definitiva</th>
@@ -243,13 +243,13 @@ function ClientesLixeiraPage() {
                           <details className="mobile-row-drawer">
                             <summary>Ver dados da lixeira</summary>
                             <dl>
-                              <dt>Responsavel</dt>
+                              <dt>Responsável</dt>
                               <dd>{cliente.responsavel_tipo === 'adm' ? 'ADM' : 'RL'} {cliente.responsavel_nome || '-'}</dd>
                               <dt>Contato</dt>
                               <dd>{cliente.email || '-'} / {[cliente.whatsapp_ddd, cliente.whatsapp_numero].filter(Boolean).join(' ') || '-'}</dd>
                               <dt>Enviado em</dt>
                               <dd>{formatarData(cliente.excluido_em)}</dd>
-                              <dt>Exclusao definitiva</dt>
+                              <dt>Exclusão definitiva</dt>
                               <dd>{formatarData(cliente.excluir_definitivo_em)}</dd>
                               <dt>Enviado por</dt>
                               <dd>{cliente.excluidoPor?.nome || '-'}</dd>
