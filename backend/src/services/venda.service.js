@@ -141,6 +141,79 @@ function normalizarIdsFiltro(valor) {
   ));
 }
 
+function apenasDigitos(valor) {
+  return String(valor || '').replace(/\D/g, '');
+}
+
+function sqlSomenteDigitos(coluna) {
+  return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${coluna}, '.', ''), '/', ''), '-', ''), '(', ''), ')', ''), ' ', '')`;
+}
+
+function aplicarBuscaCampoVendas(query, filtros = {}) {
+  const campo = String(filtros.busca_campo || '').trim();
+  const valor = String(filtros.busca_valor || '').trim();
+
+  if (!campo || !valor) return;
+
+  if (campo === 'protocolo') {
+    const digitos = apenasDigitos(valor);
+    if (!digitos) return;
+
+    query.whereRaw(`${sqlSomenteDigitos('protocolo')} like ?`, [`%${digitos}%`]);
+    return;
+  }
+
+  if (campo === 'cliente') {
+    query.where(builder => {
+      builder
+        .where('nome', 'like', `%${valor}%`)
+        .orWhere('razao_social', 'like', `%${valor}%`)
+        .orWhere('cliente_excluido_permanentemente_nome', 'like', `%${valor}%`);
+    });
+    return;
+  }
+
+  if (campo === 'telefone') {
+    const digitos = apenasDigitos(valor);
+    if (!digitos) return;
+
+    query.whereRaw(`${sqlSomenteDigitos('telefone')} like ?`, [`%${digitos}%`]);
+    return;
+  }
+
+  if (campo === 'cnpj') {
+    const digitos = apenasDigitos(valor);
+    if (!digitos) return;
+
+    query.where(builder => {
+      builder
+        .whereRaw(`${sqlSomenteDigitos('cnpj')} like ?`, [`%${digitos}%`])
+        .orWhereRaw(`${sqlSomenteDigitos('cliente_excluido_permanentemente_cnpj')} like ?`, [`%${digitos}%`]);
+    });
+    return;
+  }
+
+  if (campo === 'cidade') {
+    query.where('municipio', 'like', `%${valor}%`);
+    return;
+  }
+
+  if (campo === 'tipo_venda') {
+    const ids = normalizarIdsFiltro(valor);
+    if (ids.length === 1) query.where('tipo_venda_id', ids[0]);
+    return;
+  }
+
+  if (campo === 'produto') {
+    const ids = normalizarIdsFiltro(valor);
+    if (ids.length === 1) {
+      query.where('servico_id', ids[0]);
+    } else if (ids.length > 1) {
+      query.whereIn('servico_id', ids);
+    }
+  }
+}
+
 function normalizarData(valor) {
   if (!valor) return null;
 
@@ -1420,6 +1493,8 @@ async function listarVendas(filtros = {}, usuarioId) {
         .orWhere('municipio', 'like', busca);
     });
   }
+
+  aplicarBuscaCampoVendas(query, filtros);
 
   if (filtros.vendedora_id) {
     const vendedoraId = Number(filtros.vendedora_id);

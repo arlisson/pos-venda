@@ -35,10 +35,45 @@
 
 .vendas-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
+  grid-template-columns: minmax(320px, 1fr) auto auto;
   gap: 10px;
   align-items: center;
   margin-bottom: 14px;
+}
+
+.vendas-search {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(180px, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.vendas-search__campo .sf__trigger,
+.vendas-search__valor {
+  height: 38px;
+  border-radius: var(--radius-lg);
+}
+
+.vendas-search__valor {
+  width: 100%;
+  min-width: 0;
+}
+
+.vendas-search__valor .sf {
+  flex: 1;
+  min-width: 0;
+}
+
+.vendas-search__valor .sf__trigger {
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.vendas-search__valor .sf__trigger:hover {
+  background: transparent;
 }
 
 .vendas-page .btn,
@@ -2918,8 +2953,13 @@ input.is-invalid {
   }
 
   .vendas-toolbar .btn,
-  .vendas-toolbar .search-box {
+  .vendas-toolbar .search-box,
+  .vendas-search {
     width: 100%;
+  }
+
+  .vendas-search {
+    grid-template-columns: 1fr;
   }
 
   .vendas-page .list-table table {
@@ -3004,6 +3044,7 @@ input.is-invalid {
   }
 
   .vendas-toolbar .search-box,
+  .vendas-toolbar .vendas-search,
   .vendas-toolbar .btn {
     width: 100%;
     justify-content: center;
