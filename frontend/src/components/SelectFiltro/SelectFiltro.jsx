@@ -9,14 +9,21 @@ export default function SelectFiltro({
   placeholder = 'Todos',
   className = '',
   disabled = false,
+  searchable = true,
 }) {
   const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState('');
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
+  const buscaRef = useRef(null);
 
   const selecionada = options.find(op => String(op.value) === String(value));
   const labelAtual = selecionada ? selecionada.label : null;
+  const termoBusca = normalizarBusca(busca);
+  const opcoesFiltradas = termoBusca
+    ? options.filter(op => normalizarBusca(op.label).includes(termoBusca))
+    : options;
 
   function calcularPosicao() {
     if (!triggerRef.current) return;
@@ -29,6 +36,10 @@ export default function SelectFiltro({
   }, [aberto]);
 
   useEffect(() => {
+    if (aberto && searchable) buscaRef.current?.focus();
+  }, [aberto, searchable]);
+
+  useEffect(() => {
     if (!aberto) return;
 
     function fecharFora(e) {
@@ -37,6 +48,7 @@ export default function SelectFiltro({
         !menuRef.current?.contains(e.target)
       ) {
         setAberto(false);
+        setBusca('');
       }
     }
 
@@ -54,10 +66,19 @@ export default function SelectFiltro({
   function selecionar(val) {
     onChange(val);
     setAberto(false);
+    setBusca('');
   }
 
   function handleKeyDown(e) {
-    if (e.key === 'Escape') setAberto(false);
+    if (e.key === 'Escape') {
+      setAberto(false);
+      setBusca('');
+    }
+  }
+
+  function alternarMenu() {
+    if (aberto) setBusca('');
+    setAberto(v => !v);
   }
 
   const wrapperClass = [`sf`, aberto ? 'sf--open' : '', className].filter(Boolean).join(' ');
@@ -69,7 +90,7 @@ export default function SelectFiltro({
         className="sf__trigger"
         ref={triggerRef}
         disabled={disabled}
-        onClick={() => setAberto(v => !v)}
+        onClick={alternarMenu}
       >
         <span className={`sf__valor ${!labelAtual ? 'sf__valor--vazio' : ''}`}>
           {labelAtual ?? placeholder}
@@ -84,7 +105,21 @@ export default function SelectFiltro({
           className="sf__menu"
           ref={menuRef}
           style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
+          onKeyDown={handleKeyDown}
         >
+          {searchable && options.length > 0 && (
+            <label className="sf__busca">
+              <SearchIcon />
+              <input
+                ref={buscaRef}
+                type="search"
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                placeholder="Buscar"
+                aria-label="Buscar filtro"
+              />
+            </label>
+          )}
           <button
             type="button"
             className={`sf__opcao ${!value ? 'sf__opcao--ativa' : ''}`}
@@ -93,25 +128,47 @@ export default function SelectFiltro({
             <span>{placeholder}</span>
             {!value && <CheckIcon />}
           </button>
-          {options.map(op => {
-            const ativa = String(value) === String(op.value);
-            return (
-              <button
-                key={op.value}
-                type="button"
-                className={`sf__opcao ${ativa ? 'sf__opcao--ativa' : ''} ${op.disabled ? 'sf__opcao--disabled' : ''}`}
-                onClick={() => !op.disabled && selecionar(String(op.value))}
-                aria-disabled={op.disabled ? 'true' : undefined}
-              >
-                <span>{op.label}</span>
-                {ativa && <CheckIcon />}
-              </button>
-            );
-          })}
+          <div className="sf__opcoes">
+            {opcoesFiltradas.map(op => {
+              const ativa = String(value) === String(op.value);
+              return (
+                <button
+                  key={op.value}
+                  type="button"
+                  className={`sf__opcao ${ativa ? 'sf__opcao--ativa' : ''} ${op.disabled ? 'sf__opcao--disabled' : ''}`}
+                  onClick={() => !op.disabled && selecionar(String(op.value))}
+                  aria-disabled={op.disabled ? 'true' : undefined}
+                >
+                  <span>{op.label}</span>
+                  {ativa && <CheckIcon />}
+                </button>
+              );
+            })}
+            {opcoesFiltradas.length === 0 && (
+              <div className="sf__vazio">Nenhuma opcao encontrada</div>
+            )}
+          </div>
         </div>,
         document.body
       )}
     </div>
+  );
+}
+
+function normalizarBusca(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function SearchIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+      <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
   );
 }
 

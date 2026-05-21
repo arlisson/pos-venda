@@ -36,6 +36,30 @@ describe('SelectFiltro', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: /claro/i })).not.toBeInTheDocument());
   });
 
+  it('filtra opcoes pelo texto buscado', async () => {
+    const user = userEvent.setup();
+
+    render(<SelectFiltro value="" onChange={vi.fn()} options={options} placeholder="Todas" />);
+
+    await user.click(screen.getByRole('button', { name: /todas/i }));
+    await user.type(screen.getByRole('searchbox', { name: /buscar filtro/i }), 'viv');
+
+    expect(screen.getByRole('button', { name: /vivo/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /claro/i })).not.toBeInTheDocument();
+  });
+
+  it('mantem placeholder disponivel mesmo com busca sem resultado', async () => {
+    const user = userEvent.setup();
+
+    render(<SelectFiltro value="vivo" onChange={vi.fn()} options={options} placeholder="Todas" />);
+
+    await user.click(screen.getByRole('button', { name: /vivo/i }));
+    await user.type(screen.getByRole('searchbox', { name: /buscar filtro/i }), 'inexistente');
+
+    expect(screen.getByRole('button', { name: /todas/i })).toBeInTheDocument();
+    expect(screen.getByText(/nenhuma opcao encontrada/i)).toBeInTheDocument();
+  });
+
   it('ignora opcao desabilitada', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

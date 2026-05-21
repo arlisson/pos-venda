@@ -1310,31 +1310,48 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
 
 function VendedorasSelect({ value = [], options = [], onChange, idProtegido = null, disabled = false }) {
   const [dropdownAberto, setDropdownAberto] = useState(false);
+  const [buscaVendedora, setBuscaVendedora] = useState('');
   const wrapperRef = useRef(null);
+  const buscaInputRef = useRef(null);
 
   const selecionadas = options.filter(v => value.includes(String(v.id)));
   const disponiveis = options.filter(v => !value.includes(String(v.id)));
+  const termoBuscaVendedora = normalizarTextoBusca(buscaVendedora);
+  const disponiveisFiltradas = termoBuscaVendedora
+    ? disponiveis.filter(v => normalizarTextoBusca(v.nome).includes(termoBuscaVendedora))
+    : disponiveis;
 
   useEffect(() => {
     function handleClickFora(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setDropdownAberto(false);
+        setBuscaVendedora('');
       }
     }
     document.addEventListener('mousedown', handleClickFora);
     return () => document.removeEventListener('mousedown', handleClickFora);
   }, []);
 
+  useEffect(() => {
+    if (dropdownAberto) buscaInputRef.current?.focus();
+  }, [dropdownAberto]);
+
   function adicionar(vendedora) {
     if (disabled) return;
     onChange([...value, String(vendedora.id)]);
     setDropdownAberto(false);
+    setBuscaVendedora('');
   }
 
   function remover(id) {
     if (disabled) return;
     if (idProtegido !== null && String(id) === String(idProtegido)) return;
     onChange(value.filter(v => v !== String(id)));
+  }
+
+  function alternarDropdown() {
+    if (dropdownAberto) setBuscaVendedora('');
+    setDropdownAberto(prev => !prev);
   }
 
   return (
@@ -1362,7 +1379,7 @@ function VendedorasSelect({ value = [], options = [], onChange, idProtegido = nu
           <button
             type="button"
             className="btn btn-sm vendedoras-add-btn"
-            onClick={() => setDropdownAberto(prev => !prev)}
+            onClick={alternarDropdown}
           >
             <I.Plus size={13} /> Adicionar vendedora
           </button>
@@ -1370,11 +1387,27 @@ function VendedorasSelect({ value = [], options = [], onChange, idProtegido = nu
       </div>
       {!disabled && dropdownAberto && disponiveis.length > 0 && (
         <div className="vendedoras-dropdown">
-          {disponiveis.map(v => (
-            <button key={v.id} type="button" className="vendedoras-dropdown__item" onClick={() => adicionar(v)}>
-              {v.nome}
-            </button>
-          ))}
+          <label className="vendedoras-dropdown__search">
+            <I.Search size={14} />
+            <input
+              ref={buscaInputRef}
+              type="search"
+              value={buscaVendedora}
+              onChange={event => setBuscaVendedora(event.target.value)}
+              placeholder="Buscar vendedora"
+              aria-label="Buscar vendedora"
+            />
+          </label>
+          <div className="vendedoras-dropdown__list">
+            {disponiveisFiltradas.map(v => (
+              <button key={v.id} type="button" className="vendedoras-dropdown__item" onClick={() => adicionar(v)}>
+                {v.nome}
+              </button>
+            ))}
+            {disponiveisFiltradas.length === 0 && (
+              <div className="vendedoras-dropdown__empty">Nenhuma vendedora encontrada</div>
+            )}
+          </div>
         </div>
       )}
     </div>

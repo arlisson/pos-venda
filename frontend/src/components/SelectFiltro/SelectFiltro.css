@@ -56,20 +56,54 @@
 
 .sf__menu {
   position: fixed;
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   z-index: 9999;
   overflow: hidden;
-  max-height: 220px;
-  overflow-y: auto;
+  max-height: 260px;
   animation: sf-entrada 0.12s ease;
 }
 
 @keyframes sf-entrada {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+.sf__busca {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  margin: 6px 6px 4px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.sf__busca input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.sf__busca input::placeholder {
+  color: var(--text-3);
+}
+
+.sf__opcoes {
+  overflow-y: auto;
 }
 
 .sf__opcao {
@@ -120,6 +154,12 @@
   opacity: 0.4;
   cursor: default;
   pointer-events: none;
+}
+
+.sf__vazio {
+  padding: 10px 12px;
+  color: var(--text-2);
+  font-size: 12px;
 }
 
 /* Variantes flex para contextos como aceite-bloco */
