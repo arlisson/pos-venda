@@ -135,6 +135,10 @@ function formatarDataHoraNota(valor) {
   });
 }
 
+function formatarDataHoraRegistro(valor) {
+  return formatarDataHoraNota(valor) || '-';
+}
+
 function inicioDoDia(data) {
   const dia = new Date(data);
   dia.setHours(0, 0, 0, 0);
@@ -1279,6 +1283,7 @@ function Clientes() {
                   <th>Contato</th>
                   <th>Operadora</th>
                   <th>Registrado por</th>
+                  <th>Criado em</th>
                   <th>Valor pago</th>
                   <th>Chips</th>
                   <th>Fidelidade</th>
@@ -1289,13 +1294,13 @@ function Clientes() {
               <tbody>
                 {carregando ? (
                   <tr>
-                    <td colSpan={podeExcluir ? 10 : 9} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 11 : 10} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Carregando clientes...
                     </td>
                   </tr>
                 ) : clientes.length === 0 ? (
                   <tr>
-                    <td colSpan={podeExcluir ? 10 : 9} className="muted" style={{ textAlign: 'center', padding: 40 }}>
+                    <td colSpan={podeExcluir ? 11 : 10} className="muted" style={{ textAlign: 'center', padding: 40 }}>
                       Nenhum cliente encontrado.
                     </td>
                   </tr>
@@ -1356,6 +1361,8 @@ function Clientes() {
                                 <dd title={resumoOperadoras.detalhe}>{resumoOperadoras.titulo}</dd>
                                 <dt>Registrado por</dt>
                                 <dd>{cliente.criador?.nome || 'Sem registro'}</dd>
+                                <dt>Criado em</dt>
+                                <dd>{formatarDataHoraRegistro(cliente.created_at)}</dd>
                                 <dt>Valor pago</dt>
                                 <dd>{formatarMoeda(cliente.valor_pago)}</dd>
                                 <dt>Chips</dt>
@@ -1427,6 +1434,7 @@ function Clientes() {
                         <td data-label="Registrado por" data-mobile-hidden="true">
                           <span className="tag">{cliente.criador?.nome || 'Sem registro'}</span>
                         </td>
+                        <td data-label="Criado em" data-mobile-hidden="true">{formatarDataHoraRegistro(cliente.created_at)}</td>
                         <td data-label="Valor pago" data-mobile-hidden="true">{formatarMoeda(cliente.valor_pago)}</td>
                         <td data-label="Chips" data-mobile-hidden="true">{cliente.quantidade_chips ?? '-'}</td>
                         <td data-label="Fidelidade" className="m-meta">
