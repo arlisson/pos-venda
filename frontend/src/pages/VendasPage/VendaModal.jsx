@@ -1395,6 +1395,7 @@ export function VendedorasSelect({ value = [], options = [], onChange, idProtegi
               type="search"
               value={buscaVendedora}
               onChange={event => setBuscaVendedora(event.target.value)}
+              onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }}
               placeholder="Buscar vendedora"
               aria-label="Buscar vendedora"
             />

@@ -72,6 +72,23 @@ describe.each(variantes)('VendedorasSelect (%s) — busca', (_nome, VendedorasSe
     expect(onChange).toHaveBeenCalledWith(['2']);
   });
 
+  it('não submete o formulário ao apertar Enter na busca', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(e => e.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <button type="submit">salvar</button>
+        <VendedorasSelect value={[]} options={options} onChange={vi.fn()} />
+      </form>
+    );
+
+    const busca = await abrirDropdown(user);
+    await user.type(busca, 'ana');
+    await user.keyboard('{Enter}');
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('não exibe vendedoras já selecionadas na lista de disponíveis', async () => {
     const user = userEvent.setup();
     render(<VendedorasSelect value={['1']} options={options} onChange={vi.fn()} />);
