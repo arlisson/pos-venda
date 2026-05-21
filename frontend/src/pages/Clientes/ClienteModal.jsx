@@ -4,7 +4,7 @@ import NotasEntidadeTab from '../../components/NotasEntidadeTab';
 import * as I from '../../components/Icons';
 import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/CnpjSugestoes';
 import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj, formatarCpf, sanitizarCpf, validarDigitosCpf } from '../../services/cnpj.service';
-import { criarCliente, atualizarCliente } from '../../services/cliente.service';
+import { criarCliente, atualizarCliente, verificarDocumentoCliente } from '../../services/cliente.service';
 import { criarNotaEntidade } from '../../services/nota.service';
 import { listarVendas } from '../../services/venda.service';
 import { useFormDraft } from '../../utils/useFormDraft';
@@ -60,6 +60,18 @@ function formatarCnpj(valor) {
   if (digitos.length <= 8) return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5)}`;
   if (digitos.length <= 12) return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8)}`;
   return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
+}
+
+function obterNomeClienteDocumento(cliente) {
+  return cliente?.razao_social || cliente?.nome || `#${cliente?.id}`;
+}
+
+function formatarMensagemDocumentoDuplicado(cliente) {
+  if (!cliente) return '';
+  const sufixo = cliente.excluido
+    ? ' O cliente esta na lixeira; restaure-o para usar este documento.'
+    : '';
+  return `Ja existe um cliente cadastrado com este documento (${obterNomeClienteDocumento(cliente)}).${sufixo}`;
 }
 
 function formatarTelefoneComDdd(valor, celular = false) {
@@ -278,6 +290,9 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   const [erro, setErro] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
   const [cnpjStatus, setCnpjStatus] = useState({ tipo: '', mensagem: '' });
+  const [documentoDuplicado, setDocumentoDuplicado] = useState(null);
+  const [documentoStatus, setDocumentoStatus] = useState({ tipo: '', mensagem: '' });
+  const [verificandoDocumento, setVerificandoDocumento] = useState(false);
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
   const [tipoBusca, setTipoBusca] = useState(() => sanitizarCnpj(form.cnpj).length === 11 ? 'cpf' : 'cnpj');
@@ -287,6 +302,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   const [carregandoVendas, setCarregandoVendas] = useState(false);
   const [erroVendas, setErroVendas] = useState('');
   const ultimoCnpjConsultadoRef = useRef(sanitizarCnpj(cliente?.cnpj));
+  const ultimoDocumentoVerificadoRef = useRef('');
   const podeMostrarHistoricoVendas = Boolean(cliente?.id && onOpenVenda);
   const modalRef = useRef(null);
   const alturaModalAnteriorRef = useRef(null);
@@ -375,12 +391,15 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
     onDraftChange?.(formLimpo);
     setErro('');
     setCnpjStatus({ tipo: '', mensagem: '' });
+    setDocumentoDuplicado(null);
+    setDocumentoStatus({ tipo: '', mensagem: '' });
     setCnpjDados(null);
     setCnpjSugestoes({});
     setTipoBusca('cnpj');
     setPendingNotas([]);
     setAbaAtiva('cliente');
     ultimoCnpjConsultadoRef.current = '';
+    ultimoDocumentoVerificadoRef.current = '';
   }
 
   function atualizarCampo(campo, valor) {
@@ -391,9 +410,12 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
     setTipoBusca(tipo);
     setForm(prev => ({ ...prev, cnpj: '' }));
     setCnpjStatus({ tipo: '', mensagem: '' });
+    setDocumentoDuplicado(null);
+    setDocumentoStatus({ tipo: '', mensagem: '' });
     setCnpjDados(null);
     setCnpjSugestoes({});
     ultimoCnpjConsultadoRef.current = '';
+    ultimoDocumentoVerificadoRef.current = '';
   }
 
   function adicionarOperadoraCliente() {
@@ -509,9 +531,43 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
     }
   }
 
+  async function verificarDuplicidadeDocumento(documento) {
+    const digitos = tipoBusca === 'cpf' ? sanitizarCpf(documento) : sanitizarCnpj(documento);
+    const tamanhoEsperado = tipoBusca === 'cpf' ? 11 : 14;
+
+    if (digitos.length !== tamanhoEsperado) {
+      setDocumentoDuplicado(null);
+      setDocumentoStatus({ tipo: '', mensagem: '' });
+      ultimoDocumentoVerificadoRef.current = '';
+      return null;
+    }
+
+    ultimoDocumentoVerificadoRef.current = `${tipoBusca}:${digitos}`;
+    setVerificandoDocumento(true);
+    setDocumentoStatus({ tipo: 'info', mensagem: tipoBusca === 'cpf' ? 'Verificando documento...' : 'Verificando CNPJ...' });
+
+    try {
+      const resultado = await verificarDocumentoCliente(digitos, cliente?.id);
+      const duplicado = resultado?.existe ? resultado.cliente : null;
+      setDocumentoDuplicado(duplicado);
+      setDocumentoStatus(duplicado
+        ? { tipo: 'erro', mensagem: formatarMensagemDocumentoDuplicado(duplicado) }
+        : { tipo: 'sucesso', mensagem: tipoBusca === 'cpf' ? 'Documento ainda nao cadastrado.' : 'CNPJ ainda nao cadastrado.' });
+      return duplicado;
+    } catch {
+      setDocumentoDuplicado(null);
+      setDocumentoStatus({ tipo: 'erro', mensagem: 'Nao foi possivel verificar se o documento ja esta cadastrado.' });
+      return null;
+    } finally {
+      setVerificandoDocumento(false);
+    }
+  }
+
   useEffect(() => {
     if (tipoBusca !== 'cnpj') {
       setCnpjStatus({ tipo: '', mensagem: '' });
+      setDocumentoDuplicado(null);
+      setDocumentoStatus({ tipo: '', mensagem: '' });
       setCnpjDados(null);
       setCnpjSugestoes({});
       return;
@@ -521,14 +577,25 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
 
     if (cnpj.length === 0) {
       setCnpjStatus({ tipo: '', mensagem: '' });
+      setDocumentoDuplicado(null);
+      setDocumentoStatus({ tipo: '', mensagem: '' });
       setCnpjDados(null);
       setCnpjSugestoes({});
+      return;
+    }
+
+    if (cnpj.length < 14) {
+      setDocumentoDuplicado(null);
+      setDocumentoStatus({ tipo: '', mensagem: '' });
+      ultimoDocumentoVerificadoRef.current = '';
       return;
     }
 
     if (cnpj.length === 14) {
       if (!validarDigitosCnpj(cnpj)) {
         setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ inválido.' });
+        setDocumentoDuplicado(null);
+        setDocumentoStatus({ tipo: '', mensagem: '' });
         setCnpjDados(null);
         setCnpjSugestoes({});
         return;
@@ -539,11 +606,38 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
       setCnpjSugestoes({});
 
       const timeout = setTimeout(() => {
-        buscarDadosCnpj(false);
+        verificarDuplicidadeDocumento(cnpj).then(duplicado => {
+          if (!duplicado) buscarDadosCnpj(false);
+        });
       }, 450);
 
       return () => clearTimeout(timeout);
     }
+  }, [form.cnpj, tipoBusca]);
+
+  useEffect(() => {
+    if (tipoBusca !== 'cpf') return;
+
+    const cpf = sanitizarCpf(form.cnpj);
+
+    if (cpf.length < 11) {
+      setDocumentoDuplicado(null);
+      setDocumentoStatus({ tipo: '', mensagem: '' });
+      ultimoDocumentoVerificadoRef.current = '';
+      return;
+    }
+
+    if (!validarDigitosCpf(cpf)) {
+      setDocumentoDuplicado(null);
+      setDocumentoStatus({ tipo: '', mensagem: '' });
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      verificarDuplicidadeDocumento(cpf);
+    }, 450);
+
+    return () => clearTimeout(timeout);
   }, [form.cnpj, tipoBusca]);
 
   async function handleSubmit(event) {
@@ -571,6 +665,13 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
         setAbaAtiva('cliente');
         return;
       }
+
+      const duplicado = await verificarDuplicidadeDocumento(cpf);
+      if (duplicado) {
+        setErro(formatarMensagemDocumentoDuplicado(duplicado));
+        setAbaAtiva('cliente');
+        return;
+      }
     } else {
       const cnpj = sanitizarCnpj(form.cnpj);
       if (cnpj.length !== 14) {
@@ -583,6 +684,13 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
       if (!validarDigitosCnpj(cnpj)) {
         setErro('CNPJ invalido.');
         setCnpjStatus({ tipo: 'erro', mensagem: 'CNPJ invalido.' });
+        setAbaAtiva('cliente');
+        return;
+      }
+
+      const duplicado = await verificarDuplicidadeDocumento(cnpj);
+      if (duplicado) {
+        setErro(formatarMensagemDocumentoDuplicado(duplicado));
         setAbaAtiva('cliente');
         return;
       }
@@ -751,6 +859,17 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
                       if (digitos.length === 11 && !validarDigitosCpf(digitos)) return <span className="field-hint field-hint--error">CPF inválido</span>;
                       return null;
                     })()}
+                    {verificandoDocumento && <span className="field-hint">Verificando documento...</span>}
+                    {!verificandoDocumento && documentoStatus.mensagem && !documentoDuplicado && (
+                      <span className={`field-hint cnpj-lookup-status ${documentoStatus.tipo}`}>
+                        {documentoStatus.mensagem}
+                      </span>
+                    )}
+                    {documentoDuplicado && (
+                      <span className="field-hint field-hint--error">
+                        {formatarMensagemDocumentoDuplicado(documentoDuplicado)}
+                      </span>
+                    )}
                   </>
                 ) : (
                   <>
@@ -773,6 +892,17 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
                     {cnpjStatus.mensagem && (
                       <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
                         {cnpjStatus.mensagem}
+                      </span>
+                    )}
+                    {verificandoDocumento && <span className="field-hint">Verificando CNPJ...</span>}
+                    {!verificandoDocumento && documentoStatus.mensagem && !documentoDuplicado && (
+                      <span className={`field-hint cnpj-lookup-status ${documentoStatus.tipo}`}>
+                        {documentoStatus.mensagem}
+                      </span>
+                    )}
+                    {documentoDuplicado && (
+                      <span className="field-hint field-hint--error">
+                        {formatarMensagemDocumentoDuplicado(documentoDuplicado)}
                       </span>
                     )}
                   </>

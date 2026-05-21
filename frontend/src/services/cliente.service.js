@@ -29,6 +29,11 @@ export async function buscarClientePorId(id) {
   return apiGet(`/clientes/${id}`);
 }
 
+export async function verificarDocumentoCliente(documento, ignorarId = null) {
+  const query = ignorarId ? montarQuery({ ignorar_id: ignorarId }) : '';
+  return apiGet(`/clientes/documento/${encodeURIComponent(documento)}${query}`);
+}
+
 export async function criarCliente(dados) {
   return apiPost('/clientes', dados);
 }

@@ -47,6 +47,22 @@ async function select(req, res) {
   }
 }
 
+async function verificarDocumento(req, res) {
+  try {
+    const resultado = await clienteService.verificarDocumentoCliente(req.params.documento, {
+      ignorarId: req.query.ignorar_id
+    });
+
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao verificar documento do cliente.'
+    });
+  }
+}
+
 async function store(req, res) {
   try {
     const cliente = await clienteService.criarCliente(req.body, req.usuario.id);
@@ -209,6 +225,7 @@ async function limparBaseAnterior(req, res) {
 module.exports = {
   index,
   select,
+  verificarDocumento,
   show,
   store,
   previewImportacaoBaseAnterior,

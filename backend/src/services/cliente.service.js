@@ -786,13 +786,46 @@ async function buscarClienteDuplicadoPorCnpj(cnpjDigitos, ignorarId = null, trx 
 
   const query = Cliente.query(trx)
     .select('id', 'nome', 'razao_social', 'cnpj', 'excluido_em')
-    .where('cnpj_digitos', cnpjDigitos);
+    .where(builder => {
+      builder
+        .where('cnpj_digitos', cnpjDigitos)
+        .orWhereRaw(`${sqlSomenteDigitos('cnpj')} = ?`, [cnpjDigitos]);
+    });
 
   if (ignorarId) {
     query.whereNot('id', Number(ignorarId));
   }
 
   return query.first();
+}
+
+async function verificarDocumentoCliente(documento, opcoes = {}) {
+  const documentoNormalizado = normalizarDocumentoObrigatorio(documento);
+  const cliente = await buscarClienteDuplicadoPorCnpj(
+    documentoNormalizado.cnpj_digitos,
+    opcoes.ignorarId
+  );
+
+  if (!cliente) {
+    return {
+      existe: false,
+      documento: documentoNormalizado.cnpj,
+      cnpj_digitos: documentoNormalizado.cnpj_digitos
+    };
+  }
+
+  return {
+    existe: true,
+    documento: documentoNormalizado.cnpj,
+    cnpj_digitos: documentoNormalizado.cnpj_digitos,
+    cliente: {
+      id: cliente.id,
+      nome: cliente.nome,
+      razao_social: cliente.razao_social,
+      cnpj: cliente.cnpj,
+      excluido: Boolean(cliente.excluido_em)
+    }
+  };
 }
 
 function lancarErroCnpjDuplicado(cliente) {
@@ -1613,6 +1646,7 @@ module.exports = {
   listarClientes,
   listarClientesSelect,
   listarClientesLixeira,
+  verificarDocumentoCliente,
   buscarClientePorId,
   criarCliente,
   atualizarCliente,

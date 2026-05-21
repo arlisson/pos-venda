@@ -22,6 +22,7 @@ import {
   listarClientesSelect,
   previewImportacaoBaseAnterior,
   restaurarCliente,
+  verificarDocumentoCliente,
 } from './cliente.service';
 
 describe('cliente.service', () => {
@@ -45,6 +46,12 @@ describe('cliente.service', () => {
     expect(apiGet).toHaveBeenNthCalledWith(1, '/clientes/select?ativo=1');
     expect(apiGet).toHaveBeenNthCalledWith(2, '/clientes/lixeira?busca=x');
     expect(apiGet).toHaveBeenNthCalledWith(3, '/clientes/9');
+  });
+
+  it('verifica documento de cliente com id ignorado quando informado', async () => {
+    await verificarDocumentoCliente('11.222.333/0001-81', 7);
+
+    expect(apiGet).toHaveBeenCalledWith('/clientes/documento/11.222.333%2F0001-81?ignorar_id=7');
   });
 
   it('usa endpoints de criacao, atualizacao, exclusao e restauracao', async () => {
