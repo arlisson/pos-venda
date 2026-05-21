@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -492,6 +492,7 @@ function LeadsRecebidosView() {
   const [totalLinhas, setTotalLinhas] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -523,7 +524,7 @@ function LeadsRecebidosView() {
 
     let cancelado = false;
     setCarregando(true);
-    listarMinhasLeadLinhas({ envio_ids: selecionados, page: pagina, page_size: 200, busca })
+    listarMinhasLeadLinhas({ envio_ids: selecionados, page: pagina, page_size: 200, busca: buscaDeferred })
       .then(data => {
         if (!cancelado) {
           setLinhas(data.data || []);
@@ -533,7 +534,7 @@ function LeadsRecebidosView() {
       .catch(error => setErro(error.message || 'Erro ao carregar leads recebidos.'))
       .finally(() => !cancelado && setCarregando(false));
     return () => { cancelado = true; };
-  }, [selecionados, pagina, busca]);
+  }, [selecionados, pagina, buscaDeferred]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
   const enviosSelecionados = useMemo(
@@ -971,6 +972,7 @@ function FuturosClientesMainView() {
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -987,7 +989,7 @@ function FuturosClientesMainView() {
     let cancelado = false;
     setCarregando(true);
     const listar = modoLixeira ? listarFuturosClientesLixeira : listarFuturosClientesLeads;
-    listar({ page: pagina, page_size: 50, busca })
+    listar({ page: pagina, page_size: 50, busca: buscaDeferred })
       .then(data => {
         if (!cancelado) {
           setLinhas(data.data || []);
@@ -997,7 +999,7 @@ function FuturosClientesMainView() {
       .catch(error => setErro(error.message || 'Erro ao carregar futuros clientes.'))
       .finally(() => !cancelado && setCarregando(false));
     return () => { cancelado = true; };
-  }, [pagina, busca, modoLixeira]);
+  }, [pagina, buscaDeferred, modoLixeira]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   useEffect(() => {

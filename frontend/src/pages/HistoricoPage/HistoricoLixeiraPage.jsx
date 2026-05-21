@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
@@ -397,6 +397,7 @@ function HistoricoLixeiraPage() {
   const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [logSelecionado, setLogSelecionado] = useState(null);
@@ -430,13 +431,13 @@ function HistoricoLixeiraPage() {
   }, [logs, vendasLixeiraIds]);
 
   const gruposFiltrados = useMemo(() => {
-    if (!busca.trim()) return grupos;
-    const termo = busca.toLowerCase();
+    if (!buscaDeferred.trim()) return grupos;
+    const termo = buscaDeferred.toLowerCase();
     return grupos.filter(grupo => {
       const nome = extrairNomeVenda(grupo.logs, grupo.vendaId).toLowerCase();
       return nome.includes(termo) || String(grupo.vendaId).includes(termo);
     });
-  }, [grupos, busca]);
+  }, [grupos, buscaDeferred]);
 
   return (
     <LayoutPrivado>

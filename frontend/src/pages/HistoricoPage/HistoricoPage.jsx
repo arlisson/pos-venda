@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
@@ -553,6 +553,7 @@ function HistoricoPage() {
   const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [filtro, setFiltro] = useState('todos');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -568,7 +569,7 @@ function HistoricoPage() {
 
       try {
         const [dados, etapas, statusVendas] = await Promise.all([
-          listarAuditLogs({ busca, limite: 500 }),
+          listarAuditLogs({ busca: buscaDeferred, limite: 500 }),
           listarEtapasFunil().catch(() => []),
           listarStatusVendasHistorico().catch(() => ({ ativas: [], lixeira: [] }))
         ]);
@@ -586,7 +587,7 @@ function HistoricoPage() {
     const timer = setTimeout(carregar, 250);
 
     return () => clearTimeout(timer);
-  }, [busca]);
+  }, [buscaDeferred]);
 
   const logsFiltrados = useMemo(() => {
     if (filtro === 'todos') return logs;

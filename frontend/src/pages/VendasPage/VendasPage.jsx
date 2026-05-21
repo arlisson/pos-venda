@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebounce } from '../../utils/useDebounce';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Paginacao from '../../components/Paginacao/Paginacao';
@@ -1099,12 +1099,13 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
 function VendedorasSelect({ value = [], options = [], onChange }) {
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const [buscaVendedora, setBuscaVendedora] = useState('');
+  const buscaVendedoraDeferred = useDeferredValue(buscaVendedora);
   const wrapperRef = useRef(null);
   const buscaInputRef = useRef(null);
 
   const selecionadas = options.filter(v => value.includes(String(v.id)));
   const disponiveis = options.filter(v => !value.includes(String(v.id)));
-  const termoBuscaVendedora = normalizarTextoBusca(buscaVendedora);
+  const termoBuscaVendedora = normalizarTextoBusca(buscaVendedoraDeferred);
   const disponiveisFiltradas = termoBuscaVendedora
     ? disponiveis.filter(v => normalizarTextoBusca(v.nome).includes(termoBuscaVendedora))
     : disponiveis;
@@ -1477,11 +1478,12 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [aberto, setAberto] = useState(false);
   const [indiceAtivo, setIndiceAtivo] = useState(0);
   const clienteSelecionado = clientes.find(cliente => String(cliente.id) === String(value));
   const textoClienteSelecionado = clienteSelecionado?.nome || clienteSelecionado?.razao_social || '';
-  const textoBusca = busca || textoClienteSelecionado;
+  const textoBusca = buscaDeferred || textoClienteSelecionado;
   const buscaNormalizada = textoBusca.trim().toLowerCase();
   const clientesFiltrados = clientes.filter(cliente => {
     if (!buscaNormalizada) return true;
@@ -2262,7 +2264,8 @@ function VendasPage() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(20);
   const [totalVendas, setTotalVendas] = useState(0);
-  const buscaDebounced = useDebounce(busca, 300);
+  const buscaDeferred = useDeferredValue(busca);
+  const buscaDebounced = useDebounce(buscaDeferred, 300);
   const usuarioLogado = getUsuarioLocal();
   const podeCriarVenda = temPermissao(usuarioLogado, 'vendas_criar');
   const podeEditarVenda = temPermissao(usuarioLogado, ['vendas_editar', 'pos_venda']);

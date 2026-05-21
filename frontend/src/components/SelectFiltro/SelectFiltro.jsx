@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './SelectFiltro.css';
 
@@ -13,7 +13,7 @@ export default function SelectFiltro({
 }) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState('');
-  const [destaque, setDestaque] = useState(0);
+  const buscaDeferred = useDeferredValue(busca);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
@@ -22,7 +22,7 @@ export default function SelectFiltro({
 
   const selecionada = options.find(op => String(op.value) === String(value));
   const labelAtual = selecionada ? selecionada.label : null;
-  const termoBusca = normalizarBusca(busca);
+  const termoBusca = normalizarBusca(buscaDeferred);
   const opcoesFiltradas = termoBusca
     ? options.filter(op => normalizarBusca(op.label).includes(termoBusca))
     : options;

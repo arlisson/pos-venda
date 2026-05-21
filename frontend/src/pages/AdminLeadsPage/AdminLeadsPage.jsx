@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { listarVendedoras } from '../../services/venda.service';
@@ -436,6 +436,7 @@ function AdminLeadsPage() {
   const [resumoLeads, setResumoLeads] = useState({ total: 0, enviados: 0, nao_enviados: 0 });
   const [vendedoras, setVendedoras] = useState([]);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [filtros, setFiltros] = useState([]);
   const [novoFiltro, setNovoFiltro] = useState({ coluna: '', op: 'contains', valor: '', valor2: '' });
   const [pagina, setPagina] = useState(1);
@@ -551,7 +552,7 @@ function AdminLeadsPage() {
       planilha_ids: selecionadas,
       page: pagina,
       page_size: PAGE_SIZE,
-      busca,
+      busca: buscaDeferred,
       filters: JSON.stringify(filtrosBackend)
     })
       .then(data => {
@@ -571,7 +572,7 @@ function AdminLeadsPage() {
     return () => {
       cancelado = true;
     };
-  }, [selecionadas, pagina, busca, filtrosBackend]);
+  }, [selecionadas, pagina, buscaDeferred, filtrosBackend]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const linhasFiltradas = useMemo(() => {

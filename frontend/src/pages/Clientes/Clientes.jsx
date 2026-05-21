@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useDebounce } from '../../utils/useDebounce';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as I from '../../components/Icons';
@@ -709,7 +709,8 @@ function Clientes() {
   const [itensPorPagina, setItensPorPagina] = useState(20);
   const [totalClientes, setTotalClientes] = useState(0);
 
-  const buscaDebounced = useDebounce(busca, 300);
+  const buscaDeferred = useDeferredValue(busca);
+  const buscaDebounced = useDebounce(buscaDeferred, 300);
 
   const filtros = useMemo(() => ({
     busca: buscaDebounced,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import * as I from '../../components/Icons';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import { getDetalhesChips } from '../../services/fechamento.service';
@@ -338,6 +338,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [filtros, setFiltros] = useState(FILTROS_INICIAIS);
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -397,10 +398,10 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
     ]
   }), [linhasBase]);
 
-  const filtrosAtivos = Object.values(filtros).some(Boolean) || Boolean(busca.trim());
+  const filtrosAtivos = Object.values(filtros).some(Boolean) || Boolean(buscaDeferred.trim());
 
   const linhasFiltradas = useMemo(() => {
-    const termo = normalizarBusca(busca);
+    const termo = normalizarBusca(buscaDeferred);
     const vendaId = normalizarBusca(filtros.vendaId).replace(/^#/, '');
     const textoVenda = normalizarBusca(filtros.vendaTexto);
 
@@ -436,7 +437,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
       if (termo && !valoresBuscaLinha(linha).includes(termo)) return false;
       return true;
     });
-  }, [busca, filtros, linhasBase]);
+  }, [buscaDeferred, filtros, linhasBase]);
 
   const totaisFiltrados = useMemo(() => calcularTotais(linhasFiltradas), [linhasFiltradas]);
   const totalGeral = totaisFiltrados.total_geral;
