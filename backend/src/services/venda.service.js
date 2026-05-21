@@ -2643,20 +2643,23 @@ async function listarVendedoras(usuarioId) {
 
 async function listarStatusVendasParaHistorico() {
   const linhas = await Venda.query()
-    .select('id', 'excluido_em');
+    .select('id', 'excluido_em', 'cancelada_em');
 
   const ativas = [];
+  const canceladas = [];
   const lixeira = [];
 
   linhas.forEach(linha => {
     if (linha.excluido_em) {
       lixeira.push(linha.id);
+    } else if (linha.cancelada_em) {
+      canceladas.push(linha.id);
     } else {
       ativas.push(linha.id);
     }
   });
 
-  return { ativas, lixeira };
+  return { ativas, canceladas, lixeira };
 }
 
 async function statusEhFinal(status) {

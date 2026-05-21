@@ -3,9 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
+import VendaModal from '../VendasPage/VendaModal';
+import ClienteModal from '../Clientes/ClienteModal';
 import { listarAuditLogs, listarStatusVendasHistorico } from '../../services/audit-log.service';
-import { listarEtapasFunil } from '../../services/config.service';
+import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
+import { buscarClientePorId, listarClientesSelect } from '../../services/cliente.service';
+import {
+  atualizarVenda,
+  buscarVendaPorId,
+  enviarVendaParaPosVenda,
+  listarVendedoras,
+  obterReferenciasClientesVendas
+} from '../../services/venda.service';
+import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { formatUtcDateTime, getUtcDateTimeTimestamp } from '../../utils/datetime';
+import '../VendasPage/VendasPage.css';
+import '../Clientes/Clientes.css';
 
 const ACAO_LABELS = {
   'auth.login': 'Login realizado',
@@ -36,13 +49,19 @@ const ACAO_LABELS = {
 
 const FILTROS_HISTORICO = [
   { id: 'todos', label: 'Todos' },
-  { id: 'vendas', label: 'Histórico de entrega da venda', entidade: 'vendas' },
+  { id: 'vendas', label: 'Histórico de entrega da venda', entidade: 'vendas', temFiltroStatus: true },
   { id: 'clientes', label: 'Clientes', entidade: 'clientes' },
   { id: 'usuarios', label: 'Usuários', entidade: 'usuarios' },
   { id: 'acoes', label: 'Ações' },
   { id: 'acessos', label: 'Acessos' },
   { id: 'falhas', label: 'Falhas' },
   { id: 'cancelamentos', label: 'Cancelamentos' }
+];
+
+const FILTROS_STATUS_VENDA = [
+  { id: 'ativas', label: 'Ativas' },
+  { id: 'canceladas', label: 'Canceladas' },
+  { id: 'lixeira', label: 'Lixeira (Excluídas)' }
 ];
 
 const FUNIL_STAGES = [
@@ -184,6 +203,14 @@ function getCamposVisiveis(objeto = {}, ocultar = []) {
   return Object.entries(objeto)
     .filter(([campo, valor]) => !ocultos.has(campo) && valor !== null && valor !== undefined && valor !== '')
     .slice(0, 12);
+}
+
+function montarMapaReferencias(referencias = [], campo) {
+  const mapa = new Map();
+  referencias.forEach(item => {
+    if (item?.chave) mapa.set(item.chave, Number(item[campo] || 0));
+  });
+  return mapa;
 }
 
 function ResumoAlteracoes({ alteracoes }) {
@@ -615,7 +642,7 @@ function agruparLogsVenda(logs = []) {
   })).sort((a, b) => getUtcDateTimeTimestamp(b.maisRecente?.created_at) - getUtcDateTimeTimestamp(a.maisRecente?.created_at));
 }
 
-function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
+function VendaHistoricoGrupo({ grupo, logSelecionado, onClick, onAbrirVenda, modalCarregando }) {
   const [expandido, setExpandido] = useState(false);
   const progression = buildStageProgression(grupo.logs);
   const currentStageName = STAGE_NAMES_MAP[progression.currentStage] || progression.currentStage;
@@ -644,6 +671,16 @@ function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
             <I.AlertTriangle size={9} /> Cancelada
           </span>
         )}
+        <button
+          type="button"
+          className="history-sale-row__open"
+          onClick={() => onAbrirVenda(grupo.vendaId)}
+          disabled={modalCarregando === `venda:${grupo.vendaId}`}
+          title="Abrir venda completa"
+        >
+          <I.External size={11} />
+          <span>{modalCarregando === `venda:${grupo.vendaId}` ? 'Abrindo...' : 'Abrir venda'}</span>
+        </button>
         <button
           type="button"
           className={`history-sale-row__events-toggle${expandido ? ' open' : ''}`}
@@ -695,9 +732,11 @@ function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
   );
 }
 
-function DetalheCard({ log, onClose }) {
+function DetalheCard({ log, onClose, onAbrirVenda, onAbrirCliente, podeAbrirCliente, modalCarregando }) {
   const dados = parseDados(log.dados);
   const motivoCancelamento = extrairMotivoCancelamento(log);
+  const podeAbrirVenda = log.entidade === 'vendas' && log.entidade_id;
+  const podeAbrirClienteLog = log.entidade === 'clientes' && log.entidade_id && podeAbrirCliente;
   const stageDe = dados.alteracoes?.status_funil
     ? STAGE_NAMES_MAP[dados.alteracoes?.status_funil]
     : null;
@@ -706,9 +745,31 @@ function DetalheCard({ log, onClose }) {
     <div className="history-detail-card">
       <div className="history-detail-header">
         <h3>Detalhes do Registro</h3>
-        <button className="history-detail-close" onClick={onClose} aria-label="Fechar">
+        <div className="history-detail-actions">
+          {podeAbrirVenda && (
+            <button
+              type="button"
+              className="history-detail-open"
+              onClick={() => onAbrirVenda(log.entidade_id)}
+              disabled={modalCarregando === `venda:${log.entidade_id}`}
+            >
+              <I.External size={12} /> {modalCarregando === `venda:${log.entidade_id}` ? 'Abrindo...' : 'Abrir venda'}
+            </button>
+          )}
+          {podeAbrirClienteLog && (
+            <button
+              type="button"
+              className="history-detail-open"
+              onClick={() => onAbrirCliente(log.entidade_id)}
+              disabled={modalCarregando === `cliente:${log.entidade_id}`}
+            >
+              <I.External size={12} /> {modalCarregando === `cliente:${log.entidade_id}` ? 'Abrindo...' : 'Abrir cliente'}
+            </button>
+          )}
+          <button className="history-detail-close" onClick={onClose} aria-label="Fechar">
           ×
-        </button>
+          </button>
+        </div>
       </div>
 
       <div className="history-detail-body">
@@ -792,18 +853,61 @@ function DetalheCard({ log, onClose }) {
 
 function HistoricoPage() {
   const navigate = useNavigate();
+  const usuarioLogado = getUsuarioLocal();
+  const podeEditarVenda = temPermissao(usuarioLogado, ['vendas_editar', 'pos_venda']);
+  const podeCompartilharVenda = temPermissao(usuarioLogado, 'compartilhar_venda');
+  const podeVerDocumentosVenda = temPermissao(usuarioLogado, 'vendas_documentos');
+  const podeAdicionarDocumentosVenda = temPermissao(usuarioLogado, 'adicionar_documentos');
+  const podeListarClientes = temPermissao(usuarioLogado, ['clientes_ver_proprios', 'clientes_ver_todos']);
+  const podeEditarCliente = temPermissao(usuarioLogado, 'clientes_editar');
   const [logs, setLogs] = useState([]);
   const [busca, setBusca] = useState('');
   const buscaDeferred = useDeferredValue(busca);
   const [filtro, setFiltro] = useState('todos');
+  const [filtroStatus, setFiltroStatus] = useState('ativas');
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [logSelecionado, setLogSelecionado] = useState(null);
   const [etapasFunil, setEtapasFunil] = useState([]);
   const [vendasAtivasIds, setVendasAtivasIds] = useState(() => new Set());
+  const [vendasCanceladasIds, setVendasCanceladasIds] = useState(() => new Set());
+  const [vendasLixeiraIds, setVendasLixeiraIds] = useState(() => new Set());
+  const [vendaModal, setVendaModal] = useState(null);
+  const [vendaModalModoEdicao, setVendaModalModoEdicao] = useState(false);
+  const [clienteModal, setClienteModal] = useState(null);
+  const [clientesModal, setClientesModal] = useState([]);
+  const [vendedorasModal, setVendedorasModal] = useState([]);
+  const [operadorasModal, setOperadorasModal] = useState([]);
+  const [tiposVendaModal, setTiposVendaModal] = useState([]);
+  const [servicosModal, setServicosModal] = useState([]);
+  const [referenciasClientesModal, setReferenciasClientesModal] = useState([]);
+  const [dadosVendaModalCarregados, setDadosVendaModalCarregados] = useState(false);
+  const [modalCarregando, setModalCarregando] = useState('');
   const filtroAtual = FILTROS_HISTORICO.find(item => item.id === filtro) || FILTROS_HISTORICO[0];
   const filtrosAtivos = filtro !== 'todos' ? 1 : 0;
+  
+  // Resolve qual conjunto de IDs de vendas usar com base no filtroStatus
+  const getVendasIdsPorStatus = () => {
+    switch (filtroStatus) {
+      case 'canceladas':
+        return vendasCanceladasIds;
+      case 'lixeira':
+        return vendasLixeiraIds;
+      case 'ativas':
+      default:
+        return vendasAtivasIds;
+    }
+  };
+  const vendasIdsSelecionadas = getVendasIdsPorStatus();
+  const vendasPorClienteModal = useMemo(
+    () => montarMapaReferencias(referenciasClientesModal, 'total'),
+    [referenciasClientesModal]
+  );
+  const vendasEmAndamentoPorClienteModal = useMemo(
+    () => montarMapaReferencias(referenciasClientesModal, 'em_andamento_total'),
+    [referenciasClientesModal]
+  );
 
   useEffect(() => {
     async function carregar() {
@@ -814,11 +918,13 @@ function HistoricoPage() {
         const [dados, etapas, statusVendas] = await Promise.all([
           listarAuditLogs({ busca: buscaDeferred, limite: 500, entidade: filtroAtual.entidade || '' }),
           listarEtapasFunil().catch(() => []),
-          listarStatusVendasHistorico().catch(() => ({ ativas: [], lixeira: [] }))
+          listarStatusVendasHistorico().catch(() => ({ ativas: [], canceladas: [], lixeira: [] }))
         ]);
         setLogs(dados);
         setEtapasFunil(normalizarEtapas(etapas));
         setVendasAtivasIds(new Set((statusVendas?.ativas || []).map(id => String(id))));
+        setVendasCanceladasIds(new Set((statusVendas?.canceladas || []).map(id => String(id))));
+        setVendasLixeiraIds(new Set((statusVendas?.lixeira || []).map(id => String(id))));
       } catch (error) {
         setErro(error.message || 'Erro ao carregar histórico.');
       } finally {
@@ -848,11 +954,147 @@ function HistoricoPage() {
     if (!modoVendasCompacto) return [];
     return agruparLogsVenda(logsFiltrados)
       .map(grupo => enriquecerGrupoComPulos(grupo, etapasFunil))
-      .filter(grupo => vendasAtivasIds.has(grupo.vendaId));
-  }, [modoVendasCompacto, logsFiltrados, etapasFunil, vendasAtivasIds]);
+      .filter(grupo => vendasIdsSelecionadas.has(grupo.vendaId));
+  }, [modoVendasCompacto, logsFiltrados, etapasFunil, vendasIdsSelecionadas]);
+
+  async function carregarDadosVendaModal() {
+    if (dadosVendaModalCarregados) return;
+
+    const [
+      referenciasData,
+      clientesData,
+      vendedorasData,
+      operadorasData,
+      tiposVendaData,
+      servicosData
+    ] = await Promise.all([
+      obterReferenciasClientesVendas(),
+      podeListarClientes ? listarClientesSelect() : Promise.resolve([]),
+      listarVendedoras(),
+      listarOperadoras(),
+      listarTiposVenda(),
+      listarServicos()
+    ]);
+
+    setReferenciasClientesModal(referenciasData || []);
+    setClientesModal(clientesData || []);
+    setVendedorasModal(vendedorasData || []);
+    setOperadorasModal(operadorasData || []);
+    setTiposVendaModal(tiposVendaData || []);
+    setServicosModal(servicosData || []);
+    setDadosVendaModalCarregados(true);
+  }
+
+  async function abrirVenda(vendaId) {
+    if (!vendaId) return;
+    setErro('');
+    setModalCarregando(`venda:${vendaId}`);
+
+    try {
+      await carregarDadosVendaModal();
+      const venda = await buscarVendaPorId(vendaId);
+      setVendaModal(venda);
+      setVendaModalModoEdicao(false);
+    } catch (error) {
+      setErro(error.message || 'Erro ao abrir venda.');
+    } finally {
+      setModalCarregando('');
+    }
+  }
+
+  async function abrirCliente(clienteId) {
+    if (!clienteId || !podeEditarCliente) return;
+    setErro('');
+    setModalCarregando(`cliente:${clienteId}`);
+
+    try {
+      if (operadorasModal.length === 0) {
+        setOperadorasModal(await listarOperadoras());
+      }
+      const cliente = await buscarClientePorId(clienteId);
+      setClienteModal(cliente);
+    } catch (error) {
+      setErro(error.message || 'Erro ao abrir cliente.');
+    } finally {
+      setModalCarregando('');
+    }
+  }
+
+  async function salvarVendaModal(dados) {
+    if (!vendaModal?.id) return;
+    setErro('');
+
+    try {
+      await atualizarVenda(vendaModal.id, dados);
+      const atualizada = await buscarVendaPorId(vendaModal.id);
+      setVendaModal(atualizada);
+      setVendaModalModoEdicao(false);
+      obterReferenciasClientesVendas().then(data => setReferenciasClientesModal(data || [])).catch(() => {});
+    } catch (error) {
+      setErro(error.message || 'Erro ao salvar venda.');
+      throw error;
+    }
+  }
+
+  async function enviarPosVendaModal(venda) {
+    if (!venda?.id) return;
+    setErro('');
+
+    try {
+      await enviarVendaParaPosVenda(venda.id);
+      const atualizada = await buscarVendaPorId(venda.id);
+      setVendaModal(atualizada);
+      setVendaModalModoEdicao(false);
+      window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+    } catch (error) {
+      setErro(error.message || 'Erro ao enviar venda para o pos-venda.');
+      throw error;
+    }
+  }
 
   return (
     <LayoutPrivado>
+      {vendaModal && (
+        <VendaModal
+          venda={vendaModal}
+          clientes={clientesModal}
+          vendas={[]}
+          vendedoras={vendedorasModal}
+          operadoras={operadorasModal}
+          tiposVenda={tiposVendaModal}
+          servicos={servicosModal}
+          vendasPorCliente={vendasPorClienteModal}
+          vendasEmAndamentoPorCliente={vendasEmAndamentoPorClienteModal}
+          podeEditarVenda={podeEditarVenda}
+          podeCompartilharVenda={podeCompartilharVenda}
+          podeVerDocumentosVenda={podeVerDocumentosVenda}
+          podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
+          usuarioLogado={usuarioLogado}
+          initialTab="venda"
+          modoEdicao={vendaModalModoEdicao}
+          onStartEdit={() => setVendaModalModoEdicao(true)}
+          onClose={() => {
+            setVendaModal(null);
+            setVendaModalModoEdicao(false);
+          }}
+          onSave={salvarVendaModal}
+          onSendToPosVenda={enviarPosVendaModal}
+        />
+      )}
+
+      {clienteModal && (
+        <ClienteModal
+          cliente={clienteModal}
+          operadoras={operadorasModal}
+          onClose={() => setClienteModal(null)}
+          onSave={() => setClienteModal(null)}
+          onOpenVenda={venda => {
+            setClienteModal(null);
+            abrirVenda(venda?.id);
+          }}
+        />
+      )}
+
       {filtrosAbertos && (
         <div className="filtros-popup-overlay" onClick={() => setFiltrosAbertos(false)}>
           <div className="filtros-popup" onClick={event => event.stopPropagation()}>
@@ -875,6 +1117,20 @@ function HistoricoPage() {
                   }))}
                 />
               </div>
+              
+              {filtroAtual.temFiltroStatus && (
+                <div className="filter-field">
+                  <label>Status da venda</label>
+                  <SelectFiltro
+                    value={filtroStatus}
+                    onChange={setFiltroStatus}
+                    options={FILTROS_STATUS_VENDA.map(item => ({
+                      value: item.id,
+                      label: item.label
+                    }))}
+                  />
+                </div>
+              )}
             </div>
             <div className="filtros-popup__footer">
               <button
@@ -921,7 +1177,7 @@ function HistoricoPage() {
         <div className="history-shell">
           <div className="history-summary">
             {modoVendasCompacto
-              ? `Histórico de entrega da venda (${logsFiltrados.length} eventos em ${gruposVenda.length} vendas)`
+              ? `Histórico de entrega da venda - ${FILTROS_STATUS_VENDA.find(s => s.id === filtroStatus)?.label || filtroStatus} (${logsFiltrados.length} eventos em ${gruposVenda.length} vendas)`
               : `Linha do tempo de todas as movimentacoes (${logsFiltrados.length} eventos)`}
           </div>
 
@@ -940,6 +1196,8 @@ function HistoricoPage() {
                     grupo={grupo}
                     logSelecionado={logSelecionado}
                     onClick={setLogSelecionado}
+                    onAbrirVenda={abrirVenda}
+                    modalCarregando={modalCarregando}
                   />
                 ))}
               </div>
@@ -961,6 +1219,10 @@ function HistoricoPage() {
               <DetalheCard 
                 log={logSelecionado} 
                 onClose={() => setLogSelecionado(null)} 
+                onAbrirVenda={abrirVenda}
+                onAbrirCliente={abrirCliente}
+                podeAbrirCliente={podeEditarCliente}
+                modalCarregando={modalCarregando}
               />
             )}
           </div>
