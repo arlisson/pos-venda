@@ -1096,7 +1096,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   );
 }
 
-function VendedorasSelect({ value = [], options = [], onChange }) {
+export function VendedorasSelect({ value = [], options = [], onChange }) {
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const [buscaVendedora, setBuscaVendedora] = useState('');
   const buscaVendedoraDeferred = useDeferredValue(buscaVendedora);
