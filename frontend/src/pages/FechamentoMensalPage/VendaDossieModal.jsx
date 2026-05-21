@@ -10,6 +10,7 @@ import {
 } from '../../services/venda.service';
 import { getDossieVenda } from '../../services/fechamento.service';
 import { formatUtcDateTime } from '../../utils/datetime';
+import { formatarNomeServico } from '../../utils/servicos';
 
 const ABAS_BASE = [
   { id: 'resumo', label: 'Dados da venda' },
@@ -203,7 +204,7 @@ function ResumoTab({ dossie }) {
     { label: 'Categoria', value: valor(dossie.contexto?.categoria_label) },
     { label: 'Operadora', value: valor(venda.operadora?.nome) },
     { label: 'Operadora atual do cliente', value: valor(cliente.operadoraAtual?.nome || cliente.operadora_atual?.nome) },
-    { label: 'Serviço', value: valor(venda.servico?.nome) },
+    { label: 'Serviço', value: valor(formatarNomeServico(venda.servico?.nome)) },
     { label: 'Tipo de venda', value: valor(venda.tipoVenda?.nome) },
     { label: 'Quantidade de linhas fechadas', value: valor(venda.quantidade_linhas) },
     { label: 'DDD', value: valor(venda.ddd) },

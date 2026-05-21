@@ -35,6 +35,7 @@ import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda }
 import { listarClientesSelect } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
+import { agruparOpcoesServicos, formatarNomeServico } from '../../utils/servicos';
 import './VendasPage.css';
 
 const VENDA_VAZIA = {
@@ -279,20 +280,29 @@ const STATUS_FUNIL_FILTROS = [
   { id: 'entrega', label: 'Entrega' },
   { id: 'confirmacao', label: 'Confirmação' },
   { id: 'concluido', label: 'Concluído' },
-  { id: 'retorno', label: 'Retorno' }
+  { id: 'retorno', label: 'Retorno' },
+  { id: '__cancelada', label: 'Canceladas' }
 ];
+
+const STATUS_CANCELADA_FILTRO = '__cancelada';
+const STATUS_FUNIL_FILTROS_LABELS = Object.fromEntries(
+  STATUS_FUNIL_FILTROS.map(status => [status.id, status.label])
+);
 
 function normalizarStatusFunilFiltros(etapas = []) {
   const normalizados = etapas
     .map(etapa => ({
       id: etapa.codigo || etapa.id,
-      label: etapa.nome || etapa.name
+      label: STATUS_FUNIL_FILTROS_LABELS[etapa.codigo || etapa.id] || etapa.nome || etapa.name
     }))
     .filter(etapa => etapa.id && etapa.label);
 
   return [
-    ...(normalizados.length > 0 ? normalizados : STATUS_FUNIL_FILTROS.filter(status => status.id !== 'retorno')),
-    { id: 'retorno', label: 'Retorno' }
+    ...(normalizados.length > 0
+      ? normalizados
+      : STATUS_FUNIL_FILTROS.filter(status => !['retorno', STATUS_CANCELADA_FILTRO].includes(status.id))),
+    { id: 'retorno', label: 'Retorno' },
+    { id: STATUS_CANCELADA_FILTRO, label: 'Canceladas' }
   ];
 }
 
@@ -651,7 +661,7 @@ function obterCategoriaProdutoWhatsapp(venda = {}) {
   if (texto.includes('fixo') || texto.includes('telefone fixo')) return 'Fixo';
   if (texto.includes('movel') || texto.includes('chip') || texto.includes('celular') || texto.includes('linha')) return 'Móvel';
 
-  return venda.servico?.nome || venda.produto_fechado || '-';
+  return formatarNomeServico(venda.servico?.nome) || venda.produto_fechado || '-';
 }
 
 function obterVendedorasMensagem(venda = {}) {
@@ -2809,7 +2819,7 @@ function VendasPage() {
                   value={servicoId}
                   onChange={setServicoId}
                   placeholder="Todos"
-                  options={servicos.map(s => ({ value: String(s.id), label: s.nome }))}
+                  options={agruparOpcoesServicos(servicos)}
                 />
               </div>
               {podeFunil && (
@@ -3044,7 +3054,7 @@ function VendasPage() {
                               <dt>Tipo</dt>
                               <dd>{obterTipoVendaTabela(venda)}</dd>
                               <dt>Produto</dt>
-                              <dd>{venda.servico?.nome || '-'}</dd>
+                              <dd>{formatarNomeServico(venda.servico?.nome) || '-'}</dd>
                               <dt>Linhas</dt>
                               <dd>{venda.quantidade_linhas || '-'}</dd>
                               <dt>GB</dt>
@@ -3068,7 +3078,7 @@ function VendasPage() {
                         return <span className={`tag operadora-tag operadora-${slug}`}>{nome}</span>;
                       })()}</td>
                       <td data-label="Tipo" data-mobile-hidden="true">{obterTipoVendaTabela(venda)}</td>
-                      <td data-label="Produto" data-mobile-hidden="true">{venda.servico?.nome || '-'}</td>
+                      <td data-label="Produto" data-mobile-hidden="true">{formatarNomeServico(venda.servico?.nome) || '-'}</td>
                       <td data-label="Linhas" data-mobile-hidden="true">{venda.quantidade_linhas || '-'}</td>
                       <td data-label="GB" data-mobile-hidden="true">{venda.gb || '-'}</td>
                       <td data-label="Valor" className="vendas-value m-meta">{formatarMoeda(venda.valor_total)}</td>

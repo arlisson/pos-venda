@@ -6,6 +6,7 @@ import { DEFAULT_OPERATORS as OPERATORS, STAGES } from '../../config/constants';
 import { listarEtapasFunil } from '../../services/config.service';
 import { atualizarStatusVenda, listarVendas } from '../../services/venda.service';
 import { parseUtcDateTime } from '../../utils/datetime';
+import { formatarNomeServico } from '../../utils/servicos';
 import './RetornosPage.css';
 
 const formatBRL = (value) =>
@@ -43,7 +44,7 @@ function getOperator(venda) {
 }
 
 function getPlan(venda) {
-  return venda.produto_fechado || venda.servico?.nome || venda.tipoVenda?.nome || 'Plano não informado';
+  return venda.produto_fechado || formatarNomeServico(venda.servico?.nome) || venda.tipoVenda?.nome || 'Plano não informado';
 }
 
 function getSeller(venda) {

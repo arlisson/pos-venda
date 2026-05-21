@@ -108,6 +108,7 @@ const CAMPOS = [
 ];
 
 const FUNIL_STATUS = ['aprovacao', 'ativacao', 'envio', 'entrega', 'confirmacao', 'concluido', 'retorno'];
+const STATUS_CANCELADA_FILTRO = '__cancelada';
 
 const FUNIL_STATUS_LABELS = {
   aprovacao: 'Aprovacao',
@@ -129,6 +130,15 @@ function limparValor(valor) {
   if (valor === undefined) return undefined;
   if (valor === '') return null;
   return valor;
+}
+
+function normalizarIdsFiltro(valor) {
+  const valores = Array.isArray(valor) ? valor : String(valor || '').split(',');
+  return Array.from(new Set(
+    valores
+      .map(item => Number(item))
+      .filter(item => Number.isInteger(item) && item > 0)
+  ));
 }
 
 function normalizarData(valor) {
@@ -1439,10 +1449,17 @@ async function listarVendas(filtros = {}, usuarioId) {
   }
 
   if (filtros.servico_id) {
-    query.where('servico_id', Number(filtros.servico_id));
+    const servicoIds = normalizarIdsFiltro(filtros.servico_id);
+    if (servicoIds.length === 1) {
+      query.where('servico_id', servicoIds[0]);
+    } else if (servicoIds.length > 1) {
+      query.whereIn('servico_id', servicoIds);
+    }
   }
 
-  if (filtros.status_funil) {
+  if (filtros.status_funil === STATUS_CANCELADA_FILTRO) {
+    query.whereNotNull('cancelada_em');
+  } else if (filtros.status_funil) {
     query.where('status_funil', filtros.status_funil);
   }
 

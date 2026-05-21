@@ -8,6 +8,7 @@ import { criarCliente, atualizarCliente } from '../../services/cliente.service';
 import { criarNotaEntidade } from '../../services/nota.service';
 import { listarVendas } from '../../services/venda.service';
 import { useFormDraft } from '../../utils/useFormDraft';
+import { formatarNomeServico } from '../../utils/servicos';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './Clientes.css';
 
@@ -240,7 +241,7 @@ function ordenarVendasRecentes(vendas) {
 }
 
 function obterTituloVenda(venda) {
-  return venda.servico?.nome || venda.produto_fechado || venda.tipoVenda?.nome || `Venda #${venda.id}`;
+  return formatarNomeServico(venda.servico?.nome) || venda.produto_fechado || venda.tipoVenda?.nome || `Venda #${venda.id}`;
 }
 
 function obterResponsaveisVenda(venda) {

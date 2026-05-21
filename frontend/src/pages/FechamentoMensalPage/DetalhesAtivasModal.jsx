@@ -2,6 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import * as I from '../../components/Icons';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import { getDetalhesChips } from '../../services/fechamento.service';
+import { formatarNomeServico, normalizarNomeServicoParaFiltro } from '../../utils/servicos';
 
 const DADOS_VAZIOS = {
   linhas: [],
@@ -385,7 +386,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
     operadoras: criarOpcoes(linhasBase, linha => linha.operadora?.id || linha.operadora?.nome, linha => linha.operadora?.nome),
     etapas: criarOpcoes(linhasBase, linha => linha.status_funil, linha => fmtEtapaFunil(linha.status_funil)),
     tiposVenda: criarOpcoes(linhasBase, linha => linha.tipo_venda),
-    servicos: criarOpcoes(linhasBase, linha => linha.servico),
+    servicos: criarOpcoes(linhasBase, linha => normalizarNomeServicoParaFiltro(linha.servico), linha => formatarNomeServico(linha.servico)),
     repasses: [
       { value: 'base_propria', label: 'Nossa base' },
       { value: 'base_operadora', label: 'Base da operadora' },
@@ -430,7 +431,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
       if (filtros.operadora && chaveOpcao(linha.operadora?.id || linha.operadora?.nome) !== filtros.operadora) return false;
       if (filtros.etapa && chaveOpcao(linha.status_funil) !== filtros.etapa) return false;
       if (filtros.tipoVenda && chaveOpcao(linha.tipo_venda) !== filtros.tipoVenda) return false;
-      if (filtros.servico && chaveOpcao(linha.servico) !== filtros.servico) return false;
+      if (filtros.servico && normalizarNomeServicoParaFiltro(linha.servico) !== filtros.servico) return false;
       if (filtros.repasse && linha.tipo_repasse !== filtros.repasse) return false;
       if (filtros.regra === 'com_regra' && linha.sem_regra) return false;
       if (filtros.regra === 'sem_regra' && !linha.sem_regra) return false;
@@ -687,7 +688,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                         <td>{linha.cliente?.operadora_atual?.nome || '-'}</td>
                         <td>{fmtRepasse(linha)}</td>
                         <td>{linha.tipo_venda || '-'}</td>
-                        <td>{linha.servico || '-'}</td>
+                        <td>{formatarNomeServico(linha.servico) || '-'}</td>
                         <td className="num">{linha.dia_vencimento ?? '-'}</td>
                         <td>{fmtLista(linha.cliente_solicitou_servicos)}</td>
                         <td>{linha.cliente_solicitou_bloqueio_qtd ?? '-'}</td>

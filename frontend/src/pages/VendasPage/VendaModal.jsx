@@ -31,6 +31,7 @@ import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj, sanitizarCpf } from '
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import { agruparOpcoesServicos } from '../../utils/servicos';
 import './VendasPage.css';
 
 const VENDA_VAZIA = {
@@ -4001,13 +4002,13 @@ function VendaModal({
                       value={form[campo.name] != null ? String(form[campo.name]) : ''}
                       onChange={val => atualizarCampo(campo.name, val)}
                       placeholder="Selecione"
-                      options={(
-                        campo.type === 'operator'
-                          ? operadoras
-                          : campo.type === 'saleType'
-                            ? tiposVenda
-                            : servicos
-                      ).map(item => ({ value: String(item.id), label: item.nome }))}
+                      options={campo.type === 'service'
+                        ? agruparOpcoesServicos(servicos, { valueMode: 'canonical' })
+                        : (
+                          campo.type === 'operator'
+                            ? operadoras
+                            : tiposVenda
+                        ).map(item => ({ value: String(item.id), label: item.nome }))}
                     />
                   ) : campo.type === 'serviceType' ? (
                     <TiposServicoInput

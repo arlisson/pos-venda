@@ -23,6 +23,7 @@ import {
   listarTiposVenda
 } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
+import { agruparOpcoesServicos, formatarNomeServico, servicoIdInclui } from '../../utils/servicos';
 import {
   atualizarStatusVenda,
   cancelarVenda,
@@ -113,15 +114,19 @@ function normalizarAtivo(valor) {
 
 function normalizarEtapasFunil(etapas = [], usarFallback = true) {
   const normalizadas = etapas
-    .map((etapa, index) => ({
-      id: etapa.codigo || etapa.id,
-      adminId: etapa.id,
-      name: etapa.nome || etapa.name,
-      dot: etapa.codigo || etapa.id || `etapa_${index}`,
-      ordem: Number(etapa.ordem ?? index),
-      ativo: normalizarAtivo(etapa.ativo),
-      etapaFinal: Boolean(etapa.etapa_final || etapa.etapaFinal)
-    }))
+    .map((etapa, index) => {
+      const id = etapa.codigo || etapa.id;
+
+      return {
+        id,
+        adminId: etapa.id,
+        name: STAGE_LABELS[id] || etapa.nome || etapa.name,
+        dot: id || `etapa_${index}`,
+        ordem: Number(etapa.ordem ?? index),
+        ativo: normalizarAtivo(etapa.ativo),
+        etapaFinal: Boolean(etapa.etapa_final || etapa.etapaFinal)
+      };
+    })
     .filter(etapa => etapa.id && etapa.name);
 
   return normalizadas.length > 0 || !usarFallback ? normalizadas : FALLBACK_STAGES;
@@ -282,7 +287,7 @@ function vendaCorrespondeFiltros(sale, filtros) {
   if (filtros.vendedoraId && !obterVendedorasVenda(raw).includes(String(filtros.vendedoraId))) return false;
   if (filtros.operadoraId && String(raw.operadora_id || raw.operadora?.id || '') !== String(filtros.operadoraId)) return false;
   if (filtros.tipoVendaId && String(raw.tipo_venda_id || raw.tipoVenda?.id || '') !== String(filtros.tipoVendaId)) return false;
-  if (filtros.servicoId && String(raw.servico_id || raw.servico?.id || '') !== String(filtros.servicoId)) return false;
+  if (filtros.servicoId && !servicoIdInclui(filtros.servicoId, raw.servico_id || raw.servico?.id)) return false;
   if (filtros.statusFunil && String(sale.stage || '') !== String(filtros.statusFunil)) return false;
   if (filtros.prioridadeFunil && String(sale.priority || '') !== String(filtros.prioridadeFunil)) return false;
   if (filtros.uf && String(raw.uf || '').toUpperCase() !== String(filtros.uf).toUpperCase()) return false;
@@ -338,7 +343,7 @@ function getOperator(venda) {
 }
 
 function getPlan(venda) {
-  return venda.produto_fechado || venda.servico?.nome || venda.tipoVenda?.nome || 'Plano não informado';
+  return venda.produto_fechado || formatarNomeServico(venda.servico?.nome) || venda.tipoVenda?.nome || 'Plano não informado';
 }
 
 function getSellerPhoto(venda) {
@@ -2176,7 +2181,7 @@ function FunilPage() {
                   value={servicoId}
                   onChange={setServicoId}
                   placeholder="Todos"
-                  options={servicos.map(s => ({ value: String(s.id), label: s.nome }))}
+                  options={agruparOpcoesServicos(servicos)}
                 />
               </div>
               <div className="filter-field">
@@ -2196,7 +2201,7 @@ function FunilPage() {
                   placeholder="Todas"
                   options={[
                     { value: 'alta', label: 'Alta' },
-                    { value: 'media', label: 'Media' },
+                    { value: 'media', label: 'Média' },
                     { value: 'baixa', label: 'Baixa' },
                   ]}
                 />
@@ -2223,8 +2228,8 @@ function FunilPage() {
                 />
               </div>
               <div className="filter-field">
-                <label>Municipio</label>
-                <input value={municipio} onChange={event => setMunicipio(event.target.value)} placeholder="Buscar por municipio" />
+                <label>Município</label>
+                <input value={municipio} onChange={event => setMunicipio(event.target.value)} placeholder="Buscar por município" />
               </div>
               <div className="filter-field">
                 <label>Data inicial</label>

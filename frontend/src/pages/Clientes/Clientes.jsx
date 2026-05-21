@@ -1158,7 +1158,7 @@ function Clientes() {
                 />
               </div>
               <div className="filter-field">
-                <label>Responsavel</label>
+                <label>Responsável</label>
                 <SelectFiltro
                   value={responsavelTipo}
                   onChange={setResponsavelTipo}

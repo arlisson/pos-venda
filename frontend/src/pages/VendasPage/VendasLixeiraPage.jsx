@@ -5,6 +5,7 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { deletarVendaDefinitivo, listarVendasLixeira, restaurarVenda } from '../../services/venda.service';
 import { formatDateValue } from '../../utils/datetime';
+import { formatarNomeServico } from '../../utils/servicos';
 import './VendasPage.css';
 
 function formatarData(value) {
@@ -232,7 +233,7 @@ function VendasLixeiraPage() {
                               <dt>Operadora</dt>
                               <dd>{venda.operadora?.nome || '-'}</dd>
                               <dt>Produto</dt>
-                              <dd>{venda.servico?.nome || venda.tipoVenda?.nome || '-'}</dd>
+                              <dd>{formatarNomeServico(venda.servico?.nome) || venda.tipoVenda?.nome || '-'}</dd>
                               <dt>Valor</dt>
                               <dd>{formatarMoeda(venda.valor_total)}</dd>
                               <dt>Enviada em</dt>
@@ -245,8 +246,8 @@ function VendasLixeiraPage() {
                           </details>
                         </div>
                       </td>
-                      <td data-label="Operadora" className="m-secondary"><span className="tag">{venda.operadora?.nome || '-'}</span> · {venda.servico?.nome || venda.tipoVenda?.nome || '-'}</td>
-                      <td data-label="Produto" data-mobile-hidden="true">{venda.servico?.nome || venda.tipoVenda?.nome || '-'}</td>
+                      <td data-label="Operadora" className="m-secondary"><span className="tag">{venda.operadora?.nome || '-'}</span> · {formatarNomeServico(venda.servico?.nome) || venda.tipoVenda?.nome || '-'}</td>
+                      <td data-label="Produto" data-mobile-hidden="true">{formatarNomeServico(venda.servico?.nome) || venda.tipoVenda?.nome || '-'}</td>
                       <td data-label="Valor" className="vendas-value m-meta">{formatarMoeda(venda.valor_total)}</td>
                       <td data-label="Enviada em" data-mobile-hidden="true">{formatarData(venda.excluido_em)}</td>
                       <td data-label="Exclusao definitiva" data-mobile-hidden="true">{formatarData(venda.excluir_definitivo_em)}</td>

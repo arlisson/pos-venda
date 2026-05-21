@@ -13,6 +13,7 @@ export default function SelectFiltro({
 }) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState('');
+  const [destaque, setDestaque] = useState(0);
   const buscaDeferred = useDeferredValue(busca);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef(null);
