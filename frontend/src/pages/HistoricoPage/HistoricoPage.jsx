@@ -135,6 +135,20 @@ function formatarValor(valor, campo = '') {
   return JSON.stringify(valor);
 }
 
+function extrairMotivoCancelamento(log) {
+  const dados = parseDados(log?.dados);
+  const motivo = dados?.motivo_cancelamento
+    || dados?.motivo
+    || dados?.alteracoes?.motivo_cancelamento
+    || dados?.payload?.motivo_cancelamento
+    || dados?.payload?.motivo
+    || dados?.venda?.motivo_cancelamento
+    || log?.motivo_cancelamento
+    || null;
+
+  return motivo ? String(motivo).trim() : null;
+}
+
 function getResumoAlteracoes(alteracoes = {}) {
   if (!isPlainObject(alteracoes)) return [];
 
@@ -458,7 +472,13 @@ function buildStageProgression(logs) {
       }
     } else if (log.acao === 'venda.cancelada') {
       const stageId = log.status_novo || log.status_anterior || currentStage || 'aprovacao';
-      cancelamento = { data: log.created_at, usuario, log, stageId };
+      cancelamento = {
+        data: log.created_at,
+        usuario,
+        log,
+        stageId,
+        motivo: extrairMotivoCancelamento(log)
+      };
       if (FUNIL_STAGE_IDS.includes(stageId)) currentStage = stageId;
     }
   }
@@ -489,7 +509,8 @@ function buildStageProgression(logs) {
       status,
       data: isCancelled ? cancelamento.data : stageData?.data,
       usuario: isCancelled ? cancelamento.usuario : stageData?.usuario,
-      log: isCancelled ? cancelamento.log : stageData?.log
+      log: isCancelled ? cancelamento.log : stageData?.log,
+      motivoCancelamento: isCancelled ? cancelamento.motivo : null
     };
   });
 
@@ -529,7 +550,11 @@ function FunilTracker({ progression, logSelecionado, onClickLog }) {
               className={`funil-stage__btn${isSelected ? ' selected' : ''}`}
               onClick={() => isClickable && onClickLog(stage.log)}
               disabled={!isClickable}
-              title={stage.status === 'skipped' ? `Etapa pulada: ${stage.name}` : stage.name}
+              title={
+                stage.motivoCancelamento
+                  ? `Motivo: ${stage.motivoCancelamento}`
+                  : (stage.status === 'skipped' ? `Etapa pulada: ${stage.name}` : stage.name)
+              }
             >
               <div className="funil-stage__dot">
                 {stage.status === 'done' && <I.Check size={10} />}
@@ -540,6 +565,11 @@ function FunilTracker({ progression, logSelecionado, onClickLog }) {
               <span className="funil-stage__name">{stage.name}</span>
               {stage.data && (
                 <span className="funil-stage__date">{formatarData(stage.data)}</span>
+              )}
+              {stage.motivoCancelamento && (
+                <span className="funil-stage__reason">
+                  <strong>Motivo:</strong> {stage.motivoCancelamento}
+                </span>
               )}
             </button>
           </div>
@@ -591,6 +621,7 @@ function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
   const currentStageName = STAGE_NAMES_MAP[progression.currentStage] || progression.currentStage;
   const skippedCount = progression.stages.filter(s => s.status === 'skipped').length;
   const nomeCliente = extrairNomeVenda(grupo.logs, grupo.vendaId);
+  const motivoCancelamento = progression.cancelamento?.motivo;
 
   return (
     <div className="history-sale-row">
@@ -609,7 +640,7 @@ function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
           </span>
         )}
         {progression.cancelamento && (
-          <span className="history-sale-row__tag tag-cancelada">
+          <span className="history-sale-row__tag tag-cancelada" title={motivoCancelamento ? `Motivo: ${motivoCancelamento}` : undefined}>
             <I.AlertTriangle size={9} /> Cancelada
           </span>
         )}
@@ -666,6 +697,7 @@ function VendaHistoricoGrupo({ grupo, logSelecionado, onClick }) {
 
 function DetalheCard({ log, onClose }) {
   const dados = parseDados(log.dados);
+  const motivoCancelamento = extrairMotivoCancelamento(log);
   const stageDe = dados.alteracoes?.status_funil
     ? STAGE_NAMES_MAP[dados.alteracoes?.status_funil]
     : null;
@@ -742,6 +774,13 @@ function DetalheCard({ log, onClose }) {
               <I.AlertTriangle size={15} />
               <span>{log.etapasPuladas.map(etapa => etapa.nome).join(', ')}</span>
             </div>
+          </div>
+        )}
+
+        {motivoCancelamento && (
+          <div className="history-detail-row">
+            <span className="history-detail-label">Motivo do cancelamento:</span>
+            <span className="history-detail-value">{motivoCancelamento}</span>
           </div>
         )}
         

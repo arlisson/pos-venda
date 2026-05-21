@@ -645,6 +645,10 @@
   font-weight: 700;
 }
 
+.funil-stage--cancelled {
+  min-width: 180px;
+}
+
 .funil-stage--skipped .funil-stage__name {
   color: #c2410c;
   text-decoration: line-through;
@@ -656,6 +660,22 @@
   color: var(--text-3);
   white-space: nowrap;
   line-height: 1;
+}
+
+.funil-stage__reason {
+  max-width: 210px;
+  margin-top: 3px;
+  color: var(--text-2);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.funil-stage__reason strong {
+  color: #b91c1c;
+  font-weight: 800;
 }
 
 .funil-retorno-flag {
