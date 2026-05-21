@@ -204,6 +204,24 @@
   min-width: 320px;
 }
 
+.vendas-registro {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 118px;
+}
+
+.vendas-registro strong {
+  color: var(--text);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.vendas-registro span {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
 /* Layout de altura fixa: tabela rola por dentro e paginação fica sempre visível.
    Aplicado só acima do breakpoint de cards (≤640px continua rolando a página). */
 @media (min-width: 641px) {

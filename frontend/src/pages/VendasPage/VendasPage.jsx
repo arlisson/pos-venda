@@ -34,6 +34,7 @@ import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientesSelect } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import { formatUtcDateTime } from '../../utils/datetime';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import { agruparOpcoesServicos, formatarNomeServico } from '../../utils/servicos';
 import './VendasPage.css';
@@ -360,6 +361,16 @@ function formatarData(value) {
 
   const [ano, mes, dia] = date.split('-');
   return dia && mes && ano ? `${dia}/${mes}/${ano}` : value;
+}
+
+function formatarDataHoraRegistro(value) {
+  return formatUtcDateTime(value, {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }, '-');
 }
 
 function isDataVendaValida(value) {
@@ -2680,7 +2691,7 @@ function VendasPage() {
     setValorMax('');
   }
 
-  const totalColunasVendas = 11 + (podeOperarPosVenda ? 2 : 0) + (podeExcluirVenda ? 1 : 0);
+  const totalColunasVendas = 12 + (podeOperarPosVenda ? 2 : 0) + (podeExcluirVenda ? 1 : 0);
   const larguraColunaContato = 104;
 
   return (
@@ -2937,6 +2948,7 @@ function VendasPage() {
                   <th>Venda</th>
                   <th>Ativação</th>
                   <th>Vendedor(a)</th>
+                  <th>Registro</th>
                   {podeOperarPosVenda && (
                     <th className="vendas-actions-col vendas-email-actions-col" style={{ width: larguraColunaContato, minWidth: larguraColunaContato }}>
                       Automação
@@ -3067,6 +3079,8 @@ function VendasPage() {
                               <dd>{formatarData(venda.data_ativacao)}</dd>
                               <dt>Vendedor(a)</dt>
                               <dd>{obterVendedorasMensagem(venda)}</dd>
+                              <dt>Registro</dt>
+                              <dd>{formatarDataHoraRegistro(venda.criado_em || venda.created_at)}</dd>
                             </dl>
                           </details>
                         </div>
@@ -3086,6 +3100,12 @@ function VendasPage() {
                       <td data-label="Venda" data-mobile-hidden="true">{formatarData(venda.data_venda)}</td>
                       <td data-label="Ativacao" data-mobile-hidden="true">{formatarData(venda.data_ativacao)}</td>
                       <td data-label="Vendedor(a)" data-mobile-hidden="true"><span className="tag">{obterVendedorasMensagem(venda)}</span></td>
+                      <td data-label="Registro" data-mobile-hidden="true">
+                        <div className="vendas-registro">
+                          <strong>{formatarDataHoraRegistro(venda.criado_em || venda.created_at)}</strong>
+                          <span>{venda.criador?.nome || 'Sem registro'}</span>
+                        </div>
+                      </td>
                       {podeOperarPosVenda && (
                         <td data-label="Automação" className="vendas-actions-col vendas-email-actions-col vendas-mobile-actions m-actions" style={{ width: larguraColunaContato, minWidth: larguraColunaContato }}>
                           <div className="vendas-contact-actions">
