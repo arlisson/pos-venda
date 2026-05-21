@@ -3038,7 +3038,7 @@ function VendasPage() {
                   <th>Venda</th>
                   <th>Ativação</th>
                   <th>Vendedor(a)</th>
-                  <th>Registro</th>
+                  <th>Criado em</th>
                   {podeOperarPosVenda && (
                     <th className="vendas-actions-col vendas-email-actions-col" style={{ width: larguraColunaContato, minWidth: larguraColunaContato }}>
                       Automação
@@ -3169,7 +3169,7 @@ function VendasPage() {
                               <dd>{formatarData(venda.data_ativacao)}</dd>
                               <dt>Vendedor(a)</dt>
                               <dd>{obterVendedorasMensagem(venda)}</dd>
-                              <dt>Registro</dt>
+                              <dt>Criado em</dt>
                               <dd>{formatarDataHoraRegistro(venda.criado_em || venda.created_at)}</dd>
                             </dl>
                           </details>
@@ -3190,9 +3190,9 @@ function VendasPage() {
                       <td data-label="Venda" data-mobile-hidden="true">{formatarData(venda.data_venda)}</td>
                       <td data-label="Ativacao" data-mobile-hidden="true">{formatarData(venda.data_ativacao)}</td>
                       <td data-label="Vendedor(a)" data-mobile-hidden="true"><span className="tag">{obterVendedorasMensagem(venda)}</span></td>
-                      <td data-label="Registro" data-mobile-hidden="true">
+                      <td data-label="Criado em" data-mobile-hidden="true">
                         <div className="vendas-registro">
-                          <strong>{formatarDataHoraRegistro(venda.criado_em || venda.created_at)}</strong>
+                          <span className="vendas-registro__data">{formatarDataHoraRegistro(venda.criado_em || venda.created_at)}</span>
                           <span>{venda.criador?.nome || 'Sem registro'}</span>
                         </div>
                       </td>

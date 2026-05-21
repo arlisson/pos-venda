@@ -246,9 +246,10 @@
   min-width: 118px;
 }
 
-.vendas-registro strong {
+.vendas-registro .vendas-registro__data {
   color: var(--text);
   font-size: 12.5px;
+  font-weight: 400;
   white-space: nowrap;
 }
 
