@@ -236,7 +236,7 @@ const CAMPOS = [
   { section: 'Cliente' },
   { name: 'cliente_id', label: 'Cliente', type: 'client', required: true, span: true },
   { name: 'cnpj', label: 'CNPJ para preencher dados', type: 'cnpj' },
-  { name: 'vendedoras', label: 'Vendedoras', type: 'sellers', span: true },
+  { name: 'vendedoras', label: 'Vendedoras', type: 'sellers', required: true, span: true },
 
   { section: 'Dados do cliente' },
   { name: 'nome', label: 'Nome / Fantasia' },
@@ -300,6 +300,22 @@ const CAMPOS = [
   { name: 'responsaveis_recebimento', type: 'responsaveis', span: true },
   { name: 'observacoes', label: 'Observações da Venda', type: 'longText', span: true, maxRows: 6 },
 ];
+
+function valorObrigatorioNaoPreenchido(valor) {
+  if (Array.isArray(valor)) return valor.length === 0;
+  if (valor && typeof valor === 'object') return Object.keys(valor).length === 0;
+  return valor === undefined || valor === null || String(valor).trim() === '';
+}
+
+function obterErroCamposObrigatoriosVenda(form) {
+  const camposNaoPreenchidos = CAMPOS
+    .filter(campo => campo.required && valorObrigatorioNaoPreenchido(form[campo.name]))
+    .map(campo => campo.label);
+
+  if (camposNaoPreenchidos.length === 0) return '';
+
+  return `Preencha os campos obrigatórios: ${camposNaoPreenchidos.join(', ')}.`;
+}
 
 const STATUS_FUNIL_FILTROS = [
   { id: 'aprovacao', label: 'Aprovação' },
@@ -3409,6 +3425,15 @@ function VendaModal({
     setSalvando(true);
 
     try {
+      const erroCamposObrigatorios = obterErroCamposObrigatoriosVenda(form);
+
+      if (erroCamposObrigatorios) {
+        setErro(erroCamposObrigatorios);
+        setAbaAtiva('venda');
+        setSalvando(false);
+        return;
+      }
+
       if (!form.cliente_id) {
         setErro('Selecione um cliente para cadastrar a venda.');
         setSalvando(false);

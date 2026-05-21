@@ -454,6 +454,24 @@ function normalizarClienteSolicitouServicos(valor) {
     : CLIENTE_SOLICITOU_ACOES.filter(item => servicos.includes(item));
 }
 
+function validarCamposObrigatoriosCadastroVenda(payload, dados) {
+  if (!Number.isInteger(payload.cliente_id) || payload.cliente_id <= 0) {
+    throw new Error('Selecione um cliente para cadastrar a venda.');
+  }
+
+  if (!Number.isInteger(payload.operadora_id) || payload.operadora_id <= 0) {
+    throw new Error('Selecione a operadora para cadastrar a venda.');
+  }
+
+  if (!Number.isInteger(payload.servico_id) || payload.servico_id <= 0) {
+    throw new Error('Selecione o produto para cadastrar a venda.');
+  }
+
+  if (normalizarClienteSolicitouServicos(dados.cliente_solicitou_servicos).length === 0) {
+    throw new Error('Informe o que o cliente solicitou (Bloqueio, Cancelamento ou Nenhum serviço).');
+  }
+}
+
 function normalizarNumerosLista(valor) {
   if (!valor) return [];
 
@@ -1839,6 +1857,8 @@ async function criarVenda(dados, usuarioId) {
   if (vendedorasIds.length > 0) {
     payload.vendedora_id = vendedorasIds[0];
   }
+
+  validarCamposObrigatoriosCadastroVenda(payload, dados);
 
   if (!Number.isInteger(payload.vendedora_id) || payload.vendedora_id <= 0) {
     throw new Error('Selecione pelo menos uma vendedora para cadastrar a venda.');
