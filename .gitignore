@@ -5,5 +5,4 @@ frontend/.env
 dist/
 build/
 .DS_Store
-designSistema/
 backend/storage/lead-imports/
