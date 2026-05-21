@@ -165,9 +165,19 @@ const CAMPOS_ENDERECO_REAL_VENDA = [
 const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' };
 const NUMERO_PORTADO_VAZIO = '';
 
+function obterDataAtualInput() {
+  const hoje = new Date();
+  return [
+    hoje.getFullYear(),
+    String(hoje.getMonth() + 1).padStart(2, '0'),
+    String(hoje.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
 function criarVendaVazia() {
   return {
     ...VENDA_VAZIA,
+    data_venda: obterDataAtualInput(),
     numeros_ativados: [],
     valores_unitarios_chips: [{ ...ITEM_CHIP_VAZIO }],
     tipos_servico: ['novo'],
@@ -2651,6 +2661,9 @@ function VendaModal({
       })();
       
       const baseComDraft = { ...base, ...(savedDraft || initialDraft || {}) };
+      if (!baseComDraft.data_venda) {
+        baseComDraft.data_venda = obterDataAtualInput();
+      }
       if (!venda && usuarioLogado?.id && vendedoras?.some(v => String(v.id) === String(usuarioLogado.id))) {
         const idStr = String(usuarioLogado.id);
         if (!baseComDraft.vendedoras.includes(idStr)) baseComDraft.vendedoras = [...baseComDraft.vendedoras, idStr];
