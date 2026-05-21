@@ -290,6 +290,17 @@ const STATUS_FUNIL_FILTROS_LABELS = Object.fromEntries(
   STATUS_FUNIL_FILTROS.map(status => [status.id, status.label])
 );
 
+const BUSCA_CAMPO_OPCOES = [
+  { value: 'geral', label: 'Busca geral' },
+  { value: 'protocolo', label: 'Protocolo' },
+  { value: 'cliente', label: 'Cliente' },
+  { value: 'telefone', label: 'Telefone' },
+  { value: 'tipo_venda', label: 'Tipo de venda' },
+  { value: 'produto', label: 'Produto' },
+  { value: 'cnpj', label: 'CNPJ' },
+  { value: 'cidade', label: 'Cidade' }
+];
+
 function normalizarStatusFunilFiltros(etapas = []) {
   const normalizados = etapas
     .map(etapa => ({
@@ -523,6 +534,38 @@ function formatarCampoVenda(campo, valor) {
   if (campo === 'quantidade_linhas') return apenasDigitos(valor, 4);
   if (campo === 'dia_vencimento') return formatarDiaVencimento(valor);
   return valor;
+}
+
+function formatarBuscaPorCampo(campo, valor) {
+  if (campo === 'protocolo') return apenasDigitos(valor);
+  if (campo === 'telefone') return formatarTelefoneComDdd(valor, true);
+  if (campo === 'cnpj') return formatarCnpj(valor);
+  return valor;
+}
+
+function getInputModeBusca(campo) {
+  return ['protocolo', 'telefone', 'cnpj'].includes(campo) ? 'numeric' : undefined;
+}
+
+function getMaxLengthBusca(campo) {
+  if (campo === 'telefone') return 15;
+  if (campo === 'cnpj') return 18;
+  return undefined;
+}
+
+function getPlaceholderBusca(campo) {
+  const placeholders = {
+    geral: 'Buscar por protocolo, nome, telefone, tipo, produto, CNPJ ou cidade',
+    protocolo: 'Buscar por protocolo',
+    cliente: 'Buscar por nome ou razão social',
+    telefone: '(11) 99999-9999',
+    tipo_venda: 'Selecione o tipo de venda',
+    produto: 'Selecione o produto',
+    cnpj: '00.000.000/0000-00',
+    cidade: 'Buscar por cidade'
+  };
+
+  return placeholders[campo] || placeholders.geral;
 }
 
 function getInputModeCampo(campo) {
@@ -2245,6 +2288,7 @@ function VendasPage() {
   const [servicos, setServicos] = useState([]);
   const [statusFunilFiltros, setStatusFunilFiltros] = useState(STATUS_FUNIL_FILTROS);
   const [etapasFunil, setEtapasFunil] = useState([]);
+  const [buscaCampo, setBuscaCampo] = useState('geral');
   const [busca, setBusca] = useState('');
   const [vendedoraId, setVendedoraId] = useState('');
   const [operadoraId, setOperadoraId] = useState('');
@@ -2302,7 +2346,9 @@ function VendasPage() {
   const podeFunil = temPermissao(usuarioLogado, 'vendas');
 
   const filtros = useMemo(() => ({
-    busca: buscaDebounced,
+    busca: buscaCampo === 'geral' ? buscaDebounced : '',
+    busca_campo: buscaCampo !== 'geral' ? buscaCampo : '',
+    busca_valor: buscaCampo !== 'geral' ? buscaDebounced : '',
     vendedora_id: vendedoraId,
     operadora_id: operadoraId,
     tipo_venda_id: tipoVendaId,
@@ -2315,11 +2361,18 @@ function VendasPage() {
     data_fim: dataFim,
     valor_min: valorMin,
     valor_max: valorMax
-  }), [buscaDebounced, vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, uf, municipio, dataInicio, dataFim, valorMin, valorMax]);
+  }), [buscaCampo, buscaDebounced, vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, uf, municipio, dataInicio, dataFim, valorMin, valorMax]);
 
-  const filtrosAtivos = useMemo(() => (
-    Object.entries(filtros).filter(([, valor]) => valor !== '').length
-  ), [filtros]);
+  const filtrosAtivos = useMemo(() => {
+    const buscaAtiva = buscaCampo === 'geral'
+      ? Boolean(filtros.busca)
+      : Boolean(filtros.busca_campo && filtros.busca_valor);
+    const demaisFiltros = Object.entries(filtros)
+      .filter(([chave, valor]) => !['busca', 'busca_campo', 'busca_valor'].includes(chave) && valor !== '')
+      .length;
+
+    return demaisFiltros + (buscaAtiva ? 1 : 0);
+  }, [buscaCampo, filtros]);
 
   const filtrosPopupAtivos = [
     operadoraId,
@@ -2676,6 +2729,7 @@ function VendasPage() {
   }
 
   function limparFiltros() {
+    setBuscaCampo('geral');
     setBusca('');
     setVendedoraId('');
     setOperadoraId('');
@@ -2689,6 +2743,15 @@ function VendasPage() {
     setDataFim('');
     setValorMin('');
     setValorMax('');
+  }
+
+  function alterarBuscaCampo(campo) {
+    setBuscaCampo(campo || 'geral');
+    setBusca('');
+  }
+
+  function alterarBuscaValor(valor) {
+    setBusca(formatarBuscaPorCampo(buscaCampo, valor));
   }
 
   const totalColunasVendas = 12 + (podeOperarPosVenda ? 2 : 0) + (podeExcluirVenda ? 1 : 0);
@@ -2903,13 +2966,40 @@ function VendasPage() {
 
       <div className="vendas-page">
         <div className="vendas-toolbar">
-          <div className="search-box">
-            <I.Search size={14} />
-            <input
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar por protocolo, nome, telefone, tipo, produto, CNPJ ou cidade"
+          <div className="vendas-search">
+            <SelectFiltro
+              value={buscaCampo}
+              onChange={alterarBuscaCampo}
+              options={BUSCA_CAMPO_OPCOES}
+              searchable={false}
+              className="vendas-search__campo"
             />
+            <div className="search-box vendas-search__valor">
+              <I.Search size={14} />
+              {buscaCampo === 'tipo_venda' ? (
+                <SelectFiltro
+                  value={busca}
+                  onChange={setBusca}
+                  placeholder={getPlaceholderBusca(buscaCampo)}
+                  options={tiposVenda.map(tipo => ({ value: String(tipo.id), label: tipo.nome }))}
+                />
+              ) : buscaCampo === 'produto' ? (
+                <SelectFiltro
+                  value={busca}
+                  onChange={setBusca}
+                  placeholder={getPlaceholderBusca(buscaCampo)}
+                  options={agruparOpcoesServicos(servicos)}
+                />
+              ) : (
+                <input
+                  value={busca}
+                  onChange={e => alterarBuscaValor(e.target.value)}
+                  placeholder={getPlaceholderBusca(buscaCampo)}
+                  inputMode={getInputModeBusca(buscaCampo)}
+                  maxLength={getMaxLengthBusca(buscaCampo)}
+                />
+              )}
+            </div>
           </div>
 
           <button className="btn" type="button" onClick={() => setFiltrosAbertos(true)}>

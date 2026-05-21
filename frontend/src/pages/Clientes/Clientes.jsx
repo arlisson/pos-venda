@@ -30,6 +30,20 @@ import { formatUtcDateTime, getUtcDateTimeTimestamp, parseUtcDateTime } from '..
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import './Clientes.css';
 
+const BUSCA_CLIENTES_CAMPO_OPCOES = [
+  { value: 'geral', label: 'Busca geral' },
+  { value: 'cliente', label: 'Cliente' },
+  { value: 'documento', label: 'CNPJ/CPF' },
+  { value: 'telefone', label: 'Telefone' },
+  { value: 'email', label: 'E-mail' },
+  { value: 'responsavel', label: 'Responsável' }
+];
+
+function apenasDigitos(valor, limite) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  return limite ? digitos.slice(0, limite) : digitos;
+}
+
 function formatarTelefone(ddd, numero) {
   const dddDigits = String(ddd || '').replace(/\D/g, '');
   const numeroDigits = String(numero || '').replace(/\D/g, '');
@@ -46,6 +60,74 @@ function formatarTelefone(ddd, numero) {
   if (!dddDigits) return numeroFormatado;
   if (!numeroFormatado) return `(${dddDigits})`;
   return `(${dddDigits}) ${numeroFormatado}`;
+}
+
+function formatarTelefoneBusca(valor) {
+  const digitos = apenasDigitos(valor, 11);
+
+  if (digitos.length <= 2) {
+    return digitos ? `(${digitos}` : '';
+  }
+
+  const ddd = digitos.slice(0, 2);
+  const numero = digitos.slice(2);
+
+  if (numero.length <= 4) return `(${ddd}) ${numero}`;
+  if (numero.length <= 8) return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
+  return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+}
+
+function formatarCpfBusca(valor) {
+  const digitos = apenasDigitos(valor, 11);
+
+  if (digitos.length <= 3) return digitos;
+  if (digitos.length <= 6) return `${digitos.slice(0, 3)}.${digitos.slice(3)}`;
+  if (digitos.length <= 9) return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6)}`;
+  return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9)}`;
+}
+
+function formatarCnpjBusca(valor) {
+  const digitos = apenasDigitos(valor, 14);
+
+  if (digitos.length <= 2) return digitos;
+  if (digitos.length <= 5) return `${digitos.slice(0, 2)}.${digitos.slice(2)}`;
+  if (digitos.length <= 8) return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5)}`;
+  if (digitos.length <= 12) return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8)}`;
+  return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
+}
+
+function formatarDocumentoBusca(valor) {
+  const digitos = apenasDigitos(valor, 14);
+  return digitos.length > 11 ? formatarCnpjBusca(digitos) : formatarCpfBusca(digitos);
+}
+
+function formatarBuscaClientesPorCampo(campo, valor) {
+  if (campo === 'telefone') return formatarTelefoneBusca(valor);
+  if (campo === 'documento') return formatarDocumentoBusca(valor);
+  return valor;
+}
+
+function getInputModeBuscaClientes(campo) {
+  return ['telefone', 'documento'].includes(campo) ? 'numeric' : undefined;
+}
+
+function getMaxLengthBuscaClientes(campo) {
+  if (campo === 'telefone') return 15;
+  if (campo === 'documento') return 18;
+  return undefined;
+}
+
+function getPlaceholderBuscaClientes(campo) {
+  const placeholders = {
+    geral: 'Buscar por nome, CNPJ/CPF, telefone, e-mail ou responsável',
+    cliente: 'Buscar por nome ou razão social',
+    documento: 'CNPJ ou CPF',
+    telefone: '(11) 99999-9999',
+    email: 'Buscar por e-mail',
+    responsavel: 'Buscar por responsável'
+  };
+
+  return placeholders[campo] || placeholders.geral;
 }
 
 function formatarContato(cliente) {
@@ -682,6 +764,7 @@ function Clientes() {
   const [servicos, setServicos] = useState([]);
   const [dadosVendaModalCarregados, setDadosVendaModalCarregados] = useState(false);
   const [vendasConcluidasContagem, setVendasConcluidasContagem] = useState({});
+  const [buscaCampo, setBuscaCampo] = useState('geral');
   const [busca, setBusca] = useState('');
   const [operadoraId, setOperadoraId] = useState('');
   const [responsavelTipo, setResponsavelTipo] = useState('');
@@ -717,7 +800,9 @@ function Clientes() {
   const buscaDebounced = useDebounce(buscaDeferred, 300);
 
   const filtros = useMemo(() => ({
-    busca: buscaDebounced,
+    busca: buscaCampo === 'geral' ? buscaDebounced : '',
+    busca_campo: buscaCampo !== 'geral' ? buscaCampo : '',
+    busca_valor: buscaCampo !== 'geral' ? buscaDebounced : '',
     operadora_atual_id: operadoraId,
     responsavel_tipo: responsavelTipo,
     fidelidade,
@@ -726,11 +811,18 @@ function Clientes() {
     chips_min: chipsMin,
     chips_max: chipsMax,
     cliente_id: clienteIdFiltro
-  }), [buscaDebounced, operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax, clienteIdFiltro]);
+  }), [buscaCampo, buscaDebounced, operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax, clienteIdFiltro]);
 
-  const filtrosAtivos = useMemo(() => (
-    Object.entries(filtros).filter(([, valor]) => valor !== '').length
-  ), [filtros]);
+  const filtrosAtivos = useMemo(() => {
+    const buscaAtiva = buscaCampo === 'geral'
+      ? Boolean(filtros.busca)
+      : Boolean(filtros.busca_campo && filtros.busca_valor);
+    const demaisFiltros = Object.entries(filtros)
+      .filter(([chave, valor]) => !['busca', 'busca_campo', 'busca_valor'].includes(chave) && valor !== '')
+      .length;
+
+    return demaisFiltros + (buscaAtiva ? 1 : 0);
+  }, [buscaCampo, filtros]);
 
   const filtrosPopupAtivos = useMemo(() => (
     [operadoraId, responsavelTipo, fidelidade, retorno, baseAnterior, chipsMin, chipsMax]
@@ -906,6 +998,7 @@ function Clientes() {
   }
 
   function limparFiltros() {
+    setBuscaCampo('geral');
     setBusca('');
     setOperadoraId('');
     setResponsavelTipo('');
@@ -915,6 +1008,15 @@ function Clientes() {
     setChipsMin('');
     setChipsMax('');
     setClienteIdFiltro('');
+  }
+
+  function alterarBuscaCampo(campo) {
+    setBuscaCampo(campo || 'geral');
+    setBusca('');
+  }
+
+  function alterarBuscaValor(valor) {
+    setBusca(formatarBuscaClientesPorCampo(buscaCampo, valor));
   }
 
   function abrirNovoCliente() {
@@ -1229,13 +1331,24 @@ function Clientes() {
           </div>
 
           <div className="clientes-toolbar__actions">
-            <form className="clientes-search" onSubmit={handleBuscar}>
-              <I.Search size={14} />
-              <input
-                value={busca}
-                onChange={event => setBusca(event.target.value)}
-                placeholder="Buscar por nome, CNPJ sem pontos, e-mail..."
+            <form className="clientes-busca" onSubmit={handleBuscar}>
+              <SelectFiltro
+                value={buscaCampo}
+                onChange={alterarBuscaCampo}
+                options={BUSCA_CLIENTES_CAMPO_OPCOES}
+                searchable={false}
+                className="clientes-busca__campo"
               />
+              <div className="search-box clientes-busca__valor">
+                <I.Search size={14} />
+                <input
+                  value={busca}
+                  onChange={event => alterarBuscaValor(event.target.value)}
+                  placeholder={getPlaceholderBuscaClientes(buscaCampo)}
+                  inputMode={getInputModeBuscaClientes(buscaCampo)}
+                  maxLength={getMaxLengthBuscaClientes(buscaCampo)}
+                />
+              </div>
             </form>
 
             <button className="btn" type="button" onClick={() => setFiltrosAbertos(true)}>
