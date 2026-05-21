@@ -49,13 +49,19 @@ const ACAO_LABELS = {
 
 const FILTROS_HISTORICO = [
   { id: 'todos', label: 'Todos' },
-  { id: 'vendas', label: 'Histórico de entrega da venda', entidade: 'vendas' },
+  { id: 'vendas', label: 'Histórico de entrega da venda', entidade: 'vendas', temFiltroStatus: true },
   { id: 'clientes', label: 'Clientes', entidade: 'clientes' },
   { id: 'usuarios', label: 'Usuários', entidade: 'usuarios' },
   { id: 'acoes', label: 'Ações' },
   { id: 'acessos', label: 'Acessos' },
   { id: 'falhas', label: 'Falhas' },
   { id: 'cancelamentos', label: 'Cancelamentos' }
+];
+
+const FILTROS_STATUS_VENDA = [
+  { id: 'ativas', label: 'Ativas' },
+  { id: 'canceladas', label: 'Canceladas' },
+  { id: 'lixeira', label: 'Lixeira (Excluídas)' }
 ];
 
 const FUNIL_STAGES = [
@@ -858,12 +864,15 @@ function HistoricoPage() {
   const [busca, setBusca] = useState('');
   const buscaDeferred = useDeferredValue(busca);
   const [filtro, setFiltro] = useState('todos');
+  const [filtroStatus, setFiltroStatus] = useState('ativas');
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [logSelecionado, setLogSelecionado] = useState(null);
   const [etapasFunil, setEtapasFunil] = useState([]);
   const [vendasAtivasIds, setVendasAtivasIds] = useState(() => new Set());
+  const [vendasCanceladasIds, setVendasCanceladasIds] = useState(() => new Set());
+  const [vendasLixeiraIds, setVendasLixeiraIds] = useState(() => new Set());
   const [vendaModal, setVendaModal] = useState(null);
   const [vendaModalModoEdicao, setVendaModalModoEdicao] = useState(false);
   const [clienteModal, setClienteModal] = useState(null);
@@ -877,6 +886,20 @@ function HistoricoPage() {
   const [modalCarregando, setModalCarregando] = useState('');
   const filtroAtual = FILTROS_HISTORICO.find(item => item.id === filtro) || FILTROS_HISTORICO[0];
   const filtrosAtivos = filtro !== 'todos' ? 1 : 0;
+  
+  // Resolve qual conjunto de IDs de vendas usar com base no filtroStatus
+  const getVendasIdsPorStatus = () => {
+    switch (filtroStatus) {
+      case 'canceladas':
+        return vendasCanceladasIds;
+      case 'lixeira':
+        return vendasLixeiraIds;
+      case 'ativas':
+      default:
+        return vendasAtivasIds;
+    }
+  };
+  const vendasIdsSelecionadas = getVendasIdsPorStatus();
   const vendasPorClienteModal = useMemo(
     () => montarMapaReferencias(referenciasClientesModal, 'total'),
     [referenciasClientesModal]
@@ -895,11 +918,13 @@ function HistoricoPage() {
         const [dados, etapas, statusVendas] = await Promise.all([
           listarAuditLogs({ busca: buscaDeferred, limite: 500, entidade: filtroAtual.entidade || '' }),
           listarEtapasFunil().catch(() => []),
-          listarStatusVendasHistorico().catch(() => ({ ativas: [], lixeira: [] }))
+          listarStatusVendasHistorico().catch(() => ({ ativas: [], canceladas: [], lixeira: [] }))
         ]);
         setLogs(dados);
         setEtapasFunil(normalizarEtapas(etapas));
         setVendasAtivasIds(new Set((statusVendas?.ativas || []).map(id => String(id))));
+        setVendasCanceladasIds(new Set((statusVendas?.canceladas || []).map(id => String(id))));
+        setVendasLixeiraIds(new Set((statusVendas?.lixeira || []).map(id => String(id))));
       } catch (error) {
         setErro(error.message || 'Erro ao carregar histórico.');
       } finally {
@@ -929,8 +954,8 @@ function HistoricoPage() {
     if (!modoVendasCompacto) return [];
     return agruparLogsVenda(logsFiltrados)
       .map(grupo => enriquecerGrupoComPulos(grupo, etapasFunil))
-      .filter(grupo => vendasAtivasIds.has(grupo.vendaId));
-  }, [modoVendasCompacto, logsFiltrados, etapasFunil, vendasAtivasIds]);
+      .filter(grupo => vendasIdsSelecionadas.has(grupo.vendaId));
+  }, [modoVendasCompacto, logsFiltrados, etapasFunil, vendasIdsSelecionadas]);
 
   async function carregarDadosVendaModal() {
     if (dadosVendaModalCarregados) return;
@@ -1092,6 +1117,20 @@ function HistoricoPage() {
                   }))}
                 />
               </div>
+              
+              {filtroAtual.temFiltroStatus && (
+                <div className="filter-field">
+                  <label>Status da venda</label>
+                  <SelectFiltro
+                    value={filtroStatus}
+                    onChange={setFiltroStatus}
+                    options={FILTROS_STATUS_VENDA.map(item => ({
+                      value: item.id,
+                      label: item.label
+                    }))}
+                  />
+                </div>
+              )}
             </div>
             <div className="filtros-popup__footer">
               <button
@@ -1138,7 +1177,7 @@ function HistoricoPage() {
         <div className="history-shell">
           <div className="history-summary">
             {modoVendasCompacto
-              ? `Histórico de entrega da venda (${logsFiltrados.length} eventos em ${gruposVenda.length} vendas)`
+              ? `Histórico de entrega da venda - ${FILTROS_STATUS_VENDA.find(s => s.id === filtroStatus)?.label || filtroStatus} (${logsFiltrados.length} eventos em ${gruposVenda.length} vendas)`
               : `Linha do tempo de todas as movimentacoes (${logsFiltrados.length} eventos)`}
           </div>
 
