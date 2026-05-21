@@ -1470,14 +1470,14 @@ function Clientes() {
                 )}
               </tbody>
             </table>
-            <Paginacao
-              total={totalClientes}
-              paginaAtual={paginaAtual}
-              itensPorPagina={itensPorPagina}
-              onPagina={pagina => { setPaginaAtual(pagina); carregarClientes(filtros, pagina); }}
-              onItensPorPagina={n => { setItensPorPagina(n); setPaginaAtual(1); carregarClientes(filtros, 1, n); }}
-            />
           </div>
+          <Paginacao
+            total={totalClientes}
+            paginaAtual={paginaAtual}
+            itensPorPagina={itensPorPagina}
+            onPagina={pagina => { setPaginaAtual(pagina); carregarClientes(filtros, pagina); }}
+            onItensPorPagina={n => { setItensPorPagina(n); setPaginaAtual(1); carregarClientes(filtros, 1, n); }}
+          />
         </div>
       </div>
     </LayoutPrivado>

@@ -3116,14 +3116,14 @@ function VendasPage() {
                 )}
               </tbody>
             </table>
-            <Paginacao
-              total={totalVendas}
-              paginaAtual={paginaAtual}
-              itensPorPagina={itensPorPagina}
-              onPagina={pagina => { setPaginaAtual(pagina); carregarVendas(filtros, pagina); }}
-              onItensPorPagina={n => { setItensPorPagina(n); setPaginaAtual(1); carregarVendas(filtros, 1, n); }}
-            />
           </div>
+          <Paginacao
+            total={totalVendas}
+            paginaAtual={paginaAtual}
+            itensPorPagina={itensPorPagina}
+            onPagina={pagina => { setPaginaAtual(pagina); carregarVendas(filtros, pagina); }}
+            onItensPorPagina={n => { setItensPorPagina(n); setPaginaAtual(1); carregarVendas(filtros, 1, n); }}
+          />
         </div>
       </div>
     </LayoutPrivado>

@@ -204,6 +204,34 @@
   min-width: 320px;
 }
 
+/* Layout de altura fixa: tabela rola por dentro e paginação fica sempre visível.
+   Aplicado só acima do breakpoint de cards (≤640px continua rolando a página). */
+@media (min-width: 641px) {
+  .vendas-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .vendas-page .list-table {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .vendas-page .list-table .scroll {
+    flex: 1;
+    min-height: 0;
+  }
+  /* cabeçalho fixo durante o scroll vertical interno */
+  .vendas-page .list-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+}
+
 .vendas-table-name__title {
   display: flex;
   align-items: center;

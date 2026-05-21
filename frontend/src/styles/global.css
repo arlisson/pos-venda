@@ -713,8 +713,10 @@ input, select, textarea { font-family: inherit; }
   gap: 12px;
   padding: 16px 24px;
   overflow-x: auto;
+  overflow-y: hidden;
   align-items: stretch;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 .kanban-column {
   flex: 0 0 280px;

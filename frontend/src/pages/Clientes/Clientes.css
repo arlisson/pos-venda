@@ -635,6 +635,15 @@
   min-width: 1140px;
 }
 
+/* cabeçalho fixo durante o scroll vertical interno (só acima do breakpoint de cards) */
+@media (min-width: 781px) {
+  .clientes-page .list-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+}
+
 .clientes-page th,
 .clientes-page td {
   vertical-align: middle;
