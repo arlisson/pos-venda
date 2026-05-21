@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
@@ -1311,12 +1311,13 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
 function VendedorasSelect({ value = [], options = [], onChange, idProtegido = null, disabled = false }) {
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const [buscaVendedora, setBuscaVendedora] = useState('');
+  const buscaVendedoraDeferred = useDeferredValue(buscaVendedora);
   const wrapperRef = useRef(null);
   const buscaInputRef = useRef(null);
 
   const selecionadas = options.filter(v => value.includes(String(v.id)));
   const disponiveis = options.filter(v => !value.includes(String(v.id)));
-  const termoBuscaVendedora = normalizarTextoBusca(buscaVendedora);
+  const termoBuscaVendedora = normalizarTextoBusca(buscaVendedoraDeferred);
   const disponiveisFiltradas = termoBuscaVendedora
     ? disponiveis.filter(v => normalizarTextoBusca(v.nome).includes(termoBuscaVendedora))
     : disponiveis;
@@ -1998,11 +1999,12 @@ function ClienteVendaSelect({
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [aberto, setAberto] = useState(false);
   const [indiceAtivo, setIndiceAtivo] = useState(0);
   const clienteSelecionado = clientes.find(cliente => String(cliente.id) === String(value));
   const textoClienteSelecionado = clienteSelecionado?.nome || clienteSelecionado?.razao_social || '';
-  const textoBusca = busca || textoClienteSelecionado;
+  const textoBusca = buscaDeferred || textoClienteSelecionado;
   const buscaNormalizada = textoBusca.trim().toLowerCase();
   const clientesFiltrados = clientes.filter(cliente => {
     if (!buscaNormalizada) return true;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
@@ -1492,6 +1492,7 @@ function FunilPage() {
   const [valorMax, setValorMax] = useState('');
   const [cancelamento, setCancelamento] = useState('');
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const buscaDeferred = useDeferredValue(busca);
   const [selectedSaleId, setSelectedSaleId] = useState(null);
   const [vendaProblema, setVendaProblema] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2064,12 +2065,12 @@ function FunilPage() {
   const { filtradas, total } = useMemo(() => {
     const filtered = sales.filter(s => {
       if (s.stage === 'retorno') return false;
-      if (!vendaCorrespondeBusca(s, busca)) return false;
+      if (!vendaCorrespondeBusca(s, buscaDeferred)) return false;
       if (!vendaCorrespondeFiltros(s, filtrosFunil)) return false;
       return true;
     });
     return { filtradas: filtered, total: filtered.reduce((sum, s) => sum + s.value, 0) };
-  }, [sales, busca, filtrosFunil]);
+  }, [sales, buscaDeferred, filtrosFunil]);
   const stageLabels = montarStageLabels(stagesVisiveis);
   const statusFunilFiltros = useMemo(
     () => stagesVisiveis.map(stage => ({ id: stage.id, label: stage.name })),

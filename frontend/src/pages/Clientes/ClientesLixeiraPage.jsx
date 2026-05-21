@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -84,6 +84,7 @@ function ClientesLixeiraPage() {
   const podeExcluir = temPermissao(usuario, 'clientes_excluir');
   const [clientes, setClientes] = useState([]);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -91,7 +92,7 @@ function ClientesLixeiraPage() {
   const [clienteParaExcluir, setClienteParaExcluir] = useState(null);
   const [excluirVendasRelacionadas, setExcluirVendasRelacionadas] = useState(false);
 
-  const filtros = useMemo(() => ({ busca }), [busca]);
+  const filtros = useMemo(() => ({ busca: buscaDeferred }), [buscaDeferred]);
 
   useEffect(() => {
     if (!erro) return undefined;
@@ -126,7 +127,7 @@ function ClientesLixeiraPage() {
 
   async function handleBuscar(event) {
     event.preventDefault();
-    await carregarClientes(filtros);
+    await carregarClientes({ busca });
   }
 
   async function handleRestaurar(cliente) {

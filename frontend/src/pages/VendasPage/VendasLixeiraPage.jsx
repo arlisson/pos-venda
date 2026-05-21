@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -61,13 +61,14 @@ function VendasLixeiraPage() {
   const podeExcluirVenda = temPermissao(usuario, 'vendas_excluir');
   const [vendas, setVendas] = useState([]);
   const [busca, setBusca] = useState('');
+  const buscaDeferred = useDeferredValue(busca);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [processandoId, setProcessandoId] = useState(null);
   const [vendaParaExcluir, setVendaParaExcluir] = useState(null);
 
-  const filtros = useMemo(() => ({ busca }), [busca]);
+  const filtros = useMemo(() => ({ busca: buscaDeferred }), [buscaDeferred]);
 
   useEffect(() => {
     if (!erro) return undefined;
@@ -102,7 +103,7 @@ function VendasLixeiraPage() {
 
   async function handleBuscar(event) {
     event.preventDefault();
-    await carregarDados(filtros);
+    await carregarDados({ busca });
   }
 
   async function handleRestaurar(venda) {
