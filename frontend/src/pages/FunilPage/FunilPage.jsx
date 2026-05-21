@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
-import { DEFAULT_OPERATORS as OPERATORS, STAGES as FALLBACK_STAGES } from '../../config/constants';
+import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
+import { STAGES as FALLBACK_STAGES } from '../../config/constants';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import ClienteModal from '../Clientes/ClienteModal';
 import VendaModal from '../VendasPage/VendaModal';
@@ -153,6 +154,8 @@ const RETURN_REASONS = [
   'Outro motivo',
 ];
 
+const UFS_BRASIL = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
+
 function parseDate(value) {
   if (!value) return new Date();
   // Strings do banco vêm em UTC ("YYYY-MM-DD HH:MM:SS"); adiciona Z para evitar
@@ -249,6 +252,49 @@ function vendaCorrespondeBusca(sale, busca) {
 
   const texto = montarTextoBuscaVenda(sale);
   return termos.every(termo => texto.includes(termo));
+}
+
+function normalizarNumeroFiltro(valor) {
+  if (valor === undefined || valor === null || valor === '') return null;
+  const numero = Number(String(valor).replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function obterDataVendaFiltro(sale) {
+  const raw = sale.raw || {};
+  return String(raw.data_venda || raw.criado_em || raw.created_at || '').slice(0, 10);
+}
+
+function obterVendedorasVenda(venda = {}) {
+  const vendedoras = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
+    ? venda.vendedoras
+    : [venda.vendedora].filter(Boolean);
+
+  return vendedoras.map(item => String(item?.id || item?.usuario_id || item?.vendedora_id || '')).filter(Boolean);
+}
+
+function vendaCorrespondeFiltros(sale, filtros) {
+  const raw = sale.raw || {};
+  const valorMin = normalizarNumeroFiltro(filtros.valorMin);
+  const valorMax = normalizarNumeroFiltro(filtros.valorMax);
+  const dataVenda = obterDataVendaFiltro(sale);
+
+  if (filtros.vendedoraId && !obterVendedorasVenda(raw).includes(String(filtros.vendedoraId))) return false;
+  if (filtros.operadoraId && String(raw.operadora_id || raw.operadora?.id || '') !== String(filtros.operadoraId)) return false;
+  if (filtros.tipoVendaId && String(raw.tipo_venda_id || raw.tipoVenda?.id || '') !== String(filtros.tipoVendaId)) return false;
+  if (filtros.servicoId && String(raw.servico_id || raw.servico?.id || '') !== String(filtros.servicoId)) return false;
+  if (filtros.statusFunil && String(sale.stage || '') !== String(filtros.statusFunil)) return false;
+  if (filtros.prioridadeFunil && String(sale.priority || '') !== String(filtros.prioridadeFunil)) return false;
+  if (filtros.uf && String(raw.uf || '').toUpperCase() !== String(filtros.uf).toUpperCase()) return false;
+  if (filtros.municipio && !normalizarBusca(raw.municipio).includes(normalizarBusca(filtros.municipio))) return false;
+  if (filtros.dataInicio && (!dataVenda || dataVenda < filtros.dataInicio)) return false;
+  if (filtros.dataFim && (!dataVenda || dataVenda > filtros.dataFim)) return false;
+  if (valorMin !== null && Number(sale.value || 0) < valorMin) return false;
+  if (valorMax !== null && Number(sale.value || 0) > valorMax) return false;
+  if (filtros.cancelamento === 'canceladas' && !sale.canceladaEm) return false;
+  if (filtros.cancelamento === 'ativas' && sale.canceladaEm) return false;
+
+  return true;
 }
 
 function getChaveClienteVenda(venda = {}) {
@@ -1427,8 +1473,25 @@ function FunilPage() {
   const [sales, setSales] = useState([]);
   const [stages, setStages] = useState(FALLBACK_STAGES);
   const [adminStages, setAdminStages] = useState([]);
-  const [filter, setFilter] = useState('todas');
   const [busca, setBusca] = useState('');
+  const [vendedoras, setVendedoras] = useState([]);
+  const [operadoras, setOperadoras] = useState([]);
+  const [tiposVenda, setTiposVenda] = useState([]);
+  const [servicos, setServicos] = useState([]);
+  const [vendedoraId, setVendedoraId] = useState('');
+  const [operadoraId, setOperadoraId] = useState('');
+  const [tipoVendaId, setTipoVendaId] = useState('');
+  const [servicoId, setServicoId] = useState('');
+  const [statusFunil, setStatusFunil] = useState('');
+  const [prioridadeFunil, setPrioridadeFunil] = useState('');
+  const [uf, setUf] = useState('');
+  const [municipio, setMunicipio] = useState('');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
+  const [valorMin, setValorMin] = useState('');
+  const [valorMax, setValorMax] = useState('');
+  const [cancelamento, setCancelamento] = useState('');
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState(null);
   const [vendaProblema, setVendaProblema] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1719,12 +1782,20 @@ function FunilPage() {
     setError('');
 
     try {
-      const [vendas, etapas] = await Promise.all([
+      const [vendas, etapas, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
         listarVendas({ enviadas_pos_venda: '1', ocultar_concluidas_antigas: '1' }),
-        podeGerenciarEtapas ? listarEtapasFunilAdmin() : listarEtapasFunil()
+        podeGerenciarEtapas ? listarEtapasFunilAdmin() : listarEtapasFunil(),
+        listarVendedoras().catch(() => []),
+        listarOperadoras().catch(() => []),
+        listarTiposVenda().catch(() => []),
+        listarServicos().catch(() => [])
       ]);
       const labels = sincronizarEtapas(etapas, { atualizarAdmin: podeGerenciarEtapas });
       setSales(Array.isArray(vendas) ? vendas.map(venda => mapVendaToSale(venda, labels)) : []);
+      setVendedoras(Array.isArray(vendedorasData) ? vendedorasData : []);
+      setOperadoras(Array.isArray(operadorasData) ? operadorasData : []);
+      setTiposVenda(Array.isArray(tiposVendaData) ? tiposVendaData : []);
+      setServicos(Array.isArray(servicosData) ? servicosData : []);
     } catch (err) {
       setError(err.message || 'Erro ao carregar funil.');
     } finally {
@@ -1921,6 +1992,22 @@ function FunilPage() {
     }));
   }
 
+  function limparFiltros() {
+    setVendedoraId('');
+    setOperadoraId('');
+    setTipoVendaId('');
+    setServicoId('');
+    setStatusFunil('');
+    setPrioridadeFunil('');
+    setUf('');
+    setMunicipio('');
+    setDataInicio('');
+    setDataFim('');
+    setValorMin('');
+    setValorMax('');
+    setCancelamento('');
+  }
+
   const selectedSale = selectedSaleId ? sales.find(s => s.id === selectedSaleId) : null;
   const adminStagesByCode = useMemo(
     () => new Map(adminStages.map(stage => [stage.id, stage])),
@@ -1958,23 +2045,35 @@ function FunilPage() {
     }
     return finais;
   }, [stagesVisiveis]);
+  const filtrosFunil = useMemo(() => ({
+    vendedoraId,
+    operadoraId,
+    tipoVendaId,
+    servicoId,
+    statusFunil,
+    prioridadeFunil,
+    uf,
+    municipio,
+    dataInicio,
+    dataFim,
+    valorMin,
+    valorMax,
+    cancelamento
+  }), [vendedoraId, operadoraId, tipoVendaId, servicoId, statusFunil, prioridadeFunil, uf, municipio, dataInicio, dataFim, valorMin, valorMax, cancelamento]);
+  const filtrosPopupAtivos = Object.values(filtrosFunil).filter(valor => valor !== '').length;
   const { filtradas, total } = useMemo(() => {
     const filtered = sales.filter(s => {
       if (s.stage === 'retorno') return false;
-      if (filter === 'canceladas') {
-        if (!s.canceladaEm) return false;
-      } else if (filter !== 'todas' && s.operator !== filter) {
-        return false;
-      }
       if (!vendaCorrespondeBusca(s, busca)) return false;
+      if (!vendaCorrespondeFiltros(s, filtrosFunil)) return false;
       return true;
     });
     return { filtradas: filtered, total: filtered.reduce((sum, s) => sum + s.value, 0) };
-  }, [sales, filter, busca, agora]);
+  }, [sales, busca, filtrosFunil]);
   const stageLabels = montarStageLabels(stagesVisiveis);
-  const operators = useMemo(
-    () => Array.from(new Set([...OPERATORS, ...sales.map(sale => sale.operator)])).filter(Boolean),
-    [sales]
+  const statusFunilFiltros = useMemo(
+    () => stagesVisiveis.map(stage => ({ id: stage.id, label: stage.name })),
+    [stagesVisiveis]
   );
 
   return (
@@ -2033,6 +2132,127 @@ function FunilPage() {
           onConfirm={() => handleDeleteStage(stageToDelete)}
         />
       )}
+      {filtrosAbertos && (
+        <div className="filtros-popup-overlay" onClick={() => setFiltrosAbertos(false)}>
+          <div className="filtros-popup" onClick={event => event.stopPropagation()}>
+            <div className="filtros-popup__header">
+              <span>Filtros</span>
+              <button type="button" className="btn btn-icon btn-ghost" onClick={() => setFiltrosAbertos(false)}>
+                <I.Close size={14} />
+              </button>
+            </div>
+            <div className="filtros-popup__body">
+              <div className="filter-field">
+                <label>Vendedor(a)</label>
+                <SelectFiltro
+                  value={vendedoraId}
+                  onChange={setVendedoraId}
+                  placeholder="Todas"
+                  options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
+                />
+              </div>
+              <div className="filter-field">
+                <label>Operadora</label>
+                <SelectFiltro
+                  value={operadoraId}
+                  onChange={setOperadoraId}
+                  placeholder="Todas"
+                  options={operadoras.map(op => ({ value: String(op.id), label: op.nome }))}
+                />
+              </div>
+              <div className="filter-field">
+                <label>Tipo de venda</label>
+                <SelectFiltro
+                  value={tipoVendaId}
+                  onChange={setTipoVendaId}
+                  placeholder="Todos"
+                  options={tiposVenda.map(t => ({ value: String(t.id), label: t.nome }))}
+                />
+              </div>
+              <div className="filter-field">
+                <label>Produto</label>
+                <SelectFiltro
+                  value={servicoId}
+                  onChange={setServicoId}
+                  placeholder="Todos"
+                  options={servicos.map(s => ({ value: String(s.id), label: s.nome }))}
+                />
+              </div>
+              <div className="filter-field">
+                <label>Status</label>
+                <SelectFiltro
+                  value={statusFunil}
+                  onChange={setStatusFunil}
+                  placeholder="Todos"
+                  options={statusFunilFiltros.map(s => ({ value: String(s.id), label: s.label }))}
+                />
+              </div>
+              <div className="filter-field">
+                <label>Prioridade</label>
+                <SelectFiltro
+                  value={prioridadeFunil}
+                  onChange={setPrioridadeFunil}
+                  placeholder="Todas"
+                  options={[
+                    { value: 'alta', label: 'Alta' },
+                    { value: 'media', label: 'Media' },
+                    { value: 'baixa', label: 'Baixa' },
+                  ]}
+                />
+              </div>
+              <div className="filter-field">
+                <label>Cancelamento</label>
+                <SelectFiltro
+                  value={cancelamento}
+                  onChange={setCancelamento}
+                  placeholder="Todas"
+                  options={[
+                    { value: 'ativas', label: 'Somente ativas' },
+                    { value: 'canceladas', label: 'Somente canceladas' },
+                  ]}
+                />
+              </div>
+              <div className="filter-field">
+                <label>UF</label>
+                <SelectFiltro
+                  value={uf}
+                  onChange={setUf}
+                  placeholder="Todos"
+                  options={UFS_BRASIL.map(sigla => ({ value: sigla, label: sigla }))}
+                />
+              </div>
+              <div className="filter-field">
+                <label>Municipio</label>
+                <input value={municipio} onChange={event => setMunicipio(event.target.value)} placeholder="Buscar por municipio" />
+              </div>
+              <div className="filter-field">
+                <label>Data inicial</label>
+                <input type="date" value={dataInicio} onChange={event => setDataInicio(event.target.value)} />
+              </div>
+              <div className="filter-field">
+                <label>Data final</label>
+                <input type="date" value={dataFim} onChange={event => setDataFim(event.target.value)} />
+              </div>
+              <div className="filter-field">
+                <label>Valor min.</label>
+                <input value={valorMin} onChange={event => setValorMin(event.target.value)} placeholder="0,00" inputMode="decimal" />
+              </div>
+              <div className="filter-field">
+                <label>Valor max.</label>
+                <input value={valorMax} onChange={event => setValorMax(event.target.value)} placeholder="999,99" inputMode="decimal" />
+              </div>
+            </div>
+            <div className="filtros-popup__footer">
+              <button type="button" className="btn btn-ghost" onClick={limparFiltros} disabled={filtrosPopupAtivos === 0}>
+                <I.Close size={13} /> Limpar filtros
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => setFiltrosAbertos(false)}>
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="page funil-page">
         <div className="filters funil-filters">
@@ -2055,25 +2275,9 @@ function FunilPage() {
             )}
           </div>
           <div className="funil-chips-row">
-            <span style={{ fontSize: 12, color: 'var(--text-3)', marginRight: 4, flexShrink: 0 }}>Operadora:</span>
-            {['todas', ...operators].map(op => (
-              <button
-                type="button"
-                key={op}
-                className={`filter-chip ${filter === op ? 'active' : ''}`}
-                onClick={() => setFilter(op)}
-              >
-                {op === 'todas' ? 'Todas' : op}
-              </button>
-            ))}
-            <button
-              type="button"
-              className={`filter-chip ${filter === 'canceladas' ? 'active' : ''}`}
-              onClick={() => setFilter('canceladas')}
-              title="Mostrar somente vendas canceladas"
-              style={filter === 'canceladas' ? { background: '#dc2626', borderColor: '#dc2626', color: '#fff' } : { color: '#dc2626', borderColor: '#fecaca' }}
-            >
-              Canceladas
+            <button className="btn" type="button" onClick={() => setFiltrosAbertos(true)}>
+              <I.Filter size={14} /> Filtros
+              {filtrosPopupAtivos > 0 && <span className="filtros-count">{filtrosPopupAtivos}</span>}
             </button>
             <div className="funil-stats" style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center', fontSize: 12.5, flexShrink: 0 }}>
               <span className="muted">{filtradas.length} vendas</span>
