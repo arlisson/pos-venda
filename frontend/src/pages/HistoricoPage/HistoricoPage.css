@@ -270,7 +270,7 @@
 
 .history-sale-row {
   display: grid;
-  grid-template-columns: 152px minmax(0, 1fr);
+  grid-template-columns: minmax(210px, 24%) minmax(0, 1fr);
   gap: 0;
   align-items: stretch;
   border: 1px solid var(--border);
@@ -297,16 +297,21 @@
 
 .history-sale-row__head strong {
   color: var(--text);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
 .history-sale-row__client {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
   max-width: 100%;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .history-sale-row__id {
@@ -428,7 +433,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-top: 4px;
+  margin-top: 2px;
   padding: 3px 0;
   background: none;
   border: none;
@@ -450,6 +455,38 @@
 
 .history-sale-row__events-toggle.open svg {
   transform: rotate(180deg);
+}
+
+.history-sale-row__open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+  transition: all 0.15s;
+}
+
+.history-sale-row__open:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.history-sale-row__open:disabled,
+.history-detail-open:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .history-sale-row__body {
@@ -855,6 +892,7 @@ button.funil-retorno-flag.selected {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -864,6 +902,36 @@ button.funil-retorno-flag.selected {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
+  color: var(--text);
+}
+
+.history-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.history-detail-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.history-detail-open:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
   color: var(--text);
 }
 
@@ -1085,6 +1153,10 @@ button.funil-retorno-flag.selected {
 
   .history-sale-row__head strong {
     margin-right: auto;
+  }
+
+  .history-sale-row__client {
+    -webkit-line-clamp: 3;
   }
 
   .history-sale-row__body {
