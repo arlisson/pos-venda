@@ -113,6 +113,14 @@ function sanitizarCnpj(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 14);
 }
 
+function apenasDigitos(valor) {
+  return String(valor || '').replace(/\D/g, '');
+}
+
+function sqlSomenteDigitos(coluna) {
+  return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${coluna}, '.', ''), '/', ''), '-', ''), '(', ''), ')', ''), ' ', '')`;
+}
+
 function sanitizarCpf(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 11);
 }
@@ -982,6 +990,7 @@ async function adicionarResumoVendasRelacionadas(clientes) {
 function aplicarBuscaClientes(query, termo) {
   const busca = `%${termo}%`;
   const cnpjDigitos = sanitizarCnpj(termo);
+  const telefoneDigitos = apenasDigitos(termo);
 
   query.where((builder) => {
     builder
@@ -994,7 +1003,64 @@ function aplicarBuscaClientes(query, termo) {
     if (cnpjDigitos) {
       builder.orWhere('cnpj_digitos', 'like', `%${cnpjDigitos}%`);
     }
+
+    if (telefoneDigitos) {
+      builder
+        .orWhereRaw("CONCAT(COALESCE(whatsapp_ddd, ''), COALESCE(whatsapp_numero, '')) like ?", [`%${telefoneDigitos}%`])
+        .orWhereRaw("CONCAT(COALESCE(fixo_ddd, ''), COALESCE(fixo_numero, '')) like ?", [`%${telefoneDigitos}%`]);
+    }
   });
+}
+
+function aplicarBuscaCampoClientes(query, filtros = {}) {
+  const campo = String(filtros.busca_campo || '').trim();
+  const valor = String(filtros.busca_valor || '').trim();
+
+  if (!campo || !valor) return;
+
+  if (campo === 'cliente') {
+    query.where(builder => {
+      builder
+        .where('nome', 'like', `%${valor}%`)
+        .orWhere('razao_social', 'like', `%${valor}%`);
+    });
+    return;
+  }
+
+  if (campo === 'documento' || campo === 'cnpj') {
+    const digitos = apenasDigitos(valor);
+    if (!digitos) return;
+
+    query.where(builder => {
+      builder
+        .where('cnpj_digitos', 'like', `%${digitos}%`)
+        .orWhereRaw(`${sqlSomenteDigitos('cnpj')} like ?`, [`%${digitos}%`]);
+    });
+    return;
+  }
+
+  if (campo === 'telefone') {
+    const digitos = apenasDigitos(valor);
+    if (!digitos) return;
+
+    query.where(builder => {
+      builder
+        .whereRaw("CONCAT(COALESCE(whatsapp_ddd, ''), COALESCE(whatsapp_numero, '')) like ?", [`%${digitos}%`])
+        .orWhereRaw("CONCAT(COALESCE(fixo_ddd, ''), COALESCE(fixo_numero, '')) like ?", [`%${digitos}%`])
+        .orWhereRaw(`${sqlSomenteDigitos('whatsapp_numero')} like ?`, [`%${digitos}%`])
+        .orWhereRaw(`${sqlSomenteDigitos('fixo_numero')} like ?`, [`%${digitos}%`]);
+    });
+    return;
+  }
+
+  if (campo === 'email') {
+    query.where('email', 'like', `%${valor}%`);
+    return;
+  }
+
+  if (campo === 'responsavel') {
+    query.where('responsavel_nome', 'like', `%${valor}%`);
+  }
 }
 
 function subquerySomaChipsCliente() {
@@ -1054,6 +1120,8 @@ async function listarClientes(filtros = {}, usuarioId) {
   if (filtros.busca) {
     aplicarBuscaClientes(query, filtros.busca);
   }
+
+  aplicarBuscaCampoClientes(query, filtros);
 
   if (filtros.operadora_atual_id) {
     query.whereExists(
