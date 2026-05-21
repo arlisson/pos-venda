@@ -77,12 +77,14 @@ async function listar({ busca, limite = 160, entidade } = {}) {
   const limiteNormalizado = Math.min(Number(limite) || 160, 500);
 
   const query = AuditLog.query()
+    .select('audit_logs.*')
+    .leftJoinRelated('usuario')
     .withGraphFetched('usuario')
-    .orderBy('created_at', 'desc')
+    .orderBy('audit_logs.created_at', 'desc')
     .limit(limiteNormalizado);
 
   if (entidade) {
-    query.where('entidade', entidade);
+    query.where('audit_logs.entidade', entidade);
   }
 
   if (busca) {
@@ -90,11 +92,13 @@ async function listar({ busca, limite = 160, entidade } = {}) {
 
     query.where(builder => {
       builder
-        .where('acao', 'like', termo)
-        .orWhere('entidade', 'like', termo)
-        .orWhere('entidade_id', 'like', termo)
-        .orWhere('rota', 'like', termo)
-        .orWhereRaw('CAST(dados AS CHAR) LIKE ?', [termo]);
+        .where('audit_logs.acao', 'like', termo)
+        .orWhere('audit_logs.entidade', 'like', termo)
+        .orWhere('audit_logs.entidade_id', 'like', termo)
+        .orWhere('audit_logs.rota', 'like', termo)
+        .orWhere('usuario.nome', 'like', termo)
+        .orWhere('usuario.email', 'like', termo)
+        .orWhereRaw('CAST(audit_logs.dados AS CHAR) LIKE ?', [termo]);
     });
   }
 
