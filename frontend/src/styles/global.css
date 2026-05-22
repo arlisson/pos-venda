@@ -2971,6 +2971,12 @@ input, select, textarea { font-family: inherit; }
     overflow-y: auto;
   }
 
+  .external-links-popover {
+    top: 64px !important;
+    bottom: auto !important;
+    max-height: calc(100dvh - 76px);
+  }
+
   /* ---------- 1.6 Filtros e ações ---------- */
   .filters {
     flex-direction: column;
