@@ -2972,6 +2972,17 @@ input.is-invalid {
     min-width: 0;
   }
 
+  .vendas-page .list-table:not(.list-table--scroll-mobile) td.m-primary,
+  .vendas-page .list-table:not(.list-table--scroll-mobile) .vendas-table-name,
+  .vendas-page .list-table:not(.list-table--scroll-mobile) .vendas-table-name__title,
+  .vendas-page .list-table:not(.list-table--scroll-mobile) .vendas-table-name__title strong,
+  .vendas-page .list-table:not(.list-table--scroll-mobile) .vendas-table-name > span {
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .vendas-page .list-table .vendas-actions-col,
   .vendas-page .list-table .vendas-email-actions-col,
   .vendas-page .list-table .vendas-delete-actions-col,
