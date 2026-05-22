@@ -2,7 +2,8 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
-import { listarAuditLogs, listarStatusVendasHistorico } from '../../services/audit-log.service';
+import Paginacao from '../../components/Paginacao/Paginacao';
+import { listarHistoricoVendasAgrupado } from '../../services/audit-log.service';
 import { formatUtcDateTime, getUtcDateTimeTimestamp } from '../../utils/datetime';
 
 const ACAO_LABELS = {
@@ -401,43 +402,38 @@ function HistoricoLixeiraPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [logSelecionado, setLogSelecionado] = useState(null);
-  const [vendasLixeiraIds, setVendasLixeiraIds] = useState(() => new Set());
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(20);
+  const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    async function carregar() {
-      setCarregando(true);
-      setErro('');
-      try {
-        const [dados, statusVendas] = await Promise.all([
-          listarAuditLogs({ entidade: 'vendas', limite: 500 }),
-          listarStatusVendasHistorico().catch(() => ({ ativas: [], lixeira: [] }))
-        ]);
-        setLogs(dados);
-        setVendasLixeiraIds(new Set((statusVendas?.lixeira || []).map(id => String(id))));
-      } catch (error) {
-        setErro(error.message || 'Erro ao carregar histórico.');
-      } finally {
-        setCarregando(false);
-      }
+  async function carregar(pagina = paginaAtual, porPagina = itensPorPagina) {
+    setCarregando(true);
+    setErro('');
+    try {
+      const resposta = await listarHistoricoVendasAgrupado({
+        status: 'lixeira',
+        busca: buscaDeferred,
+        page: pagina,
+        per_page: porPagina
+      });
+      setLogs(resposta.data || []);
+      setTotal(resposta.total || 0);
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar histórico.');
+    } finally {
+      setCarregando(false);
     }
+  }
 
-    const timer = setTimeout(carregar, 250);
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    setPaginaAtual(1);
+    const timer = setTimeout(() => carregar(1), 250);
     return () => clearTimeout(timer);
-  }, []);
+  }, [buscaDeferred]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
-  const grupos = useMemo(() => {
-    const allGrupos = agruparLogsVenda(logs);
-    return allGrupos.filter(grupo => vendasLixeiraIds.has(grupo.vendaId));
-  }, [logs, vendasLixeiraIds]);
-
-  const gruposFiltrados = useMemo(() => {
-    if (!buscaDeferred.trim()) return grupos;
-    const termo = buscaDeferred.toLowerCase();
-    return grupos.filter(grupo => {
-      const nome = extrairNomeVenda(grupo.logs, grupo.vendaId).toLowerCase();
-      return nome.includes(termo) || String(grupo.vendaId).includes(termo);
-    });
-  }, [grupos, buscaDeferred]);
+  const grupos = useMemo(() => agruparLogsVenda(logs), [logs]);
 
   return (
     <LayoutPrivado>
@@ -462,7 +458,7 @@ function HistoricoLixeiraPage() {
           <div className="history-summary">
             {carregando
               ? 'Carregando...'
-              : `${gruposFiltrados.length}${grupos.length !== gruposFiltrados.length ? ` de ${grupos.length}` : ''} venda${gruposFiltrados.length !== 1 ? 's' : ''} com exclusão registrada`}
+              : `${total} venda${total !== 1 ? 's' : ''} com exclusão registrada`}
           </div>
 
           <div className="history-panel">
@@ -470,11 +466,11 @@ function HistoricoLixeiraPage() {
               <div className="history-empty">Carregando histórico...</div>
             ) : erro ? (
               <div className="history-empty error">{erro}</div>
-            ) : gruposFiltrados.length === 0 ? (
+            ) : grupos.length === 0 ? (
               <div className="history-empty">Nenhuma venda excluída encontrada.</div>
             ) : (
               <div className="history-sale-groups">
-                {gruposFiltrados.map(grupo => (
+                {grupos.map(grupo => (
                   <VendaExcluidaCard
                     key={grupo.vendaId}
                     grupo={grupo}
@@ -483,6 +479,16 @@ function HistoricoLixeiraPage() {
                   />
                 ))}
               </div>
+            )}
+
+            {!carregando && !erro && (
+              <Paginacao
+                total={total}
+                paginaAtual={paginaAtual}
+                itensPorPagina={itensPorPagina}
+                onPagina={pagina => { setPaginaAtual(pagina); carregar(pagina); }}
+                onItensPorPagina={n => { setItensPorPagina(n); setPaginaAtual(1); carregar(1, n); }}
+              />
             )}
 
             {logSelecionado && (

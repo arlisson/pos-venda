@@ -8,6 +8,6 @@ const { exigirPermissao } = require('../middlewares/permissao.middleware');
 router.use(authMiddleware);
 
 router.get('/', exigirPermissao('historico_visualizar'), auditLogController.index);
-router.get('/vendas-status', exigirPermissao('historico_visualizar'), auditLogController.statusVendas);
+router.get('/vendas-agrupado', exigirPermissao('historico_visualizar'), auditLogController.vendasAgrupado);
 
 module.exports = router;

@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
+import Paginacao from '../../components/Paginacao/Paginacao';
 import VendaModal from '../VendasPage/VendaModal';
 import ClienteModal from '../Clientes/ClienteModal';
-import { listarAuditLogs, listarStatusVendasHistorico } from '../../services/audit-log.service';
+import { listarAuditLogs, listarHistoricoVendasAgrupado } from '../../services/audit-log.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { buscarClientePorId, listarClientesSelect } from '../../services/cliente.service';
 import {
@@ -52,10 +53,10 @@ const FILTROS_HISTORICO = [
   { id: 'vendas', label: 'Histórico de entrega da venda', entidade: 'vendas', temFiltroStatus: true },
   { id: 'clientes', label: 'Clientes', entidade: 'clientes' },
   { id: 'usuarios', label: 'Usuários', entidade: 'usuarios' },
-  { id: 'acoes', label: 'Ações' },
-  { id: 'acessos', label: 'Acessos' },
-  { id: 'falhas', label: 'Falhas' },
-  { id: 'cancelamentos', label: 'Cancelamentos' }
+  { id: 'acoes', label: 'Ações', tipo: 'acoes' },
+  { id: 'acessos', label: 'Acessos', tipo: 'acessos' },
+  { id: 'falhas', label: 'Falhas', tipo: 'falhas' },
+  { id: 'cancelamentos', label: 'Cancelamentos', tipo: 'cancelamentos' }
 ];
 
 const FILTROS_STATUS_VENDA = [
@@ -870,9 +871,9 @@ function HistoricoPage() {
   const [erro, setErro] = useState('');
   const [logSelecionado, setLogSelecionado] = useState(null);
   const [etapasFunil, setEtapasFunil] = useState([]);
-  const [vendasAtivasIds, setVendasAtivasIds] = useState(() => new Set());
-  const [vendasCanceladasIds, setVendasCanceladasIds] = useState(() => new Set());
-  const [vendasLixeiraIds, setVendasLixeiraIds] = useState(() => new Set());
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(20);
+  const [total, setTotal] = useState(0);
   const [vendaModal, setVendaModal] = useState(null);
   const [vendaModalModoEdicao, setVendaModalModoEdicao] = useState(false);
   const [clienteModal, setClienteModal] = useState(null);
@@ -886,20 +887,6 @@ function HistoricoPage() {
   const [modalCarregando, setModalCarregando] = useState('');
   const filtroAtual = FILTROS_HISTORICO.find(item => item.id === filtro) || FILTROS_HISTORICO[0];
   const filtrosAtivos = filtro !== 'todos' ? 1 : 0;
-  
-  // Resolve qual conjunto de IDs de vendas usar com base no filtroStatus
-  const getVendasIdsPorStatus = () => {
-    switch (filtroStatus) {
-      case 'canceladas':
-        return vendasCanceladasIds;
-      case 'lixeira':
-        return vendasLixeiraIds;
-      case 'ativas':
-      default:
-        return vendasAtivasIds;
-    }
-  };
-  const vendasIdsSelecionadas = getVendasIdsPorStatus();
   const vendasPorClienteModal = useMemo(
     () => montarMapaReferencias(referenciasClientesModal, 'total'),
     [referenciasClientesModal]
@@ -909,53 +896,56 @@ function HistoricoPage() {
     [referenciasClientesModal]
   );
 
-  useEffect(() => {
-    async function carregar() {
-      setCarregando(true);
-      setErro('');
+  async function carregar(pagina = paginaAtual, porPagina = itensPorPagina) {
+    setCarregando(true);
+    setErro('');
 
-      try {
-        const [dados, etapas, statusVendas] = await Promise.all([
-          listarAuditLogs({ busca: buscaDeferred, limite: 500, entidade: filtroAtual.entidade || '' }),
-          listarEtapasFunil().catch(() => []),
-          listarStatusVendasHistorico().catch(() => ({ ativas: [], canceladas: [], lixeira: [] }))
-        ]);
-        setLogs(dados);
-        setEtapasFunil(normalizarEtapas(etapas));
-        setVendasAtivasIds(new Set((statusVendas?.ativas || []).map(id => String(id))));
-        setVendasCanceladasIds(new Set((statusVendas?.canceladas || []).map(id => String(id))));
-        setVendasLixeiraIds(new Set((statusVendas?.lixeira || []).map(id => String(id))));
-      } catch (error) {
-        setErro(error.message || 'Erro ao carregar histórico.');
-      } finally {
-        setCarregando(false);
-      }
+    try {
+      const ehVendas = filtroAtual.id === 'vendas';
+      const requisicao = ehVendas
+        ? listarHistoricoVendasAgrupado({
+            status: filtroStatus,
+            busca: buscaDeferred,
+            page: pagina,
+            per_page: porPagina
+          })
+        : listarAuditLogs({
+            busca: buscaDeferred,
+            entidade: filtroAtual.entidade || '',
+            tipo: filtroAtual.tipo || '',
+            page: pagina,
+            per_page: porPagina
+          });
+
+      const [resposta, etapas] = await Promise.all([
+        requisicao,
+        ehVendas ? listarEtapasFunil().catch(() => []) : Promise.resolve(null)
+      ]);
+
+      setLogs(resposta.data || []);
+      setTotal(resposta.total || 0);
+      if (etapas) setEtapasFunil(normalizarEtapas(etapas));
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar histórico.');
+    } finally {
+      setCarregando(false);
     }
+  }
 
-    const timer = setTimeout(carregar, 250);
-
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  useEffect(() => {
+    setPaginaAtual(1);
+    const timer = setTimeout(() => carregar(1), 250);
     return () => clearTimeout(timer);
-  }, [buscaDeferred, filtroAtual.entidade]);
-
-  const logsFiltrados = useMemo(() => {
-    if (filtro === 'todos' || filtroAtual.entidade) return logs;
-
-    return logs.filter(log => {
-      if (filtro === 'acoes') return !log.acao?.startsWith('auth.');
-      if (filtro === 'acessos') return log.acao?.startsWith('auth.');
-      if (filtro === 'falhas') return log.acao?.includes('falha');
-      if (filtro === 'cancelamentos') return log.acao?.includes('cancel');
-      return true;
-    });
-  }, [logs, filtro, filtroAtual.entidade]);
+  }, [buscaDeferred, filtroAtual.id, filtroAtual.entidade, filtroAtual.tipo, filtroStatus]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   const modoVendasCompacto = filtro === 'vendas';
   const gruposVenda = useMemo(() => {
     if (!modoVendasCompacto) return [];
-    return agruparLogsVenda(logsFiltrados)
-      .map(grupo => enriquecerGrupoComPulos(grupo, etapasFunil))
-      .filter(grupo => vendasIdsSelecionadas.has(grupo.vendaId));
-  }, [modoVendasCompacto, logsFiltrados, etapasFunil, vendasIdsSelecionadas]);
+    return agruparLogsVenda(logs)
+      .map(grupo => enriquecerGrupoComPulos(grupo, etapasFunil));
+  }, [modoVendasCompacto, logs, etapasFunil]);
 
   async function carregarDadosVendaModal() {
     if (dadosVendaModalCarregados) return;
@@ -1177,8 +1167,8 @@ function HistoricoPage() {
         <div className="history-shell">
           <div className="history-summary">
             {modoVendasCompacto
-              ? `Histórico de entrega da venda - ${FILTROS_STATUS_VENDA.find(s => s.id === filtroStatus)?.label || filtroStatus} (${logsFiltrados.length} eventos em ${gruposVenda.length} vendas)`
-              : `Linha do tempo de todas as movimentacoes (${logsFiltrados.length} eventos)`}
+              ? `Histórico de entrega da venda - ${FILTROS_STATUS_VENDA.find(s => s.id === filtroStatus)?.label || filtroStatus} (${total} venda${total !== 1 ? 's' : ''})`
+              : `Linha do tempo de todas as movimentacoes (${total} evento${total !== 1 ? 's' : ''})`}
           </div>
 
           <div className="history-panel">
@@ -1186,7 +1176,7 @@ function HistoricoPage() {
               <div className="history-empty">Carregando histórico...</div>
             ) : erro ? (
               <div className="history-empty error">{erro}</div>
-            ) : logsFiltrados.length === 0 ? (
+            ) : logs.length === 0 ? (
               <div className="history-empty">Nenhuma movimentacao encontrada.</div>
             ) : modoVendasCompacto ? (
               <div className="history-sale-groups">
@@ -1203,10 +1193,10 @@ function HistoricoPage() {
               </div>
             ) : (
               <div className={`history-list ${modoVendasCompacto ? 'history-list--compact' : ''}`}>
-                {logsFiltrados.map(log => (
-                  <HistoricoItem 
-                    key={log.id} 
-                    log={log} 
+                {logs.map(log => (
+                  <HistoricoItem
+                    key={log.id}
+                    log={log}
                     compacto={modoVendasCompacto}
                     selecionado={logSelecionado?.id === log.id}
                     onClick={setLogSelecionado}
@@ -1214,7 +1204,17 @@ function HistoricoPage() {
                 ))}
               </div>
             )}
-            
+
+            {!carregando && !erro && (
+              <Paginacao
+                total={total}
+                paginaAtual={paginaAtual}
+                itensPorPagina={itensPorPagina}
+                onPagina={pagina => { setPaginaAtual(pagina); carregar(pagina); }}
+                onItensPorPagina={n => { setItensPorPagina(n); setPaginaAtual(1); carregar(1, n); }}
+              />
+            )}
+
             {logSelecionado && (
               <DetalheCard 
                 log={logSelecionado} 
