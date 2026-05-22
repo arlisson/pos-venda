@@ -64,6 +64,39 @@
   padding: 18px 16px;
 }
 
+.history-panel__scroll {
+  min-width: 0;
+}
+
+/* Layout de altura fixa: o conteúdo rola por dentro do painel e a paginação
+   (e a barra de scroll horizontal) ficam sempre visíveis, sem precisar rolar
+   até o fim. Aplicado só acima do breakpoint de cards (≤640px rola a página). */
+@media (min-width: 641px) {
+  .history-shell {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .history-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .history-panel__scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+
+  .history-panel > .paginacao {
+    flex-shrink: 0;
+  }
+}
+
 .history-list {
   position: relative;
   display: flex;

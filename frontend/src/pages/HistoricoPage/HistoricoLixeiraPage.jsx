@@ -462,24 +462,26 @@ function HistoricoLixeiraPage() {
           </div>
 
           <div className="history-panel">
-            {carregando ? (
-              <div className="history-empty">Carregando histórico...</div>
-            ) : erro ? (
-              <div className="history-empty error">{erro}</div>
-            ) : grupos.length === 0 ? (
-              <div className="history-empty">Nenhuma venda excluída encontrada.</div>
-            ) : (
-              <div className="history-sale-groups">
-                {grupos.map(grupo => (
-                  <VendaExcluidaCard
-                    key={grupo.vendaId}
-                    grupo={grupo}
-                    logSelecionado={logSelecionado}
-                    onClick={setLogSelecionado}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="history-panel__scroll">
+              {carregando ? (
+                <div className="history-empty">Carregando histórico...</div>
+              ) : erro ? (
+                <div className="history-empty error">{erro}</div>
+              ) : grupos.length === 0 ? (
+                <div className="history-empty">Nenhuma venda excluída encontrada.</div>
+              ) : (
+                <div className="history-sale-groups">
+                  {grupos.map(grupo => (
+                    <VendaExcluidaCard
+                      key={grupo.vendaId}
+                      grupo={grupo}
+                      logSelecionado={logSelecionado}
+                      onClick={setLogSelecionado}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
 
             {!carregando && !erro && (
               <Paginacao

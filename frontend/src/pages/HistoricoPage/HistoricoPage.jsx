@@ -1172,38 +1172,40 @@ function HistoricoPage() {
           </div>
 
           <div className="history-panel">
-            {carregando ? (
-              <div className="history-empty">Carregando histórico...</div>
-            ) : erro ? (
-              <div className="history-empty error">{erro}</div>
-            ) : logs.length === 0 ? (
-              <div className="history-empty">Nenhuma movimentacao encontrada.</div>
-            ) : modoVendasCompacto ? (
-              <div className="history-sale-groups">
-                {gruposVenda.map(grupo => (
-                  <VendaHistoricoGrupo
-                    key={grupo.vendaId}
-                    grupo={grupo}
-                    logSelecionado={logSelecionado}
-                    onClick={setLogSelecionado}
-                    onAbrirVenda={abrirVenda}
-                    modalCarregando={modalCarregando}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className={`history-list ${modoVendasCompacto ? 'history-list--compact' : ''}`}>
-                {logs.map(log => (
-                  <HistoricoItem
-                    key={log.id}
-                    log={log}
-                    compacto={modoVendasCompacto}
-                    selecionado={logSelecionado?.id === log.id}
-                    onClick={setLogSelecionado}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="history-panel__scroll">
+              {carregando ? (
+                <div className="history-empty">Carregando histórico...</div>
+              ) : erro ? (
+                <div className="history-empty error">{erro}</div>
+              ) : logs.length === 0 ? (
+                <div className="history-empty">Nenhuma movimentacao encontrada.</div>
+              ) : modoVendasCompacto ? (
+                <div className="history-sale-groups">
+                  {gruposVenda.map(grupo => (
+                    <VendaHistoricoGrupo
+                      key={grupo.vendaId}
+                      grupo={grupo}
+                      logSelecionado={logSelecionado}
+                      onClick={setLogSelecionado}
+                      onAbrirVenda={abrirVenda}
+                      modalCarregando={modalCarregando}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className={`history-list ${modoVendasCompacto ? 'history-list--compact' : ''}`}>
+                  {logs.map(log => (
+                    <HistoricoItem
+                      key={log.id}
+                      log={log}
+                      compacto={modoVendasCompacto}
+                      selecionado={logSelecionado?.id === log.id}
+                      onClick={setLogSelecionado}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
 
             {!carregando && !erro && (
               <Paginacao
