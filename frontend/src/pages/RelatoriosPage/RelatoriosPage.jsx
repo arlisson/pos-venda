@@ -1,40 +1,59 @@
 import { useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
+import * as I from '../../components/Icons';
 import { listarVendedoras, obterRelatoriosVendas } from '../../services/venda.service';
 import './RelatoriosPage.css';
 
 const PERIODOS = [
-  { value: 'mes_atual', label: 'Mês atual' },
-  { value: 'ultimos_30_dias', label: 'Últimos 30 dias' },
   { value: 'hoje', label: 'Hoje' },
-  { value: 'semana_atual', label: 'Semana atual' },
+  { value: 'semana_atual', label: 'Semana' },
+  { value: 'mes_atual', label: 'Mês atual' },
+  { value: 'ultimos_30_dias', label: '30 dias' },
   { value: 'personalizado', label: 'Personalizado' }
 ];
 
+const OPERATOR_COLORS = {
+  Vivo: '#7c3aed',
+  TIM: '#2563eb',
+  Claro: '#dc2626'
+};
+
+// Paleta de reserva para operadoras fora da lista fixa.
+const FALLBACK_COLORS = ['#0891b2', '#ea580c', '#16a34a', '#db2777', '#ca8a04', '#4f46e5'];
+
+// Progressão indigo para as etapas do funil (+ verde para a conclusão).
+const FUNNEL_COLORS = ['#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#4f46e5', '#10b981'];
+
 const EMPTY_REPORT = {
+  periodo: { tipo: 'mes_atual', data_inicio: '', data_fim: '' },
+  filtros: { vendedora_id: null },
   cards: {
     vendasAndamento: { quantidade: 0, valor: 0 },
     concluidas: { quantidade: 0, valor: 0 },
     perdaRetorno: { quantidade: 0, valor: 0, chips: 0 },
     taxaRetorno: { percentual: 0, chipsRetornados: 0, chipsVendidos: 0 }
   },
+  resumoPeriodo: { totalVendas: 0, valorTotal: 0, ticketMedio: 0 },
+  comparativo: {
+    concluidas: { valor: 0 },
+    taxaRetorno: { percentual: 0 },
+    vendasAndamento: { quantidade: 0 },
+    ticketMedio: 0,
+    totalVendas: 0
+  },
+  serieDiaria: [],
+  motivosRetorno: [],
   vendasPorFase: [],
   porOperadora: [],
   rankingVendedores: []
 };
 
+// === Helpers ===
 function formatarMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL'
   });
-}
-
-function formatarPercentual(valor) {
-  return `${Number(valor || 0).toLocaleString('pt-BR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  })}%`;
 }
 
 function obterIniciais(nome = '') {
@@ -49,18 +68,277 @@ function obterIniciais(nome = '') {
   return iniciais || '--';
 }
 
-function MetricCard({ label, value, detail, tone }) {
+function niceMax(v) {
+  if (v <= 0) return 10;
+  const exp = Math.floor(Math.log10(v));
+  const f = v / Math.pow(10, exp);
+  let nice;
+  if (f <= 1) nice = 1;
+  else if (f <= 2) nice = 2;
+  else if (f <= 5) nice = 5;
+  else nice = 10;
+  return nice * Math.pow(10, exp);
+}
+
+function fmtCompactBRL(v) {
+  if (v >= 1000000) return `R$ ${(v / 1000000).toFixed(1).replace('.', ',')}M`;
+  if (v >= 1000) return `R$ ${(v / 1000).toFixed(v >= 10000 ? 0 : 1).replace('.', ',')}k`;
+  return `R$ ${v.toFixed(0)}`;
+}
+
+function parseISODate(iso) {
+  if (!iso) return null;
+  const [ano, mes, dia] = String(iso).slice(0, 10).split('-').map(Number);
+  if (!ano || !mes || !dia) return null;
+  return new Date(ano, mes - 1, dia);
+}
+
+function fmtDiaMes(iso) {
+  const data = parseISODate(iso);
+  if (!data) return '';
+  return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+}
+
+function fmtRange(inicio, fim) {
+  const ini = fmtDiaMes(inicio);
+  const end = fmtDiaMes(fim);
+  if (!ini && !end) return '';
+  return `${ini} — ${end}`;
+}
+
+function deltaText(curr, prev) {
+  if (prev === 0 && curr === 0) return { sign: 0, abs: 0, pct: 0 };
+  const abs = curr - prev;
+  const pct = prev !== 0 ? (abs / prev) * 100 : (curr > 0 ? 100 : 0);
+  return { sign: Math.sign(abs), abs: Math.abs(abs), pct: Math.abs(pct) };
+}
+
+function operadoraCor(nome, indice) {
+  return OPERATOR_COLORS[nome] || FALLBACK_COLORS[indice % FALLBACK_COLORS.length];
+}
+
+// === Sparkline (pequeno, inline) ===
+function Sparkline({ values, accent = 'var(--text)', w = 80, h = 24 }) {
+  if (!values || values.length < 2) return null;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - 1.5 - ((v - min) / range) * (h - 3);
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  });
+  const line = pts.join(' ');
+  const area = `0,${h} ${line} ${w},${h}`;
   return (
-    <article className={`relatorios-card ${tone ? `is-${tone}` : ''}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {detail && <small>{detail}</small>}
-    </article>
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} preserveAspectRatio="none" className="spark-inline">
+      <polygon points={area} fill={accent} opacity="0.1" />
+      <polyline points={line} stroke={accent} strokeWidth="1.5" fill="none" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+    </svg>
   );
 }
 
-function EmptyState({ children }) {
-  return <div className="relatorios-empty">{children}</div>;
+// === Gráfico de linha com média e destaque de pico ===
+function LineChart({ data, height = 280, color = '#4f46e5' }) {
+  const W = 800;
+  const H = height;
+  const pad = { top: 32, right: 24, bottom: 36, left: 64 };
+  const innerW = W - pad.left - pad.right;
+  const innerH = H - pad.top - pad.bottom;
+  const values = data.map(d => d.revenue);
+  const maxRaw = Math.max(...values, 1);
+  const maxV = niceMax(maxRaw * 1.2);
+  const total = values.reduce((s, x) => s + x, 0);
+  const avg = total / values.length;
+  const peakIdx = values.indexOf(maxRaw);
+
+  const xS = (i) => pad.left + (i / Math.max(data.length - 1, 1)) * innerW;
+  const yS = (v) => pad.top + (1 - v / maxV) * innerH;
+  const pts = data.map((d, i) => [xS(i), yS(d.revenue)]);
+  const linePts = pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const areaPts = `${pad.left},${(pad.top + innerH).toFixed(1)} ${linePts} ${(pad.left + innerW).toFixed(1)},${(pad.top + innerH).toFixed(1)}`;
+  const yTicks = 4;
+  const xStep = Math.max(1, Math.floor(data.length / 6));
+  const peakX = pts[peakIdx][0];
+  const peakY = pts[peakIdx][1];
+  const avgY = yS(avg);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="chart-line" width="100%" preserveAspectRatio="xMidYMid meet">
+      {/* Gridlines Y + rótulos */}
+      {Array.from({ length: yTicks + 1 }, (_, i) => {
+        const v = (maxV / yTicks) * i;
+        const y = yS(v);
+        return (
+          <g key={i}>
+            <line
+              x1={pad.left} y1={y}
+              x2={pad.left + innerW} y2={y}
+              stroke={i === 0 ? 'var(--border-strong)' : 'var(--border)'}
+              strokeDasharray={i === 0 ? '' : '2,3'}
+            />
+            <text
+              x={pad.left - 10} y={y}
+              fill="var(--text-3)" fontSize="11"
+              textAnchor="end" dominantBaseline="middle"
+            >
+              {fmtCompactBRL(v)}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Linha de média */}
+      {avg > 0 && (
+        <g>
+          <line
+            x1={pad.left} y1={avgY}
+            x2={pad.left + innerW} y2={avgY}
+            stroke="var(--text-3)" strokeWidth="1"
+            strokeDasharray="4,4" opacity="0.7"
+          />
+          <rect
+            x={pad.left + innerW - 86} y={avgY - 9}
+            width={84} height={16} rx={3}
+            fill="var(--surface)" stroke="var(--border)"
+          />
+          <text
+            x={pad.left + innerW - 80} y={avgY + 1}
+            fill="var(--text-2)" fontSize="10.5"
+            dominantBaseline="middle"
+          >
+            <tspan fill="var(--text-3)">Média </tspan>
+            <tspan fontFamily="var(--font-mono)" fontWeight="600" fill="var(--text)">{fmtCompactBRL(avg)}</tspan>
+          </text>
+        </g>
+      )}
+
+      {/* Área + linha */}
+      <defs>
+        <linearGradient id="chart-area-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <polygon points={areaPts} fill="url(#chart-area-grad)" />
+      <polyline points={linePts} stroke={color} strokeWidth="2" fill="none" strokeLinejoin="round" />
+
+      {/* Pontos */}
+      {pts.map((p, i) => (
+        <circle key={i} cx={p[0]} cy={p[1]} r={i === peakIdx ? 4.5 : 2.5}
+          fill={i === peakIdx ? color : 'var(--surface)'}
+          stroke={color} strokeWidth="1.5" />
+      ))}
+
+      {/* Destaque do pico */}
+      {maxRaw > 0 && (
+        <g>
+          <line
+            x1={peakX} y1={peakY - 8}
+            x2={peakX} y2={peakY - 22}
+            stroke={color} strokeWidth="1"
+          />
+          <rect
+            x={Math.min(Math.max(peakX - 60, pad.left), pad.left + innerW - 120)}
+            y={peakY - 38}
+            width="120" height="22" rx="4"
+            fill={color}
+          />
+          <text
+            x={Math.min(Math.max(peakX - 60, pad.left), pad.left + innerW - 120) + 60}
+            y={peakY - 23}
+            fill="white" fontSize="10.5"
+            textAnchor="middle" dominantBaseline="middle"
+          >
+            <tspan opacity="0.75">PICO · </tspan>
+            <tspan fontFamily="var(--font-mono)" fontWeight="600">{fmtCompactBRL(maxRaw)}</tspan>
+          </text>
+        </g>
+      )}
+
+      {/* Rótulos do eixo X */}
+      {data.map((d, i) => (
+        i % xStep === 0 && (
+          <text key={i} x={xS(i)} y={H - 12}
+            fill="var(--text-3)" fontSize="10.5"
+            textAnchor="middle">
+            {d.date ? d.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : ''}
+          </text>
+        )
+      ))}
+    </svg>
+  );
+}
+
+// === Donut ===
+function Donut({ slices, size = 170, thickness = 24, center }) {
+  const total = slices.reduce((s, x) => s + x.value, 0) || 1;
+  const r = size / 2 - thickness / 2;
+  const cx = size / 2, cy = size / 2;
+  const circ = 2 * Math.PI * r;
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="donut-svg">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={thickness} />
+      {slices.map((s, i) => {
+        const frac = s.value / total;
+        const seg = frac * circ;
+        const acc = slices.slice(0, i).reduce((sum, x) => sum + x.value / total, 0);
+        return (
+          <circle key={i}
+            cx={cx} cy={cy} r={r}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={thickness}
+            strokeDasharray={`${seg.toFixed(2)} ${(circ - seg).toFixed(2)}`}
+            strokeDashoffset={(-acc * circ).toFixed(2)}
+            transform={`rotate(-90 ${cx} ${cy})`}
+            strokeLinecap="butt"
+          />
+        );
+      })}
+      {center && (
+        <g>
+          <text x={cx} y={cy - 7} textAnchor="middle"
+            fontSize="10" fill="var(--text-3)"
+            style={{ letterSpacing: '0.08em' }}>
+            {center.label}
+          </text>
+          <text x={cx} y={cy + 11} textAnchor="middle"
+            fontSize="18" fontWeight="700"
+            fill="var(--text)" fontFamily="var(--font-mono)"
+            style={{ letterSpacing: '-0.02em' }}>
+            {center.value}
+          </text>
+          {center.sub && (
+            <text x={cx} y={cy + 26} textAnchor="middle"
+              fontSize="10" fill="var(--text-3)"
+              fontFamily="var(--font-mono)">
+              {center.sub}
+            </text>
+          )}
+        </g>
+      )}
+    </svg>
+  );
+}
+
+// === Delta inline ===
+function Delta({ value, suffix = '%', inverse = false }) {
+  const positive = value > 0;
+  const negative = value < 0;
+  // inverse = subir é ruim (ex.: retornos)
+  const goodClass = inverse
+    ? (negative ? 'up' : positive ? 'down' : '')
+    : (positive ? 'up' : negative ? 'down' : '');
+  return (
+    <span className={`delta ${goodClass}`}>
+      {positive ? '↑' : negative ? '↓' : '—'} {Math.abs(value).toFixed(1)}{suffix}
+    </span>
+  );
+}
+
+function EmptyState({ children, style }) {
+  return <div className="empty" style={style}>{children}</div>;
 }
 
 function RelatoriosPage() {
@@ -72,6 +350,7 @@ function RelatoriosPage() {
   const [relatorio, setRelatorio] = useState(EMPTY_REPORT);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     listarVendedoras()
@@ -100,7 +379,7 @@ function RelatoriosPage() {
         const data = await obterRelatoriosVendas(filtros);
 
         if (ativo) {
-          setRelatorio(data || EMPTY_REPORT);
+          setRelatorio({ ...EMPTY_REPORT, ...(data || {}) });
         }
       } catch (error) {
         if (ativo) {
@@ -119,174 +398,461 @@ function RelatoriosPage() {
     return () => {
       ativo = false;
     };
-  }, [periodo, dataInicio, dataFim, vendedoraId]);
-
-  const maxOperadora = useMemo(() => (
-    Math.max(...(relatorio.porOperadora || []).map(item => Number(item.valor || 0)), 0)
-  ), [relatorio.porOperadora]);
-
-  const maxFase = useMemo(() => (
-    Math.max(...(relatorio.vendasPorFase || []).map(item => Number(item.valor || 0)), 0)
-  ), [relatorio.vendasPorFase]);
-
-  const maxRanking = useMemo(() => (
-    Math.max(...(relatorio.rankingVendedores || []).map(item => Number(item.valor || 0)), 0)
-  ), [relatorio.rankingVendedores]);
+  }, [periodo, dataInicio, dataFim, vendedoraId, refreshKey]);
 
   const cards = relatorio.cards || EMPTY_REPORT.cards;
+  const resumo = relatorio.resumoPeriodo || EMPTY_REPORT.resumoPeriodo;
+  const comparativo = relatorio.comparativo || EMPTY_REPORT.comparativo;
+  const serie = useMemo(() => relatorio.serieDiaria || [], [relatorio.serieDiaria]);
   const mostrarDatas = periodo === 'personalizado';
+
+  // Série para o gráfico e sparklines
+  const chartData = useMemo(
+    () => serie.map(d => ({ date: parseISODate(d.data), revenue: Number(d.receita || 0) })),
+    [serie]
+  );
+  const sparkRevenue = serie.map(d => Number(d.receita || 0));
+  const sparkCount = serie.map(d => Number(d.quantidade || 0));
+  const sparkReturns = serie.map(d => Number(d.retornos || 0));
+  const sparkTicket = serie.map(d => (d.quantidade > 0 ? d.receita / d.quantidade : 0));
+
+  const totalRevSeries = sparkRevenue.reduce((s, x) => s + x, 0);
+  const avgRev = serie.length > 0 ? totalRevSeries / serie.length : 0;
+  const peakDay = serie.reduce((best, d) => (Number(d.receita || 0) > Number(best?.receita || 0) ? d : best), serie[0] || null);
+  const activeDaysCount = serie.filter(d => Number(d.quantidade || 0) > 0).length;
+
+  // Deltas
+  const revD = deltaText(cards.concluidas.valor, comparativo.concluidas.valor);
+  const ticketD = deltaText(resumo.ticketMedio, comparativo.ticketMedio);
+  const returnDelta = cards.taxaRetorno.percentual - comparativo.taxaRetorno.percentual;
+
+  // Operadoras (donut)
+  const byOp = useMemo(() => (
+    (relatorio.porOperadora || [])
+      .filter(o => Number(o.valor || 0) > 0)
+      .map((o, i) => ({
+        name: o.nome,
+        value: Number(o.valor || 0),
+        count: Number(o.vendas || 0),
+        color: operadoraCor(o.nome, i)
+      }))
+  ), [relatorio.porOperadora]);
+  const totalOpValue = byOp.reduce((s, x) => s + x.value, 0) || 1;
+  const leader = byOp[0];
+
+  // Funil cumulativo (derivado das fases, excluindo a etapa de retorno)
+  const cumulative = useMemo(() => {
+    const fases = (relatorio.vendasPorFase || []).filter(f => f.id !== 'retorno');
+    return fases.map((fase, i) => ({
+      id: fase.id,
+      name: fase.nome,
+      count: fases.slice(i).reduce((s, f) => s + Number(f.vendas || 0), 0)
+    }));
+  }, [relatorio.vendasPorFase]);
+  const maxFunnel = cumulative[0]?.count || 1;
+  const totalConv = maxFunnel > 0
+    ? (cumulative[cumulative.length - 1]?.count / maxFunnel) * 100
+    : 0;
+
+  // Motivos de retorno
+  const reasons = relatorio.motivosRetorno || [];
+  const totalReturns = reasons.reduce((s, x) => s + Number(x.quantidade || 0), 0) || 1;
+
+  // Ranking
+  const ranking = relatorio.rankingVendedores || [];
+  const maxRank = Math.max(...ranking.map(r => Number(r.valor || 0)), 1);
+  const totalRank = ranking.reduce((s, x) => s + Number(x.valor || 0), 0) || 1;
+  const rankingAtivos = ranking.filter(r => Number(r.vendas || 0) > 0).length;
 
   return (
     <LayoutPrivado>
-      <section className="relatorios-page">
-        <div className="relatorios-toolbar">
-          <label>
-            <span>Período</span>
-            <select value={periodo} onChange={event => setPeriodo(event.target.value)}>
-              {PERIODOS.map(item => (
-                <option key={item.value} value={item.value}>{item.label}</option>
+      <div className="reports">
+        {/* Toolbar */}
+        <div className="reports-toolbar">
+          <div className="period-block">
+            <div className="period-tabs">
+              {PERIODOS.map(p => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={`period-tab ${periodo === p.value ? 'active' : ''}`}
+                  onClick={() => setPeriodo(p.value)}
+                >
+                  {p.label}
+                </button>
               ))}
-            </select>
-          </label>
-
-          {mostrarDatas && (
-            <>
-              <label>
-            <span>Início</span>
+            </div>
+            {mostrarDatas && (
+              <div className="period-custom">
                 <input type="date" value={dataInicio} onChange={event => setDataInicio(event.target.value)} />
-              </label>
-              <label>
-                <span>Fim</span>
+                <span>—</span>
                 <input type="date" value={dataFim} onChange={event => setDataFim(event.target.value)} />
-              </label>
-            </>
-          )}
-
-          <label>
-            <span>Usuário</span>
-            <select value={vendedoraId} onChange={event => setVendedoraId(event.target.value)}>
-              <option value="">Todos</option>
-              {vendedoras.map(usuario => (
-                <option key={usuario.id} value={usuario.id}>
-                  {usuario.nome || usuario.email}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        {erro && <div className="relatorios-alert">{erro}</div>}
-
-        <div className="relatorios-cards">
-          <MetricCard
-            label="Vendas em andamento"
-            value={cards.vendasAndamento.quantidade}
-            detail={`${formatarMoeda(cards.vendasAndamento.valor)} em pipeline`}
-          />
-          <MetricCard
-            label="Concluídas"
-            value={formatarMoeda(cards.concluidas.valor)}
-            detail={`${cards.concluidas.quantidade} vendas no período`}
-          />
-          <MetricCard
-            label="Perda por retorno"
-            value={formatarMoeda(cards.perdaRetorno.valor)}
-            detail={`${cards.perdaRetorno.chips} chips retornaram`}
-            tone="danger"
-          />
-          <MetricCard
-            label="Taxa de retorno"
-            value={formatarPercentual(cards.taxaRetorno.percentual)}
-            detail={`${cards.taxaRetorno.chipsRetornados}/${cards.taxaRetorno.chipsVendidos} chips`}
-          />
-        </div>
-
-        <div className="relatorios-grid">
-          <section className="relatorios-panel relatorios-panel--fases">
-            <div className="relatorios-panel-header">
-              <h2>Vendas por fase</h2>
-              {carregando && <span>Carregando...</span>}
-            </div>
-            {(relatorio.vendasPorFase || []).length === 0 ? (
-              <EmptyState>Nenhuma fase encontrada no período.</EmptyState>
-            ) : (
-              <div className="relatorios-bars">
-                {relatorio.vendasPorFase.map(item => {
-                  const width = maxFase > 0 ? Math.max(item.valor > 0 ? 4 : 0, (Number(item.valor || 0) / maxFase) * 100) : 0;
-
-                  return (
-                    <div className={`relatorios-bar-row ${item.retorno ? 'is-danger' : ''}`} key={item.id || item.nome}>
-                      <span className="bar-label">{item.nome}</span>
-                      <div className="bar-track">
-                        <div className="bar-fill" style={{ width: `${width}%` }} />
-                      </div>
-                      <strong>{formatarMoeda(item.valor)}</strong>
-                    </div>
-                  );
-                })}
               </div>
             )}
-          </section>
-
-          <section className="relatorios-panel relatorios-panel--operadoras">
-            <div className="relatorios-panel-header">
-              <h2>Por operadora</h2>
+            <div className="period-range">
+              <I.Calendar size={12} /> {fmtRange(relatorio.periodo?.data_inicio, relatorio.periodo?.data_fim)}
             </div>
-            {(relatorio.porOperadora || []).length === 0 ? (
-              <EmptyState>Nenhuma venda encontrada no período.</EmptyState>
-            ) : (
-              <div className="relatorios-bars">
-                {relatorio.porOperadora.map(item => {
-                  const width = maxOperadora > 0 ? Math.max(4, (Number(item.valor || 0) / maxOperadora) * 100) : 0;
+          </div>
+          <div className="reports-actions">
+            <label className="reports-seller">
+              <span className="sr-only">Usuário</span>
+              <select value={vendedoraId} onChange={event => setVendedoraId(event.target.value)}>
+                <option value="">Todos os usuários</option>
+                {vendedoras.map(usuario => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome || usuario.email}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => setRefreshKey(k => k + 1)}
+              disabled={carregando}
+            >
+              <I.Refresh size={12} /> Atualizar
+            </button>
+          </div>
+        </div>
 
-                  return (
-                    <div className="relatorios-bar-row" key={item.id || item.nome}>
-                      <span className="bar-label">{item.nome}</span>
-                      <div className="bar-track">
-                        <div className="bar-fill" style={{ width: `${width}%` }} />
-                      </div>
-                      <strong>{formatarMoeda(item.valor)}</strong>
-                    </div>
-                  );
-                })}
+        {erro && <div className="alert-error" style={{ marginBottom: 14 }}>{erro}</div>}
+
+        {/* Insight */}
+        <div className="insight-bar">
+          <div className="insight-row">
+            <I.Chart size={14} />
+            <div>
+              <strong>{resumo.totalVendas} vendas</strong> registradas no período,
+              somando <strong>{formatarMoeda(resumo.valorTotal)}</strong>.
+              {leader && (
+                <> Operadora líder: <strong>{leader.name}</strong> ({((leader.value / totalOpValue) * 100).toFixed(0)}%).</>
+              )}
+              {ranking[0] && Number(ranking[0].valor) > 0 && (
+                <> Top usuário: <strong>{ranking[0].nome}</strong> ({formatarMoeda(ranking[0].valor)}).</>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div className="kpi-grid">
+          <div className="kpi-card kpi-revenue">
+            <div className="kpi-head">
+              <div>
+                <div className="kpi-label">Receita concluída</div>
+                <div className="kpi-sublabel">vendas em "Concluído"</div>
               </div>
-            )}
-          </section>
-
-          <section className="relatorios-panel relatorios-panel--ranking">
-            <div className="relatorios-panel-header">
-              <h2>Ranking de vendedores</h2>
-              <span>{vendedoraId ? 'Usuário filtrado' : 'Todos os usuários'}</span>
+              <Sparkline values={sparkRevenue} accent="#10b981" />
             </div>
-            {(relatorio.rankingVendedores || []).length === 0 ? (
-              <EmptyState>Nenhum desempenho encontrado.</EmptyState>
-            ) : (
-              <div className="relatorios-ranking">
-                {relatorio.rankingVendedores.map(item => {
-                  const width = maxRanking > 0 ? Math.max(4, (Number(item.valor || 0) / maxRanking) * 100) : 0;
+            <div className="kpi-value">{formatarMoeda(cards.concluidas.valor)}</div>
+            <div className="kpi-foot">
+              <Delta value={revD.sign * revD.pct} />
+              <span className="abs">
+                {revD.sign > 0 ? '+' : revD.sign < 0 ? '−' : ''}{fmtCompactBRL(revD.abs)} vs. anterior
+              </span>
+            </div>
+          </div>
 
-                  return (
-                    <div className="ranking-row" key={item.id || item.nome}>
-                      <div className="ranking-person">
-                        <span className="ranking-avatar">{obterIniciais(item.nome)}</span>
-                        <div>
-                          <strong>{item.nome}</strong>
-                          {item.email && <small>{item.email}</small>}
+          <div className="kpi-card kpi-active">
+            <div className="kpi-head">
+              <div>
+                <div className="kpi-label">Em andamento</div>
+                <div className="kpi-sublabel">vendas no pipeline</div>
+              </div>
+              <Sparkline values={sparkCount} accent="#4f46e5" />
+            </div>
+            <div className="kpi-value">{cards.vendasAndamento.quantidade}</div>
+            <div className="kpi-foot">
+              <span className="pipeline-val">{formatarMoeda(cards.vendasAndamento.valor)}</span>
+              <span className="abs">em valor a faturar</span>
+            </div>
+          </div>
+
+          <div className="kpi-card kpi-return">
+            <div className="kpi-head">
+              <div>
+                <div className="kpi-label">Taxa de retorno</div>
+                <div className="kpi-sublabel">% chips devolvidos</div>
+              </div>
+              <Sparkline values={sparkReturns} accent="#dc2626" />
+            </div>
+            <div className="kpi-value">{Number(cards.taxaRetorno.percentual || 0).toFixed(1)}%</div>
+            <div className="kpi-foot">
+              <Delta value={returnDelta} suffix=" p.p." inverse />
+              <span className="abs">
+                {cards.perdaRetorno.chips} {cards.perdaRetorno.chips === 1 ? 'chip retornou' : 'chips retornaram'}
+              </span>
+            </div>
+          </div>
+
+          <div className="kpi-card kpi-ticket">
+            <div className="kpi-head">
+              <div>
+                <div className="kpi-label">Ticket médio</div>
+                <div className="kpi-sublabel">valor médio por venda</div>
+              </div>
+              <Sparkline values={sparkTicket} accent="#7c3aed" />
+            </div>
+            <div className="kpi-value">{formatarMoeda(resumo.ticketMedio)}</div>
+            <div className="kpi-foot">
+              <Delta value={ticketD.sign * ticketD.pct} />
+              <span className="abs">{resumo.totalVendas} vendas analisadas</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Linha 1: receita diária + operadoras */}
+        <div className="reports-row r-2">
+          <div className="panel report-panel">
+            <div className="panel-header">
+              <div className="title-block">
+                <h3>Receita diária</h3>
+                <div className="sub">R$ por dia · {serie.length} dias</div>
+              </div>
+              <div className="chart-summary">
+                <div className="cs-item">
+                  <span className="cs-label">Total</span>
+                  <span className="cs-val">{fmtCompactBRL(totalRevSeries)}</span>
+                </div>
+                <div className="cs-sep"></div>
+                <div className="cs-item">
+                  <span className="cs-label">Média/dia</span>
+                  <span className="cs-val">{fmtCompactBRL(avgRev)}</span>
+                </div>
+                <div className="cs-sep"></div>
+                <div className="cs-item">
+                  <span className="cs-label">Pico</span>
+                  <span className="cs-val">{fmtCompactBRL(Number(peakDay?.receita || 0))}</span>
+                  <span className="cs-sublabel">{fmtDiaMes(peakDay?.data)}</span>
+                </div>
+                <div className="cs-sep"></div>
+                <div className="cs-item">
+                  <span className="cs-label">Dias ativos</span>
+                  <span className="cs-val">{activeDaysCount}/{serie.length}</span>
+                </div>
+              </div>
+            </div>
+            <div className="panel-body" style={{ padding: '4px 12px 8px' }}>
+              {chartData.length > 1 ? (
+                <LineChart data={chartData} height={280} />
+              ) : (
+                <EmptyState style={{ padding: '40px 8px' }}>Sem dados suficientes no período.</EmptyState>
+              )}
+            </div>
+          </div>
+
+          <div className="panel report-panel">
+            <div className="panel-header">
+              <div className="title-block">
+                <h3>Por operadora</h3>
+                <div className="sub">Receita total no período</div>
+              </div>
+            </div>
+            <div className="panel-body">
+              {byOp.length === 0 ? (
+                <EmptyState style={{ padding: '24px 8px' }}>Nenhuma venda no período.</EmptyState>
+              ) : (
+                <div className="donut-wrap">
+                  <Donut
+                    slices={byOp}
+                    center={{
+                      value: fmtCompactBRL(totalOpValue),
+                      label: 'RECEITA',
+                      sub: `${resumo.totalVendas} vendas`
+                    }}
+                  />
+                  <div className="donut-legend">
+                    {byOp.map(o => {
+                      const pct = (o.value / totalOpValue) * 100;
+                      return (
+                        <div key={o.name} className="leg-row">
+                          <div className="leg-head">
+                            <span className="swatch" style={{ background: o.color }}></span>
+                            <span className="name">{o.name}</span>
+                            <span className="pct">{pct.toFixed(0)}%</span>
+                          </div>
+                          <div className="leg-track">
+                            <div className="leg-fill" style={{ width: `${pct}%`, background: o.color }}></div>
+                          </div>
+                          <div className="leg-meta">
+                            <span>{formatarMoeda(o.value)}</span>
+                            <span>{o.count} {o.count === 1 ? 'venda' : 'vendas'}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Linha 2: funil + motivos de retorno */}
+        <div className="reports-row r-2">
+          <div className="panel report-panel">
+            <div className="panel-header">
+              <div className="title-block">
+                <h3>Funil de conversão</h3>
+                <div className="sub">
+                  Conversão geral: <strong style={{ color: 'var(--text)' }}>{totalConv.toFixed(0)}%</strong> do topo chegam ao fim
+                </div>
+              </div>
+            </div>
+            <div className="panel-body">
+              {cumulative.length === 0 ? (
+                <EmptyState style={{ padding: '24px 8px' }}>Nenhuma fase encontrada no período.</EmptyState>
+              ) : (
+                <div className="funnel-chart">
+                  {cumulative.map((st, i) => {
+                    const pct = st.count / maxFunnel;
+                    const prev = i > 0 ? cumulative[i - 1].count : null;
+                    const conv = prev !== null && prev > 0 ? (st.count / prev) * 100 : null;
+                    const drop = prev !== null ? prev - st.count : null;
+                    const cor = FUNNEL_COLORS[Math.min(i, FUNNEL_COLORS.length - 1)];
+                    const escuro = i < 2;
+                    return (
+                      <div key={st.id} className="funnel-stage">
+                        <div className="fn-row">
+                          <div className="fn-label">
+                            <span className="fn-step" style={{ background: cor, color: escuro ? '#1e1b4b' : 'white' }}>{i + 1}</span>
+                            {st.name}
+                          </div>
+                          <div className="funnel-bar-wrap">
+                            <div
+                              className="funnel-bar-fill"
+                              style={{ width: `${Math.max(pct * 100, 6)}%`, background: cor }}
+                            >
+                              <span className="fn-count" style={{ color: escuro ? '#1e1b4b' : 'white' }}>{st.count}</span>
+                              <span className="fn-pct" style={{ color: escuro ? '#1e1b4b' : 'white' }}>{(pct * 100).toFixed(0)}% do topo</span>
+                            </div>
+                          </div>
+                          <div className="fn-conv">
+                            {conv !== null ? (
+                              <>
+                                <div className={`fn-conv-pct ${conv < 80 ? 'warn' : ''}`}>
+                                  {conv.toFixed(0)}%
+                                </div>
+                                <div className="fn-conv-sub">
+                                  {drop > 0 ? `−${drop} saíram` : 'sem perdas'}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="fn-conv-sub strong">Topo do funil</div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="ranking-bar">
-                        <div style={{ width: `${width}%` }} />
-                      </div>
-                      <span>{formatarMoeda(item.valor)}</span>
-                      <small>{item.vendas} vds</small>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="panel report-panel">
+            <div className="panel-header">
+              <div className="title-block">
+                <h3>Motivos de retorno</h3>
+                <div className="sub">{reasons.length > 0 ? `${totalReturns} ${totalReturns === 1 ? 'retorno registrado' : 'retornos registrados'}` : 'sem retornos'}</div>
               </div>
-            )}
-          </section>
+            </div>
+            <div className="panel-body">
+              {reasons.length === 0 ? (
+                <EmptyState style={{ padding: '24px 8px' }}>Nenhum retorno no período</EmptyState>
+              ) : (
+                <div className="reasons-list">
+                  {reasons.map((r, idx) => {
+                    const pct = (Number(r.quantidade) / totalReturns) * 100;
+                    return (
+                      <div key={r.motivo} className="reason-row">
+                        <div className="rr-head">
+                          <span className="rr-rank">#{idx + 1}</span>
+                          <span className="label">{r.motivo}</span>
+                          <span className="rr-pct">{pct.toFixed(0)}%</span>
+                        </div>
+                        <div className="rr-foot">
+                          <div className="bar-track">
+                            <div className="bar-fill" style={{ width: `${pct}%` }}></div>
+                          </div>
+                          <span className="count">{r.quantidade} {Number(r.quantidade) === 1 ? 'chip' : 'chips'}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </section>
+
+        {/* Ranking */}
+        <div className="panel report-panel">
+          <div className="panel-header">
+            <div className="title-block">
+              <h3>Ranking de usuários</h3>
+              <div className="sub">Ordenado por receita no período · {rankingAtivos} ativos</div>
+            </div>
+          </div>
+          <div className="panel-body" style={{ padding: '4px 18px 14px' }}>
+            {ranking.length === 0 ? (
+              <EmptyState style={{ padding: '24px 8px' }}>Nenhum desempenho encontrado.</EmptyState>
+            ) : (
+              <table className="ranking-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 40 }}></th>
+                    <th>Usuário</th>
+                    <th></th>
+                    <th style={{ textAlign: 'right' }}>Receita</th>
+                    <th style={{ textAlign: 'right' }}>% do total</th>
+                    <th style={{ textAlign: 'right' }}>Vendas</th>
+                    <th style={{ textAlign: 'right' }}>Retornos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ranking.map((r, i) => {
+                    const share = (Number(r.valor || 0) / totalRank) * 100;
+                    const retornos = Number(r.retornos || 0);
+                    return (
+                      <tr key={r.id || r.nome}>
+                        <td>
+                          <span className={`rank-medal ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}`}>
+                            {i + 1}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="seller-cell">
+                            <span className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>
+                              {obterIniciais(r.nome)}
+                            </span>
+                            <span className="name">{r.nome}</span>
+                          </div>
+                        </td>
+                        <td className="bar-cell">
+                          <div className="bar-track">
+                            <div
+                              className={`bar-fill ${i > 2 ? 'muted' : ''}`}
+                              style={{ width: `${(Number(r.valor || 0) / maxRank) * 100}%` }}
+                            ></div>
+                          </div>
+                        </td>
+                        <td className="val-cell">{formatarMoeda(r.valor)}</td>
+                        <td className="count-cell">{share.toFixed(0)}%</td>
+                        <td className="count-cell">{r.vendas}</td>
+                        <td className={`count-cell ${retornos > 0 ? 'danger' : ''}`}>
+                          {retornos}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
     </LayoutPrivado>
   );
 }

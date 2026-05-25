@@ -1786,19 +1786,14 @@ async function obterResumoDashboard(usuarioId) {
   };
 }
 
-async function obterRelatoriosVendas(filtros = {}) {
-  const periodo = resolverPeriodoRelatorio(filtros);
-  const dataReferencia = dataReferenciaVendaSQL('v');
-  const etapaFinal = await obterCodigoEtapaFinal();
-  const vendedoraId = filtros.vendedora_id ? Number(filtros.vendedora_id) : null;
-
+function construirQueryRelatorio({ dataInicio, dataFimExclusiva, vendedoraId, dataReferencia }) {
   const query = Venda.query()
     .alias('v')
     .leftJoin('operadoras as o', 'v.operadora_id', 'o.id')
     .leftJoin('usuarios as u', 'v.vendedora_id', 'u.id')
     .whereNull('v.excluido_em')
-    .whereRaw(`${dataReferencia} >= ?`, [periodo.dataInicio])
-    .whereRaw(`${dataReferencia} < ?`, [periodo.dataFimExclusiva])
+    .whereRaw(`${dataReferencia} >= ?`, [dataInicio])
+    .whereRaw(`${dataReferencia} < ?`, [dataFimExclusiva])
     .select(
       'v.id',
       'v.status_funil',
@@ -1807,26 +1802,160 @@ async function obterRelatoriosVendas(filtros = {}) {
       'v.quantidade_linhas',
       'v.operadora_id',
       'v.vendedora_id',
+      'v.motivo_retorno',
       'o.nome as operadora_nome',
       'u.nome as vendedora_nome',
-      'u.email as vendedora_email'
+      'u.email as vendedora_email',
+      Venda.raw(`${dataReferencia} as data_referencia`)
     );
 
   if (vendedoraId) {
     query.where('v.vendedora_id', vendedoraId);
   }
 
-  const vendas = await query;
+  return query;
+}
+
+function resolverPeriodoAnterior(periodo) {
+  const inicio = criarDataLocalISO(periodo.dataInicio);
+  const fim = criarDataLocalISO(periodo.dataFim);
+  if (!inicio || !fim) return null;
+
+  const duracaoDias = Math.round((fim - inicio) / 86400000) + 1;
+  const fimAnterior = adicionarDias(inicio, -1);
+  const inicioAnterior = adicionarDias(fimAnterior, -(duracaoDias - 1));
+
+  return {
+    dataInicio: formatarDataISO(inicioAnterior),
+    dataFim: formatarDataISO(fimAnterior),
+    dataFimExclusiva: formatarDataISO(adicionarDias(fimAnterior, 1))
+  };
+}
+
+function agregarVendasPeriodo(vendas, etapaFinal) {
   const vendasAndamento = vendas.filter(venda => ![etapaFinal, 'retorno'].includes(venda.status_funil));
   const vendasConcluidas = vendas.filter(venda => venda.status_funil === etapaFinal);
   const vendasRetorno = vendas.filter(venda => venda.status_funil === 'retorno');
   const vendasValidas = vendas.filter(venda => venda.status_funil !== 'retorno');
   const chipsRetornados = vendasRetorno.reduce((total, venda) => total + obterQuantidadeChipsVenda(venda), 0);
   const chipsVendidos = vendas.reduce((total, venda) => total + obterQuantidadeChipsVenda(venda), 0);
+  const valorTotalValidas = somarValorVendas(vendasValidas);
+
+  return {
+    vendasAndamento,
+    vendasConcluidas,
+    vendasRetorno,
+    vendasValidas,
+    cards: {
+      vendasAndamento: {
+        quantidade: vendasAndamento.length,
+        valor: somarValorVendas(vendasAndamento)
+      },
+      concluidas: {
+        quantidade: vendasConcluidas.length,
+        valor: somarValorVendas(vendasConcluidas)
+      },
+      perdaRetorno: {
+        quantidade: vendasRetorno.length,
+        valor: somarValorVendas(vendasRetorno),
+        chips: chipsRetornados
+      },
+      taxaRetorno: {
+        percentual: chipsVendidos > 0 ? Number(((chipsRetornados / chipsVendidos) * 100).toFixed(1)) : 0,
+        chipsRetornados,
+        chipsVendidos
+      }
+    },
+    resumoPeriodo: {
+      totalVendas: vendasValidas.length,
+      valorTotal: valorTotalValidas,
+      ticketMedio: vendasValidas.length > 0
+        ? Number((valorTotalValidas / vendasValidas.length).toFixed(2))
+        : 0
+    }
+  };
+}
+
+function montarSerieDiariaRelatorio(vendas, periodo) {
+  const mapa = new Map();
+
+  vendas.forEach(venda => {
+    const dia = normalizarData(venda.data_referencia);
+    if (!dia) return;
+
+    const registro = mapa.get(dia) || { receita: 0, quantidade: 0, retornos: 0 };
+    if (venda.status_funil !== 'retorno') {
+      registro.receita += Number(venda.valor_total || 0);
+    }
+    registro.quantidade += 1;
+    if (venda.status_funil === 'retorno') registro.retornos += 1;
+    mapa.set(dia, registro);
+  });
+
+  const serie = [];
+  const inicio = criarDataLocalISO(periodo.dataInicio);
+  const fim = criarDataLocalISO(periodo.dataFim);
+  if (!inicio || !fim) return serie;
+
+  for (let cursor = new Date(inicio); cursor <= fim; cursor = adicionarDias(cursor, 1)) {
+    const dia = formatarDataISO(cursor);
+    const registro = mapa.get(dia) || { receita: 0, quantidade: 0, retornos: 0 };
+    serie.push({
+      data: dia,
+      receita: Number(registro.receita.toFixed(2)),
+      quantidade: registro.quantidade,
+      retornos: registro.retornos
+    });
+  }
+
+  return serie;
+}
+
+function montarMotivosRetornoRelatorio(vendasRetorno) {
+  const mapa = new Map();
+
+  vendasRetorno.forEach(venda => {
+    const motivoBruto = (venda.motivo_retorno || '').trim();
+    const motivo = motivoBruto || 'Não informado';
+    mapa.set(motivo, (mapa.get(motivo) || 0) + 1);
+  });
+
+  return Array.from(mapa.entries())
+    .map(([motivo, quantidade]) => ({ motivo, quantidade }))
+    .sort((a, b) => b.quantidade - a.quantidade);
+}
+
+async function obterRelatoriosVendas(filtros = {}) {
+  const periodo = resolverPeriodoRelatorio(filtros);
+  const periodoAnterior = resolverPeriodoAnterior(periodo);
+  const dataReferencia = dataReferenciaVendaSQL('v');
+  const etapaFinal = await obterCodigoEtapaFinal();
+  const vendedoraId = filtros.vendedora_id ? Number(filtros.vendedora_id) : null;
+
+  const [vendas, vendasAnteriores] = await Promise.all([
+    construirQueryRelatorio({
+      dataInicio: periodo.dataInicio,
+      dataFimExclusiva: periodo.dataFimExclusiva,
+      vendedoraId,
+      dataReferencia
+    }),
+    periodoAnterior
+      ? construirQueryRelatorio({
+          dataInicio: periodoAnterior.dataInicio,
+          dataFimExclusiva: periodoAnterior.dataFimExclusiva,
+          vendedoraId,
+          dataReferencia
+        })
+      : Promise.resolve([])
+  ]);
+
+  const atual = agregarVendasPeriodo(vendas, etapaFinal);
+  const anterior = agregarVendasPeriodo(vendasAnteriores, etapaFinal);
+
   const porOperadoraMap = new Map();
   const rankingMap = new Map();
 
-  vendasValidas.forEach(venda => {
+  atual.vendasValidas.forEach(venda => {
     const valor = Number(venda.valor_total || 0);
     const chips = obterQuantidadeChipsVenda(venda);
     const operadoraId = venda.operadora_id ? Number(venda.operadora_id) : null;
@@ -1852,12 +1981,30 @@ async function obterRelatoriosVendas(filtros = {}) {
       email: venda.vendedora_email || '',
       valor: 0,
       vendas: 0,
-      chips: 0
+      chips: 0,
+      retornos: 0
     };
 
     vendedorAtual.valor += valor;
     vendedorAtual.vendas += 1;
     vendedorAtual.chips += chips;
+    rankingMap.set(chaveVendedor, vendedorAtual);
+  });
+
+  atual.vendasRetorno.forEach(venda => {
+    const vendedorId = venda.vendedora_id ? Number(venda.vendedora_id) : null;
+    const chaveVendedor = vendedorId || 'sem_vendedor';
+    const vendedorAtual = rankingMap.get(chaveVendedor) || {
+      id: vendedorId,
+      nome: venda.vendedora_nome || 'Sem vendedor',
+      email: venda.vendedora_email || '',
+      valor: 0,
+      vendas: 0,
+      chips: 0,
+      retornos: 0
+    };
+
+    vendedorAtual.retornos += 1;
     rankingMap.set(chaveVendedor, vendedorAtual);
   });
 
@@ -1870,26 +2017,17 @@ async function obterRelatoriosVendas(filtros = {}) {
     filtros: {
       vendedora_id: vendedoraId
     },
-    cards: {
-      vendasAndamento: {
-        quantidade: vendasAndamento.length,
-        valor: somarValorVendas(vendasAndamento)
-      },
-      concluidas: {
-        quantidade: vendasConcluidas.length,
-        valor: somarValorVendas(vendasConcluidas)
-      },
-      perdaRetorno: {
-        quantidade: vendasRetorno.length,
-        valor: somarValorVendas(vendasRetorno),
-        chips: chipsRetornados
-      },
-      taxaRetorno: {
-        percentual: chipsVendidos > 0 ? Number(((chipsRetornados / chipsVendidos) * 100).toFixed(1)) : 0,
-        chipsRetornados,
-        chipsVendidos
-      }
+    cards: atual.cards,
+    resumoPeriodo: atual.resumoPeriodo,
+    comparativo: {
+      concluidas: { valor: anterior.cards.concluidas.valor },
+      taxaRetorno: { percentual: anterior.cards.taxaRetorno.percentual },
+      vendasAndamento: { quantidade: anterior.cards.vendasAndamento.quantidade },
+      ticketMedio: anterior.resumoPeriodo.ticketMedio,
+      totalVendas: anterior.resumoPeriodo.totalVendas
     },
+    serieDiaria: montarSerieDiariaRelatorio(vendas, periodo),
+    motivosRetorno: montarMotivosRetornoRelatorio(atual.vendasRetorno),
     vendasPorFase: await montarResumoFasesDinamico(vendas),
     porOperadora: montarResumoAgrupado(porOperadoraMap),
     rankingVendedores: montarResumoAgrupado(rankingMap)

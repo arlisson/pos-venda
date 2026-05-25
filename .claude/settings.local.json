@@ -90,7 +90,9 @@
       "PowerShell(try { $prs = Invoke-RestMethod -Uri \"https://api.github.com/repos/arlisson/pos-venda/pulls?state=open\" -Headers @{ \"User-Agent\" = \"claude-code\" } -ErrorAction Stop; if \\($prs.Count -eq 0\\) { \"No open PRs.\" } else { $prs | ForEach-Object { \"#$\\($_.number\\)  $\\($_.title\\)  [$\\($_.head.ref\\) -> $\\($_.base.ref\\)]  by $\\($_.user.login\\)\" } } } catch { \"ERROR: $\\($_.Exception.Message\\)\" })",
       "PowerShell(git show fca15eb --format=\"\" --unified=3)",
       "PowerShell(npm --prefix frontend test -- --run SelectFiltro 2>&1)",
-      "PowerShell(npm --prefix frontend test -- --run VendedorasSelect 2>&1)"
+      "PowerShell(npm --prefix frontend test -- --run VendedorasSelect 2>&1)",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./package.json'\\).scripts, null, 2\\)\\)\")",
+      "Bash(npx vite *)"
     ]
   }
 }
