@@ -137,6 +137,7 @@ function Sparkline({ values, accent = 'var(--text)', w = 80, h = 24 }) {
 
 // === Gráfico de linha com média e destaque de pico ===
 function LineChart({ data, height = 280, color = '#4f46e5' }) {
+  const [hoverIdx, setHoverIdx] = useState(null);
   const W = 800;
   const H = height;
   const pad = { top: 32, right: 24, bottom: 36, left: 64 };
@@ -159,9 +160,50 @@ function LineChart({ data, height = 280, color = '#4f46e5' }) {
   const peakX = pts[peakIdx][0];
   const peakY = pts[peakIdx][1];
   const avgY = yS(avg);
+  const hoveredPoint = hoverIdx !== null ? pts[hoverIdx] : null;
+  const hoveredItem = hoverIdx !== null ? data[hoverIdx] : null;
+  const hoverTooltipX = hoveredPoint
+    ? Math.min(Math.max(hoveredPoint[0] - 64, pad.left), pad.left + innerW - 128)
+    : 0;
+  const hoverTooltipY = hoveredPoint
+    ? Math.max(hoveredPoint[1] - 48, pad.top + 4)
+    : 0;
+  const hoverGuideY = hoveredPoint
+    ? Math.min(hoveredPoint[1] - 8, hoverTooltipY + 30)
+    : 0;
+
+  const handleMouseMove = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const mouseX = ((event.clientX - rect.left) / rect.width) * W;
+    const mouseY = ((event.clientY - rect.top) / rect.height) * H;
+
+    if (
+      mouseX < pad.left ||
+      mouseX > pad.left + innerW ||
+      mouseY < pad.top ||
+      mouseY > pad.top + innerH
+    ) {
+      setHoverIdx(null);
+      return;
+    }
+
+    const relativeX = (mouseX - pad.left) / innerW;
+    const nextIdx = Math.min(
+      data.length - 1,
+      Math.max(0, Math.round(relativeX * Math.max(data.length - 1, 1)))
+    );
+    setHoverIdx(nextIdx);
+  };
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="chart-line" width="100%" preserveAspectRatio="xMidYMid meet">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="chart-line"
+      width="100%"
+      preserveAspectRatio="xMidYMid meet"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setHoverIdx(null)}
+    >
       {/* Gridlines Y + rótulos */}
       {Array.from({ length: yTicks + 1 }, (_, i) => {
         const v = (maxV / yTicks) * i;
@@ -249,6 +291,45 @@ function LineChart({ data, height = 280, color = '#4f46e5' }) {
           >
             <tspan opacity="0.75">PICO · </tspan>
             <tspan fontFamily="var(--font-mono)" fontWeight="600">{fmtCompactBRL(maxRaw)}</tspan>
+          </text>
+        </g>
+      )}
+
+      {/* Valor ao passar o mouse */}
+      {hoveredPoint && hoveredItem && (
+        <g pointerEvents="none">
+          <line
+            x1={hoveredPoint[0]} y1={hoveredPoint[1] - 8}
+            x2={hoveredPoint[0]} y2={hoverGuideY}
+            stroke={color} strokeWidth="1"
+          />
+          <circle
+            cx={hoveredPoint[0]} cy={hoveredPoint[1]} r="4.5"
+            fill={color}
+            stroke="var(--surface)" strokeWidth="2"
+          />
+          <rect
+            x={hoverTooltipX}
+            y={hoverTooltipY}
+            width="128" height="32" rx="4"
+            fill={color}
+          />
+          <text
+            x={hoverTooltipX + 64}
+            y={hoverTooltipY + 11}
+            fill="white" fontSize="9.5"
+            textAnchor="middle" dominantBaseline="middle"
+          >
+            {hoveredItem.date ? hoveredItem.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : ''}
+          </text>
+          <text
+            x={hoverTooltipX + 64}
+            y={hoverTooltipY + 23}
+            fill="white" fontSize="10.5"
+            textAnchor="middle" dominantBaseline="middle"
+            fontFamily="var(--font-mono)" fontWeight="600"
+          >
+            {fmtCompactBRL(hoveredItem.revenue)}
           </text>
         </g>
       )}
@@ -405,7 +486,9 @@ function RelatoriosPage() {
 
   // Série para o gráfico e sparklines
   const chartData = useMemo(
-    () => serie.map(d => ({ date: parseISODate(d.data), revenue: Number(d.receita || 0) })),
+    () => serie
+      .filter(d => Number(d.receita || 0) > 0)
+      .map(d => ({ date: parseISODate(d.data), revenue: Number(d.receita || 0) })),
     [serie]
   );
   const sparkRevenue = serie.map(d => Number(d.receita || 0));
@@ -659,7 +742,7 @@ function RelatoriosPage() {
               </div>
             </div>
             <div className="panel-body" style={{ padding: '4px 12px 8px' }}>
-              {chartData.length > 1 ? (
+              {chartData.length > 0 ? (
                 <LineChart data={chartData} height={280} />
               ) : (
                 <EmptyState style={{ padding: '40px 8px' }}>Sem dados suficientes no período.</EmptyState>
