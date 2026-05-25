@@ -362,6 +362,23 @@ export const GRUPOS_PERMISSOES = [
     ]
   },
   {
+    id: 'comunicacao',
+    titulo: 'Comunicação',
+    descricao: 'Acesso ao chat interno entre usuários.',
+    secoes: [
+      {
+        titulo: 'Chat',
+        itens: [
+          {
+            chave: 'chat_usar',
+            nome: 'Usar chat',
+            descricao: 'Permite acessar o chat interno e conversar com outros usuários.'
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'usuarios',
     titulo: 'Usuários e permissões',
     descricao: 'Controle o acesso ao cadastro de usuários e à gestão de permissões.',

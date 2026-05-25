@@ -57,3 +57,5 @@ export const ChevronDown = mk(<><path d="m6 9 6 6 6-6" /></>);
 export const Mail = mk(<><rect x="3" y="6" width="18" height="13" rx="2" /><path d="m3 6 9 7 9-7" /></>);
 export const Whatsapp = mk(<><path d="M4.5 19.5 5.7 16.1A8 8 0 1 1 8 18.3l-3.5 1.2z" /><path d="M8.8 8.6c.2-.5.4-.6.8-.6h.6c.2 0 .5.1.6.5l.5 1.2c.1.3.1.5-.1.7l-.4.5c.6 1.1 1.4 1.9 2.5 2.5l.6-.5c.2-.2.4-.2.7-.1l1.2.6c.4.2.5.4.5.7v.5c0 .4-.2.7-.6.9-.5.3-1.1.4-1.8.3-2.6-.4-5.6-3.4-6-6-.1-.7 0-1.3.3-1.8z" /></>);
 export const TableSheet = mk(<><rect x="3" y="3" width="18" height="18" rx="1" /><path d="M3 9h18M3 15h18M9 3v18" /></>);
+export const Chat = mk(<><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3.6-.7L3 21l1.4-5.4A8.4 8.4 0 1 1 21 11.5z" /><path d="M8 11h8M8 14h5" /></>);
+export const Send = mk(<><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></>);

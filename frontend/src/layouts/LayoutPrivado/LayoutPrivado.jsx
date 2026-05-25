@@ -13,6 +13,7 @@ import {
   listarNotificacoesUrgentes,
   marcarPopupNotificacaoVisto
 } from '../../services/notificacao.service';
+import { contarMensagensNaoLidas } from '../../services/mensagem.service';
 
 const routeConfigs = [
   { path: '/', title: 'Dashboard', sub: 'Indicadores, campanhas e gamificação', id: 'dashboard', end: true },
@@ -38,6 +39,7 @@ const routeConfigs = [
   { path: '/admin/fechamento-mensal', title: 'Fechamento Mensal', sub: 'Consolide contratos, UGRs e comissões do período', id: 'fechamento-mensal' },
   { path: '/admin/leads', title: 'Planilhas de leads', sub: 'Importe, filtre e distribua leads para vendedores', id: 'leads' },
   { path: '/futuros-clientes', title: 'Futuros Clientes', sub: 'Leads marcados para acompanhamento futuro', id: 'futuros-clientes', end: true },
+  { path: '/mensagens', title: 'Mensagens', sub: 'Conversas internas entre usuários', id: 'mensagens', end: true },
 ];
 
 function getRouteConfig(pathname) {
@@ -115,6 +117,7 @@ function LayoutPrivado({ children }) {
       retornos: '/retornos',
       relatorios: '/relatorios',
       historico: '/historico',
+      mensagens: '/mensagens',
       usuarios: '/usuarios',
       config: '/configuracoes',
       campanhas: '/admin/campanhas',
@@ -216,7 +219,9 @@ function LayoutPrivado({ children }) {
 
   const [alertasUrgentes, setAlertasUrgentes] = useState([]);
   const [aprovacoesPendentes, setAprovacoesPendentes] = useState(0);
+  const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
   const podeVerAprovacoes = usuario && temPermissao(usuario, 'vendas_aprovacoes_visualizar');
+  const podeUsarChat = usuario && temPermissao(usuario, 'chat_usar');
 
   useEffect(() => {
     if (!podeVerAprovacoes) {
@@ -244,6 +249,34 @@ function LayoutPrivado({ children }) {
       clearInterval(timer);
     };
   }, [podeVerAprovacoes]);
+
+  useEffect(() => {
+    if (!podeUsarChat) {
+      setMensagensNaoLidas(0);
+      return undefined;
+    }
+
+    let ativo = true;
+
+    async function carregar() {
+      try {
+        const dados = await contarMensagensNaoLidas();
+        if (ativo) setMensagensNaoLidas(Number(dados?.total || 0));
+      } catch {
+        if (ativo) setMensagensNaoLidas(0);
+      }
+    }
+
+    carregar();
+    const timer = setInterval(carregar, 10000);
+    window.addEventListener('pos-venda:mensagens-atualizar', carregar);
+
+    return () => {
+      ativo = false;
+      clearInterval(timer);
+      window.removeEventListener('pos-venda:mensagens-atualizar', carregar);
+    };
+  }, [podeUsarChat]);
 
   async function carregarAlertasUrgentes() {
     try {
@@ -365,7 +398,7 @@ function LayoutPrivado({ children }) {
       <Sidebar
         page={currentConfig.id}
         setPage={handleSetPage}
-        counts={{ active: 0, returns: 0, aprovacoes: aprovacoesPendentes }}
+        counts={{ active: 0, returns: 0, aprovacoes: aprovacoesPendentes, mensagens: mensagensNaoLidas }}
         usuario={usuario}
         onLogout={handleLogout}
         isMobileOpen={mobileMenuOpen}
