@@ -1082,6 +1082,86 @@ function obterQuantidadeChipsVenda(venda) {
   return quantidadeLinhas > 0 ? quantidadeLinhas : 1;
 }
 
+function obterResumoVendedoraRelatorio(venda, vendedoraId, usuariosPorId = new Map()) {
+  const id = vendedoraId ? Number(vendedoraId) : null;
+  const usuario = id ? usuariosPorId.get(id) : null;
+  const ehVendedoraPrincipal = id && Number(venda.vendedora_id) === id;
+
+  return {
+    id,
+    nome: usuario?.nome || (ehVendedoraPrincipal ? venda.vendedora_nome : null) || 'Sem vendedor',
+    email: usuario?.email || (ehVendedoraPrincipal ? venda.vendedora_email : null) || ''
+  };
+}
+
+function montarAtribuicoesVendedorasVenda(venda, usuariosPorId = new Map()) {
+  const mapa = new Map();
+  const itensChips = normalizarItensChips(venda.valores_unitarios_chips);
+  const fallbackVendedoraId = venda.vendedora_id ? Number(venda.vendedora_id) : null;
+
+  function adicionar(vendedoraId, valor, chips) {
+    const resumo = obterResumoVendedoraRelatorio(venda, vendedoraId, usuariosPorId);
+    const chave = resumo.id || 'sem_vendedor';
+    const atual = mapa.get(chave) || {
+      id: resumo.id,
+      nome: resumo.nome,
+      email: resumo.email,
+      valor: 0,
+      chips: 0
+    };
+
+    atual.valor += Number(valor || 0);
+    atual.chips += Number(chips || 0);
+    mapa.set(chave, atual);
+  }
+
+  if (itensChips.length > 0) {
+    itensChips.forEach(item => {
+      const quantidade = Number(item.quantidade || 0);
+      const valor = quantidade * Number(item.valor_unitario || 0);
+      adicionar(item.vendedora_id ? Number(item.vendedora_id) : fallbackVendedoraId, valor, quantidade);
+    });
+  } else {
+    adicionar(fallbackVendedoraId, Number(venda.valor_total || 0), obterQuantidadeChipsVenda(venda));
+  }
+
+  return Array.from(mapa.values()).map(item => ({
+    ...item,
+    valor: Number(item.valor.toFixed(2))
+  }));
+}
+
+function obterAtribuicaoVendedoraVenda(venda, vendedoraId, usuariosPorId = new Map()) {
+  const id = Number(vendedoraId);
+  return montarAtribuicoesVendedorasVenda(venda, usuariosPorId)
+    .find(item => item.id && Number(item.id) === id) || null;
+}
+
+function filtrarVendasRelatorioPorVendedora(vendas = [], vendedoraId, usuariosPorId = new Map()) {
+  if (!vendedoraId) return vendas;
+
+  return vendas
+    .map(venda => {
+      const atribuicao = obterAtribuicaoVendedoraVenda(venda, vendedoraId, usuariosPorId);
+      if (!atribuicao) return null;
+
+      return {
+        ...venda,
+        valor_total: atribuicao.valor,
+        quantidade_linhas: atribuicao.chips,
+        valores_unitarios_chips: [{
+          quantidade: atribuicao.chips,
+          valor_unitario: atribuicao.chips > 0 ? atribuicao.valor / atribuicao.chips : 0,
+          vendedora_id: atribuicao.id
+        }],
+        vendedora_id: atribuicao.id,
+        vendedora_nome: atribuicao.nome,
+        vendedora_email: atribuicao.email
+      };
+    })
+    .filter(Boolean);
+}
+
 function montarDadosSincronizacaoClienteVenda(venda, dataConclusao = new Date()) {
   const clienteId = Number(venda?.cliente_id || 0);
   const operadoraVendidaId = Number(venda?.operadora_id || 0);
@@ -1786,7 +1866,7 @@ async function obterResumoDashboard(usuarioId) {
   };
 }
 
-function construirQueryRelatorio({ dataInicio, dataFimExclusiva, vendedoraId, dataReferencia }) {
+function construirQueryRelatorio({ dataInicio, dataFimExclusiva, dataReferencia }) {
   const query = Venda.query()
     .alias('v')
     .leftJoin('operadoras as o', 'v.operadora_id', 'o.id')
@@ -1809,11 +1889,26 @@ function construirQueryRelatorio({ dataInicio, dataFimExclusiva, vendedoraId, da
       Venda.raw(`${dataReferencia} as data_referencia`)
     );
 
-  if (vendedoraId) {
-    query.where('v.vendedora_id', vendedoraId);
-  }
-
   return query;
+}
+
+async function carregarUsuariosAtribuicoesRelatorio(vendas = []) {
+  const ids = new Set();
+
+  vendas.forEach(venda => {
+    if (venda.vendedora_id) ids.add(Number(venda.vendedora_id));
+    normalizarItensChips(venda.valores_unitarios_chips).forEach(item => {
+      if (item.vendedora_id) ids.add(Number(item.vendedora_id));
+    });
+  });
+
+  if (ids.size === 0) return new Map();
+
+  const usuarios = await Usuario.query()
+    .select('id', 'nome', 'email')
+    .whereIn('id', Array.from(ids));
+
+  return new Map(usuarios.map(usuario => [Number(usuario.id), usuario]));
 }
 
 function resolverPeriodoAnterior(periodo) {
@@ -1932,22 +2027,27 @@ async function obterRelatoriosVendas(filtros = {}) {
   const etapaFinal = await obterCodigoEtapaFinal();
   const vendedoraId = filtros.vendedora_id ? Number(filtros.vendedora_id) : null;
 
-  const [vendas, vendasAnteriores] = await Promise.all([
+  const [vendasPeriodo, vendasAnterioresPeriodo] = await Promise.all([
     construirQueryRelatorio({
       dataInicio: periodo.dataInicio,
       dataFimExclusiva: periodo.dataFimExclusiva,
-      vendedoraId,
       dataReferencia
     }),
     periodoAnterior
       ? construirQueryRelatorio({
           dataInicio: periodoAnterior.dataInicio,
           dataFimExclusiva: periodoAnterior.dataFimExclusiva,
-          vendedoraId,
           dataReferencia
         })
       : Promise.resolve([])
   ]);
+
+  const usuariosPorId = await carregarUsuariosAtribuicoesRelatorio([
+    ...vendasPeriodo,
+    ...vendasAnterioresPeriodo
+  ]);
+  const vendas = filtrarVendasRelatorioPorVendedora(vendasPeriodo, vendedoraId, usuariosPorId);
+  const vendasAnteriores = filtrarVendasRelatorioPorVendedora(vendasAnterioresPeriodo, vendedoraId, usuariosPorId);
 
   const atual = agregarVendasPeriodo(vendas, etapaFinal);
   const anterior = agregarVendasPeriodo(vendasAnteriores, etapaFinal);
@@ -1973,39 +2073,41 @@ async function obterRelatoriosVendas(filtros = {}) {
     operadoraAtual.chips += chips;
     porOperadoraMap.set(chaveOperadora, operadoraAtual);
 
-    const vendedorId = venda.vendedora_id ? Number(venda.vendedora_id) : null;
-    const chaveVendedor = vendedorId || 'sem_vendedor';
-    const vendedorAtual = rankingMap.get(chaveVendedor) || {
-      id: vendedorId,
-      nome: venda.vendedora_nome || 'Sem vendedor',
-      email: venda.vendedora_email || '',
-      valor: 0,
-      vendas: 0,
-      chips: 0,
-      retornos: 0
-    };
+    montarAtribuicoesVendedorasVenda(venda, usuariosPorId).forEach(atribuicao => {
+      const chaveVendedor = atribuicao.id || 'sem_vendedor';
+      const vendedorAtual = rankingMap.get(chaveVendedor) || {
+        id: atribuicao.id,
+        nome: atribuicao.nome,
+        email: atribuicao.email,
+        valor: 0,
+        vendas: 0,
+        chips: 0,
+        retornos: 0
+      };
 
-    vendedorAtual.valor += valor;
-    vendedorAtual.vendas += 1;
-    vendedorAtual.chips += chips;
-    rankingMap.set(chaveVendedor, vendedorAtual);
+      vendedorAtual.valor += atribuicao.valor;
+      vendedorAtual.vendas += 1;
+      vendedorAtual.chips += atribuicao.chips;
+      rankingMap.set(chaveVendedor, vendedorAtual);
+    });
   });
 
   atual.vendasRetorno.forEach(venda => {
-    const vendedorId = venda.vendedora_id ? Number(venda.vendedora_id) : null;
-    const chaveVendedor = vendedorId || 'sem_vendedor';
-    const vendedorAtual = rankingMap.get(chaveVendedor) || {
-      id: vendedorId,
-      nome: venda.vendedora_nome || 'Sem vendedor',
-      email: venda.vendedora_email || '',
-      valor: 0,
-      vendas: 0,
-      chips: 0,
-      retornos: 0
-    };
+    montarAtribuicoesVendedorasVenda(venda, usuariosPorId).forEach(atribuicao => {
+      const chaveVendedor = atribuicao.id || 'sem_vendedor';
+      const vendedorAtual = rankingMap.get(chaveVendedor) || {
+        id: atribuicao.id,
+        nome: atribuicao.nome,
+        email: atribuicao.email,
+        valor: 0,
+        vendas: 0,
+        chips: 0,
+        retornos: 0
+      };
 
-    vendedorAtual.retornos += 1;
-    rankingMap.set(chaveVendedor, vendedorAtual);
+      vendedorAtual.retornos += 1;
+      rankingMap.set(chaveVendedor, vendedorAtual);
+    });
   });
 
   return {
@@ -2953,6 +3055,7 @@ module.exports = {
     calcularTotalChips,
     limparValor,
     montarDadosSincronizacaoClienteVenda,
+    montarAtribuicoesVendedorasVenda,
     montarPayload,
     normalizarClienteSolicitouNumeros,
     normalizarClienteSolicitouServicos,
@@ -2963,9 +3066,11 @@ module.exports = {
     normalizarNumerosLista,
     normalizarTipoLinhaChip,
     obterDataLimiteConcluidaAntiga,
+    obterAtribuicaoVendedoraVenda,
     obterQuantidadeChipsVenda,
     obterUltimaAtividadeFunil,
     parseValorMonetario,
+    filtrarVendasRelatorioPorVendedora,
     resumirGigasItensChips,
     somarQuantidadeItensChips,
     validarVendedorasNosChips,

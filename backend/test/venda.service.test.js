@@ -6,7 +6,9 @@ const vendaService = require('../src/services/venda.service');
 const {
   adicionarMesesDataISO,
   aplicarDadosClienteNaVenda,
+  filtrarVendasRelatorioPorVendedora,
   montarDadosSincronizacaoClienteVenda,
+  montarAtribuicoesVendedorasVenda,
   montarPayload,
   normalizarData,
   normalizarItensChips,
@@ -161,6 +163,49 @@ test('obtem quantidade de chips com fallback para quantidade de linhas ou 1', ()
   }), 5);
   assert.equal(obterQuantidadeChipsVenda({ valores_unitarios_chips: '', quantidade_linhas: 4 }), 4);
   assert.equal(obterQuantidadeChipsVenda({}), 1);
+});
+
+test('atribui receita do ranking por vendedora de cada chip', () => {
+  const usuarios = new Map([
+    [1, { id: 1, nome: 'Ana', email: 'ana@test.local' }],
+    [2, { id: 2, nome: 'Bia', email: 'bia@test.local' }]
+  ]);
+
+  const atribuicoes = montarAtribuicoesVendedorasVenda({
+    vendedora_id: 1,
+    vendedora_nome: 'Ana antiga',
+    valor_total: 329.98,
+    quantidade_linhas: 2,
+    valores_unitarios_chips: JSON.stringify([
+      { quantidade: 1, valor_unitario: 299.99, vendedora_id: 1 },
+      { quantidade: 1, valor_unitario: 29.99, vendedora_id: 2 }
+    ])
+  }, usuarios);
+
+  assert.deepEqual(atribuicoes, [
+    { id: 1, nome: 'Ana', email: 'ana@test.local', valor: 299.99, chips: 1 },
+    { id: 2, nome: 'Bia', email: 'bia@test.local', valor: 29.99, chips: 1 }
+  ]);
+});
+
+test('filtra relatorio por vendedora usando apenas a receita dos chips dela', () => {
+  const vendas = filtrarVendasRelatorioPorVendedora([{
+    id: 18,
+    vendedora_id: 1,
+    vendedora_nome: 'Ana',
+    valor_total: 329.98,
+    quantidade_linhas: 2,
+    valores_unitarios_chips: [
+      { quantidade: 1, valor_unitario: 299.99, vendedora_id: 1 },
+      { quantidade: 1, valor_unitario: 29.99, vendedora_id: 2 }
+    ]
+  }], 2, new Map([[2, { id: 2, nome: 'Bia', email: 'bia@test.local' }]]));
+
+  assert.equal(vendas.length, 1);
+  assert.equal(vendas[0].valor_total, 29.99);
+  assert.equal(vendas[0].quantidade_linhas, 1);
+  assert.equal(obterQuantidadeChipsVenda(vendas[0]), 1);
+  assert.equal(vendas[0].vendedora_id, 2);
 });
 
 test('calcula fidelidade 24 meses apos a conclusao preservando fim de mes', () => {
