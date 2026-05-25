@@ -2779,27 +2779,6 @@ async function listarVendedoras(usuarioId) {
   return query;
 }
 
-async function listarStatusVendasParaHistorico() {
-  const linhas = await Venda.query()
-    .select('id', 'excluido_em', 'cancelada_em');
-
-  const ativas = [];
-  const canceladas = [];
-  const lixeira = [];
-
-  linhas.forEach(linha => {
-    if (linha.excluido_em) {
-      lixeira.push(linha.id);
-    } else if (linha.cancelada_em) {
-      canceladas.push(linha.id);
-    } else {
-      ativas.push(linha.id);
-    }
-  });
-
-  return { ativas, canceladas, lixeira };
-}
-
 async function statusEhFinal(status) {
   const codigoFinal = await obterCodigoEtapaFinal();
   return status === codigoFinal;
@@ -2967,7 +2946,6 @@ module.exports = {
   restaurarVenda,
   excluirVendaDefinitivo,
   listarVendedoras,
-  listarStatusVendasParaHistorico,
   contarVendasConcluidasPorCliente,
   _internals: {
     aplicarDadosClienteNaVenda,

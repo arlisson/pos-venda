@@ -73,19 +73,47 @@ async function registrarSemBloquear(req, dadosAuditoria) {
   }
 }
 
-async function listar({ busca, limite = 160, entidade } = {}) {
-  const limiteNormalizado = Math.min(Number(limite) || 160, 500);
+function normalizarPaginacao({ page, per_page } = {}) {
+  const opcoesPorPagina = new Set([20, 50, 100]);
+  const pagina = Math.max(Number.parseInt(page, 10) || 1, 1);
+  const perPageInformado = Number.parseInt(per_page, 10);
+  const perPage = opcoesPorPagina.has(perPageInformado) ? perPageInformado : 20;
+  return { page: pagina, perPage };
+}
+
+function aplicarTipo(query, tipo) {
+  switch (tipo) {
+    case 'acoes':
+      query.whereNot('audit_logs.acao', 'like', 'auth.%');
+      break;
+    case 'acessos':
+      query.where('audit_logs.acao', 'like', 'auth.%');
+      break;
+    case 'falhas':
+      query.where('audit_logs.acao', 'like', '%falha%');
+      break;
+    case 'cancelamentos':
+      query.where('audit_logs.acao', 'like', '%cancel%');
+      break;
+    default:
+      break;
+  }
+}
+
+async function listar({ busca, entidade, tipo, page, per_page } = {}) {
+  const { page: pagina, perPage } = normalizarPaginacao({ page, per_page });
 
   const query = AuditLog.query()
     .select('audit_logs.*')
     .leftJoinRelated('usuario')
     .withGraphFetched('usuario')
-    .orderBy('audit_logs.created_at', 'desc')
-    .limit(limiteNormalizado);
+    .orderBy('audit_logs.created_at', 'desc');
 
   if (entidade) {
     query.where('audit_logs.entidade', entidade);
   }
+
+  aplicarTipo(query, tipo);
 
   if (busca) {
     const termo = `%${busca}%`;
@@ -102,12 +130,83 @@ async function listar({ busca, limite = 160, entidade } = {}) {
     });
   }
 
+  const result = await query.page(pagina - 1, perPage);
+  return { data: result.results, total: result.total };
+}
+
+function aplicarStatusVenda(builder, status) {
+  if (status === 'lixeira') {
+    builder.whereNotNull('v.excluido_em');
+  } else if (status === 'canceladas') {
+    builder.whereNull('v.excluido_em').whereNotNull('v.cancelada_em');
+  } else {
+    builder.whereNull('v.excluido_em').whereNull('v.cancelada_em');
+  }
+}
+
+function montarBaseVendasAgrupado({ status, busca }) {
+  const knex = AuditLog.knex();
+
+  const query = knex('audit_logs as a')
+    .join('vendas as v', 'v.id', 'a.entidade_id')
+    .where('a.entidade', 'vendas');
+
+  aplicarStatusVenda(query, status);
+
+  if (busca) {
+    const termo = `%${busca}%`;
+    query.leftJoin('usuarios as u', 'u.id', 'a.usuario_id');
+    query.where(builder => {
+      builder
+        .where('a.acao', 'like', termo)
+        .orWhere('a.entidade_id', 'like', termo)
+        .orWhere('a.rota', 'like', termo)
+        .orWhere('u.nome', 'like', termo)
+        .orWhere('u.email', 'like', termo)
+        .orWhereRaw('CAST(a.dados AS CHAR) LIKE ?', [termo]);
+    });
+  }
+
   return query;
+}
+
+// Pagina por VENDA (1 grupo = 1 venda com todos os seus eventos), nao por linha de log.
+async function listarHistoricoVendasAgrupado({ status, busca, page, per_page } = {}) {
+  const { page: pagina, perPage } = normalizarPaginacao({ page, per_page });
+  const statusNorm = ['ativas', 'canceladas', 'lixeira'].includes(status) ? status : 'ativas';
+
+  const idsRows = await montarBaseVendasAgrupado({ status: statusNorm, busca })
+    .select('a.entidade_id')
+    .groupBy('a.entidade_id')
+    .orderByRaw('MAX(a.created_at) DESC')
+    .limit(perPage)
+    .offset((pagina - 1) * perPage);
+
+  const ids = idsRows.map(linha => linha.entidade_id);
+
+  const totalRow = await montarBaseVendasAgrupado({ status: statusNorm, busca })
+    .countDistinct('a.entidade_id as total')
+    .first();
+  const total = Number(totalRow?.total || 0);
+
+  if (ids.length === 0) {
+    return { data: [], total };
+  }
+
+  const logs = await AuditLog.query()
+    .select('audit_logs.*')
+    .where('audit_logs.entidade', 'vendas')
+    .whereIn('audit_logs.entidade_id', ids)
+    .withGraphFetched('usuario')
+    .orderBy('audit_logs.created_at', 'desc');
+
+  return { data: logs, total };
 }
 
 module.exports = {
   registrar,
   registrarSemBloquear,
   listar,
+  listarHistoricoVendasAgrupado,
   sanitizar
 };

@@ -91,8 +91,11 @@
       "PowerShell(git show fca15eb --format=\"\" --unified=3)",
       "PowerShell(npm --prefix frontend test -- --run SelectFiltro 2>&1)",
       "PowerShell(npm --prefix frontend test -- --run VendedorasSelect 2>&1)",
-      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./package.json'\\).scripts, null, 2\\)\\)\")",
-      "Bash(npx vite *)"
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\breno\\\\OneDrive\\\\Documents\\\\GitHub\\\\pos-venda\" -Force)",
+      "Bash(xargs grep -l \"create.*table\\\\|CREATE TABLE\")",
+      "Bash(node --check src/services/audit-log.service.js)",
+      "Bash(node --check src/controllers/audit-log.controller.js)",
+      "Bash(node --check src/routes/audit-log.routes.js)"
     ]
   }
 }

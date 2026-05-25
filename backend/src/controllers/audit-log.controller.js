@@ -1,12 +1,13 @@
 const auditLogService = require('../services/audit-log.service');
-const vendaService = require('../services/venda.service');
 
 async function index(req, res) {
   try {
     const logs = await auditLogService.listar({
       busca: req.query.busca,
-      limite: req.query.limite,
-      entidade: req.query.entidade
+      entidade: req.query.entidade,
+      tipo: req.query.tipo,
+      page: req.query.page,
+      per_page: req.query.per_page
     });
 
     return res.json(logs);
@@ -19,20 +20,26 @@ async function index(req, res) {
   }
 }
 
-async function statusVendas(req, res) {
+async function vendasAgrupado(req, res) {
   try {
-    const status = await vendaService.listarStatusVendasParaHistorico();
-    return res.json(status);
+    const resultado = await auditLogService.listarHistoricoVendasAgrupado({
+      status: req.query.status,
+      busca: req.query.busca,
+      page: req.query.page,
+      per_page: req.query.per_page
+    });
+
+    return res.json(resultado);
   } catch (error) {
     console.error(error);
 
     return res.status(500).json({
-      message: 'Erro ao listar status das vendas.'
+      message: 'Erro ao listar histórico de vendas.'
     });
   }
 }
 
 module.exports = {
   index,
-  statusVendas
+  vendasAgrupado
 };
