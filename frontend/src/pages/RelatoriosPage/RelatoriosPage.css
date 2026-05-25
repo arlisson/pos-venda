@@ -398,87 +398,142 @@
 }
 
 /* === Funil === */
+/* === Funil: cabeçalho de insight === */
+.funnel-insight {
+  margin-bottom: 16px;
+}
+.fi-headline {
+  font-size: 13px;
+  color: var(--text-2);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.fi-headline strong {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 17px;
+}
+.fi-pct {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--emerald-dark);
+}
+.fi-detail {
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.07);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.fi-detail.ok { background: rgba(16, 185, 129, 0.08); }
+.fi-detail strong { color: var(--text); }
+.fi-drop {
+  color: var(--danger, #dc2626);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+.fi-legend {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* === Funil: lista de etapas (barras finas) === */
 .funnel-chart {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 2px;
 }
-.fn-row {
+.fn2-stage {
   display: grid;
-  grid-template-columns: 180px 1fr 90px;
-  gap: 12px;
-  align-items: center;
-}
-.fn-label {
-  display: flex;
-  align-items: center;
+  grid-template-columns: 24px 1fr;
   gap: 10px;
+  align-items: center;
+  padding: 6px 4px;
+}
+.fn2-num {
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.fn2-body { min-width: 0; }
+.fn2-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+.fn2-name {
   font-size: 12.5px;
   color: var(--text);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
-.fn-step {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  font-size: 11px;
-  font-weight: 700;
+.fn2-meta {
+  font-size: 11.5px;
+  color: var(--text-3);
   font-family: var(--font-mono);
   flex-shrink: 0;
 }
-.funnel-bar-wrap {
-  height: 32px;
-  position: relative;
+.fn2-meta strong {
+  color: var(--text);
+  font-size: 14px;
+  margin-right: 2px;
+}
+.fn2-track {
+  height: 10px;
   background: var(--surface-2);
   border-radius: 5px;
   overflow: hidden;
 }
-.funnel-bar-fill {
+.fn2-fill {
   height: 100%;
+  background: var(--brand);
+  border-radius: 5px;
+  transition: width 350ms ease;
+}
+.fn2-stage.final .fn2-fill { background: var(--emerald, #10b981); }
+.fn2-stage.final .fn2-num { background: var(--emerald, #10b981); color: #fff; }
+.fn2-stage.bottleneck .fn2-name { color: var(--danger, #dc2626); font-weight: 600; }
+.fn2-stage.bottleneck .fn2-num { background: var(--danger, #dc2626); color: #fff; }
+
+/* === Funil: ponto de perda entre etapas === */
+.fn2-drop {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  border-radius: 5px;
-  min-width: 90px;
-  transition: width 250ms;
-  white-space: nowrap;
+  gap: 7px;
+  margin: 0 0 0 34px;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--danger, #dc2626);
 }
-.fn-count {
+.fn2-drop strong {
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
 }
-.fn-pct {
-  font-size: 10.5px;
-  opacity: 0.85;
+.fn2-drop-arrow { font-weight: 700; line-height: 1; }
+.fn2-drop-pct {
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.1);
   font-family: var(--font-mono);
-}
-.fn-conv {
-  text-align: right;
-}
-.fn-conv-pct {
-  font-family: var(--font-mono);
-  font-size: 14px;
   font-weight: 700;
-  color: var(--emerald-dark);
-  line-height: 1.1;
-}
-.fn-conv-pct.warn { color: var(--warn); }
-.fn-conv-sub {
   font-size: 10.5px;
-  color: var(--text-3);
-  font-family: var(--font-mono);
-  margin-top: 2px;
-}
-.fn-conv-sub.strong {
-  color: var(--brand);
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.06em;
 }
 
 /* === Motivos de retorno === */
@@ -655,7 +710,7 @@
 @media (max-width: 760px) {
   .reports { padding: 14px 12px 24px; }
   .kpi-grid { grid-template-columns: 1fr; }
-  .fn-row { grid-template-columns: 140px 1fr 76px; gap: 8px; }
+  .fn2-stage { gap: 8px; }
   .bar-cell { display: none; }
   .reports-actions { width: 100%; }
   .reports-seller { flex: 1; }

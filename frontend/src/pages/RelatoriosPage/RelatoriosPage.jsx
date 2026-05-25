@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { listarVendedoras, obterRelatoriosVendas } from '../../services/venda.service';
@@ -20,9 +20,6 @@ const OPERATOR_COLORS = {
 
 // Paleta de reserva para operadoras fora da lista fixa.
 const FALLBACK_COLORS = ['#0891b2', '#ea580c', '#16a34a', '#db2777', '#ca8a04', '#4f46e5'];
-
-// Progressão indigo para as etapas do funil (+ verde para a conclusão).
-const FUNNEL_COLORS = ['#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#4f46e5', '#10b981'];
 
 const EMPTY_REPORT = {
   periodo: { tipo: 'mes_atual', data_inicio: '', data_fim: '' },
@@ -454,6 +451,34 @@ function RelatoriosPage() {
     ? (cumulative[cumulative.length - 1]?.count / maxFunnel) * 100
     : 0;
 
+  // Etapas anotadas: % do topo + queda em relação à etapa anterior
+  const funnelStages = useMemo(() => cumulative.map((st, i) => {
+    const prev = i > 0 ? cumulative[i - 1].count : null;
+    const drop = prev !== null ? prev - st.count : 0;
+    const dropPct = prev && prev > 0 ? (drop / prev) * 100 : 0;
+    return {
+      ...st,
+      index: i,
+      pct: (st.count / maxFunnel) * 100,
+      prevName: prev !== null ? cumulative[i - 1].name : null,
+      drop,
+      dropPct
+    };
+  }), [cumulative, maxFunnel]);
+
+  // Maior gargalo (etapa com a maior queda absoluta)
+  const gargaloIdx = useMemo(() => {
+    let idx = -1;
+    let maior = 0;
+    funnelStages.forEach(st => {
+      if (st.drop > maior) { maior = st.drop; idx = st.index; }
+    });
+    return idx;
+  }, [funnelStages]);
+  const gargalo = gargaloIdx >= 0 ? funnelStages[gargaloIdx] : null;
+  const concluidas = cumulative[cumulative.length - 1]?.count ?? 0;
+  const ultimoIdx = funnelStages.length - 1;
+
   // Motivos de retorno
   const reasons = relatorio.motivosRetorno || [];
   const totalReturns = reasons.reduce((s, x) => s + Number(x.quantidade || 0), 0) || 1;
@@ -695,58 +720,71 @@ function RelatoriosPage() {
             <div className="panel-header">
               <div className="title-block">
                 <h3>Funil de conversão</h3>
-                <div className="sub">
-                  Conversão geral: <strong style={{ color: 'var(--text)' }}>{totalConv.toFixed(0)}%</strong> do topo chegam ao fim
-                </div>
+                <div className="sub">Quantas vendas alcançaram cada etapa</div>
               </div>
             </div>
             <div className="panel-body">
               {cumulative.length === 0 ? (
                 <EmptyState style={{ padding: '24px 8px' }}>Nenhuma fase encontrada no período.</EmptyState>
               ) : (
-                <div className="funnel-chart">
-                  {cumulative.map((st, i) => {
-                    const pct = st.count / maxFunnel;
-                    const prev = i > 0 ? cumulative[i - 1].count : null;
-                    const conv = prev !== null && prev > 0 ? (st.count / prev) * 100 : null;
-                    const drop = prev !== null ? prev - st.count : null;
-                    const cor = FUNNEL_COLORS[Math.min(i, FUNNEL_COLORS.length - 1)];
-                    const escuro = i < 2;
-                    return (
-                      <div key={st.id} className="funnel-stage">
-                        <div className="fn-row">
-                          <div className="fn-label">
-                            <span className="fn-step" style={{ background: cor, color: escuro ? '#1e1b4b' : 'white' }}>{i + 1}</span>
-                            {st.name}
-                          </div>
-                          <div className="funnel-bar-wrap">
-                            <div
-                              className="funnel-bar-fill"
-                              style={{ width: `${Math.max(pct * 100, 6)}%`, background: cor }}
-                            >
-                              <span className="fn-count" style={{ color: escuro ? '#1e1b4b' : 'white' }}>{st.count}</span>
-                              <span className="fn-pct" style={{ color: escuro ? '#1e1b4b' : 'white' }}>{(pct * 100).toFixed(0)}% do topo</span>
+                <>
+                  <div className="funnel-insight">
+                    <div className="fi-headline">
+                      <strong>{concluidas}</strong> de <strong>{maxFunnel}</strong> chegaram ao fim
+                      <span className="fi-pct">{totalConv.toFixed(0)}%</span>
+                    </div>
+                    <div className={`fi-detail${gargalo ? '' : ' ok'}`}>
+                      {gargalo ? (
+                        <>
+                          Maior perda:{' '}
+                          <strong>{gargalo.prevName} → {gargalo.name}</strong>{' '}
+                          <span className="fi-drop">−{gargalo.drop} ({gargalo.dropPct.toFixed(0)}%)</span>
+                        </>
+                      ) : (
+                        <>Nenhuma perda entre etapas — todas as vendas avançaram.</>
+                      )}
+                    </div>
+                    <div className="fi-legend">
+                      A barra mostra quantas vendas <strong>alcançaram</strong> cada etapa (de {maxFunnel}).
+                    </div>
+                  </div>
+                  <div className="funnel-chart">
+                    {funnelStages.map(st => {
+                      const temPerda = st.drop > 0;
+                      const ehFinal = st.index === ultimoIdx;
+                      const classes = ['fn2-stage'];
+                      if (st.index === gargaloIdx) classes.push('bottleneck');
+                      if (ehFinal) classes.push('final');
+                      return (
+                        <Fragment key={st.id}>
+                          {temPerda && (
+                            <div className="fn2-drop">
+                              <span className="fn2-drop-arrow">↓</span>
+                              <span>
+                                <strong>{st.drop}</strong> {st.drop === 1 ? 'venda saiu' : 'vendas saíram'}
+                              </span>
+                              <span className="fn2-drop-pct">{st.dropPct.toFixed(0)}%</span>
+                            </div>
+                          )}
+                          <div className={classes.join(' ')}>
+                            <span className="fn2-num">{st.index + 1}</span>
+                            <div className="fn2-body">
+                              <div className="fn2-top">
+                                <span className="fn2-name" title={st.name}>{st.name}</span>
+                                <span className="fn2-meta" title={`${st.pct.toFixed(0)}% das vendas chegaram a esta etapa`}>
+                                  <strong>{st.count}</strong> de {maxFunnel} vendas
+                                </span>
+                              </div>
+                              <div className="fn2-track">
+                                <div className="fn2-fill" style={{ width: `${Math.max(st.pct, 3)}%` }} />
+                              </div>
                             </div>
                           </div>
-                          <div className="fn-conv">
-                            {conv !== null ? (
-                              <>
-                                <div className={`fn-conv-pct ${conv < 80 ? 'warn' : ''}`}>
-                                  {conv.toFixed(0)}%
-                                </div>
-                                <div className="fn-conv-sub">
-                                  {drop > 0 ? `−${drop} saíram` : 'sem perdas'}
-                                </div>
-                              </>
-                            ) : (
-                              <div className="fn-conv-sub strong">Topo do funil</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        </Fragment>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           </div>
