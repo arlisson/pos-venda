@@ -1442,15 +1442,8 @@ async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
     return false;
   }
 
-  if (
-    permissoes.permissoes.includes('vendas_editar')
-    && (
-      permissoes.permissoes.includes('vendas_ver_todas')
-      || Number(venda.criado_por_id) === Number(usuarioId)
-      || Number(venda.vendedora_id) === Number(usuarioId)
-    )
-  ) {
-    return true;
+  if (permissoes.permissoes.includes('vendas_editar')) {
+    return usuarioPodeAcessarVenda(id, usuarioId, opcoes);
   }
 
   if (!permissoes.permissoes.includes('editar_vendas_compartilhadas')) {
