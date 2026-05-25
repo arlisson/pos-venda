@@ -2767,12 +2767,15 @@ function VendaModal({
   const usuarioEstaNaVendaCompartilhada = Boolean(venda && usuarioLogado?.id
     && Array.isArray(venda.vendedoras)
     && venda.vendedoras.some(item => Number(item?.id || item) === Number(usuarioLogado.id)));
+  const usuarioPodeAcessarVendaModal = Boolean(
+    !venda
+    || temPermissao(usuarioLogado, 'vendas_ver_todas')
+    || usuarioEhResponsavelVenda
+    || (temPermissao(usuarioLogado, 'ver_vendas_compartilhadas') && usuarioEstaNaVendaCompartilhada)
+  );
   const podeEditarVendaEfetivo = Boolean(
     usuarioAdmin
-    || (
-      temPermissao(usuarioLogado, 'vendas_editar')
-      && (temPermissao(usuarioLogado, 'vendas_ver_todas') || usuarioEhResponsavelVenda)
-    )
+    || (temPermissao(usuarioLogado, 'vendas_editar') && usuarioPodeAcessarVendaModal)
     || (
       temPermissao(usuarioLogado, 'editar_vendas_compartilhadas')
       && usuarioEstaNaVendaCompartilhada
