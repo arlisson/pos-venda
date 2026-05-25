@@ -1583,7 +1583,7 @@
 
 @media (max-width: 760px) {
   .dashboard-container {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    padding: 14px 10px calc(96px + env(safe-area-inset-bottom, 0px));
     scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -1613,12 +1613,30 @@
     flex-direction: column;
   }
   .today-view-controls,
-  .today-view-toggle,
-  .today-view-button {
+  .today-view-toggle {
     width: 100%;
   }
+
+  .today-view-controls {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .today-view-controls::-webkit-scrollbar {
+    display: none;
+  }
+
+  .today-view-toggle {
+    min-width: 100%;
+    width: max-content;
+  }
+
   .today-view-button {
+    flex: 1 0 auto;
     justify-content: center;
+    width: auto;
+    padding-inline: 9px;
+    font-size: 11.5px;
   }
   .today-chart--pie {
     grid-template-columns: 1fr;
@@ -1690,13 +1708,68 @@
 @media (max-width: 480px) {
   .today-overview-card {
     min-height: auto;
-    padding: 10px;
+    padding: 12px;
   }
+
+  .today-overview-card h3 {
+    margin-bottom: 12px;
+  }
+
   .today-performance {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    text-align: center;
+    grid-template-columns: 94px minmax(0, 1fr);
+    justify-items: stretch;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
   }
+
+  .today-donut {
+    width: 86px;
+    height: 86px;
+    justify-self: center;
+  }
+
+  .today-donut svg {
+    width: 86px;
+    height: 86px;
+  }
+
+  .today-donut__empty {
+    width: 86px;
+    height: 86px;
+    border-width: 10px;
+  }
+
+  .today-donut__center {
+    inset: 22px;
+  }
+
+  .today-donut__center strong {
+    font-size: 11px;
+  }
+
+  .today-donut__center span {
+    font-size: 8px;
+  }
+
+  .today-performance .today-chart__legend {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .today-performance .today-chart__legend-item {
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    gap: 6px;
+    font-size: 11.5px;
+  }
+
+  .today-performance .today-chart__legend-item strong {
+    grid-column: 3;
+    font-size: 11.5px;
+    justify-self: end;
+    white-space: nowrap;
+  }
+
   .today-status-bars,
   .today-mini-bars {
     gap: 10px;
@@ -1715,6 +1788,17 @@
   }
   .today-pipeline-list {
     width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .today-performance {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .today-performance .today-chart__legend {
+    max-width: 260px;
   }
 }
 
