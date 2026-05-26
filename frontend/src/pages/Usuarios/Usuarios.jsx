@@ -20,12 +20,8 @@ import {
 } from './permissoes';
 import './Usuarios.css';
 
-function getPermissoesIniciais(usuario, permissoesDisponiveis) {
+function getPermissoesIniciais(usuario) {
   const permissoesUsuario = parsePermissoesUsuario(usuario?.permissoes);
-
-  if (usuario?.role?.nome === 'admin') {
-    return permissoesDisponiveis.map(permissao => permissao.chave);
-  }
 
   return permissoesUsuario;
 }
@@ -52,7 +48,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 
         setUsuario(usuarioData);
         setPermissoes(permissoesCompletas);
-        setSelecionadas(getPermissoesIniciais(usuarioData, permissoesCompletas));
+        setSelecionadas(getPermissoesIniciais(usuarioData));
       } catch {
         setErro('Erro ao carregar permissões do usuário.');
       } finally {

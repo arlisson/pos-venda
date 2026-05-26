@@ -579,7 +579,6 @@ export function parsePermissoesUsuario(permissoes) {
 export function getPermissoesCopiaveis(usuarioOrigem, permissoesDisponiveis) {
   const chavesDisponiveis = permissoesDisponiveis.map(permissao => permissao.chave);
   const chavesOrigem = new Set(parsePermissoesUsuario(usuarioOrigem?.permissoes));
-  if (usuarioOrigem?.role?.nome === 'admin') return chavesDisponiveis;
   return chavesDisponiveis.filter(chave => chavesOrigem.has(chave));
 }
 
