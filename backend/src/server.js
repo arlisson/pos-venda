@@ -1,5 +1,6 @@
 const app = require('./app');
 const vendaArquivoService = require('./services/venda-arquivo.service');
+const arquivoService = require('./services/arquivo.service');
 
 const PORT = process.env.APP_PORT || 3000;
 
@@ -14,6 +15,12 @@ function limparArquivosVencidos() {
   vendaArquivoService.limparArquivosIndividuaisVencidos()
     .catch(error => {
       console.error('Erro ao limpar arquivos individuais vencidos:', error);
+    });
+
+  // Apaga blobs sem nenhum vínculo (ex.: upload pelo chat que o usuário não chegou a enviar).
+  arquivoService.limparArquivosOrfaos()
+    .catch(error => {
+      console.error('Erro ao limpar arquivos orfaos:', error);
     });
 }
 

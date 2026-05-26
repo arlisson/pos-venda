@@ -59,3 +59,5 @@ export const Whatsapp = mk(<><path d="M4.5 19.5 5.7 16.1A8 8 0 1 1 8 18.3l-3.5 1
 export const TableSheet = mk(<><rect x="3" y="3" width="18" height="18" rx="1" /><path d="M3 9h18M3 15h18M9 3v18" /></>);
 export const Chat = mk(<><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3.6-.7L3 21l1.4-5.4A8.4 8.4 0 1 1 21 11.5z" /><path d="M8 11h8M8 14h5" /></>);
 export const Send = mk(<><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></>);
+export const Paperclip = mk(<><path d="M21.4 11.05 12.5 19.95a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49" /></>);
+export const Document = mk(<><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M14 3v6h6" /></>);

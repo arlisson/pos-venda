@@ -1,4 +1,3 @@
-const Busboy = require('busboy');
 const archiver = require('archiver');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -9,10 +8,18 @@ const Venda = require('../models/Venda');
 const VendaArquivo = require('../models/VendaArquivo');
 const VendaArquivoPacote = require('../models/VendaArquivoPacote');
 const Usuario = require('../models/Usuario');
+const arquivoService = require('./arquivo.service');
 
-const STORAGE_DIR = path.resolve(
-  process.env.VENDA_ARQUIVOS_STORAGE_DIR || path.resolve(__dirname, '../../storage/venda-arquivos')
-);
+const {
+  STORAGE_DIR,
+  formatarDateTimeSQL,
+  garantirDiretorio,
+  caminhoAbsoluto,
+  normalizarNomeArquivo,
+  receberUpload,
+  materializarArquivo
+} = arquivoService;
+
 const MAX_FILE_MB = Number(process.env.VENDA_ARQUIVOS_MAX_FILE_MB || 50);
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 const MAX_FILES_PER_VENDA = Number(process.env.VENDA_ARQUIVOS_MAX_FILES_PER_VENDA || 30);
@@ -20,13 +27,6 @@ const RETENCAO_DIAS = Number(process.env.VENDA_ARQUIVOS_RETENCAO_INDIVIDUAIS_DIA
 const ALLOWED_TYPES = String(
   process.env.VENDA_ARQUIVOS_ALLOWED_TYPES || 'application/pdf,image/jpeg,image/png,image/webp'
 ).split(',').map(item => item.trim()).filter(Boolean);
-
-const EXTENSOES_POR_MIME = {
-  'application/pdf': '.pdf',
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'image/webp': '.webp'
-};
 
 function parsePermissoes(permissoes) {
   if (!permissoes) return [];
@@ -129,50 +129,10 @@ async function garantirAcessoVenda(vendaId, usuarioId) {
   }
 }
 
-function formatarDateTimeSQL(data = new Date()) {
-  const pad = value => String(value).padStart(2, '0');
-
-  return [
-    data.getUTCFullYear(),
-    pad(data.getUTCMonth() + 1),
-    pad(data.getUTCDate())
-  ].join('-') + ' ' + [
-    pad(data.getUTCHours()),
-    pad(data.getUTCMinutes()),
-    pad(data.getUTCSeconds())
-  ].join(':');
-}
-
 function adicionarDias(data, dias) {
   const nova = new Date(data);
   nova.setDate(nova.getDate() + dias);
   return nova;
-}
-
-async function garantirDiretorio(dir) {
-  await fs.promises.mkdir(dir, { recursive: true });
-}
-
-function caminhoRelativoAtivo(hash, extensao) {
-  return path.join('ativos', hash.slice(0, 2), hash.slice(2, 4), `${hash}${extensao || ''}`);
-}
-
-function caminhoAbsoluto(relativo) {
-  return path.resolve(STORAGE_DIR, relativo);
-}
-
-function normalizarNomeArquivo(nome) {
-  const base = path.basename(String(nome || 'arquivo'));
-  return base
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 180) || 'arquivo';
-}
-
-function extensaoPorArquivo(nome, mimeType) {
-  const ext = path.extname(String(nome || '')).toLowerCase().slice(0, 20);
-  return ext || EXTENSOES_POR_MIME[mimeType] || '';
 }
 
 function formatarArquivoVenda(row) {
@@ -264,139 +224,27 @@ async function receberArquivoUpload(req, vendaId, usuarioId) {
     throw error;
   }
 
-  await garantirDiretorio(path.join(STORAGE_DIR, 'tmp'));
-
-  const resultadoUpload = await new Promise((resolve, reject) => {
-    const busboy = Busboy({
-      headers: req.headers,
-      limits: {
-        files: 1,
-        fileSize: MAX_FILE_BYTES
-      }
+  let upload;
+  try {
+    upload = await receberUpload(req, {
+      allowedTypes: ALLOWED_TYPES,
+      maxFileBytes: MAX_FILE_BYTES
     });
-    const campos = {};
-    let uploadPromise = null;
-    let arquivoRecebido = false;
+  } catch (error) {
+    if (/excede o tamanho/i.test(error.message || '')) {
+      throw new Error(`Arquivo maior que ${MAX_FILE_MB} MB.`);
+    }
+    throw error;
+  }
 
-    busboy.on('field', (name, value) => {
-      campos[name] = value;
-    });
-
-    busboy.on('file', (field, file, info) => {
-      arquivoRecebido = true;
-      const nomeOriginal = normalizarNomeArquivo(info.filename || 'arquivo');
-      const mimeType = info.mimeType || 'application/octet-stream';
-
-      if (!ALLOWED_TYPES.includes(mimeType)) {
-        file.resume();
-        reject(new Error('Tipo de arquivo nao permitido.'));
-        return;
-      }
-
-      const tempPath = path.join(STORAGE_DIR, 'tmp', `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.upload`);
-      const output = fs.createWriteStream(tempPath);
-      const hash = crypto.createHash('sha256');
-      let tamanhoBytes = 0;
-      let limiteAtingido = false;
-
-      file.on('data', chunk => {
-        tamanhoBytes += chunk.length;
-        hash.update(chunk);
-      });
-
-      file.on('limit', () => {
-        limiteAtingido = true;
-        output.destroy(new Error(`Arquivo maior que ${MAX_FILE_MB} MB.`));
-      });
-
-      uploadPromise = new Promise((resolveUpload, rejectUpload) => {
-        output.on('finish', () => {
-          if (limiteAtingido) {
-            fs.promises.unlink(tempPath).catch(() => {});
-            rejectUpload(new Error(`Arquivo maior que ${MAX_FILE_MB} MB.`));
-            return;
-          }
-
-          resolveUpload({
-            tempPath,
-            nomeOriginal,
-            mimeType,
-            extensao: extensaoPorArquivo(nomeOriginal, mimeType),
-            tamanhoBytes,
-            hashSha256: hash.digest('hex'),
-            campos
-          });
-        });
-
-        output.on('error', error => {
-          fs.promises.unlink(tempPath).catch(() => {});
-          rejectUpload(error);
-        });
-      });
-
-      file.pipe(output);
-    });
-
-    busboy.on('finish', async () => {
-      try {
-        if (!arquivoRecebido || !uploadPromise) {
-          throw new Error('Arquivo nao enviado.');
-        }
-
-        resolve(await uploadPromise);
-      } catch (error) {
-        reject(error);
-      }
-    });
-
-    busboy.on('error', reject);
-    req.pipe(busboy);
-  });
-
-  const arquivoVenda = await salvarArquivoVenda(vendaId, usuarioId, resultadoUpload);
+  const arquivoVenda = await salvarArquivoVenda(vendaId, usuarioId, upload);
   await marcarPacoteDesatualizado(vendaId);
 
   return arquivoVenda;
 }
 
 async function salvarArquivoVenda(vendaId, usuarioId, upload) {
-  const existente = await Arquivo.query()
-    .where('hash_sha256', upload.hashSha256)
-    .first();
-
-  let arquivo = existente;
-  const relPath = caminhoRelativoAtivo(upload.hashSha256, upload.extensao);
-  const absPath = caminhoAbsoluto(relPath);
-  const arquivoExistenteDisponivel = arquivo
-    && !arquivo.removido_em
-    && fs.existsSync(caminhoAbsoluto(arquivo.storage_path));
-
-  if (!arquivoExistenteDisponivel) {
-    await garantirDiretorio(path.dirname(absPath));
-    await fs.promises.rename(upload.tempPath, absPath);
-
-    arquivo = arquivo
-      ? await Arquivo.query().patchAndFetchById(arquivo.id, {
-        mime_type: upload.mimeType,
-        extensao: upload.extensao,
-        tamanho_bytes: upload.tamanhoBytes,
-        storage_driver: 'local',
-        storage_path: relPath,
-        removido_em: null,
-        updated_at: formatarDateTimeSQL()
-      })
-      : await Arquivo.query().insertAndFetch({
-        hash_sha256: upload.hashSha256,
-        mime_type: upload.mimeType,
-        extensao: upload.extensao,
-        tamanho_bytes: upload.tamanhoBytes,
-        storage_driver: 'local',
-        storage_path: relPath,
-        criado_por_id: usuarioId
-      });
-  } else {
-    await fs.promises.unlink(upload.tempPath).catch(() => {});
-  }
+  const arquivo = await materializarArquivo(upload, usuarioId);
 
   const maiorOrdem = await VendaArquivo.query()
     .where('venda_id', vendaId)

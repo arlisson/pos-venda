@@ -7,9 +7,22 @@ import {
   enviarMensagem,
   listarContatos,
   listarConversas,
-  listarMensagens
+  listarMensagens,
+  uploadAnexoMensagem,
+  baixarAnexoMensagem,
+  excluirMensagem
 } from '../../services/mensagem.service';
 import './MensagensPage.css';
+
+const ANEXO_TIPOS_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+const ANEXO_TAMANHO_MAX_MB = 50;
+
+function formatarTamanho(bytes) {
+  if (!bytes) return '';
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(0)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
 
 const INTERVALO_THREAD = 3500;
 const INTERVALO_CONVERSAS = 10000;
@@ -37,11 +50,79 @@ function formatarDataLista(valor) {
 function mesmaLista(a, b) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (a[i].id !== b[i].id || a[i].recebida_em !== b[i].recebida_em || a[i].lida_em !== b[i].lida_em) {
+    if (a[i].id !== b[i].id
+      || a[i].recebida_em !== b[i].recebida_em
+      || a[i].lida_em !== b[i].lida_em
+      || Boolean(a[i].excluida) !== Boolean(b[i].excluida)) {
       return false;
     }
   }
   return true;
+}
+
+// Componente que mostra anexo dentro de uma bolha. Para imagens, baixa via API
+// autenticada e cria um object URL para o <img>. Para PDFs/outros, mostra um
+// mini-card com botão de download.
+function AnexoBolha({ anexo }) {
+  const [objectUrl, setObjectUrl] = useState(null);
+  const [baixando, setBaixando] = useState(false);
+  const ehImagem = anexo?.mime_type?.startsWith('image/');
+
+  useEffect(() => {
+    if (!anexo || !ehImagem) return undefined;
+    let url;
+    let cancelado = false;
+    baixarAnexoMensagem(anexo.id)
+      .then(blob => {
+        if (cancelado) return;
+        url = URL.createObjectURL(blob);
+        setObjectUrl(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [anexo, ehImagem]);
+
+  async function baixar() {
+    if (baixando) return;
+    setBaixando(true);
+    try {
+      const blob = await baixarAnexoMensagem(anexo.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = anexo.nome_original || 'anexo';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally {
+      setBaixando(false);
+    }
+  }
+
+  if (ehImagem) {
+    return (
+      <div className="bolha__anexo bolha__anexo--imagem">
+        {objectUrl
+          ? <img src={objectUrl} alt={anexo.nome_original} onClick={baixar} />
+          : <div className="bolha__anexo-loading">Carregando...</div>}
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" className="bolha__anexo bolha__anexo--arquivo" onClick={baixar} disabled={baixando}>
+      <I.Document size={28} />
+      <div className="bolha__anexo-info">
+        <strong>{anexo.nome_original}</strong>
+        <small>{formatarTamanho(anexo.tamanho_bytes)}</small>
+      </div>
+      <I.Download size={16} />
+    </button>
+  );
 }
 
 function Avatar({ contato }) {
@@ -70,6 +151,8 @@ function MensagensPage() {
   const [novaConversaAberta, setNovaConversaAberta] = useState(false);
   const [buscaContato, setBuscaContato] = useState('');
   const [pendentes, setPendentes] = useState([]);
+  // { file, nome, tamanho, status: 'enviando'|'pronto'|'erro', arquivo_id?, erro? }
+  const [anexoPendente, setAnexoPendente] = useState(null);
 
   const listaRef = useRef(null);
   const fimRef = useRef(null);
@@ -77,6 +160,7 @@ function MensagensPage() {
   const mensagensRef = useRef([]);
   const ultimoIdRef = useRef(0);
   const tempIdRef = useRef(0);
+  const inputAnexoRef = useRef(null);
 
   const carregarConversas = useCallback(async () => {
     try {
@@ -169,6 +253,7 @@ function MensagensPage() {
     setErro('');
     setMensagens([]);
     setPendentes([]);
+    setAnexoPendente(null);
     mensagensRef.current = [];
     ultimoIdRef.current = 0;
     proximaRolagemRef.current = true;
@@ -179,31 +264,103 @@ function MensagensPage() {
     carregarConversas();
   }
 
+  function abrirSelecaoArquivo() {
+    if (inputAnexoRef.current) inputAnexoRef.current.click();
+  }
+
+  async function handleArquivoSelecionado(evento) {
+    const file = evento.target.files?.[0];
+    evento.target.value = '';
+    if (!file) return;
+
+    if (!ANEXO_TIPOS_PERMITIDOS.includes(file.type)) {
+      setErro('Tipo de arquivo não permitido. Use PDF, JPG, PNG ou WEBP.');
+      return;
+    }
+
+    if (file.size > ANEXO_TAMANHO_MAX_MB * 1024 * 1024) {
+      setErro(`Arquivo maior que ${ANEXO_TAMANHO_MAX_MB} MB.`);
+      return;
+    }
+
+    setErro('');
+    setAnexoPendente({ file, nome: file.name, tamanho: file.size, status: 'enviando' });
+
+    try {
+      const resultado = await uploadAnexoMensagem(file);
+      setAnexoPendente(prev => prev && prev.file === file
+        ? { ...prev, status: 'pronto', arquivo_id: resultado.arquivo_id, nome_original: resultado.nome_original }
+        : prev);
+    } catch (e) {
+      setAnexoPendente(prev => prev && prev.file === file
+        ? { ...prev, status: 'erro', erro: e.message || 'Falha no upload.' }
+        : prev);
+    }
+  }
+
+  function removerAnexoPendente() {
+    setAnexoPendente(null);
+  }
+
+  async function handleExcluirMensagem(mensagem) {
+    if (!window.confirm('Excluir esta mensagem? Esta ação não pode ser desfeita.')) return;
+
+    // Marca otimisticamente como excluída — se o backend recusar, recarrega a thread.
+    const idAlvo = mensagem.id;
+    const tinhaAnexo = Boolean(mensagem.anexo) || Boolean(mensagem.tinha_anexo);
+    aplicarMensagens(
+      mensagensRef.current.map(m => m.id === idAlvo
+        ? { ...m, excluida: true, conteudo: null, anexo: null, tinha_anexo: tinhaAnexo }
+        : m),
+      { forcarRolagem: false }
+    );
+
+    try {
+      await excluirMensagem(idAlvo);
+      carregarConversas();
+      window.dispatchEvent(new CustomEvent('pos-venda:mensagens-atualizar'));
+    } catch (e) {
+      setErro(e.message || 'Erro ao excluir mensagem.');
+      if (contatoSelecionado) {
+        const dados = await listarMensagens(contatoSelecionado.id).catch(() => null);
+        if (dados) aplicarMensagens(dados, { forcarRolagem: false });
+      }
+    }
+  }
+
   async function handleEnviar(evento) {
     evento.preventDefault();
     const conteudo = texto.trim();
-    if (!conteudo || !contatoSelecionado || enviando) return;
+    const anexoPronto = anexoPendente?.status === 'pronto' ? anexoPendente : null;
+    if ((!conteudo && !anexoPronto) || !contatoSelecionado || enviando) return;
+    // Se há anexo em upload ou em erro, não deixa enviar.
+    if (anexoPendente && !anexoPronto) return;
 
-    // Bolha otimista: aparece na hora como "enviada" (✓) até o servidor confirmar.
     const tempId = `temp-${++tempIdRef.current}`;
     const otimista = {
       id: tempId,
       remetente_id: meuId,
       destinatario_id: contatoSelecionado.id,
-      conteudo,
+      conteudo: conteudo || null,
       recebida_em: null,
       lida_em: null,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      anexo: anexoPronto ? { id: tempId, nome_original: anexoPronto.nome_original, mime_type: anexoPronto.file.type, tamanho_bytes: anexoPronto.tamanho } : null
     };
 
     setEnviando(true);
     setErro('');
     setTexto('');
+    setAnexoPendente(null);
     proximaRolagemRef.current = true;
     setPendentes(prev => [...prev, otimista]);
 
     try {
-      const mensagem = await enviarMensagem(contatoSelecionado.id, conteudo);
+      const mensagem = await enviarMensagem(
+        contatoSelecionado.id,
+        conteudo,
+        anexoPronto ? { arquivo_id: anexoPronto.arquivo_id, nome_original: anexoPronto.nome_original } : null
+      );
       setPendentes(prev => prev.filter(p => p.id !== tempId));
       aplicarMensagens([...mensagensRef.current, mensagem], { forcarRolagem: true });
       carregarConversas();
@@ -304,9 +461,17 @@ function MensagensPage() {
                         <em>{formatarDataLista(conversa.ultima_mensagem?.created_at)}</em>
                       </span>
                       <span className="mensagens-conversa__preview">
-                        {conversa.ultima_mensagem
-                          ? `${conversa.ultima_mensagem.remetente_id === meuId ? 'Você: ' : ''}${conversa.ultima_mensagem.conteudo}`
-                          : 'Sem mensagens'}
+                        {(() => {
+                          const ultima = conversa.ultima_mensagem;
+                          if (!ultima) return 'Sem mensagens';
+                          const prefixo = ultima.remetente_id === meuId ? 'Você: ' : '';
+                          if (ultima.excluida) {
+                            return `${prefixo}${ultima.tinha_anexo ? 'Arquivo deletado' : 'Mensagem deletada'}`;
+                          }
+                          if (ultima.conteudo) return `${prefixo}${ultima.conteudo}`;
+                          if (ultima.anexo) return `${prefixo}📎 ${ultima.anexo.nome_original}`;
+                          return `${prefixo}—`;
+                        })()}
                       </span>
                     </span>
                     {conversa.nao_lidas > 0 && conversa.contato.id !== contatoSelecionado?.id && (
@@ -352,12 +517,46 @@ function MensagensPage() {
                       const minha = mensagem.remetente_id === meuId;
                       const status = mensagem.lida_em ? 'lida' : (mensagem.recebida_em ? 'recebida' : 'enviada');
                       const statusLabel = status === 'lida' ? 'Lido' : status === 'recebida' ? 'Recebido' : 'Enviado';
+                      const ehTemp = typeof mensagem.id === 'string' && mensagem.id.startsWith('temp-');
+                      const excluida = Boolean(mensagem.excluida);
+                      const placeholder = excluida
+                        ? (mensagem.tinha_anexo ? 'Arquivo deletado' : 'Mensagem deletada')
+                        : null;
                       return (
-                        <div key={mensagem.id} className={`bolha ${minha ? 'bolha--minha' : 'bolha--dele'}`}>
-                          <span className="bolha__texto">{mensagem.conteudo}</span>
+                        <div key={mensagem.id} className={`bolha ${minha ? 'bolha--minha' : 'bolha--dele'} ${excluida ? 'bolha--excluida' : ''}`}>
+                          {minha && !ehTemp && !excluida && (
+                            <button
+                              type="button"
+                              className="bolha__excluir"
+                              onClick={() => handleExcluirMensagem(mensagem)}
+                              title="Excluir mensagem"
+                              aria-label="Excluir mensagem"
+                            >
+                              <I.Trash size={12} />
+                            </button>
+                          )}
+                          {excluida ? (
+                            <span className="bolha__texto bolha__texto--excluida">
+                              <I.TrashSend size={12} /> {placeholder}
+                            </span>
+                          ) : (
+                            <>
+                              {mensagem.anexo && !ehTemp && <AnexoBolha anexo={mensagem.anexo} />}
+                              {mensagem.anexo && ehTemp && (
+                                <div className="bolha__anexo bolha__anexo--arquivo">
+                                  <I.Document size={28} />
+                                  <div className="bolha__anexo-info">
+                                    <strong>{mensagem.anexo.nome_original}</strong>
+                                    <small>Enviando...</small>
+                                  </div>
+                                </div>
+                              )}
+                              {mensagem.conteudo && <span className="bolha__texto">{mensagem.conteudo}</span>}
+                            </>
+                          )}
                           <span className="bolha__meta">
                             {formatarHora(mensagem.created_at)}
-                            {minha && (
+                            {minha && !excluida && (
                               <span className={`bolha__check is-${status}`} title={statusLabel}>
                                 {status === 'enviada' ? '✓' : '✓✓'}
                               </span>
@@ -372,7 +571,41 @@ function MensagensPage() {
 
                 {erro && <div className="thread-erro">{erro}</div>}
 
+                {anexoPendente && (
+                  <div className={`thread-anexo-preview is-${anexoPendente.status}`}>
+                    <I.Document size={20} />
+                    <div className="thread-anexo-preview__info">
+                      <strong>{anexoPendente.nome}</strong>
+                      <small>
+                        {anexoPendente.status === 'enviando' && 'Enviando...'}
+                        {anexoPendente.status === 'pronto' && formatarTamanho(anexoPendente.tamanho)}
+                        {anexoPendente.status === 'erro' && (anexoPendente.erro || 'Erro')}
+                      </small>
+                    </div>
+                    <button type="button" className="btn btn-icon btn-ghost" onClick={removerAnexoPendente} aria-label="Remover anexo">
+                      <I.Close size={14} />
+                    </button>
+                  </div>
+                )}
+
                 <form className="thread-input" onSubmit={handleEnviar}>
+                  <input
+                    ref={inputAnexoRef}
+                    type="file"
+                    accept={ANEXO_TIPOS_PERMITIDOS.join(',')}
+                    onChange={handleArquivoSelecionado}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-icon btn-ghost thread-anexar"
+                    onClick={abrirSelecaoArquivo}
+                    disabled={enviando || Boolean(anexoPendente)}
+                    aria-label="Anexar arquivo"
+                    title="Anexar arquivo (PDF, JPG, PNG, WEBP)"
+                  >
+                    <I.Paperclip size={18} />
+                  </button>
                   <textarea
                     value={texto}
                     onChange={evento => setTexto(evento.target.value)}
@@ -383,7 +616,9 @@ function MensagensPage() {
                   <button
                     type="submit"
                     className="btn btn-primary thread-enviar"
-                    disabled={!texto.trim() || enviando}
+                    disabled={enviando
+                      || (!texto.trim() && anexoPendente?.status !== 'pronto')
+                      || (anexoPendente && anexoPendente.status !== 'pronto')}
                     aria-label="Enviar"
                   >
                     <I.Send size={16} />

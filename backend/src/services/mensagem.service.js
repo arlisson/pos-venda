@@ -1,6 +1,13 @@
 const Mensagem = require('../models/Mensagem');
+const MensagemArquivo = require('../models/MensagemArquivo');
+const Arquivo = require('../models/Arquivo');
 const Usuario = require('../models/Usuario');
 const db = require('../database/connection');
+const arquivoService = require('./arquivo.service');
+
+const ANEXO_TIPOS_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+const ANEXO_TAMANHO_MAX_MB = Number(process.env.CHAT_ANEXO_MAX_MB || 50);
+const ANEXO_TAMANHO_MAX_BYTES = ANEXO_TAMANHO_MAX_MB * 1024 * 1024;
 
 function erroHttp(mensagem, statusCode) {
   const erro = new Error(mensagem);
@@ -61,15 +68,30 @@ function formatarContato(usuario) {
   };
 }
 
+function formatarAnexo(anexo) {
+  if (!anexo) return null;
+  return {
+    id: anexo.id,
+    nome_original: anexo.nome_original,
+    mime_type: anexo.arquivo?.mime_type || null,
+    tamanho_bytes: Number(anexo.arquivo?.tamanho_bytes || 0)
+  };
+}
+
 function formatarMensagem(mensagem) {
+  const excluida = Boolean(mensagem.excluido_em);
   return {
     id: mensagem.id,
     remetente_id: mensagem.remetente_id,
     destinatario_id: mensagem.destinatario_id,
-    conteudo: mensagem.conteudo,
+    // Quando excluída, não devolvemos conteúdo nem anexo: o cliente mostra um placeholder.
+    conteudo: excluida ? null : mensagem.conteudo,
     recebida_em: mensagem.recebida_em,
     lida_em: mensagem.lida_em,
-    created_at: mensagem.created_at
+    created_at: mensagem.created_at,
+    anexo: excluida ? null : formatarAnexo(mensagem.anexo),
+    excluida,
+    tinha_anexo: Boolean(mensagem.tinha_anexo)
   };
 }
 
@@ -144,6 +166,7 @@ async function listarConversas(usuarioId) {
           .where({ remetente_id: me, destinatario_id: contatoId })
           .orWhere({ remetente_id: contatoId, destinatario_id: me });
       })
+      .withGraphFetched('anexo.arquivo')
       .orderBy('id', 'desc')
       .first();
 
@@ -187,11 +210,13 @@ async function listarMensagens(usuarioId, contatoId, { desde, limit = 50 } = {})
   // Marca como lidas as mensagens recebidas deste contato.
   await marcarConversaLida(me, contato);
 
-  const query = Mensagem.query().where(builder => {
-    builder
-      .where({ remetente_id: me, destinatario_id: contato })
-      .orWhere({ remetente_id: contato, destinatario_id: me });
-  });
+  const query = Mensagem.query()
+    .where(builder => {
+      builder
+        .where({ remetente_id: me, destinatario_id: contato })
+        .orWhere({ remetente_id: contato, destinatario_id: me });
+    })
+    .withGraphFetched('anexo.arquivo');
 
   let mensagens;
 
@@ -207,10 +232,14 @@ async function listarMensagens(usuarioId, contatoId, { desde, limit = 50 } = {})
   return mensagens.map(formatarMensagem);
 }
 
-async function enviarMensagem(remetenteId, destinatarioId, conteudo) {
+async function enviarMensagem(remetenteId, destinatarioId, conteudo, arquivoId = null, nomeArquivo = null) {
   const remetente = Number(remetenteId);
   const destinatario = Number(destinatarioId);
   const texto = typeof conteudo === 'string' ? conteudo.trim() : '';
+  const arquivoIdNum = arquivoId ? Number(arquivoId) : null;
+  const nomeArquivoSanitizado = nomeArquivo
+    ? arquivoService.normalizarNomeArquivo(String(nomeArquivo))
+    : null;
 
   if (!destinatario || Number.isNaN(destinatario)) {
     throw erroHttp('Destinatário inválido.', 400);
@@ -220,7 +249,7 @@ async function enviarMensagem(remetenteId, destinatarioId, conteudo) {
     throw erroHttp('Não é possível enviar mensagem para si mesmo.', 400);
   }
 
-  if (!texto) {
+  if (!texto && !arquivoIdNum) {
     throw erroHttp('A mensagem não pode estar vazia.', 400);
   }
 
@@ -236,18 +265,133 @@ async function enviarMensagem(remetenteId, destinatarioId, conteudo) {
     throw erroHttp('Este usuário não pode usar o chat.', 403);
   }
 
+  let arquivoAnexo = null;
+  if (arquivoIdNum) {
+    arquivoAnexo = await Arquivo.query().findById(arquivoIdNum);
+    // O frontend só conhece arquivos que ele mesmo subiu nesta sessão; ainda assim
+    // exigimos que o arquivo exista e pertença ao remetente para evitar referência cruzada.
+    if (!arquivoAnexo || arquivoAnexo.removido_em || Number(arquivoAnexo.criado_por_id) !== remetente) {
+      throw erroHttp('Anexo inválido.', 400);
+    }
+  }
+
   const agora = agoraUtc();
   const mensagem = await Mensagem.query().insertAndFetch({
     remetente_id: remetente,
     destinatario_id: destinatario,
-    conteudo: texto,
+    conteudo: texto || null,
+    tinha_anexo: Boolean(arquivoAnexo),
     // "Recebido" = mensagem salva no servidor (independe do destinatário estar online).
     recebida_em: agora,
     created_at: agora,
     updated_at: agora
   });
 
-  return formatarMensagem(mensagem);
+  if (arquivoAnexo) {
+    await MensagemArquivo.query().insert({
+      mensagem_id: mensagem.id,
+      arquivo_id: arquivoAnexo.id,
+      nome_original: nomeArquivoSanitizado || `arquivo${arquivoAnexo.extensao || ''}`
+    });
+  }
+
+  const completa = await Mensagem.query()
+    .findById(mensagem.id)
+    .withGraphFetched('anexo.arquivo');
+
+  return formatarMensagem(completa);
+}
+
+// Recebe o multipart, valida tipo/tamanho e materializa no storage de arquivos.
+// Devolve o registro de `arquivos` (com nome_original_upload anexado em memória
+// para que enviarMensagem possa preservá-lo ao criar o vínculo).
+async function uploadAnexo(req, usuarioId) {
+  let upload;
+  try {
+    upload = await arquivoService.receberUpload(req, {
+      allowedTypes: ANEXO_TIPOS_PERMITIDOS,
+      maxFileBytes: ANEXO_TAMANHO_MAX_BYTES
+    });
+  } catch (error) {
+    if (/excede o tamanho/i.test(error.message || '')) {
+      throw erroHttp(`Arquivo maior que ${ANEXO_TAMANHO_MAX_MB} MB.`, 400);
+    }
+    if (/tipo de arquivo/i.test(error.message || '')) {
+      throw erroHttp('Tipo de arquivo não permitido.', 400);
+    }
+    throw erroHttp(error.message || 'Falha no upload.', 400);
+  }
+
+  const arquivo = await arquivoService.materializarArquivo(upload, usuarioId);
+
+  return {
+    arquivo_id: arquivo.id,
+    nome_original: upload.nomeOriginal,
+    mime_type: arquivo.mime_type,
+    tamanho_bytes: Number(arquivo.tamanho_bytes || 0)
+  };
+}
+
+async function excluirMensagem(usuarioId, mensagemId) {
+  const me = Number(usuarioId);
+  const id = Number(mensagemId);
+
+  if (!id || Number.isNaN(id)) {
+    throw erroHttp('Mensagem inválida.', 400);
+  }
+
+  const mensagem = await Mensagem.query().findById(id);
+
+  if (!mensagem) {
+    throw erroHttp('Mensagem não encontrada.', 404);
+  }
+
+  if (Number(mensagem.remetente_id) !== me) {
+    throw erroHttp('Você só pode excluir as próprias mensagens.', 403);
+  }
+
+  if (mensagem.excluido_em) {
+    return true;
+  }
+
+  // Soft delete: a bolha continua na thread como "Mensagem deletada" / "Arquivo deletado".
+  // O vínculo do anexo é removido para que o blob vire órfão e seja limpo pelo cron.
+  await MensagemArquivo.query().delete().where('mensagem_id', id);
+  await Mensagem.query().patchAndFetchById(id, {
+    excluido_em: agoraUtc(),
+    conteudo: null,
+    updated_at: agoraUtc()
+  });
+
+  return true;
+}
+
+async function prepararDownloadAnexo(usuarioId, mensagemArquivoId) {
+  const me = Number(usuarioId);
+
+  const vinculo = await MensagemArquivo.query()
+    .findById(mensagemArquivoId)
+    .withGraphFetched('[arquivo, mensagem]');
+
+  if (!vinculo || !vinculo.arquivo || !vinculo.mensagem) {
+    throw erroHttp('Anexo não encontrado.', 404);
+  }
+
+  const mensagem = vinculo.mensagem;
+  if (Number(mensagem.remetente_id) !== me && Number(mensagem.destinatario_id) !== me) {
+    throw erroHttp('Sem acesso a este anexo.', 403);
+  }
+
+  if (mensagem.excluido_em) {
+    throw erroHttp('Anexo não está mais disponível.', 410);
+  }
+
+  const stream = await arquivoService.abrirStreamArquivo(vinculo.arquivo);
+
+  return {
+    ...stream,
+    nome: vinculo.nome_original
+  };
 }
 
 module.exports = {
@@ -256,5 +400,8 @@ module.exports = {
   listarMensagens,
   enviarMensagem,
   contarNaoLidas,
-  marcarConversaLida
+  marcarConversaLida,
+  uploadAnexo,
+  prepararDownloadAnexo,
+  excluirMensagem
 };

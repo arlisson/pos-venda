@@ -587,3 +587,163 @@
     padding-inline: 10px;
   }
 }
+
+/* ---------- Anexos ---------- */
+.thread-anexo-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin: 0 14px 8px;
+  background: var(--surface-2, #f5f5f7);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+}
+
+.thread-anexo-preview.is-erro {
+  border-color: #e0524d;
+  color: #b53b37;
+}
+
+.thread-anexo-preview__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.thread-anexo-preview__info strong {
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-anexo-preview__info small {
+  font-size: 0.75rem;
+  color: var(--text-muted, #888);
+}
+
+.bolha__anexo {
+  display: flex;
+  margin-bottom: 6px;
+  max-width: 100%;
+}
+
+.bolha__anexo--imagem img {
+  max-width: 260px;
+  max-height: 320px;
+  border-radius: 8px;
+  cursor: zoom-in;
+  display: block;
+}
+
+.bolha__anexo--arquivo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  min-width: 220px;
+  background: var(--surface-2, #f5f5f7);
+  border: 1px solid var(--border);
+  color: var(--text-1, inherit);
+}
+
+.bolha--minha .bolha__anexo--arquivo {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #fff;
+}
+
+.bolha--minha .bolha__anexo--arquivo:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.bolha--minha .bolha__anexo-info small {
+  opacity: 0.85;
+}
+
+.bolha__anexo-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+
+.bolha__anexo-info strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+  font-size: 0.9rem;
+}
+
+.bolha__anexo-info small {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.bolha__anexo-loading {
+  padding: 24px;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.thread-anexar {
+  flex-shrink: 0;
+}
+
+/* Botão de excluir mensagem — visível só ao passar o mouse na bolha */
+.bolha {
+  position: relative;
+}
+
+.bolha__excluir {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--danger, #e0524d);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.bolha:hover .bolha__excluir,
+.bolha__excluir:focus-visible {
+  display: inline-flex;
+}
+
+.bolha__excluir:hover {
+  background: var(--danger, #e0524d);
+  color: #fff;
+  border-color: var(--danger, #e0524d);
+}
+
+/* Bolha de mensagem excluída — placeholder discreto */
+.bolha--excluida {
+  opacity: 0.75;
+}
+
+.bolha__texto--excluida {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-style: italic;
+  color: var(--text-3);
+}
+
+.bolha--minha .bolha__texto--excluida {
+  color: rgba(255, 255, 255, 0.8);
+}
