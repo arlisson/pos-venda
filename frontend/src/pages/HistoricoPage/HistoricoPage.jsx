@@ -17,6 +17,7 @@ import {
   obterReferenciasClientesVendas
 } from '../../services/venda.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
+import { STAGES as FALLBACK_STAGES } from '../../config/constants';
 import { formatUtcDateTime, getUtcDateTimeTimestamp } from '../../utils/datetime';
 import '../VendasPage/VendasPage.css';
 import '../Clientes/Clientes.css';
@@ -65,19 +66,17 @@ const FILTROS_STATUS_VENDA = [
   { id: 'lixeira', label: 'Lixeira (Excluídas)' }
 ];
 
-const FUNIL_STAGES = [
-  { id: 'aprovacao', name: 'Aprovação' },
-  { id: 'ativacao', name: 'Ativação' },
-  { id: 'envio', name: 'Envio' },
-  { id: 'entrega', name: 'Entrega' },
-  { id: 'confirmacao', name: 'Confirmação' },
-  { id: 'concluido', name: 'Concluído' },
-];
+const FUNIL_STAGES = FALLBACK_STAGES.map((stage, index) => ({
+  id: stage.id,
+  nome: stage.name,
+  ordem: Number(stage.ordem ?? index),
+  etapaFinal: Boolean(stage.etapaFinal || stage.etapa_final)
+}));
 
-const FUNIL_STAGE_IDS = FUNIL_STAGES.map(s => s.id);
-
-const STAGE_NAMES_MAP = Object.fromEntries(FUNIL_STAGES.map(s => [s.id, s.name]));
-STAGE_NAMES_MAP.retorno = 'Retorno';
+const DEFAULT_STAGE_NAMES_MAP = {
+  ...Object.fromEntries(FUNIL_STAGES.map(stage => [stage.id, stage.nome])),
+  retorno: 'Retorno'
+};
 
 function parseDados(dados) {
   if (!dados) return {};
@@ -141,13 +140,13 @@ function formatarCampo(campo = '') {
     .replace(/\b\w/g, letra => letra.toUpperCase());
 }
 
-function formatarValor(valor, campo = '') {
+function formatarValor(valor, campo = '', stageNamesMap = DEFAULT_STAGE_NAMES_MAP) {
   if (valor === null || valor === undefined || valor === '') return 'Nao informado';
   if (typeof valor === 'boolean') return valor ? 'Sim' : 'Nao';
   if (typeof valor === 'number') return String(valor);
 
   if (typeof valor === 'string') {
-    if (campo.includes('status') && STAGE_NAMES_MAP[valor]) return STAGE_NAMES_MAP[valor];
+    if (campo.includes('status') && stageNamesMap[valor]) return stageNamesMap[valor];
     if (/^\d{4}-\d{2}-\d{2}T/.test(valor)) return formatarData(valor);
     return valor;
   }
@@ -169,7 +168,7 @@ function extrairMotivoCancelamento(log) {
   return motivo ? String(motivo).trim() : null;
 }
 
-function getResumoAlteracoes(alteracoes = {}) {
+function getResumoAlteracoes(alteracoes = {}, stageNamesMap = DEFAULT_STAGE_NAMES_MAP) {
   if (!isPlainObject(alteracoes)) return [];
 
   const rows = [];
@@ -178,8 +177,8 @@ function getResumoAlteracoes(alteracoes = {}) {
   if (alteracoes.status_anterior || alteracoes.status_funil) {
     rows.push({
       campo: 'Etapa do funil',
-      de: formatarValor(alteracoes.status_anterior, 'status_funil'),
-      para: formatarValor(alteracoes.status_funil, 'status_funil')
+      de: formatarValor(alteracoes.status_anterior, 'status_funil', stageNamesMap),
+      para: formatarValor(alteracoes.status_funil, 'status_funil', stageNamesMap)
     });
     usados.add('status_anterior');
     usados.add('status_funil');
@@ -190,7 +189,7 @@ function getResumoAlteracoes(alteracoes = {}) {
 
     rows.push({
       campo: formatarCampo(campo),
-      para: formatarValor(valor, campo)
+      para: formatarValor(valor, campo, stageNamesMap)
     });
   });
 
@@ -214,8 +213,8 @@ function montarMapaReferencias(referencias = [], campo) {
   return mapa;
 }
 
-function ResumoAlteracoes({ alteracoes }) {
-  const rows = getResumoAlteracoes(alteracoes);
+function ResumoAlteracoes({ alteracoes, stageNamesMap }) {
+  const rows = getResumoAlteracoes(alteracoes, stageNamesMap);
 
   if (rows.length === 0) return null;
 
@@ -242,7 +241,7 @@ function ResumoAlteracoes({ alteracoes }) {
   );
 }
 
-function ListaCampos({ titulo, dados, ocultar = [] }) {
+function ListaCampos({ titulo, dados, ocultar = [], stageNamesMap }) {
   const campos = getCamposVisiveis(dados, ocultar);
 
   if (campos.length === 0) return null;
@@ -254,7 +253,7 @@ function ListaCampos({ titulo, dados, ocultar = [] }) {
         {campos.map(([campo, valor]) => (
           <div className="history-field-row" key={campo}>
             <span className="history-field-label">{formatarCampo(campo)}</span>
-            <span className="history-field-value">{formatarValor(valor, campo)}</span>
+            <span className="history-field-value">{formatarValor(valor, campo, stageNamesMap)}</span>
           </div>
         ))}
       </div>
@@ -262,7 +261,7 @@ function ListaCampos({ titulo, dados, ocultar = [] }) {
   );
 }
 
-function DadosOperacao({ dados }) {
+function DadosOperacao({ dados, stageNamesMap }) {
   if (!dados || Object.keys(dados).length === 0) return null;
 
   const gruposConhecidos = [
@@ -279,11 +278,11 @@ function DadosOperacao({ dados }) {
   return (
     <div className="history-detail-section">
       <h4>Dados da Operacao</h4>
-      <ResumoAlteracoes alteracoes={dados.alteracoes} />
+      <ResumoAlteracoes alteracoes={dados.alteracoes} stageNamesMap={stageNamesMap} />
       {gruposConhecidos.map(([titulo, grupo, ocultar]) => (
-        <ListaCampos key={titulo} titulo={titulo} dados={grupo} ocultar={ocultar} />
+        <ListaCampos key={titulo} titulo={titulo} dados={grupo} ocultar={ocultar} stageNamesMap={stageNamesMap} />
       ))}
-      <ListaCampos titulo="Outras informacoes" dados={demaisDados} />
+      <ListaCampos titulo="Outras informacoes" dados={demaisDados} stageNamesMap={stageNamesMap} />
       <details className="history-raw-data">
         <summary>Ver dados tecnicos em JSON</summary>
         <pre className="history-detail-data">
@@ -304,6 +303,14 @@ function normalizarEtapas(etapas = []) {
     }))
     .filter(etapa => etapa.id)
     .sort((a, b) => a.ordem - b.ordem);
+}
+
+function montarMapaNomesEtapas(etapas = []) {
+  return {
+    ...DEFAULT_STAGE_NAMES_MAP,
+    ...Object.fromEntries(etapas.map(etapa => [etapa.id, etapa.nome])),
+    retorno: 'Retorno'
+  };
 }
 
 function getMovimentacaoHistorico(log) {
@@ -471,8 +478,11 @@ function extrairNomeVenda(logs, vendaId) {
   return `Venda #${vendaId}`;
 }
 
-function buildStageProgression(logs) {
+function buildStageProgression(logs, etapas = []) {
   const sorted = [...logs].sort((a, b) => getUtcDateTimeTimestamp(a.created_at) - getUtcDateTimeTimestamp(b.created_at));
+  const stagesBase = etapas.length > 0 ? etapas : FUNIL_STAGES;
+  const stageIds = stagesBase.map(stage => stage.id);
+  const primeiraEtapa = stageIds[0] || 'aprovacao';
 
   const reached = new Map();
   let currentStage = null;
@@ -484,15 +494,15 @@ function buildStageProgression(logs) {
     const usuario = log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema');
 
     if (log.acao === 'venda.criada') {
-      if (!reached.has('aprovacao')) {
-        reached.set('aprovacao', { data: log.created_at, usuario, log });
+      if (!reached.has(primeiraEtapa)) {
+        reached.set(primeiraEtapa, { data: log.created_at, usuario, log });
       }
-      currentStage = 'aprovacao';
+      currentStage = primeiraEtapa;
     } else if (log.acao === 'venda.status_atualizado') {
-      const stage = dados.alteracoes?.status_funil;
+      const stage = getMovimentacaoHistorico({ ...log, dados }).statusNovo;
       if (stage === 'retorno') {
         hasRetorno = true;
-      } else if (stage && FUNIL_STAGE_IDS.includes(stage)) {
+      } else if (stage && stageIds.includes(stage)) {
         if (!reached.has(stage)) {
           reached.set(stage, { data: log.created_at, usuario, log });
         }
@@ -507,13 +517,13 @@ function buildStageProgression(logs) {
         stageId,
         motivo: extrairMotivoCancelamento(log)
       };
-      if (FUNIL_STAGE_IDS.includes(stageId)) currentStage = stageId;
+      if (stageIds.includes(stageId)) currentStage = stageId;
     }
   }
 
-  if (!currentStage) currentStage = 'aprovacao';
+  if (!currentStage) currentStage = primeiraEtapa;
 
-  const stages = FUNIL_STAGES.map((stage, idx) => {
+  const stages = stagesBase.map((stage, idx) => {
     const stageData = reached.get(stage.id);
     const isCurrent = stage.id === currentStage;
     const isReached = reached.has(stage.id);
@@ -527,13 +537,14 @@ function buildStageProgression(logs) {
     } else if (isReached) {
       status = 'done';
     } else {
-      const hasBefore = FUNIL_STAGE_IDS.slice(0, idx).some(id => reached.has(id));
-      const hasAfter = FUNIL_STAGE_IDS.slice(idx + 1).some(id => reached.has(id));
+      const hasBefore = stageIds.slice(0, idx).some(id => reached.has(id));
+      const hasAfter = stageIds.slice(idx + 1).some(id => reached.has(id));
       status = (hasBefore && hasAfter) ? 'skipped' : 'pending';
     }
 
     return {
       ...stage,
+      name: stage.nome || stage.name || stage.id,
       status,
       data: isCancelled ? cancelamento.data : stageData?.data,
       usuario: isCancelled ? cancelamento.usuario : stageData?.usuario,
@@ -643,10 +654,10 @@ function agruparLogsVenda(logs = []) {
   })).sort((a, b) => getUtcDateTimeTimestamp(b.maisRecente?.created_at) - getUtcDateTimeTimestamp(a.maisRecente?.created_at));
 }
 
-function VendaHistoricoGrupo({ grupo, logSelecionado, onClick, onAbrirVenda, modalCarregando }) {
+function VendaHistoricoGrupo({ grupo, etapasFunil, stageNamesMap, logSelecionado, onClick, onAbrirVenda, modalCarregando }) {
   const [expandido, setExpandido] = useState(false);
-  const progression = buildStageProgression(grupo.logs);
-  const currentStageName = STAGE_NAMES_MAP[progression.currentStage] || progression.currentStage;
+  const progression = buildStageProgression(grupo.logs, etapasFunil);
+  const currentStageName = stageNamesMap[progression.currentStage] || progression.currentStage;
   const skippedCount = progression.stages.filter(s => s.status === 'skipped').length;
   const nomeCliente = extrairNomeVenda(grupo.logs, grupo.vendaId);
   const motivoCancelamento = progression.cancelamento?.motivo;
@@ -733,13 +744,13 @@ function VendaHistoricoGrupo({ grupo, logSelecionado, onClick, onAbrirVenda, mod
   );
 }
 
-function DetalheCard({ log, onClose, onAbrirVenda, onAbrirCliente, podeAbrirCliente, modalCarregando }) {
+function DetalheCard({ log, stageNamesMap = DEFAULT_STAGE_NAMES_MAP, onClose, onAbrirVenda, onAbrirCliente, podeAbrirCliente, modalCarregando }) {
   const dados = parseDados(log.dados);
   const motivoCancelamento = extrairMotivoCancelamento(log);
   const podeAbrirVenda = log.entidade === 'vendas' && log.entidade_id;
   const podeAbrirClienteLog = log.entidade === 'clientes' && log.entidade_id && podeAbrirCliente;
   const stageDe = dados.alteracoes?.status_funil
-    ? STAGE_NAMES_MAP[dados.alteracoes?.status_funil]
+    ? stageNamesMap[dados.alteracoes.status_funil] || dados.alteracoes.status_funil
     : null;
 
   return (
@@ -846,7 +857,7 @@ function DetalheCard({ log, onClose, onAbrirVenda, onAbrirCliente, podeAbrirClie
           </div>
         )}
         
-        <DadosOperacao dados={dados} />
+        <DadosOperacao dados={dados} stageNamesMap={stageNamesMap} />
       </div>
     </div>
   );
@@ -895,6 +906,7 @@ function HistoricoPage() {
     () => montarMapaReferencias(referenciasClientesModal, 'em_andamento_total'),
     [referenciasClientesModal]
   );
+  const stageNamesMap = useMemo(() => montarMapaNomesEtapas(etapasFunil), [etapasFunil]);
 
   async function carregar(pagina = paginaAtual, porPagina = itensPorPagina) {
     setCarregando(true);
@@ -919,12 +931,12 @@ function HistoricoPage() {
 
       const [resposta, etapas] = await Promise.all([
         requisicao,
-        ehVendas ? listarEtapasFunil().catch(() => []) : Promise.resolve(null)
+        listarEtapasFunil().catch(() => [])
       ]);
 
       setLogs(resposta.data || []);
       setTotal(resposta.total || 0);
-      if (etapas) setEtapasFunil(normalizarEtapas(etapas));
+      setEtapasFunil(normalizarEtapas(etapas));
     } catch (error) {
       setErro(error.message || 'Erro ao carregar histórico.');
     } finally {
@@ -1185,6 +1197,8 @@ function HistoricoPage() {
                     <VendaHistoricoGrupo
                       key={grupo.vendaId}
                       grupo={grupo}
+                      etapasFunil={etapasFunil}
+                      stageNamesMap={stageNamesMap}
                       logSelecionado={logSelecionado}
                       onClick={setLogSelecionado}
                       onAbrirVenda={abrirVenda}
@@ -1220,6 +1234,7 @@ function HistoricoPage() {
             {logSelecionado && (
               <DetalheCard 
                 log={logSelecionado} 
+                stageNamesMap={stageNamesMap}
                 onClose={() => setLogSelecionado(null)} 
                 onAbrirVenda={abrirVenda}
                 onAbrirCliente={abrirCliente}
