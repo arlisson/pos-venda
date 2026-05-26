@@ -583,23 +583,52 @@ export function getPermissoesCopiaveis(usuarioOrigem, permissoesDisponiveis) {
   return chavesDisponiveis.filter(chave => chavesOrigem.has(chave));
 }
 
-export function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle }) {
+export function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle, negada, onToggleNegada }) {
   return (
-    <label className={`permissions-option ${selecionado ? 'is-active' : ''} ${exclusivo ? 'permissions-option--exclusive' : ''}`}>
+    <label
+      className={`permissions-option ${selecionado ? 'is-active' : ''} ${exclusivo ? 'permissions-option--exclusive' : ''} ${negada ? 'is-denied' : ''}`}
+      style={negada ? { opacity: 0.7, borderColor: 'var(--danger, #c0392b)' } : undefined}
+    >
       <input
         type="checkbox"
-        checked={selecionado}
+        checked={selecionado && !negada}
+        disabled={negada}
         onChange={() => onToggle(item.chave, exclusivo ? { grupoExclusivo } : undefined)}
       />
       <span>
         <strong>{item.nome}</strong>
         <small>{item.descricao || 'Permissão do sistema.'}</small>
+        {onToggleNegada && (
+          <button
+            type="button"
+            className="permissions-deny-toggle"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleNegada(item.chave);
+            }}
+            style={{
+              marginTop: 6,
+              fontSize: 11,
+              padding: '2px 8px',
+              borderRadius: 4,
+              border: '1px solid',
+              borderColor: negada ? 'var(--danger, #c0392b)' : 'var(--border, #ccc)',
+              background: negada ? 'var(--danger, #c0392b)' : 'transparent',
+              color: negada ? '#fff' : 'var(--danger, #c0392b)',
+              cursor: 'pointer',
+              alignSelf: 'flex-start'
+            }}
+          >
+            {negada ? '✓ Negada (clique para permitir)' : '🚫 Negar para este usuário'}
+          </button>
+        )}
       </span>
     </label>
   );
 }
 
-export function PermissaoGrupo({ grupo, selecionadas, onToggle }) {
+export function PermissaoGrupo({ grupo, selecionadas, onToggle, negadas = [], onToggleNegada }) {
   const chaves = getChavesGrupo(grupo);
   const selecionadasNoGrupo = chaves.filter(chave => selecionadas.includes(chave)).length;
   const ativo = selecionadasNoGrupo > 0;
@@ -634,6 +663,8 @@ export function PermissaoGrupo({ grupo, selecionadas, onToggle }) {
                     exclusivo={secao.exclusivo}
                     grupoExclusivo={grupoExclusivo}
                     onToggle={onToggle}
+                    negada={negadas.includes(item.chave)}
+                    onToggleNegada={onToggleNegada}
                   />
                 ))}
               </div>

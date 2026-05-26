@@ -58,6 +58,12 @@ export function temPermissao(usuario, permissao) {
     return permissao.some(item => temPermissao(usuario, item));
   }
 
+  const permissoesNegadas = normalizarPermissoes(usuario?.permissoes_negadas);
+
+  if (permissoesNegadas?.[permissao] === true) {
+    return false;
+  }
+
   if (usuario?.role?.nome === 'admin') {
     return true;
   }

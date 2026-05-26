@@ -39,6 +39,12 @@ async function usuarioTemPermissao(usuarioId, permissao) {
     return false;
   }
 
+  const permissoesNegadas = parsePermissoes(usuario.permissoes_negadas);
+
+  if (permissoesNegadas.includes(permissao)) {
+    return false;
+  }
+
   if (usuario.role?.nome === 'admin') {
     return true;
   }
@@ -173,9 +179,10 @@ function impedirAutoExclusao(req, res, next) {
 
 function exigirGerenciamentoPermissoesSeNecessario(req, res, next) {
   const alteraPermissoes = Object.prototype.hasOwnProperty.call(req.body || {}, 'permissoes');
+  const alteraNegadas = Object.prototype.hasOwnProperty.call(req.body || {}, 'permissoes_negadas');
   const promoveAdmin = Number(req.body?.role_id) === 1;
 
-  if (!alteraPermissoes && !promoveAdmin) {
+  if (!alteraPermissoes && !alteraNegadas && !promoveAdmin) {
     return next();
   }
 

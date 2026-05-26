@@ -23,6 +23,7 @@ async function criarUsuario(dados) {
     senha: senhaHash,
     role_id: dados.role_id,
     permissoes: JSON.stringify(dados.permissoes || []),
+    permissoes_negadas: JSON.stringify(dados.permissoes_negadas || []),
     ativo: dados.ativo ?? true
   });
 }
@@ -32,6 +33,10 @@ async function atualizarUsuario(id, dados) {
 
   if (dados.permissoes !== undefined) {
     dadosAtualizacao.permissoes = JSON.stringify(dados.permissoes || []);
+  }
+
+  if (dados.permissoes_negadas !== undefined) {
+    dadosAtualizacao.permissoes_negadas = JSON.stringify(dados.permissoes_negadas || []);
   }
 
   if (dados.nome !== undefined) {
