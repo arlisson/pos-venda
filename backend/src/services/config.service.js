@@ -248,6 +248,16 @@ async function criarFunilEtapa(dados) {
   const etapaFinal = Boolean(dados.etapa_final);
   await validarEtapaFinalUnica(etapaFinal);
 
+  const existente = await FunilEtapa.query().findOne({ codigo });
+  if (existente) {
+    return FunilEtapa.query().patchAndFetchById(existente.id, {
+      nome: dados.nome,
+      ativo: true,
+      ordem: dados.ordem ?? existente.ordem,
+      etapa_final: etapaFinal
+    });
+  }
+
   return FunilEtapa.query().insert({
     codigo,
     nome: dados.nome,
