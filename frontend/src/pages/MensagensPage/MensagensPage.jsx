@@ -167,14 +167,20 @@ function MensagensPage() {
   const ultimoIdRef = useRef(0);
   const tempIdRef = useRef(0);
   const inputAnexoRef = useRef(null);
+  const conversasRequestRef = useRef(0);
 
   const carregarConversas = useCallback(async () => {
+    const requestId = ++conversasRequestRef.current;
+    const modoAtual = modoVisualizacao;
+
     try {
-      const dados = modoVisualizacao === 'todas'
+      const dados = modoAtual === 'todas'
         ? await listarTodasConversas()
         : await listarConversas();
+      if (requestId !== conversasRequestRef.current) return;
       setConversas(Array.isArray(dados) ? dados : []);
     } catch {
+      if (requestId !== conversasRequestRef.current) return;
       setConversas([]);
     }
   }, [modoVisualizacao]);
@@ -210,6 +216,7 @@ function MensagensPage() {
   }, [carregarConversas, podeUsarChat]);
 
   useEffect(() => {
+    setConversas([]);
     setErro('');
     setMensagens([]);
     setPendentes([]);
@@ -229,6 +236,7 @@ function MensagensPage() {
   // Carrega e faz polling da conversa aberta.
   useEffect(() => {
     if (!contatoSelecionado) return undefined;
+    if (contatoSelecionado.modoVisualizacao !== modoVisualizacao) return undefined;
 
     let ativo = true;
     const contatoId = contatoSelecionado.id;
@@ -272,7 +280,7 @@ function MensagensPage() {
     }
   }, [mensagens, pendentes]);
 
-  function selecionarContato(contato) {
+  function selecionarContato(contato, modoOrigem = 'minhas') {
     setErro('');
     setMensagens([]);
     setPendentes([]);
@@ -282,19 +290,22 @@ function MensagensPage() {
     proximaRolagemRef.current = true;
     setNovaConversaAberta(false);
     setBuscaContato('');
-    setContatoSelecionado(contato);
+    setContatoSelecionado({ ...contato, modoVisualizacao: modoOrigem });
     // Atualiza badges/contadores após abrir (a leitura é marcada no backend).
     carregarConversas();
   }
 
   function selecionarConversaInterna(conversa) {
     const participantes = conversa.participantes || [];
-    selecionarContato({
-      id: conversa.chave,
-      nome: participantes.map(participante => participante?.nome).filter(Boolean).join(' x '),
-      role: { nome: `${Number(conversa.total_mensagens || 0)} mensagens` },
-      participantes
-    });
+    selecionarContato(
+      {
+        id: conversa.chave,
+        nome: participantes.map(participante => participante?.nome).filter(Boolean).join(' x '),
+        role: { nome: `${Number(conversa.total_mensagens || 0)} mensagens` },
+        participantes
+      },
+      'todas'
+    );
   }
 
   function abrirSelecaoArquivo() {
@@ -422,6 +433,12 @@ function MensagensPage() {
   // Mensagens confirmadas + bolhas otimistas ainda não confirmadas.
   const itensThread = [...mensagens, ...pendentes];
   const visualizandoTodas = modoVisualizacao === 'todas';
+  const conversasVisiveis = useMemo(
+    () => (visualizandoTodas
+      ? conversas.filter(conversa => conversa?.chave)
+      : conversas.filter(conversa => conversa?.contato?.id)),
+    [conversas, visualizandoTodas]
+  );
 
   return (
     <LayoutPrivado>
@@ -498,12 +515,12 @@ function MensagensPage() {
             )}
 
             <div className="mensagens-conversas">
-              {conversas.length === 0 ? (
+              {conversasVisiveis.length === 0 ? (
                 <div className="mensagens-vazio-sm">
                   {visualizandoTodas ? 'Nenhuma conversa interna encontrada.' : <>Nenhuma conversa ainda. Clique em <strong>+</strong> para iniciar.</>}
                 </div>
               ) : visualizandoTodas ? (
-                conversas.map(conversa => {
+                conversasVisiveis.map(conversa => {
                   const participantes = conversa.participantes || [];
                   const titulo = participantes.map(participante => participante?.nome).filter(Boolean).join(' x ');
                   const ultima = conversa.ultima_mensagem;
@@ -534,7 +551,8 @@ function MensagensPage() {
                   );
                 })
               ) : (
-                conversas.map(conversa => (
+                conversasVisiveis
+                  .map(conversa => (
                   <button
                     key={conversa.contato.id}
                     type="button"
