@@ -31,6 +31,7 @@ import {
   visualizarArquivoVenda
 } from '../../services/venda.service';
 import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
+import { criarNotaEntidade } from '../../services/nota.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { listarClientesSelect } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -2563,14 +2564,24 @@ function VendasPage() {
     setModalAberto(true);
   }
 
-  async function salvarVenda(dados) {
+  async function salvarVenda(dados, notasPendentes = []) {
     setErro('');
     const editando = Boolean(modalVenda);
 
+    let vendaSalva;
     if (modalVenda) {
-      await atualizarVenda(modalVenda.id, dados);
+      vendaSalva = await atualizarVenda(modalVenda.id, dados);
     } else {
-      await criarVenda(dados);
+      vendaSalva = await criarVenda(dados);
+      if (vendaSalva?.id && Array.isArray(notasPendentes) && notasPendentes.length > 0) {
+        for (const nota of notasPendentes) {
+          try {
+            await criarNotaEntidade('venda', vendaSalva.id, nota);
+          } catch (error) {
+            console.error('Erro ao salvar nota pendente da venda:', error);
+          }
+        }
+      }
     }
 
     limparRotaModalVenda();
@@ -2586,6 +2597,7 @@ function VendasPage() {
     await carregarVendas(filtros, paginaAtual);
     obterReferenciasClientesVendas().then(data => setReferenciasClientes(data || [])).catch(() => {});
     setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
+    return vendaSalva;
   }
 
   async function enviarPosVenda(venda) {

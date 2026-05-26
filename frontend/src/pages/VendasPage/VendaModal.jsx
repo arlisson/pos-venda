@@ -2701,6 +2701,7 @@ function VendaModal({
   const podeAcessarDocumentosVendaInicial = Boolean(podeVerDocumentosVenda || podeAdicionarDocumentosVenda);
   const abaInicial = initialTab === 'arquivos' && !podeAcessarDocumentosVendaInicial ? 'venda' : initialTab;
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
+  const [pendingNotas, setPendingNotas] = useState([]);
 
   useEffect(() => {
     let ativo = true;
@@ -3696,7 +3697,8 @@ function VendaModal({
         localStorage.removeItem(`form_draft_${draftKey}`);
       }
 
-      await onSave(payload);
+      const notasParaCriar = !venda?.id ? pendingNotas : [];
+      await onSave(payload, notasParaCriar);
     } catch (error) {
       setErro(error.message || 'Erro ao salvar venda.');
       setSalvando(false);
@@ -3760,7 +3762,7 @@ function VendaModal({
             className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
             onClick={() => setAbaAtiva('notas')}
           >
-            <I.Note size={14} /> Notas
+            <I.Note size={14} /> Notas{!venda?.id && pendingNotas.length > 0 && ` (${pendingNotas.length})`}
           </button>
           {podeAcessarDocumentosVenda && (
             <button
@@ -3812,7 +3814,12 @@ function VendaModal({
         <div className="modal-body" ref={modalBodyRef}>
           <div className="venda-modal-tabpanel" key={abaAtiva}>
           {abaAtiva === 'notas' ? (
-            <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
+            <NotasEntidadeTab
+              tipo="venda"
+              entidadeId={venda?.id}
+              pendingNotas={pendingNotas}
+              onPendingNotasChange={setPendingNotas}
+            />
           ) : abaAtiva === 'solicitacao' && temClienteSolicitouAba ? (
             <ClienteSolicitouResolucaoTab
               form={form}
