@@ -2865,6 +2865,7 @@ function VendaModal({
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
   const enviadaPosVenda = Boolean(venda?.enviada_pos_venda_em || form.enviada_pos_venda_em);
   const usuarioPosVenda = temPermissao(usuarioLogado, 'pos_venda');
+  const usuarioAdmin = usuarioLogado?.role?.nome === 'admin';
   const usuarioEhResponsavelVenda = Boolean(venda && usuarioLogado?.id && (
     Number(venda.criado_por_id) === Number(usuarioLogado.id)
     || Number(venda.vendedora_id) === Number(usuarioLogado.id)
