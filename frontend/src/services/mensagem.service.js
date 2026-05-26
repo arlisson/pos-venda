@@ -21,8 +21,16 @@ export async function listarConversas() {
   return apiGet('/mensagens/conversas');
 }
 
+export async function listarTodasConversas() {
+  return apiGet('/mensagens/admin/conversas');
+}
+
 export async function listarMensagens(contatoId, filtros = {}) {
   return apiGet(`/mensagens/conversas/${contatoId}${montarQuery(filtros)}`);
+}
+
+export async function listarMensagensConversaInterna(conversaKey, filtros = {}) {
+  return apiGet(`/mensagens/admin/conversas/${conversaKey}${montarQuery(filtros)}`);
 }
 
 export async function enviarMensagem(destinatarioId, conteudo, anexo = null) {
@@ -42,6 +50,10 @@ export async function uploadAnexoMensagem(file) {
 
 export async function baixarAnexoMensagem(mensagemArquivoId) {
   return apiBlob(`/mensagens/anexos/${mensagemArquivoId}`);
+}
+
+export async function baixarAnexoMensagemInterna(mensagemArquivoId) {
+  return apiBlob(`/mensagens/admin/anexos/${mensagemArquivoId}`);
 }
 
 export async function excluirMensagem(mensagemId) {

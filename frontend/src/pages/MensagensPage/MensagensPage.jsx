@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
-import { getUsuarioLocal } from '../../services/auth.service';
+import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { formatUtcDateTime } from '../../utils/datetime';
 import {
   enviarMensagem,
   listarContatos,
   listarConversas,
+  listarTodasConversas,
   listarMensagens,
+  listarMensagensConversaInterna,
   uploadAnexoMensagem,
   baixarAnexoMensagem,
+  baixarAnexoMensagemInterna,
   excluirMensagem
 } from '../../services/mensagem.service';
 import './MensagensPage.css';
@@ -63,7 +66,7 @@ function mesmaLista(a, b) {
 // Componente que mostra anexo dentro de uma bolha. Para imagens, baixa via API
 // autenticada e cria um object URL para o <img>. Para PDFs/outros, mostra um
 // mini-card com botão de download.
-function AnexoBolha({ anexo }) {
+function AnexoBolha({ anexo, baixarAnexo = baixarAnexoMensagem }) {
   const [objectUrl, setObjectUrl] = useState(null);
   const [baixando, setBaixando] = useState(false);
   const ehImagem = anexo?.mime_type?.startsWith('image/');
@@ -72,7 +75,7 @@ function AnexoBolha({ anexo }) {
     if (!anexo || !ehImagem) return undefined;
     let url;
     let cancelado = false;
-    baixarAnexoMensagem(anexo.id)
+    baixarAnexo(anexo.id)
       .then(blob => {
         if (cancelado) return;
         url = URL.createObjectURL(blob);
@@ -83,13 +86,13 @@ function AnexoBolha({ anexo }) {
       cancelado = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [anexo, ehImagem]);
+  }, [anexo, ehImagem, baixarAnexo]);
 
   async function baixar() {
     if (baixando) return;
     setBaixando(true);
     try {
-      const blob = await baixarAnexoMensagem(anexo.id);
+      const blob = await baixarAnexo(anexo.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -140,10 +143,13 @@ function Avatar({ contato }) {
 function MensagensPage() {
   const usuarioLocal = useMemo(() => getUsuarioLocal(), []);
   const meuId = Number(usuarioLocal?.id);
+  const podeUsarChat = temPermissao(usuarioLocal, 'chat_usar');
+  const podeVisualizarTodas = temPermissao(usuarioLocal, 'chat_visualizar_todas');
 
   const [conversas, setConversas] = useState([]);
   const [contatos, setContatos] = useState([]);
   const [contatoSelecionado, setContatoSelecionado] = useState(null);
+  const [modoVisualizacao, setModoVisualizacao] = useState(() => (podeUsarChat ? 'minhas' : 'todas'));
   const [mensagens, setMensagens] = useState([]);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -161,15 +167,23 @@ function MensagensPage() {
   const ultimoIdRef = useRef(0);
   const tempIdRef = useRef(0);
   const inputAnexoRef = useRef(null);
+  const conversasRequestRef = useRef(0);
 
   const carregarConversas = useCallback(async () => {
+    const requestId = ++conversasRequestRef.current;
+    const modoAtual = modoVisualizacao;
+
     try {
-      const dados = await listarConversas();
+      const dados = modoAtual === 'todas'
+        ? await listarTodasConversas()
+        : await listarConversas();
+      if (requestId !== conversasRequestRef.current) return;
       setConversas(Array.isArray(dados) ? dados : []);
     } catch {
+      if (requestId !== conversasRequestRef.current) return;
       setConversas([]);
     }
-  }, []);
+  }, [modoVisualizacao]);
 
   const aplicarMensagens = useCallback((novas, { forcarRolagem = false } = {}) => {
     const lista = Array.isArray(novas) ? novas : [];
@@ -192,14 +206,26 @@ function MensagensPage() {
   }, []);
 
   // Carga inicial: conversas + contatos.
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     carregarConversas();
-    listarContatos()
-      .then(dados => setContatos(Array.isArray(dados) ? dados : []))
-      .catch(() => setContatos([]));
-  }, [carregarConversas]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+    if (podeUsarChat) {
+      listarContatos()
+        .then(dados => setContatos(Array.isArray(dados) ? dados : []))
+        .catch(() => setContatos([]));
+    }
+  }, [carregarConversas, podeUsarChat]);
+
+  useEffect(() => {
+    setConversas([]);
+    setErro('');
+    setMensagens([]);
+    setPendentes([]);
+    setAnexoPendente(null);
+    setContatoSelecionado(null);
+    setNovaConversaAberta(false);
+    mensagensRef.current = [];
+    ultimoIdRef.current = 0;
+  }, [modoVisualizacao]);
 
   // Atualiza a lista de conversas periodicamente.
   useEffect(() => {
@@ -210,6 +236,7 @@ function MensagensPage() {
   // Carrega e faz polling da conversa aberta.
   useEffect(() => {
     if (!contatoSelecionado) return undefined;
+    if (contatoSelecionado.modoVisualizacao !== modoVisualizacao) return undefined;
 
     let ativo = true;
     const contatoId = contatoSelecionado.id;
@@ -217,7 +244,9 @@ function MensagensPage() {
     async function carregar(forcarRolagem) {
       try {
         const idAntes = ultimoIdRef.current;
-        const dados = await listarMensagens(contatoId);
+        const dados = modoVisualizacao === 'todas'
+          ? await listarMensagensConversaInterna(contatoId)
+          : await listarMensagens(contatoId);
         if (!ativo) return;
         aplicarMensagens(dados, { forcarRolagem });
         // Chegou mensagem nova: a thread aberta já marcou como lida no backend;
@@ -225,7 +254,9 @@ function MensagensPage() {
         if (ultimoIdRef.current !== idAntes) {
           carregarConversas();
         }
-        window.dispatchEvent(new CustomEvent('pos-venda:mensagens-atualizar'));
+        if (modoVisualizacao !== 'todas') {
+          window.dispatchEvent(new CustomEvent('pos-venda:mensagens-atualizar'));
+        }
       } catch {
         if (ativo) setErro('Não foi possível carregar as mensagens.');
       }
@@ -238,7 +269,7 @@ function MensagensPage() {
       ativo = false;
       clearInterval(timer);
     };
-  }, [contatoSelecionado, aplicarMensagens, carregarConversas]);
+  }, [contatoSelecionado, aplicarMensagens, carregarConversas, modoVisualizacao]);
 
   // Rolagem automática quando apropriado (ao fundo exato, sem o offset do padding).
   useEffect(() => {
@@ -249,7 +280,7 @@ function MensagensPage() {
     }
   }, [mensagens, pendentes]);
 
-  function selecionarContato(contato) {
+  function selecionarContato(contato, modoOrigem = 'minhas') {
     setErro('');
     setMensagens([]);
     setPendentes([]);
@@ -259,9 +290,22 @@ function MensagensPage() {
     proximaRolagemRef.current = true;
     setNovaConversaAberta(false);
     setBuscaContato('');
-    setContatoSelecionado(contato);
+    setContatoSelecionado({ ...contato, modoVisualizacao: modoOrigem });
     // Atualiza badges/contadores após abrir (a leitura é marcada no backend).
     carregarConversas();
+  }
+
+  function selecionarConversaInterna(conversa) {
+    const participantes = conversa.participantes || [];
+    selecionarContato(
+      {
+        id: conversa.chave,
+        nome: participantes.map(participante => participante?.nome).filter(Boolean).join(' x '),
+        role: { nome: `${Number(conversa.total_mensagens || 0)} mensagens` },
+        participantes
+      },
+      'todas'
+    );
   }
 
   function abrirSelecaoArquivo() {
@@ -388,6 +432,13 @@ function MensagensPage() {
 
   // Mensagens confirmadas + bolhas otimistas ainda não confirmadas.
   const itensThread = [...mensagens, ...pendentes];
+  const visualizandoTodas = modoVisualizacao === 'todas';
+  const conversasVisiveis = useMemo(
+    () => (visualizandoTodas
+      ? conversas.filter(conversa => conversa?.chave)
+      : conversas.filter(conversa => conversa?.contato?.id)),
+    [conversas, visualizandoTodas]
+  );
 
   return (
     <LayoutPrivado>
@@ -395,18 +446,40 @@ function MensagensPage() {
         <div className={`mensagens-layout ${contatoSelecionado ? 'tem-conversa' : ''}`}>
           <aside className="mensagens-lista">
             <div className="mensagens-lista__topo">
-              <h2>Conversas</h2>
-              <button
-                type="button"
-                className="btn btn-icon btn-ghost"
-                title="Nova conversa"
-                onClick={() => setNovaConversaAberta(aberto => !aberto)}
-              >
-                {novaConversaAberta ? <I.Close size={16} /> : <I.Plus size={16} />}
-              </button>
+              <div className="mensagens-lista__titulo">
+                <h2>Conversas</h2>
+                {podeUsarChat && podeVisualizarTodas && (
+                  <div className="mensagens-modo" role="tablist" aria-label="Modo de visualizaÃ§Ã£o">
+                    <button
+                      type="button"
+                      className={modoVisualizacao === 'minhas' ? 'is-active' : ''}
+                      onClick={() => setModoVisualizacao('minhas')}
+                    >
+                      Minhas
+                    </button>
+                    <button
+                      type="button"
+                      className={modoVisualizacao === 'todas' ? 'is-active' : ''}
+                      onClick={() => setModoVisualizacao('todas')}
+                    >
+                      Todas
+                    </button>
+                  </div>
+                )}
+              </div>
+              {!visualizandoTodas && podeUsarChat && (
+                <button
+                  type="button"
+                  className="btn btn-icon btn-ghost"
+                  title="Nova conversa"
+                  onClick={() => setNovaConversaAberta(aberto => !aberto)}
+                >
+                  {novaConversaAberta ? <I.Close size={16} /> : <I.Plus size={16} />}
+                </button>
+              )}
             </div>
 
-            {novaConversaAberta && (
+            {novaConversaAberta && !visualizandoTodas && (
               <div className="mensagens-novaconversa">
                 <div className="mensagens-busca">
                   <I.Search size={14} />
@@ -442,12 +515,44 @@ function MensagensPage() {
             )}
 
             <div className="mensagens-conversas">
-              {conversas.length === 0 ? (
+              {conversasVisiveis.length === 0 ? (
                 <div className="mensagens-vazio-sm">
-                  Nenhuma conversa ainda. Clique em <strong>+</strong> para iniciar.
+                  {visualizandoTodas ? 'Nenhuma conversa interna encontrada.' : <>Nenhuma conversa ainda. Clique em <strong>+</strong> para iniciar.</>}
                 </div>
+              ) : visualizandoTodas ? (
+                conversasVisiveis.map(conversa => {
+                  const participantes = conversa.participantes || [];
+                  const titulo = participantes.map(participante => participante?.nome).filter(Boolean).join(' x ');
+                  const ultima = conversa.ultima_mensagem;
+                  const remetente = participantes.find(participante => Number(participante.id) === Number(ultima?.remetente_id));
+
+                  return (
+                    <button
+                      key={conversa.chave}
+                      type="button"
+                      className={`mensagens-conversa ${contatoSelecionado?.id === conversa.chave ? 'is-active' : ''}`}
+                      onClick={() => selecionarConversaInterna(conversa)}
+                    >
+                      <Avatar contato={{ nome: titulo }} />
+                      <span className="mensagens-conversa__corpo">
+                        <span className="mensagens-conversa__linha">
+                          <strong>{titulo}</strong>
+                          <em>{formatarDataLista(ultima?.created_at)}</em>
+                        </span>
+                        <span className="mensagens-conversa__preview">
+                          {remetente?.nome ? `${remetente.nome}: ` : ''}
+                          {ultima?.excluida
+                            ? (ultima.tinha_anexo ? 'Arquivo deletado' : 'Mensagem deletada')
+                            : (ultima?.conteudo || (ultima?.anexo ? `Anexo: ${ultima.anexo.nome_original}` : 'Sem mensagens'))}
+                        </span>
+                      </span>
+                      <span className="mensagens-conversa__badge">{conversa.total_mensagens > 99 ? '99+' : conversa.total_mensagens}</span>
+                    </button>
+                  );
+                })
               ) : (
-                conversas.map(conversa => (
+                conversasVisiveis
+                  .map(conversa => (
                   <button
                     key={conversa.contato.id}
                     type="button"
@@ -487,7 +592,7 @@ function MensagensPage() {
             {!contatoSelecionado ? (
               <div className="mensagens-vazio">
                 <I.Chat size={40} />
-                <p>Selecione uma conversa ou inicie uma nova.</p>
+                <p>{visualizandoTodas ? 'Selecione uma conversa interna para visualizar.' : 'Selecione uma conversa ou inicie uma nova.'}</p>
               </div>
             ) : (
               <>
@@ -514,7 +619,12 @@ function MensagensPage() {
                     </div>
                   ) : (
                     itensThread.map(mensagem => {
-                      const minha = mensagem.remetente_id === meuId;
+                      const minha = visualizandoTodas
+                        ? Number(mensagem.remetente_id) === Number(contatoSelecionado?.participantes?.[1]?.id)
+                        : mensagem.remetente_id === meuId;
+                      const remetenteThread = visualizandoTodas
+                        ? contatoSelecionado?.participantes?.find(participante => Number(participante.id) === Number(mensagem.remetente_id))
+                        : null;
                       const status = mensagem.lida_em ? 'lida' : (mensagem.recebida_em ? 'recebida' : 'enviada');
                       const statusLabel = status === 'lida' ? 'Lido' : status === 'recebida' ? 'Recebido' : 'Enviado';
                       const ehTemp = typeof mensagem.id === 'string' && mensagem.id.startsWith('temp-');
@@ -524,7 +634,7 @@ function MensagensPage() {
                         : null;
                       return (
                         <div key={mensagem.id} className={`bolha ${minha ? 'bolha--minha' : 'bolha--dele'} ${excluida ? 'bolha--excluida' : ''}`}>
-                          {minha && !ehTemp && !excluida && (
+                          {!visualizandoTodas && minha && !ehTemp && !excluida && (
                             <button
                               type="button"
                               className="bolha__excluir"
@@ -541,7 +651,13 @@ function MensagensPage() {
                             </span>
                           ) : (
                             <>
-                              {mensagem.anexo && !ehTemp && <AnexoBolha anexo={mensagem.anexo} />}
+                              {remetenteThread?.nome && <span className="bolha__remetente">{remetenteThread.nome}</span>}
+                              {mensagem.anexo && !ehTemp && (
+                                <AnexoBolha
+                                  anexo={mensagem.anexo}
+                                  baixarAnexo={visualizandoTodas ? baixarAnexoMensagemInterna : baixarAnexoMensagem}
+                                />
+                              )}
                               {mensagem.anexo && ehTemp && (
                                 <div className="bolha__anexo bolha__anexo--arquivo">
                                   <I.Document size={28} />
@@ -571,7 +687,13 @@ function MensagensPage() {
 
                 {erro && <div className="thread-erro">{erro}</div>}
 
-                {anexoPendente && (
+                {visualizandoTodas && (
+                  <div className="thread-readonly">
+                    Visualização somente leitura das conversas internas.
+                  </div>
+                )}
+
+                {!visualizandoTodas && anexoPendente && (
                   <div className={`thread-anexo-preview is-${anexoPendente.status}`}>
                     <I.Document size={20} />
                     <div className="thread-anexo-preview__info">
@@ -588,6 +710,7 @@ function MensagensPage() {
                   </div>
                 )}
 
+                {!visualizandoTodas && (
                 <form className="thread-input" onSubmit={handleEnviar}>
                   <input
                     ref={inputAnexoRef}
@@ -624,6 +747,7 @@ function MensagensPage() {
                     <I.Send size={16} />
                   </button>
                 </form>
+                )}
               </>
             )}
           </section>

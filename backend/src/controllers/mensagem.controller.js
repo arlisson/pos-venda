@@ -20,6 +20,16 @@ async function conversas(req, res) {
   }
 }
 
+async function todasConversas(req, res) {
+  try {
+    const lista = await mensagemService.listarTodasConversas();
+    return res.json(lista);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar conversas internas.' });
+  }
+}
+
 async function mensagens(req, res) {
   try {
     const lista = await mensagemService.listarMensagens(req.usuario.id, req.params.contatoId, {
@@ -30,6 +40,19 @@ async function mensagens(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(error.statusCode || 500).json({ message: error.message || 'Erro ao listar mensagens.' });
+  }
+}
+
+async function mensagensConversaInterna(req, res) {
+  try {
+    const lista = await mensagemService.listarMensagensConversaInterna(req.params.conversaKey, {
+      desde: req.query.desde,
+      limit: req.query.limit
+    });
+    return res.json(lista);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 500).json({ message: error.message || 'Erro ao listar mensagens internas.' });
   }
 }
 
@@ -63,7 +86,39 @@ async function baixarAnexo(req, res) {
   try {
     const { stream, mimeType, tamanhoBytes, nome } = await mensagemService.prepararDownloadAnexo(
       req.usuario.id,
-      req.params.mensagemArquivoId
+      req.params.mensagemArquivoId,
+      { permitirQualquerConversa: false }
+    );
+
+    res.setHeader('Content-Type', mimeType);
+    if (tamanhoBytes) res.setHeader('Content-Length', tamanhoBytes);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename*=UTF-8''${encodeURIComponent(nome)}`
+    );
+
+    stream.on('error', erro => {
+      console.error(erro);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Erro ao ler anexo.' });
+      } else {
+        res.destroy(erro);
+      }
+    });
+
+    stream.pipe(res);
+  } catch (error) {
+    if (!error.statusCode) console.error(error);
+    return res.status(error.statusCode || 500).json({ message: error.message || 'Erro ao baixar anexo.' });
+  }
+}
+
+async function baixarAnexoInterno(req, res) {
+  try {
+    const { stream, mimeType, tamanhoBytes, nome } = await mensagemService.prepararDownloadAnexo(
+      req.usuario.id,
+      req.params.mensagemArquivoId,
+      { permitirQualquerConversa: true }
     );
 
     res.setHeader('Content-Type', mimeType);
@@ -122,11 +177,14 @@ async function excluir(req, res) {
 module.exports = {
   contatos,
   conversas,
+  todasConversas,
   mensagens,
+  mensagensConversaInterna,
   enviar,
   naoLidas,
   marcarLida,
   uploadAnexo,
   baixarAnexo,
+  baixarAnexoInterno,
   excluir
 };

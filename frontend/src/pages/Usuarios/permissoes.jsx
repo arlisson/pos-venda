@@ -373,6 +373,11 @@ export const GRUPOS_PERMISSOES = [
             chave: 'chat_usar',
             nome: 'Usar chat',
             descricao: 'Permite acessar o chat interno e conversar com outros usuários.'
+          },
+          {
+            chave: 'chat_visualizar_todas',
+            nome: 'Visualizar todas',
+            descricao: 'Permite acessar a aba de chat e visualizar todas as conversas internas do sistema.'
           }
         ]
       }

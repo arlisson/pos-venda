@@ -228,6 +228,16 @@ const PERMISSOES = [
     chave: 'futuros_clientes_registrar',
     nome: 'Futuros clientes: registrar',
     descricao: 'Permite marcar um lead recebido como futuro cliente com notas e data de retorno.'
+  },
+  {
+    chave: 'chat_usar',
+    nome: 'Chat: usar',
+    descricao: 'Permite acessar o chat interno e enviar mensagens a outros usuÃ¡rios.'
+  },
+  {
+    chave: 'chat_visualizar_todas',
+    nome: 'Chat: visualizar todas',
+    descricao: 'Permite acessar a aba de chat e visualizar todas as conversas internas do sistema.'
   }
 ];
 

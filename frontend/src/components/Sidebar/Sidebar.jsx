@@ -30,7 +30,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
     { id: 'retornos', label: 'Retornos', icon: <I.Return />, badge: counts?.returns, permission: ['vendas_ver_proprias', 'vendas_ver_todas', 'ver_vendas_compartilhadas'] },
     { id: 'relatorios', label: 'Relatórios', icon: <I.Chart />, permission: 'relatorios_visualizar' },
     { id: 'historico', label: 'Histórico', icon: <I.History />, permission: 'historico_visualizar' },
-    { id: 'mensagens', label: 'Mensagens', icon: <I.Chat />, badge: counts?.mensagens, permission: 'chat_usar' },
+    { id: 'mensagens', label: 'Mensagens', icon: <I.Chat />, badge: counts?.mensagens, permission: ['chat_usar', 'chat_visualizar_todas'] },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   const admin = [

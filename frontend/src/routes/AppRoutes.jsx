@@ -102,7 +102,7 @@ function AppRoutes() {
       <Route path="/retornos" element={<PrivateRoute permission={['vendas_ver_proprias', 'vendas_ver_todas', 'ver_vendas_compartilhadas']}><RetornosPage /></PrivateRoute>} />
       <Route path="/dashboard" element={<Navigate to="/" replace />} />
       <Route path="/relatorios" element={<PrivateRoute permission="relatorios_visualizar"><RelatoriosPage /></PrivateRoute>} />
-      <Route path="/mensagens" element={<PrivateRoute permission="chat_usar"><MensagensPage /></PrivateRoute>} />
+      <Route path="/mensagens" element={<PrivateRoute permission={['chat_usar', 'chat_visualizar_todas']}><MensagensPage /></PrivateRoute>} />
       <Route path="/historico" element={<PrivateRoute permission="historico_visualizar"><HistoricoPage /></PrivateRoute>} />
       <Route path="/historico/lixeira" element={<PrivateRoute permission="historico_visualizar"><HistoricoLixeiraPage /></PrivateRoute>} />
       <Route

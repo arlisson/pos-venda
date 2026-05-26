@@ -53,6 +53,42 @@
   margin: 0;
 }
 
+.mensagens-lista__titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mensagens-modo {
+  display: inline-flex;
+  width: fit-content;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.mensagens-modo button {
+  min-width: 62px;
+  height: 26px;
+  padding: 0 9px;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mensagens-modo button.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
 .mensagens-novaconversa {
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
@@ -333,6 +369,16 @@
   overflow-wrap: anywhere;
 }
 
+.bolha__remetente {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.bolha--minha .bolha__remetente {
+  color: rgba(255, 255, 255, 0.82);
+}
+
 .bolha__meta {
   display: flex;
   align-items: center;
@@ -384,6 +430,15 @@
   flex-shrink: 0;
   padding: 6px 16px;
   color: var(--danger);
+  font-size: 12px;
+}
+
+.thread-readonly {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-3);
   font-size: 12px;
 }
 
