@@ -37,6 +37,7 @@ router.delete('/admin/servicos/:id', exigirPermissao('crud_servicos'), configCon
 
 router.get('/admin/funil-etapas', exigirPermissao('crud_funil_etapas'), configController.adminFunilEtapas);
 router.post('/admin/funil-etapas', exigirPermissao('crud_funil_etapas'), configController.criarFunilEtapa);
+router.put('/admin/funil-etapas/reorder', exigirPermissao('crud_funil_etapas'), configController.reordenarFunilEtapas);
 router.put('/admin/funil-etapas/:id', exigirPermissao('crud_funil_etapas'), configController.atualizarFunilEtapa);
 router.delete('/admin/funil-etapas/:id', exigirPermissao('crud_funil_etapas'), configController.excluirFunilEtapa);
 
