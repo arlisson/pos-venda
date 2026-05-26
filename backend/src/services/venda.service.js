@@ -149,6 +149,78 @@ function sqlSomenteDigitos(coluna) {
   return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${coluna}, '.', ''), '/', ''), '-', ''), '(', ''), ')', ''), ' ', '')`;
 }
 
+function aplicarBuscaGeralVendas(query, valor) {
+  const busca = `%${String(valor || '').trim()}%`;
+  const digitos = apenasDigitos(valor);
+
+  if (!String(valor || '').trim()) return;
+
+  query.where((builder) => {
+    builder
+      .where('nome', 'like', busca)
+      .orWhere('telefone', 'like', busca)
+      .orWhere('email', 'like', busca)
+      .orWhere('produto_fechado', 'like', busca)
+      .orWhere('razao_social', 'like', busca)
+      .orWhere('cnpj', 'like', busca)
+      .orWhere('protocolo', 'like', busca)
+      .orWhere('municipio', 'like', busca)
+      .orWhereExists(
+        Venda.knex()
+          .select(1)
+          .from('clientes as c_busca')
+          .whereRaw('c_busca.id = vendas.cliente_id')
+          .where((clienteBuilder) => {
+            clienteBuilder
+              .where('c_busca.nome', 'like', busca)
+              .orWhere('c_busca.razao_social', 'like', busca)
+              .orWhere('c_busca.cnpj', 'like', busca);
+
+            if (digitos) {
+              clienteBuilder.orWhereRaw(`${sqlSomenteDigitos('c_busca.cnpj')} like ?`, [`%${digitos}%`]);
+            }
+          })
+      )
+      .orWhereExists(
+        Venda.knex()
+          .select(1)
+          .from('tipos_venda as tv_busca')
+          .whereRaw('tv_busca.id = vendas.tipo_venda_id')
+          .where('tv_busca.nome', 'like', busca)
+      )
+      .orWhereExists(
+        Venda.knex()
+          .select(1)
+          .from('servicos as s_busca')
+          .whereRaw('s_busca.id = vendas.servico_id')
+          .where('s_busca.nome', 'like', busca)
+      )
+      .orWhereExists(
+        Venda.knex()
+          .select(1)
+          .from('usuarios as u_busca')
+          .whereRaw('u_busca.id = vendas.vendedora_id')
+          .where('u_busca.nome', 'like', busca)
+      )
+      .orWhereExists(
+        Venda.knex()
+          .select(1)
+          .from('venda_vendedoras as vv_busca')
+          .join('usuarios as uvv_busca', 'uvv_busca.id', 'vv_busca.usuario_id')
+          .whereRaw('vv_busca.venda_id = vendas.id')
+          .where('uvv_busca.nome', 'like', busca)
+      );
+
+    if (digitos) {
+      builder
+        .orWhereRaw(`${sqlSomenteDigitos('telefone')} like ?`, [`%${digitos}%`])
+        .orWhereRaw(`${sqlSomenteDigitos('cnpj')} like ?`, [`%${digitos}%`])
+        .orWhereRaw(`${sqlSomenteDigitos('cliente_excluido_permanentemente_cnpj')} like ?`, [`%${digitos}%`])
+        .orWhereRaw(`${sqlSomenteDigitos('protocolo')} like ?`, [`%${digitos}%`]);
+    }
+  });
+}
+
 function aplicarBuscaCampoVendas(query, filtros = {}) {
   const campo = String(filtros.busca_campo || '').trim();
   const valor = String(filtros.busca_valor || '').trim();
@@ -168,7 +240,18 @@ function aplicarBuscaCampoVendas(query, filtros = {}) {
       builder
         .where('nome', 'like', `%${valor}%`)
         .orWhere('razao_social', 'like', `%${valor}%`)
-        .orWhere('cliente_excluido_permanentemente_nome', 'like', `%${valor}%`);
+        .orWhere('cliente_excluido_permanentemente_nome', 'like', `%${valor}%`)
+        .orWhereExists(
+          Venda.knex()
+            .select(1)
+            .from('clientes as c_campo')
+            .whereRaw('c_campo.id = vendas.cliente_id')
+            .where(campoBuilder => {
+              campoBuilder
+                .where('c_campo.nome', 'like', `%${valor}%`)
+                .orWhere('c_campo.razao_social', 'like', `%${valor}%`);
+            })
+        );
     });
     return;
   }
@@ -188,7 +271,14 @@ function aplicarBuscaCampoVendas(query, filtros = {}) {
     query.where(builder => {
       builder
         .whereRaw(`${sqlSomenteDigitos('cnpj')} like ?`, [`%${digitos}%`])
-        .orWhereRaw(`${sqlSomenteDigitos('cliente_excluido_permanentemente_cnpj')} like ?`, [`%${digitos}%`]);
+        .orWhereRaw(`${sqlSomenteDigitos('cliente_excluido_permanentemente_cnpj')} like ?`, [`%${digitos}%`])
+        .orWhereExists(
+          Venda.knex()
+            .select(1)
+            .from('clientes as c_cnpj')
+            .whereRaw('c_cnpj.id = vendas.cliente_id')
+            .whereRaw(`${sqlSomenteDigitos('c_cnpj.cnpj')} like ?`, [`%${digitos}%`])
+        );
     });
     return;
   }
@@ -1552,19 +1642,7 @@ async function listarVendas(filtros = {}, usuarioId) {
   aplicarEscopoVendas(query, usuarioId, escopo);
 
   if (filtros.busca) {
-    const busca = `%${filtros.busca}%`;
-
-    query.where((builder) => {
-      builder
-        .where('nome', 'like', busca)
-        .orWhere('telefone', 'like', busca)
-        .orWhere('email', 'like', busca)
-        .orWhere('produto_fechado', 'like', busca)
-        .orWhere('razao_social', 'like', busca)
-        .orWhere('cnpj', 'like', busca)
-        .orWhere('protocolo', 'like', busca)
-        .orWhere('municipio', 'like', busca);
-    });
+    aplicarBuscaGeralVendas(query, filtros.busca);
   }
 
   aplicarBuscaCampoVendas(query, filtros);
