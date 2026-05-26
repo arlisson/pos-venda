@@ -95,6 +95,20 @@ function formatarMensagem(mensagem) {
   };
 }
 
+function montarChaveConversa(usuarioAId, usuarioBId) {
+  const ids = [Number(usuarioAId), Number(usuarioBId)].sort((a, b) => a - b);
+  return `${ids[0]}-${ids[1]}`;
+}
+
+function parseChaveConversa(conversaKey) {
+  const partes = String(conversaKey || '').split('-').map(Number);
+  if (partes.length !== 2 || partes.some(id => !id || Number.isNaN(id)) || partes[0] === partes[1]) {
+    throw erroHttp('Conversa invÃ¡lida.', 400);
+  }
+
+  return partes.sort((a, b) => a - b);
+}
+
 async function listarContatos(usuarioId) {
   const usuarios = await Usuario.query()
     .withGraphFetched('role')
@@ -186,6 +200,52 @@ async function listarConversas(usuarioId) {
   return conversas;
 }
 
+async function listarTodasConversas() {
+  const linhas = await db('mensagens')
+    .select(
+      db.raw('LEAST(remetente_id, destinatario_id) as usuario_a_id'),
+      db.raw('GREATEST(remetente_id, destinatario_id) as usuario_b_id')
+    )
+    .max('id as ultima_id')
+    .count('* as total_mensagens')
+    .groupByRaw('LEAST(remetente_id, destinatario_id), GREATEST(remetente_id, destinatario_id)')
+    .orderBy('ultima_id', 'desc');
+
+  if (linhas.length === 0) {
+    return [];
+  }
+
+  const usuarioIds = Array.from(new Set(
+    linhas.flatMap(linha => [Number(linha.usuario_a_id), Number(linha.usuario_b_id)])
+  ));
+  const usuarios = await Usuario.query()
+    .withGraphFetched('role')
+    .whereIn('id', usuarioIds);
+  const usuariosPorId = new Map(usuarios.map(usuario => [Number(usuario.id), usuario]));
+
+  const ultimas = await Mensagem.query()
+    .whereIn('id', linhas.map(linha => Number(linha.ultima_id)))
+    .withGraphFetched('anexo.arquivo');
+  const ultimasPorId = new Map(ultimas.map(mensagem => [Number(mensagem.id), mensagem]));
+
+  return linhas
+    .map(linha => {
+      const usuarioA = usuariosPorId.get(Number(linha.usuario_a_id));
+      const usuarioB = usuariosPorId.get(Number(linha.usuario_b_id));
+      const ultima = ultimasPorId.get(Number(linha.ultima_id));
+
+      if (!usuarioA || !usuarioB || !ultima) return null;
+
+      return {
+        chave: montarChaveConversa(usuarioA.id, usuarioB.id),
+        participantes: [formatarContato(usuarioA), formatarContato(usuarioB)],
+        ultima_mensagem: formatarMensagem(ultima),
+        total_mensagens: Number(linha.total_mensagens || 0)
+      };
+    })
+    .filter(Boolean);
+}
+
 async function marcarConversaLida(usuarioId, contatoId) {
   const me = Number(usuarioId);
   const contato = Number(contatoId);
@@ -226,6 +286,31 @@ async function listarMensagens(usuarioId, contatoId, { desde, limit = 50 } = {})
     const registros = await query
       .orderBy('id', 'desc')
       .limit(Math.min(Number(limit) || 50, 100));
+    mensagens = registros.reverse();
+  }
+
+  return mensagens.map(formatarMensagem);
+}
+
+async function listarMensagensConversaInterna(conversaKey, { desde, limit = 50 } = {}) {
+  const [usuarioAId, usuarioBId] = parseChaveConversa(conversaKey);
+
+  const query = Mensagem.query()
+    .where(builder => {
+      builder
+        .where({ remetente_id: usuarioAId, destinatario_id: usuarioBId })
+        .orWhere({ remetente_id: usuarioBId, destinatario_id: usuarioAId });
+    })
+    .withGraphFetched('anexo.arquivo');
+
+  let mensagens;
+
+  if (desde) {
+    mensagens = await query.where('id', '>', Number(desde)).orderBy('id', 'asc');
+  } else {
+    const registros = await query
+      .orderBy('id', 'desc')
+      .limit(Math.min(Number(limit) || 50, 200));
     mensagens = registros.reverse();
   }
 
@@ -366,7 +451,7 @@ async function excluirMensagem(usuarioId, mensagemId) {
   return true;
 }
 
-async function prepararDownloadAnexo(usuarioId, mensagemArquivoId) {
+async function prepararDownloadAnexo(usuarioId, mensagemArquivoId, { permitirQualquerConversa = false } = {}) {
   const me = Number(usuarioId);
 
   const vinculo = await MensagemArquivo.query()
@@ -378,7 +463,7 @@ async function prepararDownloadAnexo(usuarioId, mensagemArquivoId) {
   }
 
   const mensagem = vinculo.mensagem;
-  if (Number(mensagem.remetente_id) !== me && Number(mensagem.destinatario_id) !== me) {
+  if (!permitirQualquerConversa && Number(mensagem.remetente_id) !== me && Number(mensagem.destinatario_id) !== me) {
     throw erroHttp('Sem acesso a este anexo.', 403);
   }
 
@@ -397,7 +482,9 @@ async function prepararDownloadAnexo(usuarioId, mensagemArquivoId) {
 module.exports = {
   listarContatos,
   listarConversas,
+  listarTodasConversas,
   listarMensagens,
+  listarMensagensConversaInterna,
   enviarMensagem,
   contarNaoLidas,
   marcarConversaLida,
