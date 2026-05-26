@@ -249,11 +249,17 @@ async function criarFunilEtapa(dados) {
   await validarEtapaFinalUnica(etapaFinal);
 
   const existente = await FunilEtapa.query().findOne({ codigo });
+  const ordemNova = dados.ordem ?? null;
+
+  if (ordemNova !== null) {
+    await FunilEtapa.query().where('ordem', '>=', ordemNova).increment('ordem', 1);
+  }
+
   if (existente) {
     return FunilEtapa.query().patchAndFetchById(existente.id, {
       nome: dados.nome,
       ativo: true,
-      ordem: dados.ordem ?? existente.ordem,
+      ordem: ordemNova ?? existente.ordem,
       etapa_final: etapaFinal
     });
   }
@@ -262,9 +268,15 @@ async function criarFunilEtapa(dados) {
     codigo,
     nome: dados.nome,
     ativo: dados.ativo ?? true,
-    ordem: dados.ordem ?? 0,
+    ordem: ordemNova ?? 0,
     etapa_final: etapaFinal
   });
+}
+
+async function reordenarFunilEtapas(ordens) {
+  await Promise.all(
+    ordens.map(({ id, ordem }) => FunilEtapa.query().patchAndFetchById(id, { ordem }))
+  );
 }
 
 async function atualizarFunilEtapa(id, dados) {
@@ -501,6 +513,7 @@ module.exports = {
   criarFunilEtapa,
   atualizarFunilEtapa,
   excluirFunilEtapa,
+  reordenarFunilEtapas,
   listarRegrasComissao,
   listarRegrasComissaoAtivas,
   criarRegraComissao,

@@ -1,4 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
@@ -20,7 +24,8 @@ import {
   listarEtapasFunilAdmin,
   listarOperadoras,
   listarServicos,
-  listarTiposVenda
+  listarTiposVenda,
+  reordenarEtapasFunil
 } from '../../services/config.service';
 import { listarClientes } from '../../services/cliente.service';
 import { agruparOpcoesServicos, formatarNomeServico, servicoIdInclui } from '../../utils/servicos';
@@ -1451,6 +1456,12 @@ const NOVA_ETAPA = {
   etapa_final: false
 };
 
+function SortableColumn({ id, disabled, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id, disabled });
+  return children({ setNodeRef, transform, transition, isDragging, dragAttributes: attributes, dragListeners: listeners });
+}
+
 const DADOS_MODAL_VENDA_INICIAIS = {
   loaded: false,
   clientes: [],
@@ -1530,6 +1541,7 @@ function FunilPage() {
   const [clienteRapidoAberto, setClienteRapidoAberto] = useState(false);
   const [clienteRapidoInicial, setClienteRapidoInicial] = useState(null);
   const resolverClienteRapidoRef = useRef(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const vendasPorCliente = useMemo(() => contarVendasPorCliente(dadosModalVenda.vendas), [dadosModalVenda.vendas]);
   const vendasEmAndamentoPorCliente = useMemo(() => {
@@ -1845,9 +1857,10 @@ function FunilPage() {
 
     try {
       await criarEtapaFunil({
-        ...newStage,
         nome: newStage.nome.trim(),
-        ordem: Number(newStage.ordem || 0)
+        etapa_final: newStage.etapa_final,
+        ativo: true,
+        ordem: stagesVisiveis.filter(s => s.adminId).length + 1
       });
       setNewStage(NOVA_ETAPA);
       setShowNewStageForm(false);
@@ -1856,6 +1869,20 @@ function FunilPage() {
       setStageFeedback({ type: 'error', message: err.message || 'Erro ao adicionar etapa.' });
     } finally {
       setCreatingStage(false);
+    }
+  }
+
+  async function handleDragEnd({ active, over }) {
+    if (!over || active.id === over.id) return;
+    const oldIndex = stagesVisiveis.findIndex(s => s.id === active.id);
+    const newIndex = stagesVisiveis.findIndex(s => s.id === over.id);
+    const reordenadas = arrayMove(stagesVisiveis, oldIndex, newIndex);
+    flushSync(() => setStages(reordenadas));
+    const ordens = reordenadas.filter(s => s.adminId).map((s, i) => ({ id: s.adminId, ordem: i + 1 }));
+    try {
+      await reordenarEtapasFunil(ordens);
+    } catch {
+      await carregarEtapasAdmin();
     }
   }
 
@@ -2314,14 +2341,6 @@ function FunilPage() {
                     disabled={creatingStage}
                     required
                   />
-                  <input
-                    className="funnel-stage-form__order"
-                    type="number"
-                    value={newStage.ordem}
-                    onChange={event => setNewStage({ ...newStage, ordem: event.target.value })}
-                    disabled={creatingStage}
-                    aria-label="Ordem da nova etapa"
-                  />
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                     <input
                       type="checkbox"
@@ -2370,6 +2389,8 @@ function FunilPage() {
           </>
         )}
 
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={stagesVisiveis.map(s => s.id)} strategy={horizontalListSortingStrategy}>
         <div className="kanban">
           {stagesVisiveis.map(st => {
             const editableStage = adminStagesByCode.get(st.id) || st;
@@ -2389,9 +2410,26 @@ function FunilPage() {
               });
             const colTotal = items.reduce((sum, s) => sum + s.value, 0);
             return (
-              <div key={st.id} className="kanban-column">
+              <SortableColumn key={st.id} id={st.id} disabled={!canEditStage}>
+                {({ setNodeRef, transform, transition, isDragging, dragAttributes, dragListeners }) => (
+              <div
+                ref={setNodeRef}
+                className="kanban-column"
+                style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+              >
                 <div className="column-header">
                   <div className="column-title-row">
+                    {canEditStage && !isEditingStage && (
+                      <span
+                        {...dragAttributes}
+                        {...dragListeners}
+                        className="drag-handle"
+                        title="Arrastar para reordenar"
+                        style={{ cursor: 'grab', display: 'flex', alignItems: 'center', color: 'var(--text-3)', flexShrink: 0 }}
+                      >
+                        <I.GripVertical size={12} />
+                      </span>
+                    )}
                     <span className={`column-dot ${st.dot}`}></span>
                     {isEditingStage ? (
                       <input
@@ -2506,9 +2544,13 @@ function FunilPage() {
                   )}
                 </div>
               </div>
+                )}
+              </SortableColumn>
             );
           })}
         </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       <EmailTemplateModal

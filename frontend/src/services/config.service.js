@@ -108,6 +108,10 @@ export async function excluirEtapaFunil(id) {
   return apiDelete(`/config/admin/funil-etapas/${id}`);
 }
 
+export async function reordenarEtapasFunil(ordens) {
+  return apiPut('/config/admin/funil-etapas/reorder', { ordens });
+}
+
 export async function listarRegrasComissaoAdmin() {
   return apiGet('/config/admin/regras-comissao');
 }

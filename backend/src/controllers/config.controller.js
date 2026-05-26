@@ -327,6 +327,16 @@ async function atualizarFunilEtapa(req, res) {
   }
 }
 
+async function reordenarFunilEtapas(req, res) {
+  try {
+    await configService.reordenarFunilEtapas(req.body.ordens);
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao reordenar etapas do funil.' });
+  }
+}
+
 async function excluirFunilEtapa(req, res) {
   try {
     const resultado = await configService.excluirFunilEtapa(req.params.id);
@@ -460,6 +470,7 @@ module.exports = {
   criarFunilEtapa,
   atualizarFunilEtapa,
   excluirFunilEtapa,
+  reordenarFunilEtapas,
   adminRegrasComissao,
   criarRegraComissao,
   atualizarRegraComissao,
