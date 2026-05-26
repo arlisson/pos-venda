@@ -5,7 +5,7 @@ async function index(req, res) {
     return res.json(await leadPlanilhaService.listarPlanilhas());
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Erro ao listar planilhas de leads.' });
+    return res.status(500).json({ message: 'Erro ao listar planilhas de mailing.' });
   }
 }
 
@@ -109,7 +109,7 @@ async function linhas(req, res) {
     return res.json(await leadPlanilhaService.listarLinhas(req.query));
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Erro ao listar linhas de leads.' });
+    return res.status(500).json({ message: 'Erro ao listar linhas de mailing.' });
   }
 }
 
@@ -130,7 +130,7 @@ async function dividir(req, res) {
     return res.json(await leadPlanilhaService.dividirLeads(req.body, req.usuario.id));
   } catch (error) {
     console.error(error);
-    return res.status(400).json({ message: error.message || 'Erro ao dividir leads.' });
+    return res.status(400).json({ message: error.message || 'Erro ao dividir mailing.' });
   }
 }
 
@@ -148,7 +148,7 @@ async function meusEnvios(req, res) {
     return res.json(await leadPlanilhaService.listarEnviosDoUsuario(req.usuario.id));
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Erro ao listar leads recebidos.' });
+    return res.status(500).json({ message: 'Erro ao listar mailing recebido.' });
   }
 }
 
@@ -157,7 +157,7 @@ async function minhasLinhas(req, res) {
     return res.json(await leadPlanilhaService.listarLinhas(req.query, { usuarioId: req.usuario.id }));
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Erro ao listar leads recebidos.' });
+    return res.status(500).json({ message: 'Erro ao listar mailing recebido.' });
   }
 }
 

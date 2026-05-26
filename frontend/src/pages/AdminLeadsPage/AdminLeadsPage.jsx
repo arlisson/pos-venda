@@ -221,8 +221,8 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
 
           <div className="leads-divide-help">
             {incluirEnviados
-              ? `Este envio pode usar leads novos e transferir até ${formatarNumero(Math.min(vaiTransferir, jaEnviados))} lead(s) já enviados.`
-              : 'O envio automático começa no próximo lead ainda não enviado e ignora os leads já distribuídos.'}
+              ? `Este envio pode usar mailing novo e transferir até ${formatarNumero(Math.min(vaiTransferir, jaEnviados))} registro(s) já enviados.`
+              : 'O envio automático começa no próximo registro ainda não enviado e ignora os mailing já distribuídos.'}
           </div>
 
           <label className="leads-transfer-toggle">
@@ -232,14 +232,14 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
               onChange={event => setIncluirEnviados(event.target.checked)}
             />
             <span>
-              <strong>Incluir leads já enviados</strong>
-              <small>Use para transferir leads que já foram enviados para outro vendedor.</small>
+              <strong>Incluir mailing já enviados</strong>
+              <small>Use para transferir mailing que já foram enviados para outro vendedor.</small>
             </span>
           </label>
 
           {incluirEnviados && (
             <div className="leads-warning">
-              Leads já enviados que entrarem nesta divisão serão transferidos para o novo vendedor e novo envio.
+              Mailing já enviados que entrarem nesta divisão serão transferidos para o novo vendedor e novo envio.
             </div>
           )}
 
@@ -299,7 +299,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
         <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose}>Cancelar</button>
           <button type="submit" className="btn btn-primary" disabled={salvando || usuarios.length === 0 || colunasVisiveis.length === 0}>
-            {salvando ? 'Enviando...' : 'Enviar leads'}
+            {salvando ? 'Enviando...' : 'Enviar mailing'}
           </button>
         </div>
       </form>
@@ -387,7 +387,7 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
           <div className="modal-header-row">
             <div>
               <div className="modal-client">Excluir planilha?</div>
-              <div className="modal-sub">Essa ação remove a planilha, suas linhas importadas e os leads enviados aos usuários.</div>
+              <div className="modal-sub">Essa ação remove a planilha, suas linhas importadas e o mailing enviado aos usuários.</div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={carregando}>
               <I.Close size={14} />
@@ -403,7 +403,7 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
             <div>
               <strong>{planilha.nome}</strong>
               <span>{planilha.total_linhas || 0} {(planilha.total_linhas || 0) === 1 ? 'linha' : 'linhas'}</span>
-              <small>Se houver leads distribuídos, eles deixarão de aparecer para os vendedores.</small>
+              <small>Se houver mailing distribuído, ele deixará de aparecer para os vendedores.</small>
               {planilha.status === 'processando' && (
                 <small>A planilha ainda está processando e o backend vai bloquear a exclusão.</small>
               )}
@@ -809,8 +809,8 @@ function AdminLeadsPage() {
     });
     if (!resultado?.requires_manual_allocation) {
       setSucesso(resultado?.total_reenviados > 0
-        ? `Leads enviados. ${resultado.total_reenviados} lead(s) já enviados foram transferidos.`
-        : 'Leads enviados para os vendedores.');
+        ? `Mailing enviado. ${resultado.total_reenviados} registro(s) já enviados foram transferidos.`
+        : 'Mailing enviado para os vendedores.');
       setSelecionadas([...selecionadas]);
     }
     return resultado;
@@ -1042,7 +1042,7 @@ function AdminLeadsPage() {
         )}
 
         <div className="lead-results-meta">
-          {totalLinhas} {totalLinhas === 1 ? 'lead encontrado' : 'leads encontrados'}
+          {totalLinhas} {totalLinhas === 1 ? 'registro encontrado' : 'registros encontrados'}
         </div>
 
         {resumoLeads.total > 0 && (
@@ -1052,7 +1052,7 @@ function AdminLeadsPage() {
               <strong>{formatarNumero(resumoLeads.total)}</strong>
             </div>
             <div className="lead-summary-card sent">
-              <span>Leads enviados</span>
+              <span>Mailing enviado</span>
               <strong>{formatarNumero(resumoLeads.enviados)}</strong>
             </div>
             <div className="lead-summary-card pending">
@@ -1087,7 +1087,7 @@ function AdminLeadsPage() {
                 {carregando ? (
                   <tr><td colSpan={colunas.length + 4} className="muted">Carregando...</td></tr>
                 ) : linhasPagina.length === 0 ? (
-                  <tr><td colSpan={colunas.length + 4} className="muted">Selecione uma planilha para visualizar os leads.</td></tr>
+                  <tr><td colSpan={colunas.length + 4} className="muted">Selecione uma planilha para visualizar o mailing.</td></tr>
                 ) : (
                   linhasPagina.map(linha => (
                     <tr key={linha.id}>

@@ -681,7 +681,7 @@ function LeadsRecebidosView() {
                 <span></span><span></span><span></span><span></span>
               </div>
               <strong title={envio.nome}>{envio.nome}</strong>
-              <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} leads</small>
+              <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} registros</small>
             </button>
           ))}
           {!carregando && envios.length === 0 && (
@@ -692,7 +692,7 @@ function LeadsRecebidosView() {
 
       <div className="clientes-leads-toolbar">
         <div className="clientes-toolbar__meta">
-          <span>{totalLinhas} lead(s) recebidos</span>
+          <span>{totalLinhas} registro(s) recebidos</span>
           <span className="clientes-toolbar__meta-secondary">
             {totalFuturosClientesAtivos} futuro(s) cliente(s)
           </span>
@@ -700,7 +700,7 @@ function LeadsRecebidosView() {
         <div className="clientes-leads-actions">
           <form className="clientes-search" onSubmit={event => event.preventDefault()}>
             <I.Search size={14} />
-            <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar nos leads recebidos" />
+            <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar no mailing recebido" />
           </form>
         </div>
       </div>
@@ -721,7 +721,7 @@ function LeadsRecebidosView() {
             </thead>
             <tbody>
               {carregando ? (
-                <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Carregando leads...</td></tr>
+                <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Carregando mailing...</td></tr>
               ) : linhas.length === 0 ? (
                 <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
               ) : (
@@ -1343,7 +1343,7 @@ function FuturosClientesPage() {
             className={`clientes-tab ${abaAtiva === 'leads' ? 'active' : ''}`}
             onClick={() => setAbaAtiva('leads')}
           >
-            Leads recebidos
+            Mailing recebido
           </button>
         </div>
 

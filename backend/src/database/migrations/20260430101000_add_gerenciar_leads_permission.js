@@ -7,8 +7,8 @@ exports.up = async function (knex) {
     await knex('permissoes')
       .where('id', existente.id)
       .update({
-        nome: 'Gerenciar leads',
-        descricao: 'Permite importar planilhas, filtrar e distribuir leads entre vendedores.',
+        nome: 'Gerenciar mailing',
+        descricao: 'Permite importar planilhas, filtrar e distribuir mailing entre vendedores.',
         ativo: true
       });
   } else {

@@ -814,9 +814,9 @@ async function dividirLeads(dados, usuarioId) {
   const linhaIds = await buscarIdsPorCriterios(dados, quantidadeTotal);
   if (linhaIds.length < quantidadeTotal) {
     if (dados.incluir_enviados === true) {
-      throw new Error('Não há leads suficientes para a quantidade solicitada.');
+      throw new Error('Não há mailing suficiente para a quantidade solicitada.');
     }
-    throw new Error('Não há leads não enviados suficientes. Ative incluir leads já enviados para transferir linhas distribuídas.');
+    throw new Error('Não há mailing não enviado suficiente. Ative incluir mailing já enviado para transferir linhas distribuídas.');
   }
 
   const totalJaEnviados = dados.incluir_enviados === true

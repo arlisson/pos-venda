@@ -233,16 +233,16 @@ export const GRUPOS_PERMISSOES = [
   },
   {
     id: 'leads',
-    titulo: 'Leads',
-    descricao: 'Controle a importação, organização e distribuição de planilhas de leads.',
+    titulo: 'Mailing',
+    descricao: 'Controle a importação, organização e distribuição de planilhas de mailing.',
     secoes: [
       {
         titulo: 'Planilhas',
         itens: [
           {
             chave: 'gerenciar_leads',
-            nome: 'Gerenciar leads',
-            descricao: 'Permite importar planilhas, filtrar e distribuir leads entre vendedores.'
+            nome: 'Gerenciar mailing',
+            descricao: 'Permite importar planilhas, filtrar e distribuir mailing entre vendedores.'
           }
         ]
       }

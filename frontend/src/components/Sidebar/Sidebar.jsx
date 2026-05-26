@@ -38,7 +38,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
     { id: 'config', label: 'Configurações', icon: <I.Settings />, permission: ['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos'] },
     { id: 'campanhas', label: 'Configurar Campanhas', icon: <I.Settings />, permission: ['gerenciar_campanhas'] },
     { id: 'fechamento-mensal', label: 'Fechamento Mensal', icon: <I.Chart />, permission: 'vendas_fechamento_mensal' },
-    { id: 'leads', label: 'Planilhas de leads', icon: <I.LayoutList />, permission: 'gerenciar_leads' },
+    { id: 'leads', label: 'Planilha de Mailing', icon: <I.LayoutList />, permission: 'gerenciar_leads' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   const getInitials = (name) => {

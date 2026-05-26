@@ -136,8 +136,8 @@ const PERMISSOES = [
   },
   {
     chave: 'gerenciar_leads',
-    nome: 'Gerenciar leads',
-    descricao: 'Permite importar planilhas, filtrar e distribuir leads entre vendedores.'
+    nome: 'Gerenciar mailing',
+    descricao: 'Permite importar planilhas, filtrar e distribuir mailing entre vendedores.'
   }
 ];
 
@@ -279,8 +279,8 @@ const PERMISSOES_SEM_ACENTO = [
   },
   {
     chave: 'gerenciar_leads',
-    nome: 'Gerenciar leads',
-    descricao: 'Permite importar planilhas, filtrar e distribuir leads entre vendedores.'
+    nome: 'Gerenciar mailing',
+    descricao: 'Permite importar planilhas, filtrar e distribuir mailing entre vendedores.'
   }
 ];
 
