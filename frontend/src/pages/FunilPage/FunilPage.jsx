@@ -120,7 +120,7 @@ function normalizarEtapasFunil(etapas = [], usarFallback = true) {
       return {
         id,
         adminId: etapa.id,
-        name: STAGE_LABELS[id] || etapa.nome || etapa.name,
+        name: etapa.nome || etapa.name || STAGE_LABELS[id],
         dot: id || `etapa_${index}`,
         ordem: Number(etapa.ordem ?? index),
         ativo: normalizarAtivo(etapa.ativo),
