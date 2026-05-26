@@ -2253,7 +2253,14 @@ function getIconStatusPacote(status) {
   return <I.Note size={12} />;
 }
 
-function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) {
+function ArquivosVendaTab({
+  venda,
+  podeEditar,
+  podeVisualizar,
+  podeAdicionar,
+  pendingArquivos = [],
+  onPendingArquivosChange = () => {}
+}) {
   const inputRef = useRef(null);
   const [arquivos, setArquivos] = useState([]);
   const [pacote, setPacote] = useState(null);
@@ -2366,13 +2373,110 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) 
   }
 
   if (!venda?.id) {
+    function handleUploadOffline(event) {
+      const files = Array.from(event.target.files || []);
+      event.target.value = '';
+      if (files.length === 0) return;
+      onPendingArquivosChange([
+        ...pendingArquivos,
+        ...files.map(file => ({ file, categoria }))
+      ]);
+    }
+
+    function removerPendente(idx) {
+      onPendingArquivosChange(pendingArquivos.filter((_, i) => i !== idx));
+    }
+
     return (
-      <div className="venda-arquivos-empty venda-arquivos-empty--blocked">
-        <span className="venda-arquivos-empty__icon">
-          <I.Note size={20} />
-        </span>
-        <strong>Venda ainda não salva</strong>
-        <span>Salve a venda antes de anexar arquivos.</span>
+      <div className="venda-arquivos">
+        <div className="venda-arquivos-toolbar">
+          <div className="venda-arquivos-heading">
+            <div className="venda-arquivos-title-row">
+              <div className="venda-arquivos-title">Arquivos da venda</div>
+              <span className="venda-arquivos-count">
+                {pendingArquivos.length} {pendingArquivos.length === 1 ? 'arquivo' : 'arquivos'}
+              </span>
+            </div>
+            <div className="venda-arquivos-package status-inexistente">
+              <I.Note size={12} />
+              <span className="venda-arquivos-package__text">
+                <span>Os arquivos serão enviados ao salvar a venda.</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="venda-arquivos-actions">
+            <SelectFiltro
+              value={categoria}
+              onChange={setCategoria}
+              placeholder="Documento"
+              options={[
+                { value: 'documento', label: 'Documento' },
+                { value: 'contrato', label: 'Contrato' },
+                { value: 'comprovante', label: 'Comprovante' },
+                { value: 'outro', label: 'Outro' },
+              ]}
+            />
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf,image/jpeg,image/png,image/webp"
+              multiple
+              hidden
+              onChange={handleUploadOffline}
+            />
+            <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()}>
+              <I.Plus size={13} /> Adicionar arquivos
+            </button>
+          </div>
+        </div>
+
+        {pendingArquivos.length === 0 ? (
+          <div
+            className="venda-arquivos-empty venda-arquivos-empty--upload"
+            role="button"
+            tabIndex={0}
+            onClick={() => inputRef.current?.click()}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                inputRef.current?.click();
+              }
+            }}
+          >
+            <span className="venda-arquivos-empty__icon">
+              <I.Plus size={20} />
+            </span>
+            <strong>Nenhum arquivo anexado</strong>
+            <span>Clique para selecionar documentos, contratos ou comprovantes.</span>
+            <em>PDF, JPG, PNG ou WEBP</em>
+          </div>
+        ) : (
+          <div className="venda-arquivos-list">
+            {pendingArquivos.map((item, idx) => (
+              <div key={idx} className="venda-arquivo-item">
+                <div className="venda-arquivo-icon">
+                  <I.Note size={16} />
+                </div>
+                <div className="venda-arquivo-main">
+                  <strong>{item.file.name}</strong>
+                  <div className="venda-arquivo-meta">
+                    {item.categoria} · {formatarTamanhoArquivo(item.file.size)} · pendente
+                  </div>
+                </div>
+                <div className="venda-arquivo-actions">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost vendas-trash-delete"
+                    onClick={() => removerPendente(idx)}
+                  >
+                    <I.Trash size={12} /> Remover
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -2701,6 +2805,8 @@ function VendaModal({
   const podeAcessarDocumentosVendaInicial = Boolean(podeVerDocumentosVenda || podeAdicionarDocumentosVenda);
   const abaInicial = initialTab === 'arquivos' && !podeAcessarDocumentosVendaInicial ? 'venda' : initialTab;
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
+  const [pendingNotas, setPendingNotas] = useState([]);
+  const [pendingArquivos, setPendingArquivos] = useState([]);
 
   useEffect(() => {
     let ativo = true;
@@ -3696,7 +3802,9 @@ function VendaModal({
         localStorage.removeItem(`form_draft_${draftKey}`);
       }
 
-      await onSave(payload);
+      const notasParaCriar = !venda?.id ? pendingNotas : [];
+      const arquivosParaCriar = !venda?.id ? pendingArquivos : [];
+      await onSave(payload, notasParaCriar, arquivosParaCriar);
     } catch (error) {
       setErro(error.message || 'Erro ao salvar venda.');
       setSalvando(false);
@@ -3760,7 +3868,7 @@ function VendaModal({
             className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
             onClick={() => setAbaAtiva('notas')}
           >
-            <I.Note size={14} /> Notas
+            <I.Note size={14} /> Notas{!venda?.id && pendingNotas.length > 0 && ` (${pendingNotas.length})`}
           </button>
           {podeAcessarDocumentosVenda && (
             <button
@@ -3768,7 +3876,7 @@ function VendaModal({
               className={`modal-tab ${abaAtiva === 'arquivos' ? 'active' : ''}`}
               onClick={() => setAbaAtiva('arquivos')}
             >
-              <I.Folder size={14} /> Documentos
+              <I.Folder size={14} /> Documentos{!venda?.id && pendingArquivos.length > 0 && ` (${pendingArquivos.length})`}
             </button>
           )}
           {vendaCancelada && (
@@ -3812,7 +3920,12 @@ function VendaModal({
         <div className="modal-body" ref={modalBodyRef}>
           <div className="venda-modal-tabpanel" key={abaAtiva}>
           {abaAtiva === 'notas' ? (
-            <NotasEntidadeTab tipo="venda" entidadeId={venda?.id} />
+            <NotasEntidadeTab
+              tipo="venda"
+              entidadeId={venda?.id}
+              pendingNotas={pendingNotas}
+              onPendingNotasChange={setPendingNotas}
+            />
           ) : abaAtiva === 'solicitacao' && temClienteSolicitouAba ? (
             <ClienteSolicitouResolucaoTab
               form={form}
@@ -3825,6 +3938,8 @@ function VendaModal({
               podeEditar={podeEditarVendaEfetivo}
               podeVisualizar={podeVerDocumentosVenda}
               podeAdicionar={podeAdicionarDocumentosVendaEfetivo}
+              pendingArquivos={pendingArquivos}
+              onPendingArquivosChange={setPendingArquivos}
             />
           ) : abaAtiva === 'cancelamento' && vendaCancelada ? (
             <VendaCancelamentoTab venda={venda || form} />
