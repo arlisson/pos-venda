@@ -19,6 +19,7 @@ import {
   deletarVenda,
   enviarVendaParaPosVenda,
   excluirArquivoVenda,
+  exportarVendasExcel,
   gerarPacoteArquivosVenda,
   gerarEmailVenda,
   listarArquivosVenda,
@@ -2304,6 +2305,7 @@ function VendasPage() {
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
   const [carregando, setCarregando] = useState(true);
+  const [exportando, setExportando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [modalVenda, setModalVenda] = useState(null);
@@ -2654,6 +2656,20 @@ function VendasPage() {
       setErro(error.message || 'Erro ao gerar planilha Claro.');
     } finally {
       setBaixandoXlsxId(null);
+    }
+  }
+
+  async function exportarVendas() {
+    setErro('');
+    setExportando(true);
+
+    try {
+      await exportarVendasExcel(filtros);
+      setSucesso('Exportacao de vendas iniciada.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao exportar vendas.');
+    } finally {
+      setExportando(false);
     }
   }
 
@@ -3026,6 +3042,10 @@ function VendasPage() {
           <button className="btn" type="button" onClick={() => setFiltrosAbertos(true)}>
             <I.Filter size={14} /> Filtros
             {filtrosPopupAtivos > 0 && <span className="filtros-count">{filtrosPopupAtivos}</span>}
+          </button>
+
+          <button className="btn" type="button" onClick={exportarVendas} disabled={exportando || totalVendas === 0}>
+            <I.Download size={14} /> {exportando ? 'Exportando...' : 'Exportar Excel'}
           </button>
 
           {podeExcluirVenda && (

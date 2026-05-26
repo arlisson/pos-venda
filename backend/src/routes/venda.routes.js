@@ -33,6 +33,7 @@ router.get('/relatorios', exigirUmaPermissao(['relatorios_visualizar']), vendaCo
 router.get('/lixeira', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.lixeira);
 router.get('/contagem-por-cliente', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), vendaController.contagemPorCliente);
 router.get('/referencias-clientes', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.referenciasClientes);
+router.get('/exportar', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.exportar);
 router.post('/importar-empresas/preview', exigirUmaPermissao(['clientes_importar_planilhas']), vendaController.previewImportacaoEmpresas);
 router.post(
   '/importar-empresas',

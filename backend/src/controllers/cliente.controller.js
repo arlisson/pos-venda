@@ -47,6 +47,22 @@ async function select(req, res) {
   }
 }
 
+async function exportar(req, res) {
+  try {
+    const { buffer, nome } = await clienteService.gerarXlsxClientes(req.query, req.usuario.id);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
+    return res.send(buffer);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao exportar clientes.'
+    });
+  }
+}
+
 async function verificarDocumento(req, res) {
   try {
     const resultado = await clienteService.verificarDocumentoCliente(req.params.documento, {
@@ -225,6 +241,7 @@ async function limparBaseAnterior(req, res) {
 module.exports = {
   index,
   select,
+  exportar,
   verificarDocumento,
   show,
   store,

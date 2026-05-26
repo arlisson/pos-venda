@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
+import { apiBlob, apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
 
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -15,6 +15,23 @@ function montarQuery(filtros = {}) {
 
 export async function listarClientes(filtros = {}) {
   return apiGet(`/clientes${montarQuery(filtros)}`);
+}
+
+function baixarBlob(blob, nomeArquivo) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export async function exportarClientesExcel(filtros = {}) {
+  const blob = await apiBlob(`/clientes/exportar${montarQuery(filtros)}`);
+  const data = new Date().toISOString().slice(0, 10);
+  baixarBlob(blob, `clientes-${data}.xlsx`);
 }
 
 export async function listarClientesSelect(filtros = {}) {
