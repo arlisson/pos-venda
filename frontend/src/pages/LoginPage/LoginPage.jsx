@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as I from '../../components/Icons';
 import { login } from '../../services/auth.service';
 import logo from '../../assets/LogoClaraSemFundo.png';
 
@@ -8,6 +9,7 @@ function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
 
@@ -34,27 +36,38 @@ function LoginPage() {
         </div>
         <h1>Entrar no sistema</h1>
         <p className="sub">Acesse com sua conta da empresa</p>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-field">
             <label>E-mail</label>
-            <input 
+            <input
               type="email"
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               placeholder="seu@email.com"
               required
             />
           </div>
           <div className="form-field">
             <label>Senha</label>
-            <input 
-              type="password" 
-              value={senha} 
-              onChange={e => setSenha(e.target.value)} 
-              placeholder="••••••••"
-              required
-            />
+            <div className="login-password-field">
+              <input
+                type={mostrarSenha ? 'text' : 'password'}
+                value={senha}
+                onChange={e => setSenha(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                className="login-password-toggle"
+                onClick={() => setMostrarSenha(prev => !prev)}
+                aria-label={mostrarSenha ? 'Ocultar senha' : 'Visualizar senha'}
+                title={mostrarSenha ? 'Ocultar senha' : 'Visualizar senha'}
+              >
+                {mostrarSenha ? <I.EyeOff size={16} /> : <I.Eye size={16} />}
+              </button>
+            </div>
           </div>
 
           {erro && (
@@ -70,9 +83,9 @@ function LoginPage() {
             {/* <a href="#" style={{ fontSize: '12px', color: 'var(--text-3)', textDecoration: 'none' }}>Esqueci minha senha</a> */}
           </div>
 
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
+          <button
+            type="submit"
+            className="btn btn-primary"
             style={{ width: '100%', justifyContent: 'center', padding: '10px' }}
             disabled={carregando}
           >

@@ -15,15 +15,15 @@ import {
   montarGruposPermissoes as montarGruposPermissoesCompartilhados,
   PermissaoGrupo as PermissaoGrupoCompartilhado,
   CopiarPermissoesSelect,
-  parsePermissoesUsuario,
-  getPermissoesCopiaveis as getPermissoesCopiaveisCompartilhado
+  getPermissoesCopiaveis as getPermissoesCopiaveisCompartilhado,
+  getPermissoesSelecionadasUsuario,
+  montarPermissoesAdminParaSalvar,
+  PERMISSAO_GERENCIAR_PERMISSOES
 } from './permissoes';
 import './Usuarios.css';
 
-function getPermissoesIniciais(usuario) {
-  const permissoesUsuario = parsePermissoesUsuario(usuario?.permissoes);
-
-  return permissoesUsuario;
+function getPermissoesIniciais(usuario, permissoesDisponiveis = []) {
+  return getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis);
 }
 
 function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
@@ -48,7 +48,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 
         setUsuario(usuarioData);
         setPermissoes(permissoesCompletas);
-        setSelecionadas(getPermissoesIniciais(usuarioData));
+        setSelecionadas(getPermissoesIniciais(usuarioData, permissoesCompletas));
       } catch {
         setErro('Erro ao carregar permissões do usuário.');
       } finally {
@@ -61,6 +61,10 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 
   function toggle(chave, opcoes = {}) {
     setAvisoCopia('');
+    if (usuario?.role?.nome === 'admin' && chave !== PERMISSAO_GERENCIAR_PERMISSOES) {
+      setAvisoCopia('Administradores mantêm as demais permissões automaticamente.');
+      return;
+    }
     setSelecionadas(prev => {
       const selecionada = prev.includes(chave);
 
@@ -91,7 +95,11 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
     setErro('');
 
     try {
-      await onSave(usuarioId, selecionadas);
+      const permissoesParaSalvar = usuario?.role?.nome === 'admin'
+        ? montarPermissoesAdminParaSalvar(selecionadas)
+        : selecionadas;
+
+      await onSave(usuarioId, permissoesParaSalvar);
       onClose();
     } catch (error) {
       setErro(error.message || 'Erro ao salvar permissões.');

@@ -7,6 +7,8 @@ import * as I from '../../components/Icons';
 import {
   garantirPermissaoPosVenda as garantirPermissaoPosVendaCompartilhada,
   montarGruposPermissoes as montarGruposPermissoesCompartilhados,
+  montarPermissoesAdminParaSalvar,
+  PERMISSAO_GERENCIAR_PERMISSOES,
   PermissaoGrupo as PermissaoGrupoCompartilhado,
   CopiarPermissoesSelect,
   getPermissoesCopiaveis
@@ -80,6 +82,11 @@ function CadastroUsuario() {
   }
 
   function togglePermissao(chave, opcoes = {}) {
+    if (Number(roleId) === 1 && chave !== PERMISSAO_GERENCIAR_PERMISSOES) {
+      setAvisoCopia('Administradores mantêm as demais permissões automaticamente.');
+      return;
+    }
+
     setPermissoesSelecionadas(prev => {
       const selecionada = prev.includes(chave);
 
@@ -109,7 +116,9 @@ function CadastroUsuario() {
       };
 
       if (podeGerenciarPermissoes) {
-        dados.permissoes = Number(roleId) === 1 ? [] : permissoesSelecionadas;
+        dados.permissoes = Number(roleId) === 1
+          ? montarPermissoesAdminParaSalvar(permissoesSelecionadas)
+          : permissoesSelecionadas;
       }
 
       await criarUsuario(dados);
@@ -181,7 +190,7 @@ function CadastroUsuario() {
                         setRoleId(novaRoleId);
 
                         if (novaRoleId === 1) {
-                          setPermissoesSelecionadas([]);
+                          setPermissoesSelecionadas(permissoes.map(permissao => permissao.chave));
                         }
                       }}
                     >
@@ -223,11 +232,7 @@ function CadastroUsuario() {
                     )}
 
                     <div className="permissions-grid">
-                      {Number(roleId) === 1 ? (
-                        <div style={{ padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-2)' }}>
-                          Administradores possuem todas as permissões automaticamente.
-                        </div>
-                      ) : permissoes.length === 0 ? (
+                      {permissoes.length === 0 ? (
                         <div className="muted" style={{ fontSize: 13 }}>
                           Nenhuma permissão disponível.
                         </div>
@@ -268,3 +273,4 @@ function CadastroUsuario() {
 }
 
 export default CadastroUsuario;
+

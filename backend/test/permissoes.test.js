@@ -13,6 +13,17 @@ test('admin possui todas as permissoes', () => {
   assert.equal(usuarioTemPermissaoLocal(usuario, 'clientes_excluir'), true);
 });
 
+test('admin pode ter gerenciar permissoes negada explicitamente', () => {
+  const usuario = {
+    ativo: true,
+    permissoes: { gerenciar_permissoes: false },
+    role: { nome: 'admin' }
+  };
+
+  assert.equal(usuarioTemPermissaoLocal(usuario, 'clientes_criar'), true);
+  assert.equal(usuarioTemPermissaoLocal(usuario, 'gerenciar_permissoes'), false);
+});
+
 test('usuario comum soma permissoes proprias e da role', () => {
   const usuario = {
     ativo: true,

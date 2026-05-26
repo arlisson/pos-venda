@@ -7,6 +7,7 @@ export const PERMISSAO_POS_VENDA = {
   nome: 'Pós-venda',
   descricao: 'Permite editar vendas enviadas ao pós-venda e movimentar vendas no funil.'
 };
+export const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
 
 export function garantirPermissaoPosVenda(permissoes = []) {
   if (permissoes.some(permissao => permissao.chave === PERMISSAO_POS_VENDA.chave)) {
@@ -571,9 +572,43 @@ export function parsePermissoesUsuario(permissoes) {
   if (!permissoes) return [];
   if (Array.isArray(permissoes)) return permissoes;
   if (typeof permissoes === 'string') {
-    try { return JSON.parse(permissoes); } catch { return []; }
+    try { return parsePermissoesUsuario(JSON.parse(permissoes)); } catch { return []; }
   }
   return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
+}
+
+export function normalizarPermissoesUsuario(permissoes) {
+  if (!permissoes) return {};
+  if (typeof permissoes === 'string') {
+    try { return normalizarPermissoesUsuario(JSON.parse(permissoes)); } catch { return {}; }
+  }
+  if (Array.isArray(permissoes)) {
+    return permissoes.reduce((acc, permissao) => {
+      acc[permissao] = true;
+      return acc;
+    }, {});
+  }
+  return permissoes;
+}
+
+export function getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis = []) {
+  if (usuario?.role?.nome !== 'admin') {
+    return parsePermissoesUsuario(usuario?.permissoes);
+  }
+
+  const permissoesUsuario = normalizarPermissoesUsuario(usuario?.permissoes);
+  const todasChaves = permissoesDisponiveis.map(permissao => permissao.chave);
+
+  return todasChaves.filter(chave => (
+    chave !== PERMISSAO_GERENCIAR_PERMISSOES ||
+    permissoesUsuario[PERMISSAO_GERENCIAR_PERMISSOES] !== false
+  ));
+}
+
+export function montarPermissoesAdminParaSalvar(selecionadas = []) {
+  return selecionadas.includes(PERMISSAO_GERENCIAR_PERMISSOES)
+    ? []
+    : { [PERMISSAO_GERENCIAR_PERMISSOES]: false };
 }
 
 export function getPermissoesCopiaveis(usuarioOrigem, permissoesDisponiveis) {
