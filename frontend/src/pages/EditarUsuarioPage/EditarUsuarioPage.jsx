@@ -13,7 +13,13 @@ import {
   listarPermissoes
 } from '../../services/usuario.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
-import { montarGruposPermissoes, PermissaoGrupo } from '../Usuarios/permissoes';
+import {
+  getPermissoesSelecionadasUsuario,
+  montarGruposPermissoes,
+  montarPermissoesAdminParaSalvar,
+  PERMISSAO_GERENCIAR_PERMISSOES,
+  PermissaoGrupo
+} from '../Usuarios/permissoes';
 
 import '../Usuarios/Usuarios.css';
 import './EditarUsuarioPage.css';
@@ -30,15 +36,6 @@ function garantirPermissaoPosVenda(permissoes = []) {
   }
 
   return [...permissoes, PERMISSAO_POS_VENDA];
-}
-
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-  if (typeof permissoes === 'string') {
-    try { return JSON.parse(permissoes); } catch { return []; }
-  }
-  return Object.entries(permissoes).filter(([, permitido]) => permitido).map(([chave]) => chave);
 }
 
 function EditarUsuarioPage() {
@@ -89,7 +86,8 @@ function EditarUsuarioPage() {
         const nomeVal = usuarioData.nome || '';
         const emailVal = usuarioData.email || '';
         const ativoVal = Boolean(usuarioData.ativo);
-        const permissoesSelecionadasParsed = parsePermissoes(usuarioData.permissoes);
+        const permissoesCompletas = garantirPermissaoPosVenda(permissoesData);
+        const permissoesSelecionadasParsed = getPermissoesSelecionadasUsuario(usuarioData, permissoesCompletas);
 
         const originais = {
           nome: nomeVal,
@@ -104,7 +102,7 @@ function EditarUsuarioPage() {
         setRoleId(roleAtual);
         setRoleIdOriginal(roleAtual);
         setAtivo(ativoVal);
-        setPermissoes(garantirPermissaoPosVenda(permissoesData));
+        setPermissoes(permissoesCompletas);
         setPermissoesSelecionadas(permissoesSelecionadasParsed);
         setDadosOriginais(originais);
       } catch (error) {
@@ -118,6 +116,11 @@ function EditarUsuarioPage() {
   }, [id]);
 
   function handlePermissaoChange(chave, opcoes = {}) {
+    if (isAdminEditado && chave !== PERMISSAO_GERENCIAR_PERMISSOES) {
+      setErro('Administradores mantêm as demais permissões automaticamente.');
+      return;
+    }
+
     setPermissoesSelecionadas((atuais) => {
       if (opcoes.grupoExclusivo) {
         const semGrupo = atuais.filter(item => !opcoes.grupoExclusivo.includes(item));
@@ -145,13 +148,11 @@ function EditarUsuarioPage() {
 
     if (podeGerenciarPermissoes) {
       if (Number(roleId) !== dadosOriginais.roleId) m.roleId = true;
-      if (!isAdminEditado) {
-        const permissoesOriginais = new Set(dadosOriginais.permissoes);
-        const permissoesAtuais = new Set(permissoesSelecionadas);
-        if (permissoesOriginais.size !== permissoesAtuais.size ||
-            [...permissoesOriginais].some(p => !permissoesAtuais.has(p))) {
-          m.permissoes = true;
-        }
+      const permissoesOriginais = new Set(dadosOriginais.permissoes);
+      const permissoesAtuais = new Set(permissoesSelecionadas);
+      if (permissoesOriginais.size !== permissoesAtuais.size ||
+          [...permissoesOriginais].some(p => !permissoesAtuais.has(p))) {
+        m.permissoes = true;
       }
     }
 
@@ -160,9 +161,7 @@ function EditarUsuarioPage() {
 
   const temMudancas = Object.keys(mudancas).length > 0;
   const totalMudancas = Object.keys(mudancas).length;
-  const totalPermissoesSelecionadas = isAdminEditado
-    ? permissoes.length
-    : permissoesSelecionadas.length;
+  const totalPermissoesSelecionadas = permissoesSelecionadas.length;
   const gruposPermissoes = useMemo(() => montarGruposPermissoes(permissoes), [permissoes]);
 
   useEffect(() => {
@@ -202,12 +201,22 @@ function EditarUsuarioPage() {
 
       if (podeGerenciarPermissoes) {
         dados.role_id = Number(roleId);
-        dados.permissoes = isAdminEditado ? [] : permissoesSelecionadas;
+        dados.permissoes = isAdminEditado
+          ? montarPermissoesAdminParaSalvar(permissoesSelecionadas)
+          : permissoesSelecionadas;
       } else {
         dados.role_id = roleIdOriginal;
       }
 
       await atualizarUsuario(id, dados);
+
+      const usuarioLogado = getUsuarioLocal();
+      if (Number(usuarioLogado?.id) === Number(id) && dados.permissoes !== undefined) {
+        localStorage.setItem('usuario', JSON.stringify({
+          ...usuarioLogado,
+          permissoes: dados.permissoes
+        }));
+      }
 
       setSucesso('Usuário atualizado com sucesso!');
       setSenha('');
@@ -216,7 +225,7 @@ function EditarUsuarioPage() {
         email,
         roleId: Number(roleId),
         ativo,
-        permissoes: isAdminEditado ? [] : [...permissoesSelecionadas]
+        permissoes: [...permissoesSelecionadas]
       });
 
     } catch (error) {
@@ -364,7 +373,7 @@ function EditarUsuarioPage() {
                   setRoleId(novaRoleId);
 
                   if (novaRoleId === 1) {
-                    setPermissoesSelecionadas([]);
+                    setPermissoesSelecionadas(permissoes.map(permissao => permissao.chave));
                   }
                 }}
               >
@@ -398,15 +407,7 @@ function EditarUsuarioPage() {
             </div>
           </section>
 
-          {podeGerenciarPermissoes && (
-            isAdminEditado ? (
-              <section className="editar-usuario__section">
-                <p className="editar-usuario__info">
-                  Administradores possuem todas as permissões automaticamente.
-                </p>
-              </section>
-            ) : (
-              <section className="editar-usuario__section editar-usuario__permissions">
+          {podeGerenciarPermissoes && (<section className="editar-usuario__section editar-usuario__permissions">
                 <div className="editar-usuario__section-header">
                   <div>
                     <h2>Permissoes</h2>
@@ -428,9 +429,7 @@ function EditarUsuarioPage() {
                     />
                   ))}
                 </div>
-              </section>
-            )
-          )}
+              </section>)}
 
           <div className="editar-usuario__actions">
             <Botao
@@ -454,3 +453,4 @@ function EditarUsuarioPage() {
 }
 
 export default EditarUsuarioPage;
+

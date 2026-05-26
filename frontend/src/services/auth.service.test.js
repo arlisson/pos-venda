@@ -43,6 +43,8 @@ describe('auth.service', () => {
 
   it('resolve permissoes de admin, usuario, role e listas', () => {
     expect(temPermissao({ role: { nome: 'admin' } }, 'qualquer')).toBe(true);
+    expect(temPermissao({ role: { nome: 'admin' }, permissoes: { gerenciar_permissoes: false } }, 'gerenciar_permissoes')).toBe(false);
+    expect(temPermissao({ role: { nome: 'admin' }, permissoes: { gerenciar_permissoes: false } }, 'clientes.ver')).toBe(true);
     expect(temPermissao({ permissoes: ['clientes.ver'] }, 'clientes.ver')).toBe(true);
     expect(temPermissao({ role: { permissoes: '{"vendas.ver":true}' } }, 'vendas.ver')).toBe(true);
     expect(temPermissao({ permissoes: { a: false, b: true } }, ['a', 'b'])).toBe(true);

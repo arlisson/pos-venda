@@ -1,5 +1,7 @@
 import { apiGet, apiPost, apiPut } from './api';
 
+const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
+
 export async function login(email, senha) {
   const data = await apiPost('/auth/login', {
     email,
@@ -59,6 +61,11 @@ export function temPermissao(usuario, permissao) {
   }
 
   if (usuario?.role?.nome === 'admin') {
+    if (permissao === PERMISSAO_GERENCIAR_PERMISSOES) {
+      const permissoesUsuario = normalizarPermissoes(usuario?.permissoes);
+      return permissoesUsuario?.[PERMISSAO_GERENCIAR_PERMISSOES] !== false;
+    }
+
     return true;
   }
 
