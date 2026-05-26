@@ -7,6 +7,8 @@ const pool = {
   idleTimeoutMillis: Number(process.env.DB_POOL_IDLE_TIMEOUT || 30000)
 };
 
+const usarLoadInfile = process.env.LEAD_IMPORT_USE_LOAD_INFILE === 'true';
+
 module.exports = {
   development: {
     client: process.env.DB_CLIENT || 'mysql2',
@@ -19,7 +21,8 @@ module.exports = {
       dateStrings: true,
       timezone: '+00:00',
       enableKeepAlive: true,
-      keepAliveInitialDelay: 0
+      keepAliveInitialDelay: 0,
+      ...(usarLoadInfile ? { flags: ['LOCAL_FILES'] } : {})
     },
     pool,
     migrations: {
@@ -42,7 +45,8 @@ module.exports = {
       dateStrings: true,
       timezone: '+00:00',
       enableKeepAlive: true,
-      keepAliveInitialDelay: 0
+      keepAliveInitialDelay: 0,
+      ...(usarLoadInfile ? { flags: ['LOCAL_FILES'] } : {})
     },
     pool,
     migrations: {
