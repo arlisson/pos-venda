@@ -141,6 +141,61 @@ function normalizarIdsFiltro(valor) {
   ));
 }
 
+function obterTipoLinhaPorNomeTipoVenda(nome) {
+  const texto = normalizarTextoBusca(nome);
+  if (texto.includes('porta')) return 'portabilidade';
+  if (texto.includes('novo')) return 'novo';
+  return '';
+}
+
+async function obterTipoLinhaFiltroTipoVenda(tipoVendaId) {
+  const id = Number(tipoVendaId);
+  if (!Number.isInteger(id) || id <= 0) return '';
+
+  const tipoVenda = await Venda.knex()('tipos_venda')
+    .select('nome')
+    .where('id', id)
+    .first();
+
+  return obterTipoLinhaPorNomeTipoVenda(tipoVenda?.nome);
+}
+
+function aplicarFiltroTipoLinhaChips(builder, tipoLinha) {
+  const coluna = "REPLACE(COALESCE(valores_unitarios_chips, ''), ' ', '')";
+  const tipo = String(tipoLinha || '').trim();
+
+  builder
+    .orWhereRaw(`${coluna} like ?`, [`%"tipo_linha":"${tipo}"%`])
+    .orWhereRaw(`${coluna} like ?`, [`%"tipo":"${tipo}"%`])
+    .orWhereRaw(`${coluna} like ?`, [`%"categoria":"${tipo}"%`]);
+}
+
+async function aplicarFiltroTipoVenda(query, tipoVendaId) {
+  const id = Number(tipoVendaId);
+  if (!Number.isInteger(id) || id <= 0) return;
+
+  const tipoLinhaFallback = await obterTipoLinhaFiltroTipoVenda(id);
+
+  query.where(builder => {
+    builder.where('tipo_venda_id', id);
+
+    if (!tipoLinhaFallback) return;
+
+    builder.orWhere(fallbackBuilder => {
+      fallbackBuilder.whereNull('tipo_venda_id');
+      fallbackBuilder.where(chipsBuilder => {
+        aplicarFiltroTipoLinhaChips(chipsBuilder, tipoLinhaFallback);
+
+        if (tipoLinhaFallback === 'novo') {
+          chipsBuilder
+            .orWhereNull('valores_unitarios_chips')
+            .orWhere('valores_unitarios_chips', '');
+        }
+      });
+    });
+  });
+}
+
 function apenasDigitos(valor) {
   return String(valor || '').replace(/\D/g, '');
 }
@@ -221,7 +276,7 @@ function aplicarBuscaGeralVendas(query, valor) {
   });
 }
 
-function aplicarBuscaCampoVendas(query, filtros = {}) {
+async function aplicarBuscaCampoVendas(query, filtros = {}) {
   const campo = String(filtros.busca_campo || '').trim();
   const valor = String(filtros.busca_valor || '').trim();
 
@@ -290,7 +345,7 @@ function aplicarBuscaCampoVendas(query, filtros = {}) {
 
   if (campo === 'tipo_venda') {
     const ids = normalizarIdsFiltro(valor);
-    if (ids.length === 1) query.where('tipo_venda_id', ids[0]);
+    if (ids.length === 1) await aplicarFiltroTipoVenda(query, ids[0]);
     return;
   }
 
@@ -1645,7 +1700,7 @@ async function listarVendas(filtros = {}, usuarioId) {
     aplicarBuscaGeralVendas(query, filtros.busca);
   }
 
-  aplicarBuscaCampoVendas(query, filtros);
+  await aplicarBuscaCampoVendas(query, filtros);
 
   if (filtros.vendedora_id) {
     const vendedoraId = Number(filtros.vendedora_id);
@@ -1671,7 +1726,7 @@ async function listarVendas(filtros = {}, usuarioId) {
   }
 
   if (filtros.tipo_venda_id) {
-    query.where('tipo_venda_id', Number(filtros.tipo_venda_id));
+    await aplicarFiltroTipoVenda(query, filtros.tipo_venda_id);
   }
 
   if (filtros.servico_id) {
@@ -3136,6 +3191,7 @@ module.exports = {
     normalizarItensChips,
     normalizarNumerosLista,
     normalizarTipoLinhaChip,
+    obterTipoLinhaPorNomeTipoVenda,
     obterDataLimiteConcluidaAntiga,
     obterAtribuicaoVendedoraVenda,
     obterQuantidadeChipsVenda,
