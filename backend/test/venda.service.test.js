@@ -13,6 +13,7 @@ const {
   normalizarData,
   normalizarItensChips,
   obterDataLimiteConcluidaAntiga,
+  obterTipoLinhaPorNomeTipoVenda,
   obterQuantidadeChipsVenda,
   obterUltimaAtividadeFunil,
   parseValorMonetario,
@@ -53,6 +54,12 @@ test('normaliza chips de array, JSON e texto legado', () => {
     { quantidade: 2, gb: '', tipo_linha: 'novo', valor_unitario: 49.9 },
     { quantidade: 1, gb: '', tipo_linha: 'novo', valor_unitario: 39.9 }
   ]);
+});
+
+test('mapeia tipo de venda para fallback dos chips exibidos na tabela', () => {
+  assert.equal(obterTipoLinhaPorNomeTipoVenda('Novo'), 'novo');
+  assert.equal(obterTipoLinhaPorNomeTipoVenda('Portabilidade'), 'portabilidade');
+  assert.equal(obterTipoLinhaPorNomeTipoVenda('Venda especial'), '');
 });
 
 test('monta payload calculando totais, gb, datas e prioridade', () => {
