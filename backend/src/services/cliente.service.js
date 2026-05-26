@@ -895,6 +895,142 @@ function montarAvisoFidelidade(cliente) {
   };
 }
 
+function valorDataExcel(valor) {
+  const texto = valor instanceof Date
+    ? [
+        valor.getUTCFullYear(),
+        String(valor.getUTCMonth() + 1).padStart(2, '0'),
+        String(valor.getUTCDate()).padStart(2, '0')
+      ].join('-')
+    : String(valor || '').trim().slice(0, 10);
+  const data = /^\d{4}-\d{2}-\d{2}$/.test(texto) ? texto : normalizarData(valor);
+  if (!data) return null;
+
+  const [ano, mes, dia] = data.split('-').map(Number);
+  if (!ano || !mes || !dia) return null;
+
+  return new Date(Date.UTC(ano, mes - 1, dia));
+}
+
+function nomeArquivoSeguro(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'exportacao';
+}
+
+function aplicarEstiloExportacao(worksheet) {
+  worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+  worksheet.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: worksheet.columnCount }
+  };
+
+  const header = worksheet.getRow(1);
+  header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  header.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF1F2937' }
+  };
+  header.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+  worksheet.eachRow((row, rowNumber) => {
+    row.eachCell(cell => {
+      cell.alignment = { vertical: 'middle', wrapText: rowNumber === 1 };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+      };
+    });
+  });
+}
+
+function formatarTelefoneExportacao(ddd, numero) {
+  const d = String(ddd || '').trim();
+  const n = String(numero || '').trim();
+  if (!d && !n) return '';
+  return d ? `(${d}) ${n}` : n;
+}
+
+function formatarOperadorasExportacao(cliente) {
+  const operadoras = cliente.operadoras_atuais || cliente.operadorasAtuais || [];
+  if (operadoras.length > 0) {
+    return operadoras
+      .map(item => item.operadora?.nome)
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  return cliente.operadoraAtual?.nome || '';
+}
+
+async function gerarXlsxClientes(filtros = {}, usuarioId) {
+  const filtrosExportacao = { ...filtros };
+  delete filtrosExportacao.page;
+  delete filtrosExportacao.per_page;
+
+  const clientes = await listarClientes(filtrosExportacao, usuarioId);
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Clientes');
+
+  workbook.creator = 'Sistema Pos Venda';
+  workbook.created = new Date();
+
+  worksheet.columns = [
+    { header: 'ID', key: 'id', width: 10 },
+    { header: 'CLIENTE', key: 'nome', width: 34 },
+    { header: 'RAZAO SOCIAL', key: 'razao_social', width: 34 },
+    { header: 'CNPJ/CPF', key: 'cnpj', width: 20 },
+    { header: 'RESPONSAVEL TIPO', key: 'responsavel_tipo', width: 18 },
+    { header: 'RESPONSAVEL', key: 'responsavel_nome', width: 28 },
+    { header: 'EMAIL', key: 'email', width: 30 },
+    { header: 'WHATSAPP', key: 'whatsapp', width: 18 },
+    { header: 'FIXO', key: 'fixo', width: 18 },
+    { header: 'OPERADORAS', key: 'operadoras', width: 32 },
+    { header: 'CHIPS', key: 'quantidade_chips', width: 10 },
+    { header: 'VALOR PAGO', key: 'valor_pago', width: 14, style: { numFmt: 'R$ #,##0.00' } },
+    { header: 'FIDELIDADE FIM', key: 'fidelidade_fim', width: 16, style: { numFmt: 'dd/mm/yyyy' } },
+    { header: 'BASE ANTERIOR', key: 'base_anterior_sistema', width: 16 },
+    { header: 'REGISTRADO POR', key: 'criado_por', width: 22 },
+    { header: 'CRIADO EM', key: 'created_at', width: 16, style: { numFmt: 'dd/mm/yyyy' } }
+  ];
+
+  clientes.forEach(cliente => {
+    worksheet.addRow({
+      id: cliente.id,
+      nome: cliente.nome || '',
+      razao_social: cliente.razao_social || '',
+      cnpj: cliente.cnpj || '',
+      responsavel_tipo: cliente.responsavel_tipo === 'adm' ? 'ADM' : 'RL',
+      responsavel_nome: cliente.responsavel_nome || '',
+      email: cliente.email || '',
+      whatsapp: formatarTelefoneExportacao(cliente.whatsapp_ddd, cliente.whatsapp_numero),
+      fixo: formatarTelefoneExportacao(cliente.fixo_ddd, cliente.fixo_numero),
+      operadoras: formatarOperadorasExportacao(cliente),
+      quantidade_chips: cliente.quantidade_chips ?? null,
+      valor_pago: cliente.valor_pago === null || cliente.valor_pago === undefined ? null : Number(cliente.valor_pago),
+      fidelidade_fim: valorDataExcel(cliente.fidelidade_fim),
+      base_anterior_sistema: cliente.base_anterior_sistema ? 'Sim' : 'Nao',
+      criado_por: cliente.criador?.nome || '',
+      created_at: valorDataExcel(cliente.created_at)
+    });
+  });
+
+  aplicarEstiloExportacao(worksheet);
+  worksheet.getColumn('valor_pago').numFmt = 'R$ #,##0.00';
+  worksheet.getColumn('fidelidade_fim').numFmt = 'dd/mm/yyyy';
+  worksheet.getColumn('created_at').numFmt = 'dd/mm/yyyy';
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const data = new Date().toISOString().slice(0, 10);
+  return { buffer, nome: `clientes-${nomeArquivoSeguro(data)}.xlsx` };
+}
+
 function formatarCliente(cliente) {
   if (!cliente) return cliente;
 
@@ -1625,5 +1761,6 @@ module.exports = {
   limparClientesBaseAnterior,
   usuarioPodeAcessarCliente,
   previewImportacaoBaseAnterior,
-  importarBaseAnterior
+  importarBaseAnterior,
+  gerarXlsxClientes
 };

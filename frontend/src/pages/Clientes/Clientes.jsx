@@ -9,6 +9,7 @@ import VendaModal from '../VendasPage/VendaModal';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   excluirCliente,
+  exportarClientesExcel,
   importarBaseAnterior,
   limparClientesBaseAnterior,
   listarClientes,
@@ -775,6 +776,7 @@ function Clientes() {
   const [chipsMax, setChipsMax] = useState('');
   const [clienteIdFiltro, setClienteIdFiltro] = useState(clienteIdParam);
   const [carregando, setCarregando] = useState(true);
+  const [exportando, setExportando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [clienteModal, setClienteModal] = useState(null);
@@ -995,6 +997,20 @@ function Clientes() {
   async function handleBuscar(event) {
     event.preventDefault();
     await carregarClientes(filtros);
+  }
+
+  async function exportarClientes() {
+    setErro('');
+    setExportando(true);
+
+    try {
+      await exportarClientesExcel(filtros);
+      setSucesso('Exportacao de clientes iniciada.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao exportar clientes.');
+    } finally {
+      setExportando(false);
+    }
   }
 
   function limparFiltros() {
@@ -1362,13 +1378,17 @@ function Clientes() {
               </button>
             )}
 
+            <button className="btn" type="button" onClick={exportarClientes} disabled={exportando || totalClientes === 0}>
+              <I.Download size={14} /> {exportando ? 'Exportando...' : 'Exportar Excel'}
+            </button>
+
             {podeCriar && (
               <>
-                {podeLimparBaseAnterior && (
+                {/* {podeLimparBaseAnterior && (
                   <button className="btn btn-danger" type="button" onClick={() => setLimparBaseModalAberto(true)}>
                     <I.Trash size={14} /> Apagar base anterior
                   </button>
-                )}
+                )} */}
                 <button className="btn btn-primary" type="button" onClick={abrirNovoCliente}>
                   <I.Plus size={14} /> Novo cliente
                 </button>

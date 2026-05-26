@@ -19,6 +19,12 @@ export async function listarVendas(filtros) {
   return apiGet(`/vendas${montarQuery(filtros)}`);
 }
 
+export async function exportarVendasExcel(filtros = {}) {
+  const blob = await apiBlob(`/vendas/exportar${montarQuery(filtros)}`);
+  const data = new Date().toISOString().slice(0, 10);
+  baixarBlob(blob, `vendas-${data}.xlsx`);
+}
+
 export async function contarVendasConcluidasPorCliente() {
   return apiGet('/vendas/contagem-por-cliente');
 }

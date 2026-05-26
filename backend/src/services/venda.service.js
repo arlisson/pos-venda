@@ -14,6 +14,7 @@ const notificacaoService = require('./notificacao.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
 const { parseUtcDateTime } = require('../utils/datetime');
 const { listarPermissoesEfetivas, usuarioTemPermissaoLocal } = require('../utils/permissoes');
+const ExcelJS = require('exceljs');
 
 const CAMPOS = [
   'nome',
@@ -1771,6 +1772,149 @@ async function listarVendas(filtros = {}, usuarioId) {
   return query;
 }
 
+function valorDataExcel(valor) {
+  const data = normalizarData(valor);
+  if (!data) return null;
+
+  const [ano, mes, dia] = data.split('-').map(Number);
+  if (!ano || !mes || !dia) return null;
+
+  return new Date(Date.UTC(ano, mes - 1, dia));
+}
+
+function nomeArquivoSeguro(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'exportacao';
+}
+
+function aplicarEstiloExportacao(worksheet) {
+  worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+  worksheet.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: worksheet.columnCount }
+  };
+
+  const header = worksheet.getRow(1);
+  header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  header.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF1F2937' }
+  };
+  header.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+  worksheet.eachRow((row, rowNumber) => {
+    row.eachCell(cell => {
+      cell.alignment = { vertical: 'middle', wrapText: rowNumber === 1 };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+      };
+    });
+  });
+}
+
+function nomesVendedorasExportacao(venda) {
+  const nomes = Array.isArray(venda.vendedoras)
+    ? venda.vendedoras.map(item => item.nome).filter(Boolean)
+    : [];
+
+  if (nomes.length > 0) return nomes.join(', ');
+  return venda.vendedora?.nome || '';
+}
+
+function statusVendaExportacao(venda) {
+  if (venda.cancelada_em) return 'Cancelada';
+  return venda.status_funil || '';
+}
+
+async function gerarXlsxVendas(filtros = {}, usuarioId) {
+  const filtrosExportacao = { ...filtros };
+  delete filtrosExportacao.page;
+  delete filtrosExportacao.per_page;
+
+  const vendas = await listarVendas(filtrosExportacao, usuarioId);
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Vendas');
+
+  workbook.creator = 'Sistema Pos Venda';
+  workbook.created = new Date();
+
+  worksheet.columns = [
+    { header: 'ID', key: 'id', width: 10 },
+    { header: 'CLIENTE', key: 'cliente', width: 34 },
+    { header: 'RAZAO SOCIAL', key: 'razao_social', width: 34 },
+    { header: 'CNPJ/CPF', key: 'cnpj', width: 20 },
+    { header: 'VENDEDORA(S)', key: 'vendedoras', width: 28 },
+    { header: 'OPERADORA', key: 'operadora', width: 18 },
+    { header: 'TIPO', key: 'tipo', width: 18 },
+    { header: 'PRODUTO', key: 'produto', width: 20 },
+    { header: 'LINHAS', key: 'quantidade_linhas', width: 10 },
+    { header: 'GB', key: 'gb', width: 12 },
+    { header: 'VALOR', key: 'valor_total', width: 14, style: { numFmt: 'R$ #,##0.00' } },
+    { header: 'VENCIMENTO', key: 'dia_vencimento', width: 12 },
+    { header: 'DATA VENDA', key: 'data_venda', width: 16, style: { numFmt: 'dd/mm/yyyy' } },
+    { header: 'DATA ATIVACAO', key: 'data_ativacao', width: 16, style: { numFmt: 'dd/mm/yyyy' } },
+    { header: 'STATUS', key: 'status', width: 18 },
+    { header: 'PRIORIDADE', key: 'prioridade', width: 14 },
+    { header: 'PROTOCOLO', key: 'protocolo', width: 18 },
+    { header: 'UF', key: 'uf', width: 8 },
+    { header: 'MUNICIPIO', key: 'municipio', width: 20 },
+    { header: 'TELEFONE', key: 'telefone', width: 18 },
+    { header: 'EMAIL', key: 'email', width: 30 },
+    { header: 'REGISTRADO POR', key: 'criado_por', width: 22 },
+    { header: 'CRIADO EM', key: 'created_at', width: 16, style: { numFmt: 'dd/mm/yyyy' } },
+    { header: 'ENVIADA POS-VENDA', key: 'enviada_pos_venda_em', width: 18, style: { numFmt: 'dd/mm/yyyy' } },
+    { header: 'CANCELADA EM', key: 'cancelada_em', width: 16, style: { numFmt: 'dd/mm/yyyy' } }
+  ];
+
+  vendas.forEach(venda => {
+    worksheet.addRow({
+      id: venda.id,
+      cliente: venda.nome || venda.cliente?.nome || '',
+      razao_social: venda.razao_social || venda.cliente?.razao_social || '',
+      cnpj: venda.cnpj || venda.cliente?.cnpj || '',
+      vendedoras: nomesVendedorasExportacao(venda),
+      operadora: venda.operadora?.nome || '',
+      tipo: venda.tipoVenda?.nome || '',
+      produto: venda.servico?.nome || venda.produto_fechado || '',
+      quantidade_linhas: venda.quantidade_linhas ?? null,
+      gb: venda.gb || '',
+      valor_total: venda.valor_total === null || venda.valor_total === undefined ? null : Number(venda.valor_total),
+      dia_vencimento: venda.dia_vencimento ?? null,
+      data_venda: valorDataExcel(venda.data_venda),
+      data_ativacao: valorDataExcel(venda.data_ativacao),
+      status: statusVendaExportacao(venda),
+      prioridade: venda.prioridade_funil || '',
+      protocolo: venda.protocolo || '',
+      uf: venda.uf || '',
+      municipio: venda.municipio || '',
+      telefone: venda.telefone || '',
+      email: venda.email || '',
+      criado_por: venda.criador?.nome || '',
+      created_at: valorDataExcel(venda.criado_em || venda.created_at),
+      enviada_pos_venda_em: valorDataExcel(venda.enviada_pos_venda_em),
+      cancelada_em: valorDataExcel(venda.cancelada_em)
+    });
+  });
+
+  aplicarEstiloExportacao(worksheet);
+  worksheet.getColumn('valor_total').numFmt = 'R$ #,##0.00';
+  ['data_venda', 'data_ativacao', 'created_at', 'enviada_pos_venda_em', 'cancelada_em'].forEach(key => {
+    worksheet.getColumn(key).numFmt = 'dd/mm/yyyy';
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const data = new Date().toISOString().slice(0, 10);
+  return { buffer, nome: `vendas-${nomeArquivoSeguro(data)}.xlsx` };
+}
+
 async function obterReferenciasClientes(usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const etapaFinal = await obterCodigoEtapaFinal();
@@ -3118,6 +3262,7 @@ async function reverterCancelamentoVenda(id, usuarioId, dados = {}) {
 module.exports = {
   listarVendas,
   obterReferenciasClientes,
+  gerarXlsxVendas,
   listarVendasRetornoResumo,
   obterContextoDashboard,
   listarVendasLixeira,

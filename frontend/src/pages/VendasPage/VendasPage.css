@@ -35,7 +35,7 @@
 
 .vendas-toolbar {
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) auto auto;
+  grid-template-columns: minmax(320px, 1fr) auto auto auto;
   gap: 10px;
   align-items: center;
   margin-bottom: 14px;

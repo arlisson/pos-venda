@@ -58,6 +58,22 @@ async function relatorios(req, res) {
   }
 }
 
+async function exportar(req, res) {
+  try {
+    const { buffer, nome } = await vendaService.gerarXlsxVendas(req.query, req.usuario.id);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
+    return res.send(buffer);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Erro ao exportar vendas.'
+    });
+  }
+}
+
 async function show(req, res) {
   try {
     const venda = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
@@ -401,6 +417,7 @@ module.exports = {
   index,
   resumo,
   relatorios,
+  exportar,
   show,
   emailTemplate,
   xlsxClaro,

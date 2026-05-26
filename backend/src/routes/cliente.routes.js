@@ -11,6 +11,7 @@ router.use(authMiddleware);
 router.get('/lixeira', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), clienteController.lixeira);
 router.get('/select', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), clienteController.select);
 router.get('/documento/:documento', exigirUmaPermissao(['clientes_criar', 'clientes_editar', 'clientes_ver_proprios', 'clientes_ver_todos']), clienteController.verificarDocumento);
+router.get('/exportar', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), clienteController.exportar);
 router.get('/', exigirUmaPermissao(['clientes_ver_proprios', 'clientes_ver_todos']), clienteController.index);
 router.post(
   '/importar-base-anterior/preview',
