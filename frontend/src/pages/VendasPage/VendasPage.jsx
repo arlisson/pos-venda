@@ -2564,7 +2564,7 @@ function VendasPage() {
     setModalAberto(true);
   }
 
-  async function salvarVenda(dados, notasPendentes = []) {
+  async function salvarVenda(dados, notasPendentes = [], arquivosPendentes = []) {
     setErro('');
     const editando = Boolean(modalVenda);
 
@@ -2579,6 +2579,15 @@ function VendasPage() {
             await criarNotaEntidade('venda', vendaSalva.id, nota);
           } catch (error) {
             console.error('Erro ao salvar nota pendente da venda:', error);
+          }
+        }
+      }
+      if (vendaSalva?.id && Array.isArray(arquivosPendentes) && arquivosPendentes.length > 0) {
+        for (const item of arquivosPendentes) {
+          try {
+            await uploadArquivoVenda(vendaSalva.id, item.file, { categoria: item.categoria });
+          } catch (error) {
+            console.error('Erro ao enviar arquivo pendente da venda:', error);
           }
         }
       }

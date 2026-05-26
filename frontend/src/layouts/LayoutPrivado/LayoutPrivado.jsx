@@ -8,7 +8,7 @@ import VendaModal from '../../pages/VendasPage/VendaModal';
 import ClienteModal from '../../pages/Clientes/ClienteModal';
 import { listarClientesSelect } from '../../services/cliente.service';
 import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
-import { criarVenda, listarAprovacoesVenda, listarVendedoras, obterReferenciasClientesVendas } from '../../services/venda.service';
+import { criarVenda, listarAprovacoesVenda, listarVendedoras, obterReferenciasClientesVendas, uploadArquivoVenda } from '../../services/venda.service';
 import { criarNotaEntidade } from '../../services/nota.service';
 import {
   listarNotificacoesUrgentes,
@@ -187,7 +187,7 @@ function LayoutPrivado({ children }) {
     }
   }
 
-  async function salvarNovaVenda(dados, notasPendentes = []) {
+  async function salvarNovaVenda(dados, notasPendentes = [], arquivosPendentes = []) {
     setErroNovaVenda('');
     const vendaSalva = await criarVenda(dados);
     if (vendaSalva?.id && Array.isArray(notasPendentes) && notasPendentes.length > 0) {
@@ -196,6 +196,15 @@ function LayoutPrivado({ children }) {
           await criarNotaEntidade('venda', vendaSalva.id, nota);
         } catch (error) {
           console.error('Erro ao salvar nota pendente da venda:', error);
+        }
+      }
+    }
+    if (vendaSalva?.id && Array.isArray(arquivosPendentes) && arquivosPendentes.length > 0) {
+      for (const item of arquivosPendentes) {
+        try {
+          await uploadArquivoVenda(vendaSalva.id, item.file, { categoria: item.categoria });
+        } catch (error) {
+          console.error('Erro ao enviar arquivo pendente da venda:', error);
         }
       }
     }
