@@ -57,7 +57,7 @@ exports.up = async function (knex) {
     await knex('permissoes').insert({ ...PERMISSAO, ativo: true });
   }
 
-  for (const nomeRole of ['admin', 'usuario']) {
+  for (const nomeRole of ['admin']) {
     const role = await knex('roles').where('nome', nomeRole).first();
 
     if (role) {
