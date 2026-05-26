@@ -23,7 +23,7 @@ import './Usuarios.css';
 function getPermissoesIniciais(usuario, permissoesDisponiveis) {
   const permissoesUsuario = parsePermissoesUsuario(usuario?.permissoes);
 
-  if (usuario?.role?.nome === 'admin' && permissoesUsuario.length === 0) {
+  if (usuario?.role?.nome === 'admin') {
     return permissoesDisponiveis.map(permissao => permissao.chave);
   }
 
@@ -34,7 +34,6 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   const [usuario, setUsuario] = useState(null);
   const [permissoes, setPermissoes] = useState([]);
   const [selecionadas, setSelecionadas] = useState([]);
-  const [negadas, setNegadas] = useState([]);
   const [usuarioOrigemId, setUsuarioOrigemId] = useState('');
   const [avisoCopia, setAvisoCopia] = useState('');
   const [carregando, setCarregando] = useState(true);
@@ -54,7 +53,6 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
         setUsuario(usuarioData);
         setPermissoes(permissoesCompletas);
         setSelecionadas(getPermissoesIniciais(usuarioData, permissoesCompletas));
-        setNegadas(parsePermissoesUsuario(usuarioData?.permissoes_negadas));
       } catch {
         setErro('Erro ao carregar permissões do usuário.');
       } finally {
@@ -64,17 +62,6 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 
     carregar();
   }, [usuarioId]);
-
-  function toggleNegada(chave) {
-    setAvisoCopia('');
-    setNegadas(prev => {
-      if (prev.includes(chave)) {
-        return prev.filter(c => c !== chave);
-      }
-      return [...prev, chave];
-    });
-    setSelecionadas(prev => prev.filter(c => c !== chave));
-  }
 
   function toggle(chave, opcoes = {}) {
     setAvisoCopia('');
@@ -108,7 +95,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
     setErro('');
 
     try {
-      await onSave(usuarioId, selecionadas, negadas);
+      await onSave(usuarioId, selecionadas);
       onClose();
     } catch (error) {
       setErro(error.message || 'Erro ao salvar permissões.');
@@ -175,8 +162,6 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
                     grupo={grupo}
                     selecionadas={selecionadas}
                     onToggle={toggle}
-                    negadas={negadas}
-                    onToggleNegada={toggleNegada}
                   />
                 ))}
 
@@ -258,20 +243,18 @@ function Usuarios() {
     }
   }
 
-  async function handleSavePermissoes(id, permissoesSelecionadas, permissoesNegadas = []) {
+  async function handleSavePermissoes(id, permissoesSelecionadas) {
     await atualizarUsuario(id, {
-      permissoes: permissoesSelecionadas,
-      permissoes_negadas: permissoesNegadas
+      permissoes: permissoesSelecionadas
     });
     setUsuarios(prev =>
-      prev.map(u => u.id === id ? { ...u, permissoes: permissoesSelecionadas, permissoes_negadas: permissoesNegadas } : u)
+      prev.map(u => u.id === id ? { ...u, permissoes: permissoesSelecionadas } : u)
     );
 
     if (Number(usuarioLogado?.id) === Number(id)) {
       localStorage.setItem('usuario', JSON.stringify({
         ...usuarioLogado,
-        permissoes: permissoesSelecionadas,
-        permissoes_negadas: permissoesNegadas
+        permissoes: permissoesSelecionadas
       }));
     }
 

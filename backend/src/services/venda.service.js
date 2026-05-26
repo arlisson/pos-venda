@@ -13,6 +13,7 @@ const vendaAprovacaoService = require('./venda-aprovacao.service');
 const notificacaoService = require('./notificacao.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
 const { parseUtcDateTime } = require('../utils/datetime');
+const { listarPermissoesEfetivas, usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const CAMPOS = [
   'nome',
@@ -937,29 +938,6 @@ function resolverOperadoraAtualCliente(cliente, operadoraVendaId, valorAtual = n
   return cliente.operadora_atual_id || cliente.operadoraAtual?.id || null;
 }
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-
-      if (Array.isArray(parsed)) return parsed;
-
-      return Object.entries(parsed)
-        .filter(([, permitido]) => permitido === true)
-        .map(([chave]) => chave);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
-}
-
 function normalizarPaginacao(filtros = {}) {
   const opcoesPorPagina = new Set([20, 50, 100]);
   const page = Math.max(Number.parseInt(filtros.page, 10) || 1, 1);
@@ -977,19 +955,10 @@ async function buscarEscopoVendas(usuarioId) {
     return { podeVerTodas: false, podeVerProprias: false };
   }
 
-  if (usuario.role?.nome === 'admin') {
-    return { podeVerTodas: true, podeVerProprias: true };
-  }
-
-  const permissoes = [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ];
-
   return {
-    podeVerTodas: permissoes.includes('vendas_ver_todas'),
-    podeVerProprias: permissoes.includes('vendas_ver_proprias'),
-    podeVerCompartilhadas: permissoes.includes('ver_vendas_compartilhadas')
+    podeVerTodas: usuarioTemPermissaoLocal(usuario, 'vendas_ver_todas'),
+    podeVerProprias: usuarioTemPermissaoLocal(usuario, 'vendas_ver_proprias'),
+    podeVerCompartilhadas: usuarioTemPermissaoLocal(usuario, 'ver_vendas_compartilhadas')
   };
 }
 
@@ -1014,22 +983,18 @@ async function buscarPermissoesUsuario(usuarioId) {
     return { admin: false, permissoes: [] };
   }
 
-  if (usuario.role?.nome === 'admin') {
-    return { admin: true, permissoes: [] };
-  }
-
   return {
-    admin: false,
-    permissoes: [
-      ...parsePermissoes(usuario.permissoes),
-      ...parsePermissoes(usuario.role?.permissoes)
-    ]
+    admin: usuario.role?.nome === 'admin',
+    permissoes: await listarPermissoesEfetivas(usuario)
   };
 }
 
 async function usuarioTemPermissao(usuarioId, permissao) {
-  const dados = await buscarPermissoesUsuario(usuarioId);
-  return dados.admin || dados.permissoes.includes(permissao);
+  const usuario = await Usuario.query()
+    .findById(usuarioId)
+    .withGraphFetched('role');
+
+  return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
 function protocoloPreenchido(valor) {
@@ -1655,8 +1620,8 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
 async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
   const permissoes = await buscarPermissoesUsuario(usuarioId);
 
-  if (permissoes.admin) {
-    return true;
+  if (await usuarioTemPermissao(usuarioId, 'vendas_editar')) {
+    return usuarioPodeAcessarVenda(id, usuarioId, opcoes);
   }
 
   const venda = await Venda.query()
@@ -1665,10 +1630,6 @@ async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
 
   if (!venda || (!opcoes.incluirLixeira && venda.excluido_em)) {
     return false;
-  }
-
-  if (permissoes.permissoes.includes('vendas_editar')) {
-    return usuarioPodeAcessarVenda(id, usuarioId, opcoes);
   }
 
   if (!permissoes.permissoes.includes('editar_vendas_compartilhadas')) {

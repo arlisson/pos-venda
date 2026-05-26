@@ -4,7 +4,7 @@ const router = express.Router();
 const clienteController = require('../controllers/cliente.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const { auditar } = require('../middlewares/audit.middleware');
-const { exigirAdmin, exigirUmaPermissao } = require('../middlewares/permissao.middleware');
+const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 
 router.use(authMiddleware);
 
@@ -30,7 +30,7 @@ router.post(
 );
 router.delete(
   '/base-anterior',
-  exigirAdmin,
+  exigirUmaPermissao(['clientes_excluir']),
   auditar({
     acao: 'clientes.base_anterior_limpa',
     entidade: 'clientes',

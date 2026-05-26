@@ -1,8 +1,8 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-const Permissao = require('../models/Permissao');
 const Usuario = require('../models/Usuario');
+const { montarMapaPermissoesEfetivas } = require('../utils/permissoes');
 
 function validarFotoPerfil(fotoPerfil) {
   if (fotoPerfil === null || fotoPerfil === '') {
@@ -29,61 +29,12 @@ function validarFotoPerfil(fotoPerfil) {
 }
 
 async function montarUsuarioComPermissoes(usuario) {
-  const todasPermissoes = await Permissao.query()
-    .where('ativo', true)
-    .orderBy('nome', 'asc');
-
-  let permissoesFinais = {};
-
-  if (usuario.role?.nome === 'admin') {
-    permissoesFinais = todasPermissoes.reduce((acc, permissao) => {
-      acc[permissao.chave] = true;
-      return acc;
-    }, {});
-  } else {
-    const permissoesUsuario = parsePermissoes(usuario.permissoes);
-    const permissoesRole = parsePermissoes(usuario.role?.permissoes);
-    const permissoesPermitidas = new Set([...permissoesUsuario, ...permissoesRole]);
-
-    permissoesFinais = todasPermissoes.reduce((acc, permissao) => {
-      acc[permissao.chave] = permissoesPermitidas.has(permissao.chave);
-      return acc;
-    }, {});
-
-    permissoesPermitidas.forEach(permissao => {
-      permissoesFinais[permissao] = true;
-    });
-  }
-
   const usuarioJson = usuario.toJSON();
 
   return {
     ...usuarioJson,
-    permissoes: permissoesFinais
+    permissoes: await montarMapaPermissoesEfetivas(usuario)
   };
-}
-
-function parsePermissoes(permissoes) {
-  if (!permissoes) {
-    return [];
-  }
-
-  if (Array.isArray(permissoes)) {
-    return permissoes;
-  }
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-      return parsePermissoes(parsed);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
 }
 
 async function atualizarPerfil(usuarioId, dados) {

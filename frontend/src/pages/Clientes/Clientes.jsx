@@ -747,7 +747,7 @@ function Clientes() {
   const podeImportarPlanilhas = temPermissao(usuario, 'clientes_importar_planilhas');
   const podeEditar = temPermissao(usuario, 'clientes_editar');
   const podeExcluir = temPermissao(usuario, 'clientes_excluir');
-  const isAdmin = usuario?.role?.nome === 'admin';
+  const podeLimparBaseAnterior = podeExcluir;
   const podeListarClientes = temPermissao(usuario, ['clientes_ver_proprios', 'clientes_ver_todos']);
   const podeEditarVenda = temPermissao(usuario, ['vendas_editar', 'pos_venda']);
   const podeCompartilharVenda = temPermissao(usuario, 'compartilhar_venda');
@@ -1364,7 +1364,7 @@ function Clientes() {
 
             {podeCriar && (
               <>
-                {isAdmin && (
+                {podeLimparBaseAnterior && (
                   <button className="btn btn-danger" type="button" onClick={() => setLimparBaseModalAberto(true)}>
                     <I.Trash size={14} /> Apagar base anterior
                   </button>

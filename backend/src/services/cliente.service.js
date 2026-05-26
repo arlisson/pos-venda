@@ -6,6 +6,7 @@ const Operadora = require('../models/Operadora');
 const Busboy = require('busboy');
 const ExcelJS = require('exceljs');
 const notificacaoService = require('./notificacao.service');
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const CAMPOS = [
   'nome',
@@ -837,29 +838,6 @@ function lancarErroCnpjDuplicado(cliente) {
   throw criarHttpError(409, `Ja existe um cliente cadastrado com este documento (${nome}).${sufixo}`);
 }
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-
-      if (Array.isArray(parsed)) return parsed;
-
-      return Object.entries(parsed)
-        .filter(([, permitido]) => permitido === true)
-        .map(([chave]) => chave);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
-}
-
 async function buscarEscopoClientes(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -869,18 +847,9 @@ async function buscarEscopoClientes(usuarioId) {
     return { podeVerTodos: false, podeVerProprios: false };
   }
 
-  if (usuario.role?.nome === 'admin') {
-    return { podeVerTodos: true, podeVerProprios: true };
-  }
-
-  const permissoes = [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ];
-
   return {
-    podeVerTodos: permissoes.includes('clientes_ver_todos'),
-    podeVerProprios: permissoes.includes('clientes_ver_proprios')
+    podeVerTodos: usuarioTemPermissaoLocal(usuario, 'clientes_ver_todos'),
+    podeVerProprios: usuarioTemPermissaoLocal(usuario, 'clientes_ver_proprios')
   };
 }
 

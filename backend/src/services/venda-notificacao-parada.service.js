@@ -4,40 +4,15 @@ const Usuario = require('../models/Usuario');
 const db = require('../database/connection');
 const { parseUtcDateTime } = require('../utils/datetime');
 const notificacaoEmailService = require('./notificacao-email.service');
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const TIPO_NOTIFICACAO = 'venda_parada_funil';
 const PERMISSAO_VENDAS_PARADAS = 'notificacoes_vendas_paradas';
 const HORAS_LIMITE = 5 * 24; // 5 dias corridos em horas
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-      if (Array.isArray(parsed)) return parsed;
-      return Object.entries(parsed)
-        .filter(([, permitido]) => permitido === true)
-        .map(([chave]) => chave);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
-}
-
 function usuarioTemPermissao(usuario, permissao) {
   if (!usuario || !usuario.ativo) return false;
-  if (usuario.role?.nome === 'admin') return true;
-
-  return [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ].includes(permissao);
+  return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
 function horasDecorridas(dataInicio, dataFim) {

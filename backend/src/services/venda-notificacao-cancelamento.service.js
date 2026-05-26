@@ -3,44 +3,16 @@ const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
 const Venda = require('../models/Venda');
 const notificacaoEmailService = require('./notificacao-email.service');
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const TIPO_NOTIFICACAO = 'venda_cancelada';
 const PERMISSAO_RECEBER = 'notificacoes_venda_cancelada';
 const PERMISSAO_RECEBER_TODAS = 'notificacoes_receber_todas';
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-
-      if (Array.isArray(parsed)) return parsed;
-
-      return Object.entries(parsed)
-        .filter(([, permitido]) => permitido === true)
-        .map(([chave]) => chave);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
-}
-
 function usuarioPodeReceber(usuario) {
   if (!usuario || !usuario.ativo) return false;
-  if (usuario.role?.nome === 'admin') return true;
-
-  const chaves = [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ];
-
-  return chaves.includes(PERMISSAO_RECEBER) || chaves.includes(PERMISSAO_RECEBER_TODAS);
+  return usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER)
+    || usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_TODAS);
 }
 
 function sourceKeyVenda(vendaId) {

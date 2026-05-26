@@ -6,6 +6,7 @@ const VendaAprovacaoSolicitacao = require('../models/VendaAprovacaoSolicitacao')
 const VendaHistorico = require('../models/VendaHistorico');
 const notificacaoEmailService = require('./notificacao-email.service');
 const notificacaoService = require('./notificacao.service');
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const STATUS_PENDENTE = 'pendente';
 const STATUS_APROVADA = 'aprovada';
@@ -17,31 +18,9 @@ const TIPO_NOTIFICACAO_APROVACAO = 'venda_aprovacao_pendente';
 const PERMISSAO_VISUALIZAR = 'vendas_aprovacoes_visualizar';
 const PERMISSAO_DECIDIR = 'vendas_aprovacoes_decidir';
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-      if (Array.isArray(parsed)) return parsed;
-      return Object.entries(parsed).filter(([, permitido]) => permitido === true).map(([chave]) => chave);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes).filter(([, permitido]) => permitido === true).map(([chave]) => chave);
-}
-
 function usuarioTemPermissao(usuario, permissao) {
   if (!usuario || !usuario.ativo) return false;
-  if (usuario.role?.nome === 'admin') return true;
-
-  return [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ].includes(permissao);
+  return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
 function formatarDateTimeSQL(data = new Date()) {

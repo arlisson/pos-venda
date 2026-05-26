@@ -4,6 +4,7 @@ const Arquivo = require('../models/Arquivo');
 const Usuario = require('../models/Usuario');
 const db = require('../database/connection');
 const arquivoService = require('./arquivo.service');
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const ANEXO_TIPOS_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 const ANEXO_TAMANHO_MAX_MB = Number(process.env.CHAT_ANEXO_MAX_MB || 50);
@@ -26,35 +27,9 @@ function agoraUtc() {
 
 const PERMISSAO_CHAT = 'chat_usar';
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-      if (Array.isArray(parsed)) return parsed;
-      return Object.entries(parsed)
-        .filter(([, permitido]) => permitido === true)
-        .map(([chave]) => chave);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
-}
-
 function temPermissaoChat(usuario) {
   if (!usuario || !usuario.estaAtivo?.()) return false;
-  if (usuario.role?.nome === 'admin') return true;
-
-  return [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ].includes(PERMISSAO_CHAT);
+  return usuarioTemPermissaoLocal(usuario, PERMISSAO_CHAT);
 }
 
 function formatarContato(usuario) {

@@ -1,34 +1,5 @@
 const Usuario = require('../models/Usuario');
-
-function parsePermissoes(permissoes) {
-  if (!permissoes) {
-    return [];
-  }
-
-  if (Array.isArray(permissoes)) {
-    return permissoes;
-  }
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-
-      if (Array.isArray(parsed)) {
-        return parsed;
-      }
-
-      return Object.entries(parsed)
-        .filter(([, permitido]) => permitido === true)
-        .map(([chave]) => chave);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
-}
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 async function usuarioTemPermissao(usuarioId, permissao) {
   const usuario = await Usuario.query()
@@ -39,20 +10,7 @@ async function usuarioTemPermissao(usuarioId, permissao) {
     return false;
   }
 
-  const permissoesNegadas = parsePermissoes(usuario.permissoes_negadas);
-
-  if (permissoesNegadas.includes(permissao)) {
-    return false;
-  }
-
-  if (usuario.role?.nome === 'admin') {
-    return true;
-  }
-
-  const permissoesUsuario = parsePermissoes(usuario.permissoes);
-  const permissoesRole = parsePermissoes(usuario.role?.permissoes);
-
-  return permissoesUsuario.includes(permissao) || permissoesRole.includes(permissao);
+  return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
 function exigirPermissao(permissao) {
@@ -179,10 +137,9 @@ function impedirAutoExclusao(req, res, next) {
 
 function exigirGerenciamentoPermissoesSeNecessario(req, res, next) {
   const alteraPermissoes = Object.prototype.hasOwnProperty.call(req.body || {}, 'permissoes');
-  const alteraNegadas = Object.prototype.hasOwnProperty.call(req.body || {}, 'permissoes_negadas');
   const promoveAdmin = Number(req.body?.role_id) === 1;
 
-  if (!alteraPermissoes && !alteraNegadas && !promoveAdmin) {
+  if (!alteraPermissoes && !promoveAdmin) {
     return next();
   }
 

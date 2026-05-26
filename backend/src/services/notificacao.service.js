@@ -7,6 +7,10 @@ const db = require('../database/connection');
 const vendaNotificacaoParadaService = require('./venda-notificacao-parada.service');
 const notificacaoEmailService = require('./notificacao-email.service');
 const { parseUtcDateTime } = require('../utils/datetime');
+const {
+  parsePermissoes,
+  usuarioTemPermissaoLocal: usuarioTemPermissaoLocalImportado
+} = require('../utils/permissoes');
 
 const PERMISSAO_VISUALIZAR = 'notificacoes_visualizar';
 const PERMISSAO_RECEBER_TODAS = 'notificacoes_receber_todas';
@@ -34,37 +38,8 @@ const TIPO_VENDA_PARADA = vendaNotificacaoParadaService.TIPO_NOTIFICACAO;
 const PERMISSAO_VENDAS_PARADAS = vendaNotificacaoParadaService.PERMISSAO_VENDAS_PARADAS;
 const RETORNO_PRE_AVISO_MINUTOS = 15;
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-
-      if (Array.isArray(parsed)) return parsed;
-
-      return Object.entries(parsed)
-        .filter(([, permitido]) => permitido === true)
-        .map(([chave]) => chave);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
-}
-
 function usuarioTemPermissaoLocal(usuario, permissao) {
-  if (!usuario || !usuario.ativo) return false;
-  if (usuario.role?.nome === 'admin') return true;
-
-  return [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ].includes(permissao);
+  return usuarioTemPermissaoLocalImportado(usuario, permissao);
 }
 
 async function listarAdminsAtivos(trx = null) {
@@ -147,7 +122,7 @@ async function listarUsuariosDestinatarios(cliente) {
   const ids = new Set();
 
   usuarios.forEach(usuario => {
-    if (usuario.role?.nome === 'admin' || usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_TODAS)) {
+    if (usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_TODAS)) {
       ids.add(Number(usuario.id));
     }
   });

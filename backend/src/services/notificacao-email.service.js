@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PERMISSAO_RECEBER_EMAIL = 'notificacoes_receber_email';
@@ -53,31 +54,9 @@ function parseDados(dados) {
   return dados;
 }
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      return parsePermissoes(JSON.parse(permissoes));
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
-}
-
 function usuarioPodeReceberEmail(usuario) {
   if (!usuario?.ativo) return false;
-  if (usuario.role?.nome === 'admin') return false;
-
-  return [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ].includes(PERMISSAO_RECEBER_EMAIL);
+  return usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_EMAIL);
 }
 
 function emailConfigurado() {

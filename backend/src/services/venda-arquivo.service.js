@@ -9,6 +9,7 @@ const VendaArquivo = require('../models/VendaArquivo');
 const VendaArquivoPacote = require('../models/VendaArquivoPacote');
 const Usuario = require('../models/Usuario');
 const arquivoService = require('./arquivo.service');
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const {
   STORAGE_DIR,
@@ -28,23 +29,6 @@ const ALLOWED_TYPES = String(
   process.env.VENDA_ARQUIVOS_ALLOWED_TYPES || 'application/pdf,image/jpeg,image/png,image/webp'
 ).split(',').map(item => item.trim()).filter(Boolean);
 
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      return parsePermissoes(JSON.parse(permissoes));
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes)
-    .filter(([, permitido]) => permitido === true)
-    .map(([chave]) => chave);
-}
-
 async function buscarEscopoVendas(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -54,19 +38,10 @@ async function buscarEscopoVendas(usuarioId) {
     return { podeVerTodas: false, podeVerProprias: false };
   }
 
-  if (usuario.role?.nome === 'admin') {
-    return { podeVerTodas: true, podeVerProprias: true };
-  }
-
-  const permissoes = [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ];
-
   return {
-    podeVerTodas: permissoes.includes('vendas_ver_todas'),
-    podeVerProprias: permissoes.includes('vendas_ver_proprias'),
-    podeVerCompartilhadas: permissoes.includes('ver_vendas_compartilhadas')
+    podeVerTodas: usuarioTemPermissaoLocal(usuario, 'vendas_ver_todas'),
+    podeVerProprias: usuarioTemPermissaoLocal(usuario, 'vendas_ver_proprias'),
+    podeVerCompartilhadas: usuarioTemPermissaoLocal(usuario, 'ver_vendas_compartilhadas')
   };
 }
 
@@ -79,16 +54,7 @@ async function usuarioTemPermissao(usuarioId, permissao) {
     return false;
   }
 
-  if (usuario.role?.nome === 'admin') {
-    return true;
-  }
-
-  const permissoes = [
-    ...parsePermissoes(usuario.permissoes),
-    ...parsePermissoes(usuario.role?.permissoes)
-  ];
-
-  return permissoes.includes(permissao);
+  return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
 async function usuarioPodeAcessarVenda(vendaId, usuarioId) {

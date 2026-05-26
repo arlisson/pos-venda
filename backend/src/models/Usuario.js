@@ -22,7 +22,6 @@ class Usuario extends Model {
         foto_perfil: { type: ['string', 'null'] },
         role_id: { type: 'integer' },
         permissoes: { type: ['array', 'string', 'null'] },
-        permissoes_negadas: { type: ['array', 'string', 'null'] },
         ativo: { type: ['boolean', 'integer'] },
         created_at: { type: ['string', 'object'] },
         updated_at: { type: ['string', 'object'] }

@@ -9,6 +9,7 @@ const VendaProblemaDestinatario = require('../models/VendaProblemaDestinatario')
 const VendaProblemaEvento = require('../models/VendaProblemaEvento');
 const notificacaoEmailService = require('./notificacao-email.service');
 const notificacaoService = require('./notificacao.service');
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const STATUS_ATIVOS = ['aberto', 'resolvido', 'correcao_solicitada'];
 const TIPOS_NOTIFICACAO_PROBLEMA = [
@@ -16,23 +17,6 @@ const TIPOS_NOTIFICACAO_PROBLEMA = [
   'venda_problema_resolvido',
   'venda_problema_correcao'
 ];
-
-function parsePermissoes(permissoes) {
-  if (!permissoes) return [];
-  if (Array.isArray(permissoes)) return permissoes;
-
-  if (typeof permissoes === 'string') {
-    try {
-      const parsed = JSON.parse(permissoes);
-      if (Array.isArray(parsed)) return parsed;
-      return Object.entries(parsed).filter(([, valor]) => valor === true).map(([chave]) => chave);
-    } catch {
-      return [];
-    }
-  }
-
-  return Object.entries(permissoes).filter(([, valor]) => valor === true).map(([chave]) => chave);
-}
 
 function formatarDateTimeSQL(data = new Date()) {
   const pad = valor => String(valor).padStart(2, '0');
@@ -63,12 +47,7 @@ function usuarioEhAdmin(usuario) {
 }
 
 function usuarioPodeVerTodas(usuario) {
-  if (usuarioEhAdmin(usuario)) return true;
-
-  return [
-    ...parsePermissoes(usuario?.permissoes),
-    ...parsePermissoes(usuario?.role?.permissoes)
-  ].includes('vendas_ver_todas');
+  return usuarioTemPermissaoLocal(usuario, 'vendas_ver_todas');
 }
 
 async function buscarVendaAcessivel(vendaId, usuarioId, trx = null) {
