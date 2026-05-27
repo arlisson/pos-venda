@@ -3,9 +3,9 @@ const jwt = require('jsonwebtoken');
 /**
  * Middleware Express que valida JWT Bearer e expõe o usuario decodificado em req.usuario.
  *
- * @param {import('express').Request} req - Requisicao HTTP.
- * @param {import('express').Response} res - Resposta HTTP.
- * @param {import('express').NextFunction} next - Proximo middleware da cadeia.
+ * @param {Object} req - Requisicao HTTP.
+ * @param {Object} res - Resposta HTTP.
+ * @param {Function} next - Proximo middleware da cadeia.
  * @returns {void}
  */
 function authMiddleware(req, res, next) {

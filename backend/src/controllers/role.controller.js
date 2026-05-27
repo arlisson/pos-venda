@@ -3,9 +3,9 @@ const roleService = require('../services/role.service');
 /**
  * Lista todos os perfis de acesso cadastrados.
  *
- * @param {import('express').Request} req - Requisicao HTTP.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Lista de roles.
+ * @param {Object} req - Requisicao HTTP.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Lista de roles.
  */
 async function index(req, res) {
   try {
@@ -24,9 +24,9 @@ async function index(req, res) {
 /**
  * Busca um perfil de acesso pelo identificador.
  *
- * @param {import('express').Request} req - Requisicao com id em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Role encontrada ou erro 404.
+ * @param {Object} req - Requisicao com id em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Role encontrada ou erro 404.
  */
 async function show(req, res) {
   try {

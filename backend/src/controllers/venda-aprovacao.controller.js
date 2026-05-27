@@ -3,9 +3,9 @@ const vendaAprovacaoService = require('../services/venda-aprovacao.service');
 /**
  * Lista solicitacoes de aprovacao de vendas.
  *
- * @param {import('express').Request} req - Requisicao com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Solicitacoes encontradas.
+ * @param {Object} req - Requisicao com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Solicitacoes encontradas.
  */
 async function index(req, res) {
   try {
@@ -20,9 +20,9 @@ async function index(req, res) {
 /**
  * Aprova uma solicitacao de venda.
  *
- * @param {import('express').Request} req - Requisicao com id em req.params e decisao em req.body.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Solicitacao aprovada.
+ * @param {Object} req - Requisicao com id em req.params e decisao em req.body.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Solicitacao aprovada.
  */
 async function aprovar(req, res) {
   try {
@@ -39,9 +39,9 @@ async function aprovar(req, res) {
 /**
  * Recusa uma solicitacao de venda.
  *
- * @param {import('express').Request} req - Requisicao com id em req.params e motivo em req.body.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Solicitacao recusada.
+ * @param {Object} req - Requisicao com id em req.params e motivo em req.body.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Solicitacao recusada.
  */
 async function recusar(req, res) {
   try {

@@ -3,9 +3,9 @@ const vendaService = require('../services/venda.service');
 /**
  * Retorna o contexto de notificacoes das vendas exibidas no dashboard.
  *
- * @param {import('express').Request} req - Requisicao com venda_ids opcional em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Contexto consolidado do dashboard.
+ * @param {Object} req - Requisicao com venda_ids opcional em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Contexto consolidado do dashboard.
  */
 async function notificacoesContexto(req, res) {
   try {

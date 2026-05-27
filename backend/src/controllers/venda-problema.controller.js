@@ -3,10 +3,10 @@ const vendaProblemaService = require('../services/venda-problema.service');
 /**
  * Envia erro padronizado de operacoes de problemas de venda.
  *
- * @param {import('express').Response} res - Resposta HTTP.
- * @param {{ statusCode?: number, message?: string }} error - Erro lancado pelo service.
+ * @param {Object} res - Resposta HTTP.
+ * @param {Object} error - Erro lancado pelo service.
  * @param {string} fallback - Mensagem padrao quando o erro nao possui mensagem.
- * @returns {import('express').Response} Resposta JSON de erro.
+ * @returns {Object} Resposta JSON de erro.
  */
 function responderErro(res, error, fallback) {
   console.error(error);
@@ -18,9 +18,9 @@ function responderErro(res, error, fallback) {
 /**
  * Abre um problema em uma venda.
  *
- * @param {import('express').Request} req - Requisicao com vendaId na rota e dados em req.body.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Problema criado.
+ * @param {Object} req - Requisicao com vendaId na rota e dados em req.body.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Problema criado.
  */
 async function store(req, res) {
   try {
@@ -34,9 +34,9 @@ async function store(req, res) {
 /**
  * Lista destinatarios disponiveis para problemas de venda.
  *
- * @param {import('express').Request} req - Requisicao HTTP.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Destinatarios disponiveis.
+ * @param {Object} req - Requisicao HTTP.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Destinatarios disponiveis.
  */
 async function destinatarios(req, res) {
   try {
@@ -50,9 +50,9 @@ async function destinatarios(req, res) {
 /**
  * Busca o problema ativo de uma venda.
  *
- * @param {import('express').Request} req - Requisicao com vendaId em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Problema ativo ou null.
+ * @param {Object} req - Requisicao com vendaId em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Problema ativo ou null.
  */
 async function ativo(req, res) {
   try {
@@ -66,9 +66,9 @@ async function ativo(req, res) {
 /**
  * Lista problemas ativos de uma venda.
  *
- * @param {import('express').Request} req - Requisicao com vendaId em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Lista de problemas ativos.
+ * @param {Object} req - Requisicao com vendaId em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Lista de problemas ativos.
  */
 async function index(req, res) {
   try {
@@ -82,9 +82,9 @@ async function index(req, res) {
 /**
  * Resolve um problema de venda.
  *
- * @param {import('express').Request} req - Requisicao com problemaId e dados de resolucao.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Problema resolvido.
+ * @param {Object} req - Requisicao com problemaId e dados de resolucao.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Problema resolvido.
  */
 async function resolver(req, res) {
   try {
@@ -98,9 +98,9 @@ async function resolver(req, res) {
 /**
  * Solicita correcao de um problema de venda.
  *
- * @param {import('express').Request} req - Requisicao com problemaId e detalhes em req.body.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Problema atualizado com solicitacao.
+ * @param {Object} req - Requisicao com problemaId e detalhes em req.body.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Problema atualizado com solicitacao.
  */
 async function correcao(req, res) {
   try {
@@ -114,9 +114,9 @@ async function correcao(req, res) {
 /**
  * Verifica um problema de venda pendente.
  *
- * @param {import('express').Request} req - Requisicao com problemaId em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Resultado da verificacao.
+ * @param {Object} req - Requisicao com problemaId em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Resultado da verificacao.
  */
 async function verificar(req, res) {
   try {

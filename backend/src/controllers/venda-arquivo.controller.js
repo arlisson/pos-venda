@@ -15,9 +15,9 @@ function nomeDownload(nome) {
 /**
  * Lista arquivos anexados a uma venda.
  *
- * @param {import('express').Request} req - Requisicao com vendaId em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Lista de arquivos.
+ * @param {Object} req - Requisicao com vendaId em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Lista de arquivos.
  */
 async function index(req, res) {
   try {
@@ -33,9 +33,9 @@ async function index(req, res) {
 /**
  * Anexa arquivos a uma venda.
  *
- * @param {import('express').Request} req - Requisicao multipart com arquivos.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Arquivos gravados.
+ * @param {Object} req - Requisicao multipart com arquivos.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Arquivos gravados.
  */
 async function store(req, res) {
   try {
@@ -51,9 +51,9 @@ async function store(req, res) {
 /**
  * Baixa um arquivo anexado a venda.
  *
- * @param {import('express').Request} req - Requisicao com id do arquivo em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Stream do arquivo ou erro.
+ * @param {Object} req - Requisicao com id do arquivo em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Stream do arquivo ou erro.
  */
 async function download(req, res) {
   try {
@@ -77,9 +77,9 @@ async function download(req, res) {
 /**
  * Exibe um arquivo anexado inline quando suportado.
  *
- * @param {import('express').Request} req - Requisicao com id do arquivo em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Stream inline do arquivo.
+ * @param {Object} req - Requisicao com id do arquivo em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Stream inline do arquivo.
  */
 async function view(req, res) {
   try {
@@ -103,9 +103,9 @@ async function view(req, res) {
 /**
  * Remove um arquivo anexado a venda.
  *
- * @param {import('express').Request} req - Requisicao com id do arquivo em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Status 204 quando removido.
+ * @param {Object} req - Requisicao com id do arquivo em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Status 204 quando removido.
  */
 async function destroy(req, res) {
   try {
@@ -130,9 +130,9 @@ async function destroy(req, res) {
 /**
  * Retorna o pacote de arquivos de uma venda.
  *
- * @param {import('express').Request} req - Requisicao com vendaId em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Dados do pacote.
+ * @param {Object} req - Requisicao com vendaId em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Dados do pacote.
  */
 async function pacoteShow(req, res) {
   try {
@@ -148,9 +148,9 @@ async function pacoteShow(req, res) {
 /**
  * Cria ou atualiza o pacote de arquivos de uma venda.
  *
- * @param {import('express').Request} req - Requisicao multipart com arquivos do pacote.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Pacote atualizado.
+ * @param {Object} req - Requisicao multipart com arquivos do pacote.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Pacote atualizado.
  */
 async function pacoteStore(req, res) {
   try {
@@ -166,9 +166,9 @@ async function pacoteStore(req, res) {
 /**
  * Baixa o pacote de arquivos de uma venda.
  *
- * @param {import('express').Request} req - Requisicao com vendaId em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Stream do pacote.
+ * @param {Object} req - Requisicao com vendaId em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Stream do pacote.
  */
 async function pacoteDownload(req, res) {
   try {

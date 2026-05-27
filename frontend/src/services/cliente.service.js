@@ -146,7 +146,7 @@ export async function importarBaseAnterior(arquivo, mapeamento) {
 /**
  * Remove clientes marcados como base anterior, opcionalmente removendo vendas relacionadas.
  *
- * @param {{ excluirVendasRelacionadas?: boolean }} [opcoes={}] - Opcoes de limpeza.
+ * @param {Object} [opcoes={}] - Opcoes de limpeza.
  * @returns {Promise<unknown>} Resumo da limpeza.
  */
 export async function limparClientesBaseAnterior(opcoes = {}) {
@@ -189,7 +189,7 @@ export async function restaurarCliente(id) {
  * Exclui definitivamente um cliente que esta na lixeira.
  *
  * @param {number|string} id - Identificador do cliente.
- * @param {{ excluirVendasRelacionadas?: boolean }} [opcoes={}] - Define se vendas relacionadas tambem serao apagadas.
+ * @param {Object} [opcoes={}] - Define se vendas relacionadas tambem serao apagadas.
  * @returns {Promise<unknown>} Resposta da API.
  */
 export async function excluirClienteDefinitivo(id, opcoes = {}) {

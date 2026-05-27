@@ -3,9 +3,9 @@ const fechamentoService = require('../services/fechamento.service');
 /**
  * Retorna o resumo gerencial do fechamento conforme filtros.
  *
- * @param {import('express').Request} req - Requisicao com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Resumo do fechamento.
+ * @param {Object} req - Requisicao com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Resumo do fechamento.
  */
 async function resumo(req, res) {
   try {
@@ -20,9 +20,9 @@ async function resumo(req, res) {
 /**
  * Retorna detalhes das vendas consideradas no fechamento.
  *
- * @param {import('express').Request} req - Requisicao com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Detalhes de vendas.
+ * @param {Object} req - Requisicao com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Detalhes de vendas.
  */
 async function detalhes(req, res) {
   try {
@@ -37,9 +37,9 @@ async function detalhes(req, res) {
 /**
  * Retorna detalhes agrupados por chip para o fechamento.
  *
- * @param {import('express').Request} req - Requisicao com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Detalhes por chip.
+ * @param {Object} req - Requisicao com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Detalhes por chip.
  */
 async function detalhesChips(req, res) {
   try {
@@ -54,9 +54,9 @@ async function detalhesChips(req, res) {
 /**
  * Retorna o dossie de uma venda dentro do fechamento mensal.
  *
- * @param {import('express').Request} req - Requisicao com id da venda em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Dossie da venda ou erro 404.
+ * @param {Object} req - Requisicao com id da venda em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Dossie da venda ou erro 404.
  */
 async function dossieVenda(req, res) {
   try {
@@ -76,9 +76,9 @@ async function dossieVenda(req, res) {
 /**
  * Exporta as vendas do periodo filtrado em planilha XLSX.
  *
- * @param {import('express').Request} req - Requisicao com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Arquivo XLSX para download.
+ * @param {Object} req - Requisicao com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Arquivo XLSX para download.
  */
 async function exportarVendas(req, res) {
   try {

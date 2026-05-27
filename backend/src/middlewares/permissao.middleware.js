@@ -24,7 +24,7 @@ async function usuarioTemPermissao(usuarioId, permissao) {
  * Cria middleware que exige uma permissao especifica.
  *
  * @param {string} permissao - Chave da permissao exigida.
- * @returns {import('express').RequestHandler} Middleware de autorizacao.
+ * @returns {Function} Middleware de autorizacao.
  */
 function exigirPermissao(permissao) {
   return async function permissaoMiddleware(req, res, next) {
@@ -52,7 +52,7 @@ function exigirPermissao(permissao) {
  * Cria middleware que exige ao menos uma permissao da lista.
  *
  * @param {string[]} permissoes - Chaves de permissoes aceitas.
- * @returns {import('express').RequestHandler} Middleware de autorizacao.
+ * @returns {Function} Middleware de autorizacao.
  */
 function exigirUmaPermissao(permissoes) {
   return async function permissaoMiddleware(req, res, next) {
@@ -95,10 +95,10 @@ async function usuarioEhAdmin(usuarioId) {
 /**
  * Bloqueia a rota quando o usuario autenticado nao e administrador.
  *
- * @param {import('express').Request} req - Requisicao autenticada.
- * @param {import('express').Response} res - Resposta HTTP.
- * @param {import('express').NextFunction} next - Proximo middleware.
- * @returns {Promise<import('express').Response|void>} Continua ou retorna erro 403.
+ * @param {Object} req - Requisicao autenticada.
+ * @param {Object} res - Resposta HTTP.
+ * @param {Function} next - Proximo middleware.
+ * @returns {Promise.<(Object|void)>} Continua ou retorna erro 403.
  */
 function exigirAdmin(req, res, next) {
   return Promise.resolve()
@@ -125,10 +125,10 @@ function exigirAdmin(req, res, next) {
 /**
  * Impede alteracoes administrativas feitas por usuarios nao administradores.
  *
- * @param {import('express').Request} req - Requisicao com usuario alvo ou role desejada.
- * @param {import('express').Response} res - Resposta HTTP.
- * @param {import('express').NextFunction} next - Proximo middleware.
- * @returns {Promise<import('express').Response|void>} Continua ou retorna erro 403.
+ * @param {Object} req - Requisicao com usuario alvo ou role desejada.
+ * @param {Object} res - Resposta HTTP.
+ * @param {Function} next - Proximo middleware.
+ * @returns {Promise.<(Object|void)>} Continua ou retorna erro 403.
  */
 function exigirAdminParaAlterarAdmin(req, res, next) {
   return Promise.resolve()
@@ -169,10 +169,10 @@ function exigirAdminParaAlterarAdmin(req, res, next) {
 /**
  * Impede que o usuario autenticado exclua a propria conta.
  *
- * @param {import('express').Request} req - Requisicao com id do usuario alvo.
- * @param {import('express').Response} res - Resposta HTTP.
- * @param {import('express').NextFunction} next - Proximo middleware.
- * @returns {import('express').Response|void} Continua ou retorna erro 403.
+ * @param {Object} req - Requisicao com id do usuario alvo.
+ * @param {Object} res - Resposta HTTP.
+ * @param {Function} next - Proximo middleware.
+ * @returns {Object|void} Continua ou retorna erro 403.
  */
 function impedirAutoExclusao(req, res, next) {
   if (Number(req.params.id) === Number(req.usuario?.id)) {
@@ -187,10 +187,10 @@ function impedirAutoExclusao(req, res, next) {
 /**
  * Exige permissao de gerenciamento quando a requisicao altera permissoes ou promove admin.
  *
- * @param {import('express').Request} req - Requisicao com dados do usuario em req.body.
- * @param {import('express').Response} res - Resposta HTTP.
- * @param {import('express').NextFunction} next - Proximo middleware.
- * @returns {import('express').Response|void} Continua ou delega ao middleware de permissao.
+ * @param {Object} req - Requisicao com dados do usuario em req.body.
+ * @param {Object} res - Resposta HTTP.
+ * @param {Function} next - Proximo middleware.
+ * @returns {Object|void} Continua ou delega ao middleware de permissao.
  */
 function exigirGerenciamentoPermissoesSeNecessario(req, res, next) {
   const alteraPermissoes = Object.prototype.hasOwnProperty.call(req.body || {}, 'permissoes');

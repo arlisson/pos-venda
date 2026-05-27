@@ -5,9 +5,9 @@ const Usuario = require('../models/Usuario');
 /**
  * Lista notificacoes do usuario autenticado.
  *
- * @param {import('express').Request} req - Requisicao autenticada com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Notificacoes paginadas ou filtradas.
+ * @param {Object} req - Requisicao autenticada com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Notificacoes paginadas ou filtradas.
  */
 async function index(req, res) {
   try {
@@ -22,9 +22,9 @@ async function index(req, res) {
 /**
  * Lista notificacoes urgentes para exibicao imediata.
  *
- * @param {import('express').Request} req - Requisicao autenticada.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Lista de notificacoes urgentes.
+ * @param {Object} req - Requisicao autenticada.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Lista de notificacoes urgentes.
  */
 async function urgentes(req, res) {
   try {
@@ -39,9 +39,9 @@ async function urgentes(req, res) {
 /**
  * Marca uma notificacao como lida para o usuario atual.
  *
- * @param {import('express').Request} req - Requisicao com id da notificacao em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Status 204 quando atualizada.
+ * @param {Object} req - Requisicao com id da notificacao em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Status 204 quando atualizada.
  */
 async function marcarLida(req, res) {
   try {
@@ -56,9 +56,9 @@ async function marcarLida(req, res) {
 /**
  * Marca o popup de uma notificacao como visualizado.
  *
- * @param {import('express').Request} req - Requisicao com id da notificacao em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Status 204 quando atualizado.
+ * @param {Object} req - Requisicao com id da notificacao em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Status 204 quando atualizado.
  */
 async function marcarPopupVisto(req, res) {
   try {
@@ -73,9 +73,9 @@ async function marcarPopupVisto(req, res) {
 /**
  * Marca todas as notificacoes do usuario como lidas.
  *
- * @param {import('express').Request} req - Requisicao autenticada.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Status 204 quando concluido.
+ * @param {Object} req - Requisicao autenticada.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Status 204 quando concluido.
  */
 async function marcarTodasLidas(req, res) {
   try {
@@ -90,9 +90,9 @@ async function marcarTodasLidas(req, res) {
 /**
  * Envia um e-mail de teste de notificacao para o usuario logado.
  *
- * @param {import('express').Request} req - Requisicao autenticada.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Resultado do envio e status da configuracao.
+ * @param {Object} req - Requisicao autenticada.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Resultado do envio e status da configuracao.
  */
 async function testarEmail(req, res) {
   try {

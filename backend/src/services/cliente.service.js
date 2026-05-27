@@ -629,8 +629,8 @@ function montarAmostras(worksheet, colunas) {
 /**
  * Gera uma pre-visualizacao da planilha de importacao da base anterior.
  *
- * @param {import('express').Request} req - Requisicao multipart com arquivo XLSX.
- * @returns {Promise<{ arquivo: string, aba: string, total_linhas: number, colunas: Array, sugestoes: Object, amostras: Array }>} Dados para conferencia do mapeamento.
+ * @param {Object} req - Requisicao multipart com arquivo XLSX.
+ * @returns {Promise.<Object>} Dados para conferencia do mapeamento.
  */
 async function previewImportacaoBaseAnterior(req) {
   const { arquivo } = await lerArquivoMultipart(req);
@@ -807,7 +807,7 @@ function montarPayloadImportacao(dados, clienteExistente = null) {
 /**
  * Importa ou complementa clientes a partir de planilha da base anterior.
  *
- * @param {import('express').Request} req - Requisicao multipart com arquivo e mapeamento.
+ * @param {Object} req - Requisicao multipart com arquivo e mapeamento.
  * @param {number|string} usuarioId - Usuario responsavel pela importacao.
  * @returns {Promise<Object>} Resumo de clientes criados, atualizados e ignorados.
  */
@@ -955,8 +955,8 @@ async function buscarClienteDuplicadoPorCnpj(cnpjDigitos, ignorarId = null, trx 
  * Valida CPF/CNPJ e informa se ja existe cliente com o mesmo documento.
  *
  * @param {string} documento - CPF ou CNPJ bruto.
- * @param {{ ignorarId?: number|string|null }} [opcoes={}] - Cliente ignorado em edicoes.
- * @returns {Promise<{ valido: boolean, disponivel: boolean, cliente: Object|null }>} Resultado de disponibilidade.
+ * @param {Object} [opcoes={}] - Cliente ignorado em edicoes.
+ * @returns {Promise.<Object>} Resultado de disponibilidade.
  */
 async function verificarDocumentoCliente(documento, opcoes = {}) {
   const documentoNormalizado = normalizarDocumentoObrigatorio(documento);
@@ -1159,7 +1159,7 @@ function formatarOperadorasExportacao(cliente) {
  *
  * @param {Object} [filtros={}] - Filtros de listagem/exportacao.
  * @param {number|string} usuarioId - Usuario usado para aplicar escopo de acesso.
- * @returns {Promise<{ buffer: Buffer, nome: string }>} Conteudo e nome sugerido do arquivo.
+ * @returns {Promise.<Object>} Conteudo e nome sugerido do arquivo.
  */
 async function gerarXlsxClientes(filtros = {}, usuarioId) {
   const filtrosExportacao = { ...filtros };
@@ -1627,7 +1627,7 @@ async function buscarClientePorId(id, usuarioId) {
  *
  * @param {number|string} id - Identificador do cliente.
  * @param {number|string} usuarioId - Usuario logado.
- * @param {{ incluirLixeira?: boolean }} [opcoes={}] - Permite validar registros excluidos logicamente.
+ * @param {Object} [opcoes={}] - Permite validar registros excluidos logicamente.
  * @returns {Promise<boolean>} Verdadeiro quando o acesso e permitido.
  */
 async function usuarioPodeAcessarCliente(id, usuarioId, opcoes = {}) {
@@ -1946,7 +1946,7 @@ async function restaurarCliente(id, usuarioId) {
  *
  * @param {number|string} id - Identificador do cliente.
  * @param {number|string} usuarioId - Usuario logado.
- * @param {{ excluirVendasRelacionadas?: boolean }} [opcoes={}] - Confirma remocao de vendas vinculadas.
+ * @param {Object} [opcoes={}] - Confirma remocao de vendas vinculadas.
  * @returns {Promise<number>} Quantidade de clientes excluidos.
  * @throws {Error} Quando existem vendas relacionadas e a exclusao delas nao foi confirmada.
  */
@@ -1998,8 +1998,8 @@ async function excluirClienteDefinitivo(id, usuarioId, opcoes = {}) {
 /**
  * Remove em lote clientes marcados como base anterior.
  *
- * @param {{ excluirVendasRelacionadas?: boolean }} [opcoes={}] - Define se vendas vinculadas tambem serao removidas.
- * @returns {Promise<{ excluidos: number, vendas_excluidas: number, ignorados_com_vendas?: number }>} Resumo da limpeza.
+ * @param {Object} [opcoes={}] - Define se vendas vinculadas tambem serao removidas.
+ * @returns {Promise.<Object>} Resumo da limpeza.
  */
 async function limparClientesBaseAnterior(opcoes = {}) {
   return Cliente.transaction(async trx => {

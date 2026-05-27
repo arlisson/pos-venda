@@ -210,7 +210,7 @@ function formatarContato(cliente) {
 /**
  * Converte aviso de fidelidade em rotulo e classe visual.
  *
- * @param {{ dias_restantes?: number|null, deve_avisar?: boolean }|null} aviso - Aviso de fidelidade da API.
+ * @param {Object|null} aviso - Aviso de fidelidade da API.
  * @returns {{ label: string, className: string }} Estado visual da fidelidade.
  */
 function formatarFidelidade(aviso) {
@@ -884,7 +884,7 @@ function ImportarVendasEmpresasModal({ onClose, onImported }) {
 /**
  * Tela principal de clientes: listagem, filtros, importacao, exportacao e acoes de venda.
  *
- * @returns {import('react').JSX.Element} Pagina de clientes.
+ * @returns {ReactElement} Pagina de clientes.
  */
 function Clientes() {
   const navigate = useNavigate();

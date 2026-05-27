@@ -7,6 +7,7 @@
   "private": true,
   "scripts": {
     "build": "cd frontend && npm install && npm run build",
+    "docs:jsdoc": "jsdoc -c jsdoc.config.json --lenient",
     "start": "cd backend && npm start",
     "postinstall": "cd backend && npm install",
     "migrate": "cd backend && npm run migrate",
@@ -14,6 +15,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
+    "clean-jsdoc-theme": "^4.3.2",
+    "jsdoc": "^4.0.5",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2",

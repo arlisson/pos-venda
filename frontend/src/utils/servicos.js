@@ -50,7 +50,7 @@ function escolherServicoCanonico(servicos = []) {
  * Agrupa servicos equivalentes em opcoes de select.
  *
  * @param {Array<Record<string, unknown>>} [servicos=[]] - Servicos retornados pela API.
- * @param {{ valueMode?: 'all'|'canonical' }} [opcoes={}] - Modo de valor da opcao.
+ * @param {Object} [opcoes={}] - Modo de valor da opcao.
  * @returns {Array<{ value: string, label: string }>} Opcoes agrupadas.
  */
 export function agruparOpcoesServicos(servicos = [], opcoes = {}) {

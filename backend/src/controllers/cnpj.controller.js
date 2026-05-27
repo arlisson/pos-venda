@@ -3,7 +3,7 @@ const cnpjService = require('../services/cnpj.service');
 /**
  * Converte codigos de erro do servico de CNPJ em status HTTP.
  *
- * @param {{ code?: string }} error - Erro lancado pela consulta de CNPJ.
+ * @param {Object} error - Erro lancado pela consulta de CNPJ.
  * @returns {number} Status HTTP correspondente.
  */
 function getStatusErro(error) {
@@ -16,9 +16,9 @@ function getStatusErro(error) {
 /**
  * Consulta dados cadastrais de um CNPJ informado na rota.
  *
- * @param {import('express').Request} req - Requisicao com CNPJ em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Dados do CNPJ ou erro mapeado.
+ * @param {Object} req - Requisicao com CNPJ em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Dados do CNPJ ou erro mapeado.
  */
 async function consultar(req, res) {
   try {

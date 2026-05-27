@@ -3,9 +3,9 @@ const notaService = require('../services/nota.service');
 /**
  * Lista notas vinculadas a uma entidade permitida.
  *
- * @param {import('express').Request} req - Requisicao com tipo e id da entidade em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Lista de notas ou erro 404.
+ * @param {Object} req - Requisicao com tipo e id da entidade em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Lista de notas ou erro 404.
  */
 async function index(req, res) {
   try {
@@ -24,9 +24,9 @@ async function index(req, res) {
 /**
  * Cria uma nota para uma entidade do sistema.
  *
- * @param {import('express').Request} req - Requisicao com entidade na rota e dados da nota em req.body.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Nota criada ou erro de validacao.
+ * @param {Object} req - Requisicao com entidade na rota e dados da nota em req.body.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Nota criada ou erro de validacao.
  */
 async function store(req, res) {
   try {
@@ -45,9 +45,9 @@ async function store(req, res) {
 /**
  * Atualiza uma nota existente.
  *
- * @param {import('express').Request} req - Requisicao com notaId em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Nota atualizada ou erro 404.
+ * @param {Object} req - Requisicao com notaId em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Nota atualizada ou erro 404.
  */
 async function update(req, res) {
   try {
@@ -66,9 +66,9 @@ async function update(req, res) {
 /**
  * Remove uma nota do sistema.
  *
- * @param {import('express').Request} req - Requisicao com notaId em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Status 204 quando removida.
+ * @param {Object} req - Requisicao com notaId em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Status 204 quando removida.
  */
 async function destroy(req, res) {
   try {

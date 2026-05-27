@@ -4,7 +4,7 @@ const auditLogService = require('../services/audit-log.service');
  * Resolve valores estaticos ou funcoes de configuracao de auditoria.
  *
  * @param {unknown|Function} valor - Valor fixo ou funcao avaliadora.
- * @param {import('express').Request} req - Requisicao HTTP.
+ * @param {Object} req - Requisicao HTTP.
  * @param {unknown} body - Corpo enviado na resposta.
  * @returns {unknown} Valor resolvido.
  */
@@ -19,8 +19,8 @@ function resolverValor(valor, req, body) {
 /**
  * Cria middleware que registra auditoria quando a resposta e bem-sucedida.
  *
- * @param {{ acao: unknown, entidade: unknown, entidade_id?: unknown, dados?: unknown }} config - Configuracao do evento.
- * @returns {import('express').RequestHandler} Middleware de auditoria.
+ * @param {Object} config - Configuracao do evento.
+ * @returns {Function} Middleware de auditoria.
  */
 function auditar(config) {
   return function auditMiddleware(req, res, next) {

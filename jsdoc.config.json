@@ -1,0 +1,36 @@
+{
+  "source": {
+    "include": ["backend/src", "frontend/src"],
+    "includePattern": ".+\\.(js|jsx)$",
+    "excludePattern": "(^|\\\\|/)(node_modules|docs|database[\\\\/]migrations|database[\\\\/]seeds)(\\\\|/)|\\.test\\.(js|jsx)$"
+  },
+  "opts": {
+    "destination": "docs/jsdoc",
+    "recurse": true,
+    "template": "node_modules/clean-jsdoc-theme"
+  },
+  "templates": {
+    "cleverLinks": true,
+    "monospaceLinks": true,
+    "default": {
+      "includeDate": false,
+      "outputSourceFiles": true
+    }
+  },
+  "clean-jsdoc-theme": {
+    "title": "Pos Venda - Documentacao Tecnica",
+    "menu": [
+      {
+        "title": "Backend",
+        "link": "global.html"
+      },
+      {
+        "title": "Frontend",
+        "link": "global.html"
+      }
+    ],
+    "search": true,
+    "displayModuleHeader": true,
+    "includeFilesListInHomepage": true
+  }
+}

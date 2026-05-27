@@ -3,9 +3,9 @@ const clienteService = require('../services/cliente.service');
 /**
  * Lista clientes ativos conforme filtros da query string.
  *
- * @param {import('express').Request} req - Requisicao com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Resposta JSON paginada ou lista simples.
+ * @param {Object} req - Requisicao com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Resposta JSON paginada ou lista simples.
  */
 async function index(req, res) {
   try {
@@ -24,9 +24,9 @@ async function index(req, res) {
 /**
  * Retorna um cliente ativo pelo ID informado na rota.
  *
- * @param {import('express').Request} req - Requisicao com id em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Cliente encontrado ou erro 404.
+ * @param {Object} req - Requisicao com id em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Cliente encontrado ou erro 404.
  */
 async function show(req, res) {
   try {
@@ -51,9 +51,9 @@ async function show(req, res) {
 /**
  * Lista clientes em formato reduzido para campos de selecao.
  *
- * @param {import('express').Request} req - Requisicao com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Lista de clientes para select.
+ * @param {Object} req - Requisicao com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Lista de clientes para select.
  */
 async function select(req, res) {
   try {
@@ -71,9 +71,9 @@ async function select(req, res) {
 /**
  * Exporta clientes filtrados em planilha XLSX.
  *
- * @param {import('express').Request} req - Requisicao com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Arquivo XLSX para download.
+ * @param {Object} req - Requisicao com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Arquivo XLSX para download.
  */
 async function exportar(req, res) {
   try {
@@ -94,9 +94,9 @@ async function exportar(req, res) {
 /**
  * Verifica duplicidade de CPF/CNPJ para cadastro ou edicao de cliente.
  *
- * @param {import('express').Request} req - Requisicao com documento na rota e ignorar_id opcional.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Resultado da validacao.
+ * @param {Object} req - Requisicao com documento na rota e ignorar_id opcional.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Resultado da validacao.
  */
 async function verificarDocumento(req, res) {
   try {
@@ -117,9 +117,9 @@ async function verificarDocumento(req, res) {
 /**
  * Cria um cliente e retorna o registro completo.
  *
- * @param {import('express').Request} req - Requisicao com payload do cliente em req.body.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Cliente criado.
+ * @param {Object} req - Requisicao com payload do cliente em req.body.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Cliente criado.
  */
 async function store(req, res) {
   try {
@@ -139,9 +139,9 @@ async function store(req, res) {
 /**
  * Lê uma planilha da base anterior e retorna sugestoes de mapeamento.
  *
- * @param {import('express').Request} req - Requisicao multipart com arquivo XLSX.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Preview da importacao.
+ * @param {Object} req - Requisicao multipart com arquivo XLSX.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Preview da importacao.
  */
 async function previewImportacaoBaseAnterior(req, res) {
   try {
@@ -158,9 +158,9 @@ async function previewImportacaoBaseAnterior(req, res) {
 /**
  * Importa clientes da base anterior a partir de uma planilha mapeada.
  *
- * @param {import('express').Request} req - Requisicao multipart com arquivo e mapeamento.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Resumo da importacao.
+ * @param {Object} req - Requisicao multipart com arquivo e mapeamento.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Resumo da importacao.
  */
 async function importarBaseAnterior(req, res) {
   try {
@@ -177,9 +177,9 @@ async function importarBaseAnterior(req, res) {
 /**
  * Atualiza um cliente existente e retorna o registro completo.
  *
- * @param {import('express').Request} req - Requisicao com id na rota e campos em req.body.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Cliente atualizado ou erro 404.
+ * @param {Object} req - Requisicao com id na rota e campos em req.body.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Cliente atualizado ou erro 404.
  */
 async function update(req, res) {
   try {
@@ -206,9 +206,9 @@ async function update(req, res) {
 /**
  * Move um cliente para a lixeira.
  *
- * @param {import('express').Request} req - Requisicao com id em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Status 204 quando removido.
+ * @param {Object} req - Requisicao com id em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Status 204 quando removido.
  */
 async function destroy(req, res) {
   try {
@@ -233,9 +233,9 @@ async function destroy(req, res) {
 /**
  * Lista clientes que estao na lixeira.
  *
- * @param {import('express').Request} req - Requisicao com filtros em req.query.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Clientes excluidos logicamente.
+ * @param {Object} req - Requisicao com filtros em req.query.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Clientes excluidos logicamente.
  */
 async function lixeira(req, res) {
   try {
@@ -254,9 +254,9 @@ async function lixeira(req, res) {
 /**
  * Restaura um cliente removido da lixeira.
  *
- * @param {import('express').Request} req - Requisicao com id em req.params.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Cliente restaurado ou erro 404.
+ * @param {Object} req - Requisicao com id em req.params.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Cliente restaurado ou erro 404.
  */
 async function restore(req, res) {
   try {
@@ -281,9 +281,9 @@ async function restore(req, res) {
 /**
  * Exclui definitivamente um cliente da lixeira.
  *
- * @param {import('express').Request} req - Requisicao com id e opcao de excluir vendas relacionadas.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response|void>} Status 204 quando removido.
+ * @param {Object} req - Requisicao com id e opcao de excluir vendas relacionadas.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<(Object|void)>} Status 204 quando removido.
  */
 async function destroyDefinitivo(req, res) {
   try {
@@ -314,9 +314,9 @@ async function destroyDefinitivo(req, res) {
 /**
  * Remove todos os clientes importados da base anterior.
  *
- * @param {import('express').Request} req - Requisicao com opcao de excluir vendas relacionadas.
- * @param {import('express').Response} res - Resposta HTTP.
- * @returns {Promise<import('express').Response>} Resumo da limpeza.
+ * @param {Object} req - Requisicao com opcao de excluir vendas relacionadas.
+ * @param {Object} res - Resposta HTTP.
+ * @returns {Promise.<Object>} Resumo da limpeza.
  */
 async function limparBaseAnterior(req, res) {
   try {
