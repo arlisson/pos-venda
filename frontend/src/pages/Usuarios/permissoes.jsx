@@ -8,15 +8,6 @@ export const PERMISSAO_POS_VENDA = {
   descricao: 'Permite editar vendas enviadas ao pós-venda e movimentar vendas no funil.'
 };
 export const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
-export const PERMISSAO_RECEBER_EMAIL = 'notificacoes_receber_email';
-export const ADMIN_PERMISSOES_NEGAVEIS = [
-  PERMISSAO_GERENCIAR_PERMISSOES,
-  PERMISSAO_RECEBER_EMAIL
-];
-
-export function adminPodeNegarPermissao(chave) {
-  return ADMIN_PERMISSOES_NEGAVEIS.includes(chave);
-}
 
 export function garantirPermissaoPosVenda(permissoes = []) {
   if (permissoes.some(permissao => permissao.chave === PERMISSAO_POS_VENDA.chave)) {
@@ -609,13 +600,12 @@ export function getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis 
   const todasChaves = permissoesDisponiveis.map(permissao => permissao.chave);
 
   return todasChaves.filter(chave => (
-    !adminPodeNegarPermissao(chave) ||
     permissoesUsuario[chave] !== false
   ));
 }
 
-export function montarPermissoesAdminParaSalvar(selecionadas = []) {
-  return ADMIN_PERMISSOES_NEGAVEIS.reduce((acc, chave) => {
+export function montarPermissoesAdminParaSalvar(selecionadas = [], permissoesDisponiveis = []) {
+  return permissoesDisponiveis.map(permissao => permissao.chave).reduce((acc, chave) => {
     if (!selecionadas.includes(chave)) {
       acc[chave] = false;
     }
@@ -625,9 +615,7 @@ export function montarPermissoesAdminParaSalvar(selecionadas = []) {
 }
 
 export function getPermissoesCopiaveis(usuarioOrigem, permissoesDisponiveis) {
-  const chavesDisponiveis = permissoesDisponiveis.map(permissao => permissao.chave);
-  const chavesOrigem = new Set(parsePermissoesUsuario(usuarioOrigem?.permissoes));
-  return chavesDisponiveis.filter(chave => chavesOrigem.has(chave));
+  return getPermissoesSelecionadasUsuario(usuarioOrigem, permissoesDisponiveis);
 }
 
 export function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle }) {
@@ -648,7 +636,34 @@ export function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, on
   );
 }
 
-export function PermissaoGrupo({ grupo, selecionadas, onToggle }) {
+function SeletorBlocoPermissoes({ titulo, total, selecionadas, onToggle }) {
+  const checkboxRef = useRef(null);
+  const todasSelecionadas = total > 0 && selecionadas === total;
+  const parcial = selecionadas > 0 && selecionadas < total;
+
+  useEffect(() => {
+    if (checkboxRef.current) {
+      checkboxRef.current.indeterminate = parcial;
+    }
+  }, [parcial]);
+
+  return (
+    <label className={`permissions-block-toggle ${todasSelecionadas ? 'is-active' : ''}`}>
+      <input
+        ref={checkboxRef}
+        type="checkbox"
+        checked={todasSelecionadas}
+        onChange={() => onToggle(!todasSelecionadas)}
+      />
+      <span>
+        <strong>{titulo}</strong>
+        <small>{selecionadas}/{total}</small>
+      </span>
+    </label>
+  );
+}
+
+export function PermissaoGrupo({ grupo, selecionadas, onToggle, onToggleBloco }) {
   const chaves = getChavesGrupo(grupo);
   const selecionadasNoGrupo = chaves.filter(chave => selecionadas.includes(chave)).length;
   const ativo = selecionadasNoGrupo > 0;
@@ -670,10 +685,22 @@ export function PermissaoGrupo({ grupo, selecionadas, onToggle }) {
       <div className="permissions-sections">
         {grupo.secoes.map(secao => {
           const grupoExclusivo = secao.itens.map(item => item.chave);
+          const chavesSecao = secao.itens.map(item => item.chave);
+          const selecionadasNaSecao = chavesSecao.filter(chave => selecionadas.includes(chave)).length;
 
           return (
             <div key={secao.titulo} className="permissions-section">
-              <div className="permissions-section__title">{secao.titulo}</div>
+              <div className="permissions-section__header">
+                <div className="permissions-section__title">{secao.titulo}</div>
+                {!secao.exclusivo && onToggleBloco && (
+                  <SeletorBlocoPermissoes
+                    titulo="Selecionar bloco"
+                    total={chavesSecao.length}
+                    selecionadas={selecionadasNaSecao}
+                    onToggle={(selecionar) => onToggleBloco(chavesSecao, selecionar)}
+                  />
+                )}
+              </div>
               <div className={`permissions-options ${secao.exclusivo ? 'permissions-options--exclusive' : ''}`}>
                 {secao.itens.map(item => (
                   <PermissaoCard

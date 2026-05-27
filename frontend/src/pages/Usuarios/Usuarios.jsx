@@ -17,8 +17,7 @@ import {
   CopiarPermissoesSelect,
   getPermissoesCopiaveis as getPermissoesCopiaveisCompartilhado,
   getPermissoesSelecionadasUsuario,
-  montarPermissoesAdminParaSalvar,
-  adminPodeNegarPermissao
+  montarPermissoesAdminParaSalvar
 } from './permissoes';
 import './Usuarios.css';
 
@@ -61,10 +60,6 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 
   function toggle(chave, opcoes = {}) {
     setAvisoCopia('');
-    if (usuario?.role?.nome === 'admin' && !adminPodeNegarPermissao(chave)) {
-      setAvisoCopia('Administradores mantêm as demais permissões automaticamente, exceto gerenciar permissões e receber por email.');
-      return;
-    }
     setSelecionadas(prev => {
       const selecionada = prev.includes(chave);
 
@@ -74,6 +69,17 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
       }
 
       return selecionada ? prev.filter(c => c !== chave) : [...prev, chave];
+    });
+  }
+
+  function toggleBloco(chaves, selecionar) {
+    setAvisoCopia('');
+    setSelecionadas(prev => {
+      if (!selecionar) {
+        return prev.filter(chave => !chaves.includes(chave));
+      }
+
+      return Array.from(new Set([...prev, ...chaves]));
     });
   }
 
@@ -96,7 +102,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 
     try {
       const permissoesParaSalvar = usuario?.role?.nome === 'admin'
-        ? montarPermissoesAdminParaSalvar(selecionadas)
+        ? montarPermissoesAdminParaSalvar(selecionadas, permissoes)
         : selecionadas;
 
       await onSave(usuarioId, permissoesParaSalvar);
@@ -166,6 +172,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
                     grupo={grupo}
                     selecionadas={selecionadas}
                     onToggle={toggle}
+                    onToggleBloco={toggleBloco}
                   />
                 ))}
 

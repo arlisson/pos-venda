@@ -8,7 +8,6 @@ import {
   garantirPermissaoPosVenda as garantirPermissaoPosVendaCompartilhada,
   montarGruposPermissoes as montarGruposPermissoesCompartilhados,
   montarPermissoesAdminParaSalvar,
-  adminPodeNegarPermissao,
   PermissaoGrupo as PermissaoGrupoCompartilhado,
   CopiarPermissoesSelect,
   getPermissoesCopiaveis
@@ -82,11 +81,6 @@ function CadastroUsuario() {
   }
 
   function togglePermissao(chave, opcoes = {}) {
-    if (Number(roleId) === 1 && !adminPodeNegarPermissao(chave)) {
-      setAvisoCopia('Administradores mantêm as demais permissões automaticamente, exceto gerenciar permissões e receber por email.');
-      return;
-    }
-
     setPermissoesSelecionadas(prev => {
       const selecionada = prev.includes(chave);
 
@@ -96,6 +90,16 @@ function CadastroUsuario() {
       }
 
       return selecionada ? prev.filter(c => c !== chave) : [...prev, chave];
+    });
+  }
+
+  function toggleBlocoPermissoes(chaves, selecionar) {
+    setPermissoesSelecionadas(prev => {
+      if (!selecionar) {
+        return prev.filter(chave => !chaves.includes(chave));
+      }
+
+      return Array.from(new Set([...prev, ...chaves]));
     });
   }
 
@@ -117,7 +121,7 @@ function CadastroUsuario() {
 
       if (podeGerenciarPermissoes) {
         dados.permissoes = Number(roleId) === 1
-          ? montarPermissoesAdminParaSalvar(permissoesSelecionadas)
+          ? montarPermissoesAdminParaSalvar(permissoesSelecionadas, permissoes)
           : permissoesSelecionadas;
       }
 
@@ -243,6 +247,7 @@ function CadastroUsuario() {
                             grupo={grupo}
                             selecionadas={permissoesSelecionadas}
                             onToggle={togglePermissao}
+                            onToggleBloco={toggleBlocoPermissoes}
                           />
                         ))
                       )}

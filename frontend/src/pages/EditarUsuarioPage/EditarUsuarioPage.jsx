@@ -17,7 +17,6 @@ import {
   getPermissoesSelecionadasUsuario,
   montarGruposPermissoes,
   montarPermissoesAdminParaSalvar,
-  adminPodeNegarPermissao,
   PermissaoGrupo
 } from '../Usuarios/permissoes';
 
@@ -116,11 +115,6 @@ function EditarUsuarioPage() {
   }, [id]);
 
   function handlePermissaoChange(chave, opcoes = {}) {
-    if (isAdminEditado && !adminPodeNegarPermissao(chave)) {
-      setErro('Administradores mantêm as demais permissões automaticamente, exceto gerenciar permissões e receber por email.');
-      return;
-    }
-
     setPermissoesSelecionadas((atuais) => {
       if (opcoes.grupoExclusivo) {
         const semGrupo = atuais.filter(item => !opcoes.grupoExclusivo.includes(item));
@@ -132,6 +126,16 @@ function EditarUsuarioPage() {
       }
 
       return [...atuais, chave];
+    });
+  }
+
+  function handleBlocoPermissoesChange(chaves, selecionar) {
+    setPermissoesSelecionadas((atuais) => {
+      if (!selecionar) {
+        return atuais.filter(chave => !chaves.includes(chave));
+      }
+
+      return Array.from(new Set([...atuais, ...chaves]));
     });
   }
 
@@ -202,7 +206,7 @@ function EditarUsuarioPage() {
       if (podeGerenciarPermissoes) {
         dados.role_id = Number(roleId);
         dados.permissoes = isAdminEditado
-          ? montarPermissoesAdminParaSalvar(permissoesSelecionadas)
+          ? montarPermissoesAdminParaSalvar(permissoesSelecionadas, permissoes)
           : permissoesSelecionadas;
       } else {
         dados.role_id = roleIdOriginal;
@@ -426,6 +430,7 @@ function EditarUsuarioPage() {
                       grupo={grupo}
                       selecionadas={permissoesSelecionadas}
                       onToggle={handlePermissaoChange}
+                      onToggleBloco={handleBlocoPermissoesChange}
                     />
                   ))}
                 </div>

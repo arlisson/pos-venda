@@ -1,9 +1,4 @@
 const Permissao = require('../models/Permissao');
-const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
-const ADMIN_PERMISSOES_NEGAVEIS = [
-  PERMISSAO_GERENCIAR_PERMISSOES,
-  'notificacoes_receber_email'
-];
 
 function parsePermissoes(permissoes) {
   if (!permissoes) return [];
@@ -44,7 +39,7 @@ function normalizarPermissoes(permissoes) {
 }
 
 function adminTemPermissaoNegada(usuario, permissao) {
-  if (usuario?.role?.nome !== 'admin' || !ADMIN_PERMISSOES_NEGAVEIS.includes(permissao)) {
+  if (usuario?.role?.nome !== 'admin') {
     return false;
   }
 

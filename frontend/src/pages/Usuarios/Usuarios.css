@@ -274,12 +274,70 @@
   gap: 7px;
 }
 
+.permissions-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
 .permissions-section__title {
   color: var(--text-2);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.permissions-block-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.permissions-block-toggle:hover {
+  border-color: var(--border-strong);
+}
+
+.permissions-block-toggle.is-active {
+  border-color: #86efac;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #bbf7d0;
+}
+
+.permissions-block-toggle input {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.permissions-block-toggle span {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.permissions-block-toggle strong {
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.permissions-block-toggle small {
+  color: var(--text-3);
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .permissions-options {
@@ -396,6 +454,16 @@
 
   .permissions-group__header {
     flex-direction: column;
+  }
+
+  .permissions-section__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .permissions-block-toggle {
+    justify-content: space-between;
+    width: 100%;
   }
 
   .permissions-modal-overlay {
