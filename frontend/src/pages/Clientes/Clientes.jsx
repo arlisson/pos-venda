@@ -1373,14 +1373,18 @@ function Clientes() {
             </button>
 
             {podeImportarPlanilhas && (
-              <button className="btn" type="button" onClick={() => setImportModalAberto(true)}>
-                <I.TableSheet size={14} /> Importar planilha
-              </button>
+              <>
+                <button className="btn" type="button" onClick={() => setImportModalAberto(true)}>
+                  <I.Upload size={14} /> Importar Excel
+                </button>
+                
+                <button className="btn" type="button" onClick={exportarClientes} disabled={exportando || totalClientes === 0}>
+                  <I.Download size={14} /> {exportando ? 'Exportando...' : 'Exportar Excel'}
+                </button>
+              </>
             )}
 
-            <button className="btn" type="button" onClick={exportarClientes} disabled={exportando || totalClientes === 0}>
-              <I.Download size={14} /> {exportando ? 'Exportando...' : 'Exportar Excel'}
-            </button>
+           
 
             {podeCriar && (
               <>

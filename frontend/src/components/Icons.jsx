@@ -61,4 +61,5 @@ export const Chat = mk(<><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3.6
 export const Send = mk(<><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></>);
 export const Paperclip = mk(<><path d="M21.4 11.05 12.5 19.95a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49" /></>);
 export const Document = mk(<><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M14 3v6h6" /></>);
+export const Upload = mk(<><path d="M12 15V3" /><path d="M8 7l4-4 4 4" /><path d="M3 19h18" /></>);
 export const GripVertical = mk(<><line x1="9" y1="5" x2="9" y2="5" strokeWidth="3" strokeLinecap="round" /><line x1="15" y1="5" x2="15" y2="5" strokeWidth="3" strokeLinecap="round" /><line x1="9" y1="12" x2="9" y2="12" strokeWidth="3" strokeLinecap="round" /><line x1="15" y1="12" x2="15" y2="12" strokeWidth="3" strokeLinecap="round" /><line x1="9" y1="19" x2="9" y2="19" strokeWidth="3" strokeLinecap="round" /><line x1="15" y1="19" x2="15" y2="19" strokeWidth="3" strokeLinecap="round" /></>);
