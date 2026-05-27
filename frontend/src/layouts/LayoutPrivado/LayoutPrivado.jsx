@@ -137,6 +137,18 @@ function LayoutPrivado({ children }) {
   }, [location.pathname]);
 
   useEffect(() => {
+    if (!sucessoNovaVenda) return undefined;
+    const timer = setTimeout(() => setSucessoNovaVenda(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucessoNovaVenda]);
+
+  useEffect(() => {
+    if (!erroNovaVenda) return undefined;
+    const timer = setTimeout(() => setErroNovaVenda(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erroNovaVenda]);
+
+  useEffect(() => {
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         setMobileMenuOpen(false);
