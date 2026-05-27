@@ -167,6 +167,11 @@ function EditarUsuarioPage() {
   const totalMudancas = Object.keys(mudancas).length;
   const totalPermissoesSelecionadas = permissoesSelecionadas.length;
   const gruposPermissoes = useMemo(() => montarGruposPermissoes(permissoes), [permissoes]);
+  const feedback = erro
+    ? { tipo: 'error', texto: erro, Icone: I.AlertTriangle }
+    : sucesso
+      ? { tipo: 'success', texto: sucesso, Icone: I.Check }
+      : null;
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -295,12 +300,13 @@ function EditarUsuarioPage() {
           </div>
         </div>
 
-        {erro && <div className="editar-usuario__message editar-usuario__message--error alert-timed alert-timed--error">{erro}</div>}
-
-        {sucesso && (
-          <div className="editar-usuario__message editar-usuario__message--success alert-timed alert-timed--success">
-            <I.Check className="editar-usuario__message-icon" size={15} />
-            {sucesso}
+        {feedback && (
+          <div
+            className={`editar-usuario__message editar-usuario__message--${feedback.tipo} alert-timed alert-timed--${feedback.tipo}`}
+            aria-hidden="true"
+          >
+            <feedback.Icone className="editar-usuario__message-icon" size={15} />
+            {feedback.texto}
           </div>
         )}
 
@@ -437,18 +443,30 @@ function EditarUsuarioPage() {
               </section>)}
 
           <div className="editar-usuario__actions">
-            <Botao
-              title={salvando ? 'Salvando...' : 'Salvar alterações'}
-              type="submit"
-              carregando={salvando}
-              disabled={!temMudancas}
-            />
+            {feedback && (
+              <div
+                className={`editar-usuario__action-feedback editar-usuario__action-feedback--${feedback.tipo} alert-timed alert-timed--${feedback.tipo}`}
+                role="alert"
+              >
+                <feedback.Icone className="editar-usuario__message-icon" size={15} />
+                <span>{feedback.texto}</span>
+              </div>
+            )}
 
-            <Botao
-              title="Cancelar"
-              variant="outline"
-              onClick={() => navigate('/usuarios')}
-            />
+            <div className="editar-usuario__actions-buttons">
+              <Botao
+                title={salvando ? 'Salvando...' : 'Salvar alterações'}
+                type="submit"
+                carregando={salvando}
+                disabled={!temMudancas}
+              />
+
+              <Botao
+                title="Cancelar"
+                variant="outline"
+                onClick={() => navigate('/usuarios')}
+              />
+            </div>
           </div>
         </form>
         </Card>

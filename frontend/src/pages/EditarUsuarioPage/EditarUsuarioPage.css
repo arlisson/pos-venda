@@ -393,12 +393,54 @@
   position: sticky;
   bottom: -22px;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
   margin: 2px -22px -22px;
   padding: 14px 22px;
   border-top: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.96);
+  z-index: 5;
+  box-shadow: 0 -10px 26px rgba(15, 23, 42, 0.06);
+}
+
+.editar-usuario__actions-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.editar-usuario__action-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 520px;
+  margin-right: auto;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  box-shadow: var(--shadow-sm);
+}
+
+.editar-usuario__action-feedback span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.editar-usuario__action-feedback--error {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid #fecaca;
+}
+
+.editar-usuario__action-feedback--success {
+  color: var(--success);
+  background: var(--success-bg);
+  border: 1px solid #bbf7d0;
 }
 
 .editar-usuario__actions button:disabled {
@@ -439,11 +481,17 @@
 
   .editar-usuario__actions {
     position: static;
-    flex-direction: column-reverse;
+    align-items: stretch;
+    flex-direction: column;
     margin: 0;
     padding: 14px 0 0;
     border-top: 0;
     background: transparent;
+    box-shadow: none;
+  }
+
+  .editar-usuario__actions-buttons {
+    flex-direction: column-reverse;
   }
 
   .editar-usuario__actions button {
