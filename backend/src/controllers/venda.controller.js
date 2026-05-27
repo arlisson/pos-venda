@@ -1,3 +1,9 @@
+/**
+ * Controller HTTP de vendas.
+ *
+ * Centraliza listagem, cadastro, edicao, importacao, exportacao, lixeira,
+ * cancelamento e operacoes de pos-venda expostas pelas rotas de vendas.
+ */
 const vendaService = require('../services/venda.service');
 const vendaImportacaoEmpresasService = require('../services/venda-importacao-empresas.service');
 const { gerarXlsxClaro } = require('../services/venda-xlsx-claro.service');

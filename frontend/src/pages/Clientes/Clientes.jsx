@@ -40,11 +40,25 @@ const BUSCA_CLIENTES_CAMPO_OPCOES = [
   { value: 'responsavel', label: 'Responsável' }
 ];
 
+/**
+ * Extrai apenas digitos de um valor textual, com limite opcional.
+ *
+ * @param {unknown} valor - Valor bruto digitado ou retornado pela API.
+ * @param {number} [limite] - Quantidade maxima de digitos.
+ * @returns {string} Digitos normalizados.
+ */
 function apenasDigitos(valor, limite) {
   const digitos = String(valor || '').replace(/\D/g, '');
   return limite ? digitos.slice(0, limite) : digitos;
 }
 
+/**
+ * Formata DDD e numero em telefone brasileiro para exibicao.
+ *
+ * @param {unknown} ddd - DDD do contato.
+ * @param {unknown} numero - Numero do contato.
+ * @returns {string} Telefone formatado ou vazio.
+ */
 function formatarTelefone(ddd, numero) {
   const dddDigits = String(ddd || '').replace(/\D/g, '');
   const numeroDigits = String(numero || '').replace(/\D/g, '');
@@ -63,6 +77,12 @@ function formatarTelefone(ddd, numero) {
   return `(${dddDigits}) ${numeroFormatado}`;
 }
 
+/**
+ * Aplica mascara progressiva de telefone no campo de busca.
+ *
+ * @param {unknown} valor - Texto digitado.
+ * @returns {string} Telefone parcialmente formatado.
+ */
 function formatarTelefoneBusca(valor) {
   const digitos = apenasDigitos(valor, 11);
 
@@ -78,6 +98,12 @@ function formatarTelefoneBusca(valor) {
   return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
 }
 
+/**
+ * Aplica mascara progressiva de CPF no campo de busca.
+ *
+ * @param {unknown} valor - Texto digitado.
+ * @returns {string} CPF parcialmente formatado.
+ */
 function formatarCpfBusca(valor) {
   const digitos = apenasDigitos(valor, 11);
 
@@ -87,6 +113,12 @@ function formatarCpfBusca(valor) {
   return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9)}`;
 }
 
+/**
+ * Aplica mascara progressiva de CNPJ no campo de busca.
+ *
+ * @param {unknown} valor - Texto digitado.
+ * @returns {string} CNPJ parcialmente formatado.
+ */
 function formatarCnpjBusca(valor) {
   const digitos = apenasDigitos(valor, 14);
 
@@ -97,27 +129,58 @@ function formatarCnpjBusca(valor) {
   return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
 }
 
+/**
+ * Escolhe mascara de CPF ou CNPJ conforme a quantidade de digitos.
+ *
+ * @param {unknown} valor - Texto digitado.
+ * @returns {string} Documento formatado para busca.
+ */
 function formatarDocumentoBusca(valor) {
   const digitos = apenasDigitos(valor, 14);
   return digitos.length > 11 ? formatarCnpjBusca(digitos) : formatarCpfBusca(digitos);
 }
 
+/**
+ * Formata o valor de busca conforme o campo selecionado.
+ *
+ * @param {string} campo - Campo de busca selecionado.
+ * @param {string} valor - Valor digitado.
+ * @returns {string} Valor formatado para o input.
+ */
 function formatarBuscaClientesPorCampo(campo, valor) {
   if (campo === 'telefone') return formatarTelefoneBusca(valor);
   if (campo === 'documento') return formatarDocumentoBusca(valor);
   return valor;
 }
 
+/**
+ * Define o inputMode adequado para o campo de busca.
+ *
+ * @param {string} campo - Campo de busca selecionado.
+ * @returns {string|undefined} Modo de teclado sugerido.
+ */
 function getInputModeBuscaClientes(campo) {
   return ['telefone', 'documento'].includes(campo) ? 'numeric' : undefined;
 }
 
+/**
+ * Define o tamanho maximo do campo de busca conforme a mascara.
+ *
+ * @param {string} campo - Campo de busca selecionado.
+ * @returns {number|undefined} Tamanho maximo do input.
+ */
 function getMaxLengthBuscaClientes(campo) {
   if (campo === 'telefone') return 15;
   if (campo === 'documento') return 18;
   return undefined;
 }
 
+/**
+ * Retorna o placeholder especifico do campo de busca escolhido.
+ *
+ * @param {string} campo - Campo de busca selecionado.
+ * @returns {string} Placeholder do input.
+ */
 function getPlaceholderBuscaClientes(campo) {
   const placeholders = {
     geral: 'Buscar por nome, CNPJ/CPF, telefone, e-mail ou responsável',
@@ -131,6 +194,12 @@ function getPlaceholderBuscaClientes(campo) {
   return placeholders[campo] || placeholders.geral;
 }
 
+/**
+ * Monta os telefones formatados do cliente.
+ *
+ * @param {Record<string, unknown>} cliente - Cliente retornado pela API.
+ * @returns {{ whatsapp: string, fixo: string }} Contatos formatados.
+ */
 function formatarContato(cliente) {
   const whatsapp = formatarTelefone(cliente.whatsapp_ddd, cliente.whatsapp_numero);
   const fixo = formatarTelefone(cliente.fixo_ddd, cliente.fixo_numero);
@@ -138,6 +207,12 @@ function formatarContato(cliente) {
   return { whatsapp, fixo };
 }
 
+/**
+ * Converte aviso de fidelidade em rotulo e classe visual.
+ *
+ * @param {{ dias_restantes?: number|null, deve_avisar?: boolean }|null} aviso - Aviso de fidelidade da API.
+ * @returns {{ label: string, className: string }} Estado visual da fidelidade.
+ */
 function formatarFidelidade(aviso) {
   if (!aviso || aviso.dias_restantes === null || aviso.dias_restantes === undefined) {
     return { label: 'Sem fidelidade', className: '' };
@@ -157,6 +232,12 @@ function formatarFidelidade(aviso) {
   return { label: `${aviso.dias_restantes} dias`, className: 'success' };
 }
 
+/**
+ * Formata valores monetarios de clientes para exibicao em BRL.
+ *
+ * @param {unknown} valor - Valor numerico ou textual.
+ * @returns {string} Valor em moeda ou '-'.
+ */
 function formatarMoeda(valor) {
   if (valor === undefined || valor === null || valor === '') return '-';
 
@@ -166,14 +247,32 @@ function formatarMoeda(valor) {
   });
 }
 
+/**
+ * Retorna a lista de operadoras atuais em qualquer formato aceito pelo frontend.
+ *
+ * @param {Record<string, unknown>} cliente - Cliente retornado pela API.
+ * @returns {Array} Operadoras vinculadas ao cliente.
+ */
 function obterOperadorasCliente(cliente) {
   return cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
 }
 
+/**
+ * Gera uma slug CSS a partir do nome da operadora.
+ *
+ * @param {unknown} nome - Nome da operadora.
+ * @returns {string} Slug normalizada.
+ */
 function slugOperadora(nome) {
   return String(nome).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-');
 }
 
+/**
+ * Resume as operadoras do cliente para coluna da tabela e tooltip.
+ *
+ * @param {Record<string, unknown>} cliente - Cliente retornado pela API.
+ * @returns {{ titulo: string, nomes: string[], detalhe: string }} Resumo de exibicao.
+ */
 function formatarResumoOperadoras(cliente) {
   const operadorasCliente = obterOperadorasCliente(cliente);
   if (operadorasCliente.length === 0) {
@@ -734,6 +833,11 @@ function ImportarVendasEmpresasModal({ onClose, onImported }) {
   );
 }
 
+/**
+ * Tela principal de clientes: listagem, filtros, importacao, exportacao e acoes de venda.
+ *
+ * @returns {import('react').JSX.Element} Pagina de clientes.
+ */
 function Clientes() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

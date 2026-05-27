@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para campanhas, progresso e resgates.
+ */
 import { apiDelete, apiGet, apiPost, apiPut } from './api';
 
 export const getCampanhas = async () => {

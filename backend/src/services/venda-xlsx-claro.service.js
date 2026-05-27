@@ -1,3 +1,6 @@
+/**
+ * Servico de geracao da planilha Claro a partir dos dados de uma venda.
+ */
 const path   = require('path');
 const fs     = require('fs');
 const ExcelJS = require('exceljs');

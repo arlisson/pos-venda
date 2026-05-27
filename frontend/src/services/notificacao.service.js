@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para notificacoes, leitura e popups.
+ */
 import { apiGet, apiRequest } from './api';
 
 function montarQuery(filtros = {}) {

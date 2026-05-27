@@ -1,5 +1,12 @@
 const notaService = require('../services/nota.service');
 
+/**
+ * Lista notas vinculadas a uma entidade permitida.
+ *
+ * @param {import('express').Request} req - Requisicao com tipo e id da entidade em req.params.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Lista de notas ou erro 404.
+ */
 async function index(req, res) {
   try {
     const notas = await notaService.listarNotas(req.params.tipo, req.params.id, req.usuario.id);
@@ -14,6 +21,13 @@ async function index(req, res) {
   }
 }
 
+/**
+ * Cria uma nota para uma entidade do sistema.
+ *
+ * @param {import('express').Request} req - Requisicao com entidade na rota e dados da nota em req.body.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Nota criada ou erro de validacao.
+ */
 async function store(req, res) {
   try {
     const nota = await notaService.criarNota(req.params.tipo, req.params.id, req.usuario.id, req.body);
@@ -28,6 +42,13 @@ async function store(req, res) {
   }
 }
 
+/**
+ * Atualiza uma nota existente.
+ *
+ * @param {import('express').Request} req - Requisicao com notaId em req.params.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Nota atualizada ou erro 404.
+ */
 async function update(req, res) {
   try {
     const nota = await notaService.atualizarNota(req.params.notaId, req.usuario.id, req.body);
@@ -42,6 +63,13 @@ async function update(req, res) {
   }
 }
 
+/**
+ * Remove uma nota do sistema.
+ *
+ * @param {import('express').Request} req - Requisicao com notaId em req.params.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response|void>} Status 204 quando removida.
+ */
 async function destroy(req, res) {
   try {
     const total = await notaService.excluirNota(req.params.notaId, req.usuario.id);

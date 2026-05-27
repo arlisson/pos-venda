@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para fechamento mensal e exportacoes do periodo.
+ */
 import { apiBlob, apiGet } from './api';
 
 function montarQuery(filtros = {}) {

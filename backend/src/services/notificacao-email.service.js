@@ -1,3 +1,6 @@
+/**
+ * Servico de envio de notificacoes por e-mail e verificacao de configuracao SMTP.
+ */
 const nodemailer = require('nodemailer');
 const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');

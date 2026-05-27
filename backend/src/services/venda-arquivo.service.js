@@ -8,6 +8,9 @@ const Venda = require('../models/Venda');
 const VendaArquivo = require('../models/VendaArquivo');
 const VendaArquivoPacote = require('../models/VendaArquivoPacote');
 const Usuario = require('../models/Usuario');
+/**
+ * Servico de anexos e pacotes de arquivos de vendas.
+ */
 const arquivoService = require('./arquivo.service');
 const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 

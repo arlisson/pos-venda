@@ -1,3 +1,6 @@
+/**
+ * Servico de autenticacao, emissao de token e manutencao do perfil logado.
+ */
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 

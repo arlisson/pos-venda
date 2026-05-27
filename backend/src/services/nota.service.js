@@ -1,3 +1,6 @@
+/**
+ * Servico de notas vinculadas a entidades do sistema.
+ */
 const db = require('../database/connection');
 const clienteService = require('./cliente.service');
 const vendaService = require('./venda.service');

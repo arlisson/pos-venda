@@ -1,6 +1,13 @@
 const Usuario = require('../models/Usuario');
 const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
+/**
+ * Verifica se um usuario ativo possui uma permissao efetiva.
+ *
+ * @param {number|string|undefined} usuarioId - Identificador do usuario autenticado.
+ * @param {string} permissao - Chave da permissao exigida.
+ * @returns {Promise<boolean>} Verdadeiro quando a permissao esta liberada.
+ */
 async function usuarioTemPermissao(usuarioId, permissao) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -13,6 +20,12 @@ async function usuarioTemPermissao(usuarioId, permissao) {
   return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
+/**
+ * Cria middleware que exige uma permissao especifica.
+ *
+ * @param {string} permissao - Chave da permissao exigida.
+ * @returns {import('express').RequestHandler} Middleware de autorizacao.
+ */
 function exigirPermissao(permissao) {
   return async function permissaoMiddleware(req, res, next) {
     try {
@@ -35,6 +48,12 @@ function exigirPermissao(permissao) {
   };
 }
 
+/**
+ * Cria middleware que exige ao menos uma permissao da lista.
+ *
+ * @param {string[]} permissoes - Chaves de permissoes aceitas.
+ * @returns {import('express').RequestHandler} Middleware de autorizacao.
+ */
 function exigirUmaPermissao(permissoes) {
   return async function permissaoMiddleware(req, res, next) {
     try {
@@ -59,6 +78,12 @@ function exigirUmaPermissao(permissoes) {
   };
 }
 
+/**
+ * Indica se o usuario possui role administrativa.
+ *
+ * @param {number|string|undefined} usuarioId - Identificador do usuario autenticado.
+ * @returns {Promise<boolean>} Verdadeiro quando o usuario e admin.
+ */
 async function usuarioEhAdmin(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -67,6 +92,14 @@ async function usuarioEhAdmin(usuarioId) {
   return usuario?.role?.nome === 'admin';
 }
 
+/**
+ * Bloqueia a rota quando o usuario autenticado nao e administrador.
+ *
+ * @param {import('express').Request} req - Requisicao autenticada.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @param {import('express').NextFunction} next - Proximo middleware.
+ * @returns {Promise<import('express').Response|void>} Continua ou retorna erro 403.
+ */
 function exigirAdmin(req, res, next) {
   return Promise.resolve()
     .then(async () => {
@@ -89,6 +122,14 @@ function exigirAdmin(req, res, next) {
     });
 }
 
+/**
+ * Impede alteracoes administrativas feitas por usuarios nao administradores.
+ *
+ * @param {import('express').Request} req - Requisicao com usuario alvo ou role desejada.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @param {import('express').NextFunction} next - Proximo middleware.
+ * @returns {Promise<import('express').Response|void>} Continua ou retorna erro 403.
+ */
 function exigirAdminParaAlterarAdmin(req, res, next) {
   return Promise.resolve()
     .then(async () => {
@@ -125,6 +166,14 @@ function exigirAdminParaAlterarAdmin(req, res, next) {
     });
 }
 
+/**
+ * Impede que o usuario autenticado exclua a propria conta.
+ *
+ * @param {import('express').Request} req - Requisicao com id do usuario alvo.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @param {import('express').NextFunction} next - Proximo middleware.
+ * @returns {import('express').Response|void} Continua ou retorna erro 403.
+ */
 function impedirAutoExclusao(req, res, next) {
   if (Number(req.params.id) === Number(req.usuario?.id)) {
     return res.status(403).json({
@@ -135,6 +184,14 @@ function impedirAutoExclusao(req, res, next) {
   return next();
 }
 
+/**
+ * Exige permissao de gerenciamento quando a requisicao altera permissoes ou promove admin.
+ *
+ * @param {import('express').Request} req - Requisicao com dados do usuario em req.body.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @param {import('express').NextFunction} next - Proximo middleware.
+ * @returns {import('express').Response|void} Continua ou delega ao middleware de permissao.
+ */
 function exigirGerenciamentoPermissoesSeNecessario(req, res, next) {
   const alteraPermissoes = Object.prototype.hasOwnProperty.call(req.body || {}, 'permissoes');
   const promoveAdmin = Number(req.body?.role_id) === 1;

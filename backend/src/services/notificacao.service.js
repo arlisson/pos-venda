@@ -1,3 +1,6 @@
+/**
+ * Servico de notificacoes, destinatarios, leitura e exibicao de popups.
+ */
 const Cliente = require('../models/Cliente');
 const ClienteOperadora = require('../models/ClienteOperadora');
 const Notificacao = require('../models/Notificacao');

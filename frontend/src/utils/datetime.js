@@ -30,10 +30,22 @@ function parseDateOnly(value) {
   return isValidDate(date) && matchesInput ? date : null;
 }
 
+/**
+ * Indica se o valor textual esta no formato ISO somente data.
+ *
+ * @param {unknown} value - Valor a validar.
+ * @returns {boolean} Verdadeiro quando o valor segue YYYY-MM-DD.
+ */
 export function isDateOnlyString(value) {
   return typeof value === 'string' && DATE_ONLY_RE.test(value.trim());
 }
 
+/**
+ * Converte data/hora UTC em Date, tratando strings sem timezone como UTC.
+ *
+ * @param {unknown} value - Date, timestamp ou string de data/hora.
+ * @returns {Date|null} Data valida ou null.
+ */
 export function parseUtcDateTime(value) {
   if (value === null || value === undefined || value === '') return null;
 
@@ -55,6 +67,12 @@ export function parseUtcDateTime(value) {
   return isValidDate(date) ? date : null;
 }
 
+/**
+ * Converte datas ISO de calendario e data/hora em Date local seguro.
+ *
+ * @param {unknown} value - Date, timestamp, YYYY-MM-DD ou data/hora.
+ * @returns {Date|null} Data valida ou null.
+ */
 export function parseDateValue(value) {
   if (value === null || value === undefined || value === '') return null;
 
@@ -65,21 +83,50 @@ export function parseDateValue(value) {
   return parseDateOnly(value) || parseUtcDateTime(value);
 }
 
+/**
+ * Retorna o timestamp de uma data/hora UTC ou um fallback.
+ *
+ * @param {unknown} value - Valor de data/hora.
+ * @param {number} [fallback=0] - Valor usado quando a data e invalida.
+ * @returns {number} Timestamp em milissegundos.
+ */
 export function getUtcDateTimeTimestamp(value, fallback = 0) {
   const date = parseUtcDateTime(value);
   return date ? date.getTime() : fallback;
 }
 
+/**
+ * Formata uma data/hora UTC para exibicao em pt-BR.
+ *
+ * @param {unknown} value - Valor de data/hora UTC.
+ * @param {Intl.DateTimeFormatOptions} [options=DEFAULT_DATE_TIME_OPTIONS] - Opcoes de formatacao.
+ * @param {string} [fallback=''] - Texto retornado quando a data e invalida.
+ * @returns {string} Data/hora formatada.
+ */
 export function formatUtcDateTime(value, options = DEFAULT_DATE_TIME_OPTIONS, fallback = '') {
   const date = parseUtcDateTime(value);
   return date ? date.toLocaleString('pt-BR', options) : fallback;
 }
 
+/**
+ * Formata uma data de calendario para exibicao em pt-BR.
+ *
+ * @param {unknown} value - Valor de data.
+ * @param {Intl.DateTimeFormatOptions} [options=DEFAULT_DATE_OPTIONS] - Opcoes de formatacao.
+ * @param {string} [fallback=''] - Texto retornado quando a data e invalida.
+ * @returns {string} Data formatada.
+ */
 export function formatDateValue(value, options = DEFAULT_DATE_OPTIONS, fallback = '') {
   const date = parseDateValue(value);
   return date ? date.toLocaleDateString('pt-BR', options) : fallback;
 }
 
+/**
+ * Converte uma data/hora UTC para valor aceito por input datetime-local.
+ *
+ * @param {unknown} value - Valor de data/hora UTC.
+ * @returns {string} Valor YYYY-MM-DDTHH:mm ou string vazia.
+ */
 export function toLocalDateTimeInputFromUtc(value) {
   const date = parseUtcDateTime(value);
   if (!date) return '';

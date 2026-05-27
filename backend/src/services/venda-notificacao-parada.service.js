@@ -1,3 +1,6 @@
+/**
+ * Servico de deteccao e notificacao de vendas paradas no funil.
+ */
 const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');

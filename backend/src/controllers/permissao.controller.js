@@ -1,6 +1,13 @@
 const permissaoService = require('../services/permissao.service');  // Importa o service de permissões
 
 // Função para listar as permissões
+/**
+ * Lista todas as permissoes cadastradas.
+ *
+ * @param {import('express').Request} req - Requisicao HTTP.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Lista de permissoes.
+ */
 async function index(req, res) {
   try {
     const permissoes = await permissaoService.listarPermissoes();  // Chama o service para listar as permissões
@@ -15,6 +22,13 @@ async function index(req, res) {
 }
 
 // Função para buscar permissão por ID
+/**
+ * Busca uma permissao pelo identificador.
+ *
+ * @param {import('express').Request} req - Requisicao com id em req.params.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Permissao encontrada ou erro 404.
+ */
 async function show(req, res) {
   try {
     const permissao = await permissaoService.buscarPermissaoPorId(req.params.id);  // Busca permissão pelo ID
@@ -34,6 +48,13 @@ async function show(req, res) {
 }
 
 // Função para criar uma nova permissão
+/**
+ * Cria uma permissao administrativa.
+ *
+ * @param {import('express').Request} req - Requisicao com chave, nome e descricao em req.body.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Permissao criada ou erro de duplicidade.
+ */
 async function store(req, res) {
   try {
     const { chave, nome, descricao } = req.body;  // Extrai os dados da requisição

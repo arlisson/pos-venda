@@ -3,6 +3,9 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const Busboy = require('busboy');
+/**
+ * Servico de importacao, distribuicao e acompanhamento de planilhas de leads.
+ */
 const LeadPlanilha = require('../models/LeadPlanilha');
 const LeadLinha = require('../models/LeadLinha');
 const LeadEnvio = require('../models/LeadEnvio');

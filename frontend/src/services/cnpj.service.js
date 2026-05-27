@@ -1,3 +1,6 @@
+/**
+ * Utilitarios e cliente de API para CPF/CNPJ.
+ */
 import { apiGet } from './api';
 
 export function sanitizarCpf(valor) {

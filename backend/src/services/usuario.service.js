@@ -1,4 +1,7 @@
 const Usuario = require('../models/Usuario');
+/**
+ * Servico de usuarios, roles e permissoes efetivas.
+ */
 const bcrypt = require('bcrypt');
 
 

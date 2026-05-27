@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para configuracoes, cadastros auxiliares e listas administrativas.
+ */
 import { apiDelete, apiGet, apiPost, apiPut } from './api';
 
 export async function listarOperadoras() {

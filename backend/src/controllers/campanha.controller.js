@@ -1,3 +1,9 @@
+/**
+ * Controller HTTP de campanhas e recompensas.
+ *
+ * Calcula ciclos de metas, progresso por vendedora, resgates e administracao
+ * das campanhas configuradas no sistema.
+ */
 const Campanha = require('../models/Campanha');
 const knex = require('../database/connection');
 

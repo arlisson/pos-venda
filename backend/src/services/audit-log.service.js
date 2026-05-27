@@ -1,3 +1,6 @@
+/**
+ * Servico de registro e consulta de eventos de auditoria.
+ */
 const AuditLog = require('../models/AuditLog');
 
 const CAMPOS_SENSIVEIS = [

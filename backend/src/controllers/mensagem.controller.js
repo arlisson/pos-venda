@@ -1,3 +1,9 @@
+/**
+ * Controller HTTP de mensagens internas.
+ *
+ * Controla contatos, conversas, envio, leitura, anexos e exclusao logica das
+ * mensagens trocadas entre usuarios.
+ */
 const mensagemService = require('../services/mensagem.service');
 
 async function contatos(req, res) {

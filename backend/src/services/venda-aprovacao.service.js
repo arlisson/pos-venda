@@ -2,6 +2,9 @@ const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');
 const Venda = require('../models/Venda');
+/**
+ * Servico de solicitacoes de aprovacao de vendas.
+ */
 const VendaAprovacaoSolicitacao = require('../models/VendaAprovacaoSolicitacao');
 const VendaHistorico = require('../models/VendaHistorico');
 const notificacaoEmailService = require('./notificacao-email.service');

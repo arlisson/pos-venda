@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para vendas, arquivos, importacoes, aprovacoes e pos-venda.
+ */
 import { apiBlob, apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';

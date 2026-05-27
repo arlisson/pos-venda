@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para usuarios, permissoes e manutencao de cadastro.
+ */
 import { apiGet, apiPost, apiPut, apiDelete } from './api';
 
 export async function listarUsuarios() {

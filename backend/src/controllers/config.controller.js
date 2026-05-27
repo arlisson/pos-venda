@@ -1,3 +1,9 @@
+/**
+ * Controller HTTP de configuracoes administrativas e listas auxiliares.
+ *
+ * Expoe operadoras, tipos de produto, tipos de venda, servicos, funil,
+ * regras de comissao e links externos para telas publicas e administrativas.
+ */
 const configService = require('../services/config.service');
 
 async function operadoras(req, res) {

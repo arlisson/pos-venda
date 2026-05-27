@@ -506,6 +506,12 @@ function montarAmostras(worksheet, colunas) {
   return amostras;
 }
 
+/**
+ * Gera uma pre-visualizacao da planilha de importacao da base anterior.
+ *
+ * @param {import('express').Request} req - Requisicao multipart com arquivo XLSX.
+ * @returns {Promise<{ arquivo: string, aba: string, total_linhas: number, colunas: Array, sugestoes: Object, amostras: Array }>} Dados para conferencia do mapeamento.
+ */
 async function previewImportacaoBaseAnterior(req) {
   const { arquivo } = await lerArquivoMultipart(req);
   const worksheet = await lerWorkbook(arquivo.buffer);
@@ -666,6 +672,13 @@ function montarPayloadImportacao(dados, clienteExistente = null) {
   };
 }
 
+/**
+ * Importa ou complementa clientes a partir de planilha da base anterior.
+ *
+ * @param {import('express').Request} req - Requisicao multipart com arquivo e mapeamento.
+ * @param {number|string} usuarioId - Usuario responsavel pela importacao.
+ * @returns {Promise<Object>} Resumo de clientes criados, atualizados e ignorados.
+ */
 async function importarBaseAnterior(req, usuarioId) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
   const mapeamento = parseMapeamento(campos.mapeamento);
@@ -800,6 +813,13 @@ async function buscarClienteDuplicadoPorCnpj(cnpjDigitos, ignorarId = null, trx 
   return query.first();
 }
 
+/**
+ * Valida CPF/CNPJ e informa se ja existe cliente com o mesmo documento.
+ *
+ * @param {string} documento - CPF ou CNPJ bruto.
+ * @param {{ ignorarId?: number|string|null }} [opcoes={}] - Cliente ignorado em edicoes.
+ * @returns {Promise<{ valido: boolean, disponivel: boolean, cliente: Object|null }>} Resultado de disponibilidade.
+ */
 async function verificarDocumentoCliente(documento, opcoes = {}) {
   const documentoNormalizado = normalizarDocumentoObrigatorio(documento);
   const cliente = await buscarClienteDuplicadoPorCnpj(
@@ -969,6 +989,13 @@ function formatarOperadorasExportacao(cliente) {
   return cliente.operadoraAtual?.nome || '';
 }
 
+/**
+ * Gera arquivo XLSX com clientes visiveis ao usuario e filtros aplicados.
+ *
+ * @param {Object} [filtros={}] - Filtros de listagem/exportacao.
+ * @param {number|string} usuarioId - Usuario usado para aplicar escopo de acesso.
+ * @returns {Promise<{ buffer: Buffer, nome: string }>} Conteudo e nome sugerido do arquivo.
+ */
 async function gerarXlsxClientes(filtros = {}, usuarioId) {
   const filtrosExportacao = { ...filtros };
   delete filtrosExportacao.page;
@@ -1240,6 +1267,13 @@ function aplicarFiltroFidelidadeOperadoras(query, tipo) {
   });
 }
 
+/**
+ * Lista clientes ativos respeitando escopo de permissoes, filtros e paginacao.
+ *
+ * @param {Object} [filtros={}] - Filtros de busca, campos, operadora, fidelidade e paginacao.
+ * @param {number|string} usuarioId - Usuario logado.
+ * @returns {Promise<Array|{ data: Array, total: number }>} Clientes formatados.
+ */
 async function listarClientes(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoClientes(usuarioId);
   const paginar = filtros.page !== undefined || filtros.per_page !== undefined;
@@ -1331,6 +1365,13 @@ async function listarClientes(filtros = {}, usuarioId) {
   return adicionarResumoNotasClientes((await query).map(formatarCliente), usuarioId);
 }
 
+/**
+ * Lista clientes ativos em formato leve para seletores.
+ *
+ * @param {Object} [filtros={}] - Filtros de busca e limite.
+ * @param {number|string} usuarioId - Usuario logado.
+ * @returns {Promise<Array>} Clientes formatados para selecao.
+ */
 async function listarClientesSelect(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoClientes(usuarioId);
   const limite = Math.min(Math.max(Number.parseInt(filtros.limite, 10) || 300, 1), 500);
@@ -1368,6 +1409,13 @@ async function listarClientesSelect(filtros = {}, usuarioId) {
   return (await query).map(formatarCliente);
 }
 
+/**
+ * Busca um cliente ativo pelo ID, aplicando escopo quando houver usuario.
+ *
+ * @param {number|string} id - Identificador do cliente.
+ * @param {number|string} [usuarioId] - Usuario logado para validar acesso.
+ * @returns {Promise<Object|null>} Cliente formatado ou null.
+ */
 async function buscarClientePorId(id, usuarioId) {
   const escopo = usuarioId ? await buscarEscopoClientes(usuarioId) : { podeVerTodos: true };
   const query = Cliente.query()
@@ -1382,6 +1430,14 @@ async function buscarClientePorId(id, usuarioId) {
   return formatarCliente(await query);
 }
 
+/**
+ * Verifica se o usuario pode acessar um cliente ativo ou na lixeira.
+ *
+ * @param {number|string} id - Identificador do cliente.
+ * @param {number|string} usuarioId - Usuario logado.
+ * @param {{ incluirLixeira?: boolean }} [opcoes={}] - Permite validar registros excluidos logicamente.
+ * @returns {Promise<boolean>} Verdadeiro quando o acesso e permitido.
+ */
 async function usuarioPodeAcessarCliente(id, usuarioId, opcoes = {}) {
   const escopo = await buscarEscopoClientes(usuarioId);
 
@@ -1406,6 +1462,13 @@ async function usuarioPodeAcessarCliente(id, usuarioId, opcoes = {}) {
   return Number(cliente?.criado_por_id) === Number(usuarioId);
 }
 
+/**
+ * Cria cliente, sincroniza operadoras e notificacoes de fidelidade.
+ *
+ * @param {Object} dados - Dados do formulario de cliente.
+ * @param {number|string} usuarioId - Usuario criador.
+ * @returns {Promise<Object>} Cliente criado e formatado.
+ */
 async function criarCliente(dados, usuarioId) {
   const payload = montarPayload(dados);
   const duplicado = await buscarClienteDuplicadoPorCnpj(payload.cnpj_digitos);
@@ -1431,6 +1494,14 @@ async function criarCliente(dados, usuarioId) {
   return cliente;
 }
 
+/**
+ * Atualiza cliente existente, validando acesso e duplicidade de documento.
+ *
+ * @param {number|string} id - Identificador do cliente.
+ * @param {Object} dados - Campos atualizados.
+ * @param {number|string} usuarioId - Usuario logado.
+ * @returns {Promise<Object|null>} Cliente atualizado ou null quando inacessivel/inexistente.
+ */
 async function atualizarCliente(id, dados, usuarioId) {
   const permitido = await usuarioPodeAcessarCliente(id, usuarioId);
 
@@ -1472,6 +1543,13 @@ async function atualizarCliente(id, dados, usuarioId) {
 }
 
 
+/**
+ * Move cliente para a lixeira e remove notificacoes relacionadas.
+ *
+ * @param {number|string} id - Identificador do cliente.
+ * @param {number|string} usuarioId - Usuario responsavel pela exclusao.
+ * @returns {Promise<number>} Quantidade de registros atualizados.
+ */
 async function excluirCliente(id, usuarioId) {
   const permitido = await usuarioPodeAcessarCliente(id, usuarioId);
 
@@ -1599,6 +1677,13 @@ async function limparClientesVencidosDaLixeira() {
   });
 }
 
+/**
+ * Lista clientes da lixeira e limpa automaticamente registros vencidos sem vendas.
+ *
+ * @param {Object} [filtros={}] - Filtros de busca.
+ * @param {number|string} usuarioId - Usuario logado.
+ * @returns {Promise<Array>} Clientes excluidos logicamente.
+ */
 async function listarClientesLixeira(filtros = {}, usuarioId) {
   await limparClientesVencidosDaLixeira();
 
@@ -1618,6 +1703,13 @@ async function listarClientesLixeira(filtros = {}, usuarioId) {
   return adicionarResumoVendasRelacionadas((await query).map(formatarCliente));
 }
 
+/**
+ * Restaura um cliente da lixeira quando o usuario possui acesso.
+ *
+ * @param {number|string} id - Identificador do cliente.
+ * @param {number|string} usuarioId - Usuario logado.
+ * @returns {Promise<Object|null>} Cliente restaurado ou null.
+ */
 async function restaurarCliente(id, usuarioId) {
   const permitido = await usuarioPodeAcessarCliente(id, usuarioId, { incluirLixeira: true });
 
@@ -1642,6 +1734,15 @@ async function restaurarCliente(id, usuarioId) {
   return buscarClientePorId(id, usuarioId);
 }
 
+/**
+ * Exclui definitivamente um cliente da lixeira, opcionalmente removendo vendas relacionadas.
+ *
+ * @param {number|string} id - Identificador do cliente.
+ * @param {number|string} usuarioId - Usuario logado.
+ * @param {{ excluirVendasRelacionadas?: boolean }} [opcoes={}] - Confirma remocao de vendas vinculadas.
+ * @returns {Promise<number>} Quantidade de clientes excluidos.
+ * @throws {Error} Quando existem vendas relacionadas e a exclusao delas nao foi confirmada.
+ */
 async function excluirClienteDefinitivo(id, usuarioId, opcoes = {}) {
   const permitido = await usuarioPodeAcessarCliente(id, usuarioId, { incluirLixeira: true });
 
@@ -1687,6 +1788,12 @@ async function excluirClienteDefinitivo(id, usuarioId, opcoes = {}) {
   });
 }
 
+/**
+ * Remove em lote clientes marcados como base anterior.
+ *
+ * @param {{ excluirVendasRelacionadas?: boolean }} [opcoes={}] - Define se vendas vinculadas tambem serao removidas.
+ * @returns {Promise<{ excluidos: number, vendas_excluidas: number, ignorados_com_vendas?: number }>} Resumo da limpeza.
+ */
 async function limparClientesBaseAnterior(opcoes = {}) {
   return Cliente.transaction(async trx => {
     const clientes = await Cliente.query(trx)

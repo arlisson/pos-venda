@@ -1,3 +1,6 @@
+/**
+ * Servico de abertura, correcao, verificacao e resolucao de problemas de vendas.
+ */
 const db = require('../database/connection');
 const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');

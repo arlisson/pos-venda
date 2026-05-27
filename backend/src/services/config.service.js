@@ -1,4 +1,7 @@
 const LinkExterno = require('../models/LinkExterno');
+/**
+ * Servico de configuracoes, cadastros auxiliares, funil e regras de comissao.
+ */
 const Operadora = require('../models/Operadora');
 const TipoProduto = require('../models/TipoProduto');
 const TipoVenda = require('../models/TipoVenda');

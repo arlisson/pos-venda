@@ -1,3 +1,6 @@
+/**
+ * Servico de consulta de perfis de acesso.
+ */
 const Role = require('../models/Role');
 
 async function listarRoles() {

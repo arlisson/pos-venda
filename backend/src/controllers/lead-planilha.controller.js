@@ -1,3 +1,9 @@
+/**
+ * Controller HTTP de planilhas de leads.
+ *
+ * Coordena upload, processamento, divisao, exportacao e fluxo de futuros
+ * clientes originados das linhas importadas.
+ */
 const leadPlanilhaService = require('../services/lead-planilha.service');
 
 async function index(req, res) {

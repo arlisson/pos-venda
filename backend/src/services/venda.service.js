@@ -1,3 +1,6 @@
+/**
+ * Servico principal de vendas, funil, relatorios, importacoes e pos-venda.
+ */
 const Venda = require('../models/Venda');
 const VendaHistorico = require('../models/VendaHistorico');
 const Usuario = require('../models/Usuario');

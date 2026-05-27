@@ -1,3 +1,6 @@
+/**
+ * Servico de montagem de templates de e-mail para vendas.
+ */
 function texto(valor) {
   return valor === null || valor === undefined ? '' : String(valor).trim();
 }

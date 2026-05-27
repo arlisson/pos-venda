@@ -1,3 +1,6 @@
+/**
+ * Servico de fechamento mensal, resumo gerencial, detalhes e exportacoes.
+ */
 const Venda = require('../models/Venda');
 const FunilEtapa = require('../models/FunilEtapa');
 const RegraComissao = require('../models/RegraComissao');

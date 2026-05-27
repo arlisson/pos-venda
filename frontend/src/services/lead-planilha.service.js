@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para importacao, divisao e acompanhamento de planilhas de leads.
+ */
 import { apiBlob, apiDelete, apiGet, apiPost, apiPut } from './api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';

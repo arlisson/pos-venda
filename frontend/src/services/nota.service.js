@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para notas vinculadas a entidades do sistema.
+ */
 import { apiDelete, apiGet, apiPost, apiPut } from './api';
 
 export async function listarNotasEntidade(tipo, id) {

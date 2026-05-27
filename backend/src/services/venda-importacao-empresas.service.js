@@ -1,5 +1,8 @@
 const crypto = require('crypto');
 const Busboy = require('busboy');
+/**
+ * Servico de preview e importacao de vendas de empresas por planilha.
+ */
 const ExcelJS = require('exceljs');
 const Cliente = require('../models/Cliente');
 const ClienteOperadora = require('../models/ClienteOperadora');

@@ -1,5 +1,11 @@
 const Permissao = require('../models/Permissao');
 
+/**
+ * Converte permissoes em array de chaves ativas.
+ *
+ * @param {string|string[]|Record<string, boolean>|null|undefined} permissoes - Permissoes em JSON, array ou mapa.
+ * @returns {string[]} Lista de chaves permitidas.
+ */
 function parsePermissoes(permissoes) {
   if (!permissoes) return [];
   if (Array.isArray(permissoes)) return permissoes;
@@ -17,6 +23,12 @@ function parsePermissoes(permissoes) {
     .map(([chave]) => chave);
 }
 
+/**
+ * Converte permissoes em mapa booleano.
+ *
+ * @param {string|string[]|Record<string, boolean>|null|undefined} permissoes - Permissoes em JSON, array ou mapa.
+ * @returns {Record<string, boolean>} Mapa de permissao por chave.
+ */
 function normalizarPermissoes(permissoes) {
   if (!permissoes) return {};
 
@@ -38,6 +50,13 @@ function normalizarPermissoes(permissoes) {
   return permissoes;
 }
 
+/**
+ * Verifica se uma permissao foi explicitamente negada para usuario admin.
+ *
+ * @param {Record<string, unknown>} usuario - Usuario com role e permissoes.
+ * @param {string} permissao - Chave da permissao.
+ * @returns {boolean} Verdadeiro quando o admin possui negacao local.
+ */
 function adminTemPermissaoNegada(usuario, permissao) {
   if (usuario?.role?.nome !== 'admin') {
     return false;
@@ -46,6 +65,13 @@ function adminTemPermissaoNegada(usuario, permissao) {
   return normalizarPermissoes(usuario.permissoes)[permissao] === false;
 }
 
+/**
+ * Verifica permissao ja carregada no objeto do usuario, sem consultar o banco.
+ *
+ * @param {Record<string, unknown>} usuario - Usuario com role e permissoes.
+ * @param {string} permissao - Chave da permissao.
+ * @returns {boolean} Verdadeiro quando o usuario esta ativo e possui a permissao.
+ */
 function usuarioTemPermissaoLocal(usuario, permissao) {
   if (!usuario || !usuario.ativo) return false;
 
@@ -59,6 +85,12 @@ function usuarioTemPermissaoLocal(usuario, permissao) {
   return permitidas.has(permissao);
 }
 
+/**
+ * Monta o mapa completo de permissoes efetivas do usuario.
+ *
+ * @param {Record<string, unknown>} usuario - Usuario com role e permissoes.
+ * @returns {Promise<Record<string, boolean>>} Mapa de chaves ativas por permissao.
+ */
 async function montarMapaPermissoesEfetivas(usuario) {
   const todasPermissoes = await Permissao.query()
     .where('ativo', true)
@@ -77,6 +109,12 @@ async function montarMapaPermissoesEfetivas(usuario) {
   }, {});
 }
 
+/**
+ * Lista somente as chaves de permissoes efetivas de um usuario.
+ *
+ * @param {Record<string, unknown>} usuario - Usuario com role e permissoes.
+ * @returns {Promise<string[]>} Chaves permitidas.
+ */
 async function listarPermissoesEfetivas(usuario) {
   if (usuario?.role?.nome === 'admin') {
     const todasPermissoes = await Permissao.query()

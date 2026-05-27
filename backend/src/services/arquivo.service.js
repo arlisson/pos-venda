@@ -1,3 +1,6 @@
+/**
+ * Servico de persistencia e leitura de arquivos no armazenamento local.
+ */
 const Busboy = require('busboy');
 const crypto = require('crypto');
 const fs = require('fs');

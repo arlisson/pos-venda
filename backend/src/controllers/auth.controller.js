@@ -1,6 +1,13 @@
 const authService = require('../services/auth.service');
 const auditLogService = require('../services/audit-log.service');
 
+/**
+ * Autentica usuario por e-mail e senha e registra auditoria do resultado.
+ *
+ * @param {import('express').Request} req - Requisicao com credenciais em req.body.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Dados de sessao ou erro de autenticacao.
+ */
 async function login(req, res) {
   const { email, senha } = req.body || {};
 
@@ -40,6 +47,13 @@ async function login(req, res) {
   }
 }
 
+/**
+ * Retorna os dados do usuario autenticado.
+ *
+ * @param {import('express').Request} req - Requisicao autenticada com req.usuario.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Usuario logado ou erro 401.
+ */
 async function me(req, res) {
   try {
     const usuario = await authService.buscarUsuarioLogado(req.usuario.id);
@@ -52,6 +66,13 @@ async function me(req, res) {
   }
 }
 
+/**
+ * Atualiza o perfil do usuario autenticado e registra auditoria das alteracoes.
+ *
+ * @param {import('express').Request} req - Requisicao com campos de perfil em req.body.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Usuario atualizado.
+ */
 async function updateMe(req, res) {
   try {
     const usuario = await authService.atualizarPerfil(req.usuario.id, req.body);

@@ -1,5 +1,12 @@
 const usuarioService = require('../services/usuario.service');
 
+/**
+ * Lista usuarios conforme filtros de consulta.
+ *
+ * @param {import('express').Request} req - Requisicao com filtros em req.query.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Lista de usuarios.
+ */
 async function index(req, res) {
   try {
     const usuarios = await usuarioService.listarUsuarios();
@@ -14,6 +21,13 @@ async function index(req, res) {
   }
 }
 
+/**
+ * Busca um usuario pelo identificador.
+ *
+ * @param {import('express').Request} req - Requisicao com id em req.params.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Usuario encontrado ou erro 404.
+ */
 async function show(req, res) {
   try {
     const usuario = await usuarioService.buscarUsuarioPorId(req.params.id);
@@ -34,6 +48,13 @@ async function show(req, res) {
   }
 }
 
+/**
+ * Cria um novo usuario.
+ *
+ * @param {import('express').Request} req - Requisicao com dados do usuario em req.body.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Usuario criado.
+ */
 async function store(req, res) {
   try {
     const usuario = await usuarioService.criarUsuario(req.body);
@@ -48,6 +69,13 @@ async function store(req, res) {
   }
 }
 
+/**
+ * Atualiza um usuario existente.
+ *
+ * @param {import('express').Request} req - Requisicao com id na rota e campos em req.body.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Usuario atualizado ou erro 404.
+ */
 async function update(req, res) {
   try {
     const usuario = await usuarioService.atualizarUsuario(req.params.id, req.body);
@@ -68,6 +96,13 @@ async function update(req, res) {
   }
 }
 
+/**
+ * Remove um usuario pelo identificador.
+ *
+ * @param {import('express').Request} req - Requisicao com id em req.params.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response|void>} Status 204 quando removido.
+ */
 async function destroy(req, res) {
   try {
     const totalExcluido = await usuarioService.excluirUsuario(req.params.id);

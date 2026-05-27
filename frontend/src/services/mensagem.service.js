@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para mensagens internas, conversas e anexos.
+ */
 import { apiGet, apiPost, apiRequest, apiBlob, apiDelete } from './api';
 
 function montarQuery(filtros = {}) {

@@ -1,5 +1,12 @@
 const auditLogService = require('../services/audit-log.service');
 
+/**
+ * Lista eventos de auditoria conforme filtros de consulta.
+ *
+ * @param {import('express').Request} req - Requisicao com filtros em req.query.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Pagina de logs de auditoria.
+ */
 async function index(req, res) {
   try {
     const logs = await auditLogService.listar({
@@ -20,6 +27,13 @@ async function index(req, res) {
   }
 }
 
+/**
+ * Lista historico de vendas agrupado para exibicao na tela de historico.
+ *
+ * @param {import('express').Request} req - Requisicao com filtros de status, busca e paginacao.
+ * @param {import('express').Response} res - Resposta HTTP.
+ * @returns {Promise<import('express').Response>} Historico de vendas agrupado.
+ */
 async function vendasAgrupado(req, res) {
   try {
     const resultado = await auditLogService.listarHistoricoVendasAgrupado({

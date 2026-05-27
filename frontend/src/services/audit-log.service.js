@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para historico de auditoria e eventos agrupados de vendas.
+ */
 import { apiGet } from './api';
 
 function montarQuery(filtros = {}) {

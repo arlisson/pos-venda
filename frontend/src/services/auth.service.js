@@ -1,3 +1,6 @@
+/**
+ * Cliente de API para autenticacao, perfil local e permissoes do usuario.
+ */
 import { apiGet, apiPost, apiPut } from './api';
 
 export async function login(email, senha) {

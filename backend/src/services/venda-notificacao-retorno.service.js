@@ -1,3 +1,6 @@
+/**
+ * Servico de notificacoes relacionadas a retornos de vendas.
+ */
 const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Venda = require('../models/Venda');

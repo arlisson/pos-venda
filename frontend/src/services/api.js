@@ -11,6 +11,14 @@ function encerrarSessaoExpirada() {
   }
 }
 
+/**
+ * Executa uma requisicao JSON autenticada contra a API configurada.
+ *
+ * @param {string} endpoint - Caminho relativo da API, incluindo query string quando houver.
+ * @param {RequestInit} [options={}] - Opcoes repassadas ao fetch.
+ * @returns {Promise<unknown>} Corpo JSON retornado pela API, ou null quando nao houver JSON.
+ * @throws {Error} Quando a API retorna status de erro.
+ */
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem('token');
   const isFormData = options.body instanceof FormData;
@@ -49,6 +57,14 @@ export async function apiRequest(endpoint, options = {}) {
   return data;
 }
 
+/**
+ * Executa uma requisicao autenticada que retorna arquivo/binario.
+ *
+ * @param {string} endpoint - Caminho relativo da API.
+ * @param {RequestInit} [options={}] - Opcoes repassadas ao fetch.
+ * @returns {Promise<Blob>} Blob retornado pela API.
+ * @throws {Error} Quando a API retorna status de erro.
+ */
 export async function apiBlob(endpoint, options = {}) {
   const token = localStorage.getItem('token');
   const headers = {
@@ -80,16 +96,37 @@ export async function apiBlob(endpoint, options = {}) {
   return response.blob();
 }
 
+/**
+ * Atalho para requisicoes GET JSON.
+ *
+ * @param {string} endpoint - Caminho relativo da API.
+ * @returns {Promise<unknown>} Resposta JSON da API.
+ */
 export function apiGet(endpoint) {
   return apiRequest(endpoint);
 }
 
+/**
+ * Atalho para requisicoes POST JSON.
+ *
+ * @param {string} endpoint - Caminho relativo da API.
+ * @param {unknown} body - Payload serializado como JSON.
+ * @returns {Promise<unknown>} Resposta JSON da API.
+ */
 export function apiPost(endpoint, body) {
   return apiRequest(endpoint, {
     method: 'POST',
     body: JSON.stringify(body)
   });
 }
+
+/**
+ * Atalho para requisicoes PUT JSON.
+ *
+ * @param {string} endpoint - Caminho relativo da API.
+ * @param {unknown} body - Payload serializado como JSON.
+ * @returns {Promise<unknown>} Resposta JSON da API.
+ */
 export function apiPut(endpoint, body) {
   return apiRequest(endpoint, {
     method: 'PUT',
@@ -97,6 +134,12 @@ export function apiPut(endpoint, body) {
   });
 }
 
+/**
+ * Atalho para requisicoes DELETE JSON.
+ *
+ * @param {string} endpoint - Caminho relativo da API.
+ * @returns {Promise<unknown>} Resposta JSON da API.
+ */
 export function apiDelete(endpoint) {
   return apiRequest(endpoint, { method: 'DELETE' });
 }

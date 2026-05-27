@@ -1,3 +1,6 @@
+/**
+ * Servico de mensagens internas, conversas, anexos e contadores de leitura.
+ */
 const Mensagem = require('../models/Mensagem');
 const MensagemArquivo = require('../models/MensagemArquivo');
 const Arquivo = require('../models/Arquivo');

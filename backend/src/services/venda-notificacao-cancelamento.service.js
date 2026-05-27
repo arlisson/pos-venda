@@ -1,3 +1,6 @@
+/**
+ * Servico de notificacoes emitidas no cancelamento de vendas.
+ */
 const Notificacao = require('../models/Notificacao');
 const NotificacaoDestinatario = require('../models/NotificacaoDestinatario');
 const Usuario = require('../models/Usuario');

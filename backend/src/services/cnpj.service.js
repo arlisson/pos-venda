@@ -1,3 +1,6 @@
+/**
+ * Servico de consulta, validacao e cache de dados de CNPJ.
+ */
 const axios = require('axios');
 const db = require('../database/connection');
 

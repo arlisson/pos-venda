@@ -1,3 +1,6 @@
+/**
+ * Servico de consulta e cadastro de permissoes do sistema.
+ */
 const Permissao = require('../models/Permissao'); // Importa o modelo Permissao
 
 // Função para listar todas as permissões ativas
