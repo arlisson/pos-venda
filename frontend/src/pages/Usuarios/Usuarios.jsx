@@ -18,7 +18,7 @@ import {
   getPermissoesCopiaveis as getPermissoesCopiaveisCompartilhado,
   getPermissoesSelecionadasUsuario,
   montarPermissoesAdminParaSalvar,
-  PERMISSAO_GERENCIAR_PERMISSOES
+  adminPodeNegarPermissao
 } from './permissoes';
 import './Usuarios.css';
 
@@ -61,8 +61,8 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 
   function toggle(chave, opcoes = {}) {
     setAvisoCopia('');
-    if (usuario?.role?.nome === 'admin' && chave !== PERMISSAO_GERENCIAR_PERMISSOES) {
-      setAvisoCopia('Administradores mantêm as demais permissões automaticamente.');
+    if (usuario?.role?.nome === 'admin' && !adminPodeNegarPermissao(chave)) {
+      setAvisoCopia('Administradores mantêm as demais permissões automaticamente, exceto gerenciar permissões e receber por email.');
       return;
     }
     setSelecionadas(prev => {

@@ -8,7 +8,7 @@ import {
   garantirPermissaoPosVenda as garantirPermissaoPosVendaCompartilhada,
   montarGruposPermissoes as montarGruposPermissoesCompartilhados,
   montarPermissoesAdminParaSalvar,
-  PERMISSAO_GERENCIAR_PERMISSOES,
+  adminPodeNegarPermissao,
   PermissaoGrupo as PermissaoGrupoCompartilhado,
   CopiarPermissoesSelect,
   getPermissoesCopiaveis
@@ -82,8 +82,8 @@ function CadastroUsuario() {
   }
 
   function togglePermissao(chave, opcoes = {}) {
-    if (Number(roleId) === 1 && chave !== PERMISSAO_GERENCIAR_PERMISSOES) {
-      setAvisoCopia('Administradores mantêm as demais permissões automaticamente.');
+    if (Number(roleId) === 1 && !adminPodeNegarPermissao(chave)) {
+      setAvisoCopia('Administradores mantêm as demais permissões automaticamente, exceto gerenciar permissões e receber por email.');
       return;
     }
 

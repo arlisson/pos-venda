@@ -1,5 +1,9 @@
 const Permissao = require('../models/Permissao');
 const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
+const ADMIN_PERMISSOES_NEGAVEIS = [
+  PERMISSAO_GERENCIAR_PERMISSOES,
+  'notificacoes_receber_email'
+];
 
 function parsePermissoes(permissoes) {
   if (!permissoes) return [];
@@ -40,11 +44,11 @@ function normalizarPermissoes(permissoes) {
 }
 
 function adminTemPermissaoNegada(usuario, permissao) {
-  if (usuario?.role?.nome !== 'admin' || permissao !== PERMISSAO_GERENCIAR_PERMISSOES) {
+  if (usuario?.role?.nome !== 'admin' || !ADMIN_PERMISSOES_NEGAVEIS.includes(permissao)) {
     return false;
   }
 
-  return normalizarPermissoes(usuario.permissoes)[PERMISSAO_GERENCIAR_PERMISSOES] === false;
+  return normalizarPermissoes(usuario.permissoes)[permissao] === false;
 }
 
 function usuarioTemPermissaoLocal(usuario, permissao) {

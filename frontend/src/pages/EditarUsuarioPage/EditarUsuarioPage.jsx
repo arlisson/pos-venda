@@ -17,7 +17,7 @@ import {
   getPermissoesSelecionadasUsuario,
   montarGruposPermissoes,
   montarPermissoesAdminParaSalvar,
-  PERMISSAO_GERENCIAR_PERMISSOES,
+  adminPodeNegarPermissao,
   PermissaoGrupo
 } from '../Usuarios/permissoes';
 
@@ -116,8 +116,8 @@ function EditarUsuarioPage() {
   }, [id]);
 
   function handlePermissaoChange(chave, opcoes = {}) {
-    if (isAdminEditado && chave !== PERMISSAO_GERENCIAR_PERMISSOES) {
-      setErro('Administradores mantêm as demais permissões automaticamente.');
+    if (isAdminEditado && !adminPodeNegarPermissao(chave)) {
+      setErro('Administradores mantêm as demais permissões automaticamente, exceto gerenciar permissões e receber por email.');
       return;
     }
 

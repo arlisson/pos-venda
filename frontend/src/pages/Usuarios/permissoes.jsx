@@ -8,6 +8,15 @@ export const PERMISSAO_POS_VENDA = {
   descricao: 'Permite editar vendas enviadas ao pós-venda e movimentar vendas no funil.'
 };
 export const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
+export const PERMISSAO_RECEBER_EMAIL = 'notificacoes_receber_email';
+export const ADMIN_PERMISSOES_NEGAVEIS = [
+  PERMISSAO_GERENCIAR_PERMISSOES,
+  PERMISSAO_RECEBER_EMAIL
+];
+
+export function adminPodeNegarPermissao(chave) {
+  return ADMIN_PERMISSOES_NEGAVEIS.includes(chave);
+}
 
 export function garantirPermissaoPosVenda(permissoes = []) {
   if (permissoes.some(permissao => permissao.chave === PERMISSAO_POS_VENDA.chave)) {
@@ -600,15 +609,19 @@ export function getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis 
   const todasChaves = permissoesDisponiveis.map(permissao => permissao.chave);
 
   return todasChaves.filter(chave => (
-    chave !== PERMISSAO_GERENCIAR_PERMISSOES ||
-    permissoesUsuario[PERMISSAO_GERENCIAR_PERMISSOES] !== false
+    !adminPodeNegarPermissao(chave) ||
+    permissoesUsuario[chave] !== false
   ));
 }
 
 export function montarPermissoesAdminParaSalvar(selecionadas = []) {
-  return selecionadas.includes(PERMISSAO_GERENCIAR_PERMISSOES)
-    ? []
-    : { [PERMISSAO_GERENCIAR_PERMISSOES]: false };
+  return ADMIN_PERMISSOES_NEGAVEIS.reduce((acc, chave) => {
+    if (!selecionadas.includes(chave)) {
+      acc[chave] = false;
+    }
+
+    return acc;
+  }, {});
 }
 
 export function getPermissoesCopiaveis(usuarioOrigem, permissoesDisponiveis) {
