@@ -13,6 +13,7 @@ import {
   getPermissoesCopiaveis
 } from '../Usuarios/permissoes';
 import '../Usuarios/Usuarios.css';
+import './CadastroUsuario.css';
 
 function CadastroUsuario() {
   const navigate = useNavigate();
@@ -137,7 +138,7 @@ function CadastroUsuario() {
 
   return (
     <LayoutPrivado>
-      <div className="users-page" style={{ maxWidth: '820px', margin: '0 auto' }}>
+      <div className="users-page cadastro-usuario-page">
         <div className="panel">
           <div className="panel-header">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -203,7 +204,7 @@ function CadastroUsuario() {
                     </select>
                   </div>
 
-                  <div style={{ marginTop: 20 }}>
+                  <div className="cadastro-usuario__permissions">
                     <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-2)', marginBottom: 8 }}>
                       Permissoes de acesso
                     </div>
@@ -235,7 +236,7 @@ function CadastroUsuario() {
                       </>
                     )}
 
-                    <div className="permissions-grid">
+                    <div className="cadastro-usuario__permissions-grid permissions-grid">
                       {permissoes.length === 0 ? (
                         <div className="muted" style={{ fontSize: 13 }}>
                           Nenhuma permissão disponível.
