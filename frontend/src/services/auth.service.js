@@ -33,7 +33,7 @@ function normalizarPermissoes(permissoes) {
 
   if (typeof permissoes === 'string') {
     try {
-      return JSON.parse(permissoes);
+      return normalizarPermissoes(JSON.parse(permissoes));
     } catch {
       return {};
     }

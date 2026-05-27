@@ -405,6 +405,38 @@ function parseDados(dados) {
   return dados;
 }
 
+function aplicarJoinDestinatarioUsuario(query, usuarioId) {
+  return query.leftJoin('notificacao_destinatarios as nd', function () {
+    this.on('nd.notificacao_id', '=', 'n.id')
+      .andOn('nd.usuario_id', '=', db.raw('?', [Number(usuarioId)]));
+  });
+}
+
+function aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, podeVerAprovacoes, podeVerVendasParadas }) {
+  if (!podeReceberTodas) {
+    query.whereNotNull('nd.id');
+  }
+
+  if (!podeVerTudo) {
+    query.whereIn('n.tipo', [
+      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
+      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
+    ]);
+  } else if (!podeVerVendasParadas) {
+    query.whereNot('n.tipo', TIPO_VENDA_PARADA);
+  }
+
+  return query;
+}
+
+function mapearNotificacao(notificacao) {
+  return {
+    ...notificacao,
+    dados: parseDados(notificacao.dados),
+    lida: Boolean(notificacao.lida_em)
+  };
+}
+
 async function excluirNotificacoesPorIds(notificacaoIds, trx) {
   const ids = [...new Set(notificacaoIds.map(id => Number(id)).filter(Boolean))];
   if (ids.length === 0) return 0;
@@ -458,16 +490,14 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
     .withGraphFetched('role');
+  const podeReceberTodas = usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_TODAS);
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
   const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
     || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
   const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
 
   const limit = Math.min(Number(filtros.limit || 20), 50);
-  const query = NotificacaoDestinatario.query()
-    .alias('nd')
-    .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
-    .where('nd.usuario_id', usuarioId)
+  const query = aplicarJoinDestinatarioUsuario(Notificacao.query().alias('n'), usuarioId)
     .where('n.ativa', true)
     .orderByRaw('nd.lida_em IS NULL DESC')
     .orderBy('n.updated_at', 'desc')
@@ -487,36 +517,19 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
       'n.updated_at'
     );
 
-  if (!podeVerTudo) {
-    query.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
-      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
-    ]);
-  } else if (!podeVerVendasParadas) {
-    query.whereNot('n.tipo', TIPO_VENDA_PARADA);
-  }
+  aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, podeVerAprovacoes, podeVerVendasParadas });
 
   if (filtros.nao_lidas) {
     query.whereNull('nd.lida_em');
   }
 
-  const contadorQuery = NotificacaoDestinatario.query()
-    .alias('nd')
-    .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
-    .where('nd.usuario_id', usuarioId)
+  const contadorQuery = aplicarJoinDestinatarioUsuario(Notificacao.query().alias('n'), usuarioId)
     .where('n.ativa', true)
     .whereNull('nd.lida_em')
-    .count('nd.id as total')
+    .count('n.id as total')
     .first();
 
-  if (!podeVerTudo) {
-    contadorQuery.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
-      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
-    ]);
-  } else if (!podeVerVendasParadas) {
-    contadorQuery.whereNot('n.tipo', TIPO_VENDA_PARADA);
-  }
+  aplicarFiltroTiposVisiveis(contadorQuery, { podeReceberTodas, podeVerTudo, podeVerAprovacoes, podeVerVendasParadas });
 
   const [notificacoes, contador] = await Promise.all([
     query,
@@ -525,11 +538,7 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
 
   return {
     unread_count: Number(contador?.total || 0),
-    notificacoes: notificacoes.map(notificacao => ({
-      ...notificacao,
-      dados: parseDados(notificacao.dados),
-      lida: Boolean(notificacao.lida_em)
-    }))
+    notificacoes: notificacoes.map(mapearNotificacao)
   };
 }
 
@@ -542,15 +551,13 @@ async function listarUrgentes(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
     .withGraphFetched('role');
+  const podeReceberTodas = usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_TODAS);
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
   const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
     || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
   const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
 
-  const query = NotificacaoDestinatario.query()
-    .alias('nd')
-    .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
-    .where('nd.usuario_id', usuarioId)
+  const query = aplicarJoinDestinatarioUsuario(Notificacao.query().alias('n'), usuarioId)
     .where('n.ativa', true)
     .whereNull('nd.popup_visto_em')
     .orderBy('n.updated_at', 'asc')
@@ -571,57 +578,48 @@ async function listarUrgentes(usuarioId) {
       'n.updated_at'
     );
 
-  if (!podeVerTudo) {
-    query.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
-      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
-    ]);
-  } else if (!podeVerVendasParadas) {
-    query.whereNot('n.tipo', TIPO_VENDA_PARADA);
-  }
+  aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, podeVerAprovacoes, podeVerVendasParadas });
 
   const notificacoes = await query;
 
-  return notificacoes.map(notificacao => ({
-    ...notificacao,
-    dados: parseDados(notificacao.dados),
-    lida: Boolean(notificacao.lida_em)
-  }));
+  return notificacoes.map(mapearNotificacao);
 }
 
 async function marcarComoLida(notificacaoId, usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
     .withGraphFetched('role');
+  const podeReceberTodas = usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_TODAS);
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
   const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
     || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
   const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
-  const query = NotificacaoDestinatario.query()
-    .alias('nd')
-    .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
+
+  const query = aplicarJoinDestinatarioUsuario(Notificacao.query().alias('n'), usuarioId)
     .where('n.id', notificacaoId)
-    .where('nd.usuario_id', usuarioId)
-    .whereNull('nd.lida_em')
-    .select('nd.id');
+    .where('n.ativa', true)
+    .select('n.id', 'nd.id as destinatario_id', 'nd.lida_em');
 
-  if (!podeVerTudo) {
-    query.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
-      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
-    ]);
-  } else if (!podeVerVendasParadas) {
-    query.whereNot('n.tipo', TIPO_VENDA_PARADA);
-  }
+  aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, podeVerAprovacoes, podeVerVendasParadas });
 
-  const destinatario = await query.first();
+  const notificacao = await query.first();
 
-  if (!destinatario) {
+  if (!notificacao) {
     return false;
   }
 
-  await NotificacaoDestinatario.query()
-    .patchAndFetchById(destinatario.id, { lida_em: new Date() });
+  if (notificacao.destinatario_id) {
+    if (!notificacao.lida_em) {
+      await NotificacaoDestinatario.query()
+        .patchAndFetchById(notificacao.destinatario_id, { lida_em: new Date() });
+    }
+  } else {
+    await NotificacaoDestinatario.query().insert({
+      notificacao_id: notificacao.id,
+      usuario_id: usuarioId,
+      lida_em: new Date()
+    });
+  }
 
   return true;
 }
@@ -630,54 +628,85 @@ async function marcarTodasComoLidas(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
     .withGraphFetched('role');
+  const podeReceberTodas = usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_TODAS);
   const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
   const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
     || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
   const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
-  const query = NotificacaoDestinatario.query()
-    .alias('nd')
-    .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
-    .where('nd.usuario_id', usuarioId)
+
+  const query = aplicarJoinDestinatarioUsuario(Notificacao.query().alias('n'), usuarioId)
     .where('n.ativa', true)
     .whereNull('nd.lida_em')
-    .select('nd.id');
+    .select('n.id', 'nd.id as destinatario_id');
 
-  if (!podeVerTudo) {
-    query.whereIn('n.tipo', [
-      ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
-      ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
-    ]);
-  } else if (!podeVerVendasParadas) {
-    query.whereNot('n.tipo', TIPO_VENDA_PARADA);
-  }
+  aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, podeVerAprovacoes, podeVerVendasParadas });
 
-  const destinatarios = await query;
+  const notificacoes = await query;
 
-  if (destinatarios.length === 0) {
+  if (notificacoes.length === 0) {
     return 0;
   }
 
-  return NotificacaoDestinatario.query()
-    .whereIn('id', destinatarios.map(item => item.id))
-    .patch({ lida_em: new Date() });
+  const agora = new Date();
+  const destinatariosExistentes = notificacoes
+    .map(item => item.destinatario_id)
+    .filter(Boolean);
+  const notificacoesSemDestinatario = notificacoes
+    .filter(item => !item.destinatario_id)
+    .map(item => item.id);
+
+  if (destinatariosExistentes.length > 0) {
+    await NotificacaoDestinatario.query()
+      .whereIn('id', destinatariosExistentes)
+      .patch({ lida_em: agora });
+  }
+
+  for (const notificacaoId of notificacoesSemDestinatario) {
+    await NotificacaoDestinatario.query().insert({
+      notificacao_id: notificacaoId,
+      usuario_id: usuarioId,
+      lida_em: agora
+    });
+  }
+
+  return notificacoes.length;
 }
 
 async function marcarPopupVisto(notificacaoId, usuarioId) {
-  const destinatario = await NotificacaoDestinatario.query()
-    .alias('nd')
-    .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
-    .where('n.id', notificacaoId)
-    .where('nd.usuario_id', usuarioId)
-    .whereNull('nd.popup_visto_em')
-    .select('nd.id')
-    .first();
+  const usuario = await Usuario.query()
+    .findById(usuarioId)
+    .withGraphFetched('role');
+  const podeReceberTodas = usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_TODAS);
+  const podeVerTudo = usuarioTemPermissaoLocal(usuario, PERMISSAO_VISUALIZAR);
+  const podeVerAprovacoes = usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_visualizar')
+    || usuarioTemPermissaoLocal(usuario, 'vendas_aprovacoes_decidir');
+  const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
 
-  if (!destinatario) {
+  const query = aplicarJoinDestinatarioUsuario(Notificacao.query().alias('n'), usuarioId)
+    .where('n.id', notificacaoId)
+    .where('n.ativa', true)
+    .select('n.id', 'nd.id as destinatario_id', 'nd.popup_visto_em');
+
+  aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, podeVerAprovacoes, podeVerVendasParadas });
+
+  const notificacao = await query.first();
+
+  if (!notificacao) {
     return false;
   }
 
-  await NotificacaoDestinatario.query()
-    .patchAndFetchById(destinatario.id, { popup_visto_em: new Date() });
+  if (notificacao.destinatario_id) {
+    if (!notificacao.popup_visto_em) {
+      await NotificacaoDestinatario.query()
+        .patchAndFetchById(notificacao.destinatario_id, { popup_visto_em: new Date() });
+    }
+  } else {
+    await NotificacaoDestinatario.query().insert({
+      notificacao_id: notificacao.id,
+      usuario_id: usuarioId,
+      popup_visto_em: new Date()
+    });
+  }
 
   return true;
 }

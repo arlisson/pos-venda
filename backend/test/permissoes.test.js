@@ -30,6 +30,17 @@ test('admin pode ter qualquer permissao negada explicitamente', () => {
   assert.equal(usuarioTemPermissaoLocal(usuario, 'clientes_excluir'), false);
 });
 
+test('admin respeita permissoes salvas como json duplamente serializado', () => {
+  const usuario = {
+    ativo: true,
+    permissoes: '"{\\"clientes_excluir\\":false}"',
+    role: { nome: 'admin' }
+  };
+
+  assert.equal(usuarioTemPermissaoLocal(usuario, 'clientes_excluir'), false);
+  assert.equal(usuarioTemPermissaoLocal(usuario, 'clientes_criar'), true);
+});
+
 test('usuario comum soma permissoes proprias e da role', () => {
   const usuario = {
     ativo: true,
