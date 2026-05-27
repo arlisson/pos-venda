@@ -1,5 +1,8 @@
 import React from 'react';
 
+/**
+ * Executa a rotina campo texto.
+ */
 function CampoTexto({
   label,
   type = 'text',

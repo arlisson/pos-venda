@@ -1,6 +1,9 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 let redirecionandoLogin = false;
 
+/**
+ * Executa a rotina encerrar sessao expirada.
+ */
 function encerrarSessaoExpirada() {
   localStorage.removeItem('token');
   localStorage.removeItem('usuario');

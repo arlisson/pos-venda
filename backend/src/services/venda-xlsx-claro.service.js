@@ -14,35 +14,56 @@ const YELLOW = 'FFE699';
 const LGRAY  = 'F2F2F2';
 const GRAY   = 'BFBFBF';
 
+/**
+ * Executa a rotina logo path.
+ */
 const LOGO_PATH = (() => {
   const png = path.join(__dirname, '../assets/claro-logo.png');
   const jpg = path.join(__dirname, '../assets/claro-logo.jpg');
   return fs.existsSync(png) ? png : jpg;
 })();
 
+/**
+ * Executa a rotina txt.
+ */
 function txt(v) {
   return v === null || v === undefined ? '' : String(v).trim();
 }
 
+/**
+ * Executa a rotina fone.
+ */
 function fone(numero) {
   let v = txt(numero);
   if (v.startsWith('+55')) v = v.slice(3);
   return v.replace(/[()\-\s]/g, '');
 }
 
+/**
+ * Executa a rotina cnpj.
+ */
 function cnpj(v) {
   return txt(v).replace(/\D/g, '');
 }
 
+/**
+ * Executa a rotina fill.
+ */
 function fill(hex) {
   return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + hex } };
 }
 
+/**
+ * Executa a rotina border.
+ */
 function border() {
   const s = { style: 'thin' };
   return { top: s, bottom: s, left: s, right: s };
 }
 
+/**
+ * Executa a rotina font.
+ */
 function font(opts = {}) {
   return {
     name: 'Calibri',
@@ -53,10 +74,16 @@ function font(opts = {}) {
   };
 }
 
+/**
+ * Executa a rotina align.
+ */
 function align(h = 'left', wrap = false) {
   return { horizontal: h, vertical: 'middle', wrapText: wrap };
 }
 
+/**
+ * Executa a rotina w.
+ */
 function w(ws, row, col, value = '', opts = {}) {
   const cell = ws.getCell(row, col);
   cell.value = value !== '' ? value : null;
@@ -68,10 +95,16 @@ function w(ws, row, col, value = '', opts = {}) {
   return cell;
 }
 
+/**
+ * Executa a rotina merge.
+ */
 function merge(ws, r1, c1, r2, c2) {
   ws.mergeCells(r1, c1, r2, c2);
 }
 
+/**
+ * Executa a rotina campo duplo.
+ */
 function campoDuplo(ws, row, lbl1, val1, lbl2, val2, optsVal1 = {}, optsVal2 = {}) {
   ws.getRow(row).height = 16;
   w(ws, row, 1, lbl1, { bold: true, bg: GRAY });
@@ -82,6 +115,9 @@ function campoDuplo(ws, row, lbl1, val1, lbl2, val2, optsVal1 = {}, optsVal2 = {
   w(ws, row, 5, val2, optsVal2);
 }
 
+/**
+ * Executa a rotina campo simples.
+ */
 function campoSimples(ws, row, lbl, val) {
   ws.getRow(row).height = 16;
   w(ws, row, 1, lbl, { bg: GRAY });
@@ -89,6 +125,9 @@ function campoSimples(ws, row, lbl, val) {
   w(ws, row, 2, val);
 }
 
+/**
+ * Executa a rotina expandir precos.
+ */
 function expandirPrecos(valoresUnitariosChips, valorTotal, qtd) {
   const itens = parseItensChips(valoresUnitariosChips);
   if (itens.length > 0) {
@@ -109,16 +148,25 @@ function expandirPrecos(valoresUnitariosChips, valorTotal, qtd) {
   return Array(qtd).fill(null);
 }
 
+/**
+ * Executa a rotina gb com sufixo.
+ */
 function gbComSufixo(valor) {
   const gb = txt(valor).replace(/\D/g, '');
   return gb ? `${gb}GB` : '';
 }
 
+/**
+ * Executa a rotina plano claro.
+ */
 function planoClaro(gb, produto) {
   const gbTexto = gbComSufixo(gb);
   return gbTexto ? `CLARO PÓS - ${gbTexto}` : `CLARO PÓS - ${txt(produto)}`;
 }
 
+/**
+ * Executa a rotina expandir planos.
+ */
 function expandirPlanos(valoresUnitariosChips, gbPadrao, produto, qtd) {
   const itens = parseItensChips(valoresUnitariosChips, gbPadrao);
   if (itens.length > 0) {
@@ -135,6 +183,9 @@ function expandirPlanos(valoresUnitariosChips, gbPadrao, produto, qtd) {
   return Array(qtd).fill(planoClaro(gbPadrao, produto));
 }
 
+/**
+ * Executa a rotina expandir linhas chips.
+ */
 function expandirLinhasChips(valoresUnitariosChips, gbPadrao, produto, valorTotal, qtd) {
   const itens = parseItensChips(valoresUnitariosChips, gbPadrao);
   if (itens.length > 0) {
@@ -159,6 +210,9 @@ function expandirLinhasChips(valoresUnitariosChips, gbPadrao, produto, valorTota
   }));
 }
 
+/**
+ * Executa a rotina montar endereco.
+ */
 function montarEndereco(venda) {
   const partes = [
     txt(venda.endereco),
@@ -171,6 +225,9 @@ function montarEndereco(venda) {
   return partes.join(', ');
 }
 
+/**
+ * Executa a rotina operadora portabilidade.
+ */
 function operadoraPortabilidade(venda) {
   return txt(
     venda.cliente?.operadoraAtual?.nome
@@ -179,6 +236,9 @@ function operadoraPortabilidade(venda) {
   );
 }
 
+/**
+ * Executa a rotina gerar xlsx claro.
+ */
 async function gerarXlsxClaro(venda) {
   const portados     = parsePortados(venda.numeros_portados);
   const qtdLinhas    = Number(venda.quantidade_linhas || 0) || portados.length;

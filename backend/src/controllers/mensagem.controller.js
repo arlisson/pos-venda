@@ -6,6 +6,9 @@
  */
 const mensagemService = require('../services/mensagem.service');
 
+/**
+ * Executa a rotina contatos.
+ */
 async function contatos(req, res) {
   try {
     const lista = await mensagemService.listarContatos(req.usuario.id);
@@ -16,6 +19,9 @@ async function contatos(req, res) {
   }
 }
 
+/**
+ * Executa a rotina conversas.
+ */
 async function conversas(req, res) {
   try {
     const lista = await mensagemService.listarConversas(req.usuario.id);
@@ -26,6 +32,9 @@ async function conversas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina todas conversas.
+ */
 async function todasConversas(req, res) {
   try {
     const lista = await mensagemService.listarTodasConversas();
@@ -36,6 +45,9 @@ async function todasConversas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina mensagens.
+ */
 async function mensagens(req, res) {
   try {
     const lista = await mensagemService.listarMensagens(req.usuario.id, req.params.contatoId, {
@@ -49,6 +61,9 @@ async function mensagens(req, res) {
   }
 }
 
+/**
+ * Executa a rotina mensagens conversa interna.
+ */
 async function mensagensConversaInterna(req, res) {
   try {
     const lista = await mensagemService.listarMensagensConversaInterna(req.params.conversaKey, {
@@ -62,6 +77,9 @@ async function mensagensConversaInterna(req, res) {
   }
 }
 
+/**
+ * Executa a rotina enviar.
+ */
 async function enviar(req, res) {
   try {
     const mensagem = await mensagemService.enviarMensagem(
@@ -78,6 +96,9 @@ async function enviar(req, res) {
   }
 }
 
+/**
+ * Executa a rotina upload anexo.
+ */
 async function uploadAnexo(req, res) {
   try {
     const resultado = await mensagemService.uploadAnexo(req, req.usuario.id);
@@ -88,6 +109,9 @@ async function uploadAnexo(req, res) {
   }
 }
 
+/**
+ * Executa a rotina baixar anexo.
+ */
 async function baixarAnexo(req, res) {
   try {
     const { stream, mimeType, tamanhoBytes, nome } = await mensagemService.prepararDownloadAnexo(
@@ -119,6 +143,9 @@ async function baixarAnexo(req, res) {
   }
 }
 
+/**
+ * Executa a rotina baixar anexo interno.
+ */
 async function baixarAnexoInterno(req, res) {
   try {
     const { stream, mimeType, tamanhoBytes, nome } = await mensagemService.prepararDownloadAnexo(
@@ -150,6 +177,9 @@ async function baixarAnexoInterno(req, res) {
   }
 }
 
+/**
+ * Executa a rotina nao lidas.
+ */
 async function naoLidas(req, res) {
   try {
     const dados = await mensagemService.contarNaoLidas(req.usuario.id);
@@ -160,6 +190,9 @@ async function naoLidas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina marcar lida.
+ */
 async function marcarLida(req, res) {
   try {
     await mensagemService.marcarConversaLida(req.usuario.id, req.params.contatoId);
@@ -170,6 +203,9 @@ async function marcarLida(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir.
+ */
 async function excluir(req, res) {
   try {
     await mensagemService.excluirMensagem(req.usuario.id, req.params.id);

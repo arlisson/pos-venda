@@ -56,15 +56,24 @@ const PRIORIDADES_BASE_DUPLA = [
   { value: 'base_operadora', label: 'Base da operadora' }
 ];
 
+/**
+ * Executa a rotina fmt moeda.
+ */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/**
+ * Executa a rotina valor form.
+ */
 function valorForm(valor) {
   if (valor === null || valor === undefined || valor === '') return '';
   return fmtMoeda(valor);
 }
 
+/**
+ * Executa a rotina mascarar brl.
+ */
 function mascararBRL(valor) {
   const digits = String(valor || '').replace(/\D/g, '');
   if (!digits) return '';
@@ -72,6 +81,9 @@ function mascararBRL(valor) {
   return fmtMoeda(Number(digits) / 100);
 }
 
+/**
+ * Executa a rotina moeda para numero.
+ */
 function moedaParaNumero(valor) {
   const digits = String(valor || '').replace(/\D/g, '');
   if (!digits) return '';
@@ -79,10 +91,16 @@ function moedaParaNumero(valor) {
   return Number((Number(digits) / 100).toFixed(2));
 }
 
+/**
+ * Executa a rotina label prioridade base dupla.
+ */
 function labelPrioridadeBaseDupla(valor) {
   return PRIORIDADES_BASE_DUPLA.find(item => item.value === valor)?.label || 'Nossa base';
 }
 
+/**
+ * Executa a rotina status pill.
+ */
 function StatusPill({ ativo }) {
   return (
     <span className={`config-status ${ativo ? 'is-active' : 'is-inactive'}`}>
@@ -92,6 +110,9 @@ function StatusPill({ ativo }) {
   );
 }
 
+/**
+ * Executa a rotina confirmar exclusao config modal.
+ */
 function ConfirmarExclusaoConfigModal({ item, tipo, excluindo, onClose, onConfirm }) {
   if (!item) return null;
 
@@ -133,6 +154,9 @@ function ConfirmarExclusaoConfigModal({ item, tipo, excluindo, onClose, onConfir
   );
 }
 
+/**
+ * Executa a rotina configuracoes page.
+ */
 function ConfiguracoesPage() {
   const usuario = getUsuarioLocal();
   const permissoes = {
@@ -187,6 +211,9 @@ function ConfiguracoesPage() {
     return () => clearTimeout(timer);
   }, [erro]);
 
+  /**
+   * Executa a rotina carregar dados.
+   */
   async function carregarDados() {
     setErro('');
     setCarregando(true);
@@ -218,6 +245,9 @@ function ConfiguracoesPage() {
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
+  /**
+   * Executa a rotina resetar forms.
+   */
   function resetarForms() {
     setFormSimples(FORM_SIMPLES);
     setLinkForm(LINK_VAZIO);
@@ -225,12 +255,18 @@ function ConfiguracoesPage() {
     setEditandoId(null);
   }
 
+  /**
+   * Executa a rotina mudar aba.
+   */
   function mudarAba(id) {
     setAba(id);
     setItemParaExcluir(null);
     resetarForms();
   }
 
+  /**
+   * Executa a rotina editar item.
+   */
   function editarItem(item) {
     setEditandoId(item.id);
 
@@ -265,6 +301,9 @@ function ConfiguracoesPage() {
     });
   }
 
+  /**
+   * Executa a rotina render form header.
+   */
   function renderFormHeader(tituloAdicionar, tituloEditar, subtitulo) {
     return (
       <div className="config-form-header">
@@ -282,6 +321,9 @@ function ConfiguracoesPage() {
     );
   }
 
+  /**
+   * Executa a rotina render form actions.
+   */
   function renderFormActions(salvandoLabel = 'Salvar alterações', adicionandoLabel = 'Adicionar') {
     return (
       <div className="config-form-actions">
@@ -298,6 +340,9 @@ function ConfiguracoesPage() {
     );
   }
 
+  /**
+   * Executa a rotina salvar simples.
+   */
   async function salvarSimples(event) {
     event.preventDefault();
     setErro('');
@@ -326,6 +371,9 @@ function ConfiguracoesPage() {
     }
   }
 
+  /**
+   * Executa a rotina salvar link.
+   */
   async function salvarLink(event) {
     event.preventDefault();
     setErro('');
@@ -347,6 +395,9 @@ function ConfiguracoesPage() {
     }
   }
 
+  /**
+   * Executa a rotina salvar regra comissao.
+   */
   async function salvarRegraComissao(event) {
     event.preventDefault();
     setErro('');
@@ -377,10 +428,16 @@ function ConfiguracoesPage() {
     }
   }
 
+  /**
+   * Executa a rotina solicitar exclusao.
+   */
   function solicitarExclusao(item) {
     setItemParaExcluir(item);
   }
 
+  /**
+   * Executa a rotina confirmar exclusao.
+   */
   async function confirmarExclusao() {
     if (!itemParaExcluir) return;
 
@@ -408,6 +465,9 @@ function ConfiguracoesPage() {
     }
   }
 
+  /**
+   * Executa a rotina render links.
+   */
   function renderLinks(listaAtual) {
     return (
       <>
@@ -479,6 +539,9 @@ function ConfiguracoesPage() {
     );
   }
 
+  /**
+   * Executa a rotina render regras comissao.
+   */
   function renderRegrasComissao(listaAtual) {
     return (
       <>
@@ -621,6 +684,9 @@ function ConfiguracoesPage() {
     );
   }
 
+  /**
+   * Executa a rotina render simples.
+   */
   function renderSimples(listaAtual) {
     const labelAtual = abas.find(item => item.id === aba)?.label || 'item';
 

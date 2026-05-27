@@ -8,15 +8,24 @@ import { formatDateValue } from '../../utils/datetime';
 import { formatarNomeServico } from '../../utils/servicos';
 import './VendasPage.css';
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(value) {
   return formatDateValue(value, undefined, '-');
 }
 
+/**
+ * Executa a rotina formatar moeda.
+ */
 function formatarMoeda(value) {
   if (value === null || value === undefined || value === '') return '-';
   return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/**
+ * Executa a rotina confirmar exclusao definitiva modal.
+ */
 function ConfirmarExclusaoDefinitivaModal({ venda, excluindo, onClose, onConfirm }) {
   if (!venda) return null;
 
@@ -56,6 +65,9 @@ function ConfirmarExclusaoDefinitivaModal({ venda, excluindo, onClose, onConfirm
   );
 }
 
+/**
+ * Executa a rotina vendas lixeira page.
+ */
 function VendasLixeiraPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -83,6 +95,9 @@ function VendasLixeiraPage() {
     return () => clearTimeout(timer);
   }, [sucesso]);
 
+  /**
+   * Executa a rotina carregar dados.
+   */
   async function carregarDados(proximosFiltros = filtros) {
     setErro('');
     setCarregando(true);
@@ -102,11 +117,17 @@ function VendasLixeiraPage() {
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
+  /**
+   * Executa a rotina handle buscar.
+   */
   async function handleBuscar(event) {
     event.preventDefault();
     await carregarDados({ busca });
   }
 
+  /**
+   * Executa a rotina handle restaurar.
+   */
   async function handleRestaurar(venda) {
     setProcessandoId(venda.id);
     setErro('');
@@ -123,6 +144,9 @@ function VendasLixeiraPage() {
     }
   }
 
+  /**
+   * Executa a rotina confirmar exclusao definitiva.
+   */
   async function confirmarExclusaoDefinitiva() {
     if (!vendaParaExcluir) return;
 

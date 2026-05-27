@@ -36,10 +36,16 @@ const TRANSIENT_DB_ERRORS = [
   'Deadlock found'
 ];
 
+/**
+ * Executa a rotina sleep.
+ */
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * Executa a rotina is transient db error.
+ */
 function isTransientDbError(error) {
   const texto = [
     error?.message,
@@ -51,6 +57,9 @@ function isTransientDbError(error) {
   return TRANSIENT_DB_ERRORS.some(pattern => texto.includes(pattern));
 }
 
+/**
+ * Executa a rotina log processamento.
+ */
 function logProcessamento(planilhaId, etapa, dados = {}) {
   const partes = [`[lead-planilhas] planilha_id=${planilhaId}`, `etapa=${etapa}`];
   if (dados.linhas !== undefined) partes.push(`linhas=${dados.linhas}`);
@@ -72,6 +81,9 @@ function logProcessamento(planilhaId, etapa, dados = {}) {
   console.log(partes.join(' '));
 }
 
+/**
+ * Executa a rotina remover arquivo importacao.
+ */
 async function removerArquivoImportacao(planilhaId, arquivoPath, contexto) {
   if (!arquivoPath) return true;
 
@@ -91,6 +103,9 @@ async function removerArquivoImportacao(planilhaId, arquivoPath, contexto) {
   }
 }
 
+/**
+ * Executa a rotina with db retry.
+ */
 async function withDbRetry(planilhaId, etapa, fn, opcoes = {}) {
   const tentativas = opcoes.tentativas ?? DB_RETRY_ATTEMPTS;
 
@@ -117,6 +132,9 @@ async function withDbRetry(planilhaId, etapa, fn, opcoes = {}) {
   return null;
 }
 
+/**
+ * Executa a rotina inserir lead linhas.
+ */
 async function inserirLeadLinhas(planilhaId, linhas, etapa) {
   if (!linhas.length) return;
 
@@ -127,6 +145,9 @@ async function inserirLeadLinhas(planilhaId, linhas, etapa) {
   let lote = [];
   let loteBytes = 0;
 
+  /**
+   * Executa a rotina flush.
+   */
   async function flush() {
     if (lote.length === 0) return;
     const loteAtual = lote;
@@ -159,6 +180,9 @@ async function inserirLeadLinhas(planilhaId, linhas, etapa) {
   await flush();
 }
 
+/**
+ * Executa a rotina escape load infile value.
+ */
 function escapeLoadInfileValue(valor) {
   return String(valor)
     .replace(/\\/g, '\\\\')
@@ -167,6 +191,9 @@ function escapeLoadInfileValue(valor) {
     .replace(/\t/g, '\\t');
 }
 
+/**
+ * Executa a rotina inserir via load infile.
+ */
 async function inserirViaLoadInfile(planilhaId, linhas, etapa) {
   const tmpDir = os.tmpdir();
   const arquivoTsv = path.join(tmpDir, `lead-load-${planilhaId}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.tsv`);
@@ -208,13 +235,22 @@ async function inserirViaLoadInfile(planilhaId, linhas, etapa) {
   }
 }
 
+/**
+ * Executa a rotina criar http error.
+ */
 function criarHttpError(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
 }
 
+/**
+ * Executa a rotina formatar date time sql.
+ */
 function formatarDateTimeSQL(data = new Date()) {
+  /**
+   * Executa a rotina pad.
+   */
   const pad = value => String(value).padStart(2, '0');
 
   return [
@@ -228,6 +264,9 @@ function formatarDateTimeSQL(data = new Date()) {
   ].join(':');
 }
 
+/**
+ * Executa a rotina parse data hora retorno.
+ */
 function parseDataHoraRetorno(valor) {
   if (!valor) return null;
 
@@ -240,12 +279,18 @@ function parseDataHoraRetorno(valor) {
   return formatarDateTimeSQL(data);
 }
 
+/**
+ * Executa a rotina adicionar dias.
+ */
 function adicionarDias(data, dias) {
   const resultado = new Date(data);
   resultado.setDate(resultado.getDate() + dias);
   return resultado;
 }
 
+/**
+ * Executa a rotina aplicar busca futuros clientes.
+ */
 function aplicarBuscaFuturosClientes(query, busca) {
   const termo = String(busca || '').trim().toLowerCase();
   if (!termo) return query;
@@ -257,6 +302,9 @@ function aplicarBuscaFuturosClientes(query, busca) {
   });
 }
 
+/**
+ * Executa a rotina parse json.
+ */
 function parseJson(valor, fallback) {
   if (valor === null || valor === undefined) return fallback;
   if (typeof valor !== 'string') return valor;
@@ -268,6 +316,9 @@ function parseJson(valor, fallback) {
   }
 }
 
+/**
+ * Executa a rotina formatar planilha.
+ */
 function formatarPlanilha(planilha) {
   const json = typeof planilha?.toJSON === 'function' ? planilha.toJSON() : planilha;
   if (!json) return json;
@@ -285,6 +336,9 @@ function formatarPlanilha(planilha) {
 
 const PROCESSAMENTO_TRAVADO_MS = Number(process.env.LEAD_IMPORT_STALE_MS || 5 * 60 * 1000);
 
+/**
+ * Executa a rotina reconciliar planilha processando.
+ */
 async function reconciliarPlanilhaProcessando(planilha) {
   const json = typeof planilha?.toJSON === 'function' ? planilha.toJSON() : planilha;
   if (!json || json.status !== 'processando') return planilha;
@@ -323,6 +377,9 @@ async function reconciliarPlanilhaProcessando(planilha) {
   }
 }
 
+/**
+ * Executa a rotina formatar envio.
+ */
 function formatarEnvio(envio) {
   const json = typeof envio?.toJSON === 'function' ? envio.toJSON() : envio;
   if (!json) return json;
@@ -337,6 +394,9 @@ function formatarEnvio(envio) {
   };
 }
 
+/**
+ * Executa a rotina formatar linha.
+ */
 function formatarLinha(linha) {
   const json = typeof linha?.toJSON === 'function' ? linha.toJSON() : linha;
   if (!json) return json;
@@ -349,6 +409,9 @@ function formatarLinha(linha) {
   };
 }
 
+/**
+ * Executa a rotina listar planilhas.
+ */
 async function listarPlanilhas() {
   const planilhas = await LeadPlanilha.query()
     .withGraphFetched('criador')
@@ -364,11 +427,17 @@ async function listarPlanilhas() {
   return reconciliadas.map(formatarPlanilha);
 }
 
+/**
+ * Executa a rotina buscar status.
+ */
 async function buscarStatus(planilhaId) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
   return formatarPlanilha(await reconciliarPlanilhaProcessando(planilha));
 }
 
+/**
+ * Executa a rotina criar planilha.
+ */
 async function criarPlanilha(dados, usuarioId) {
   const colunas = Array.isArray(dados.colunas) ? dados.colunas : [];
   const schemaColunas = dados.schema_colunas && typeof dados.schema_colunas === 'object'
@@ -397,6 +466,9 @@ async function criarPlanilha(dados, usuarioId) {
   return formatarPlanilha(planilha);
 }
 
+/**
+ * Executa a rotina salvar linhas lote.
+ */
 async function salvarLinhasLote(planilhaId, linhas = []) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
   if (!planilha) throw new Error('Planilha não encontrada.');
@@ -431,6 +503,9 @@ async function salvarLinhasLote(planilhaId, linhas = []) {
   return { total_linhas: total };
 }
 
+/**
+ * Executa a rotina finalizar planilha.
+ */
 async function finalizarPlanilha(planilhaId, dados = {}) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
   if (!planilha) throw criarHttpError(404, 'Planilha não encontrada.');
@@ -456,6 +531,9 @@ async function finalizarPlanilha(planilhaId, dados = {}) {
   return formatarPlanilha(atualizada || planilha);
 }
 
+/**
+ * Executa a rotina marcar erro planilha.
+ */
 async function marcarErroPlanilha(planilhaId, mensagem) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
   if (!planilha) throw criarHttpError(404, 'Planilha não encontrada.');
@@ -470,6 +548,9 @@ async function marcarErroPlanilha(planilhaId, mensagem) {
   return formatarPlanilha(atualizada || planilha);
 }
 
+/**
+ * Executa a rotina atualizar schema.
+ */
 async function atualizarSchema(planilhaId, schemaColunas) {
   const planilha = await LeadPlanilha.query().patchAndFetchById(planilhaId, {
     schema_colunas: JSON.stringify(schemaColunas || {}),
@@ -479,6 +560,9 @@ async function atualizarSchema(planilhaId, schemaColunas) {
   return planilha ? formatarPlanilha(planilha) : null;
 }
 
+/**
+ * Executa a rotina excluir planilha.
+ */
 async function excluirPlanilha(planilhaId) {
   let planilha = await LeadPlanilha.query().findById(planilhaId);
 
@@ -523,6 +607,9 @@ async function excluirPlanilha(planilhaId) {
   return true;
 }
 
+/**
+ * Executa a rotina ids from query.
+ */
 function idsFromQuery(valor) {
   if (!valor) return [];
   if (Array.isArray(valor)) return valor.map(Number).filter(Boolean);
@@ -532,15 +619,24 @@ function idsFromQuery(valor) {
     .filter(Boolean);
 }
 
+/**
+ * Executa a rotina get json value expr.
+ */
 function getJsonValueExpr(coluna) {
   const pathSeguro = String(coluna || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   return `JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$."${pathSeguro}"'))`;
 }
 
+/**
+ * Executa a rotina get coluna nome.
+ */
 function getColunaNome(coluna) {
   return coluna?.nome || coluna?.label || coluna;
 }
 
+/**
+ * Executa a rotina criar coluna atualizada.
+ */
 function criarColunaAtualizada(coluna) {
   if (typeof coluna === 'string') return `${coluna}${UPDATED_COLUMN_SUFFIX}`;
 
@@ -561,6 +657,9 @@ function criarColunaAtualizada(coluna) {
   };
 }
 
+/**
+ * Executa a rotina coluna atualizada existe.
+ */
 function colunaAtualizadaExiste(coluna, chavesAtualizadas) {
   if (!coluna || String(getColunaNome(coluna)).endsWith(UPDATED_COLUMN_SUFFIX)) return false;
 
@@ -571,6 +670,9 @@ function colunaAtualizadaExiste(coluna, chavesAtualizadas) {
   return chavesAtualizadas.has(`${getColunaNome(coluna)}${UPDATED_COLUMN_SUFFIX}`);
 }
 
+/**
+ * Executa a rotina coletar chaves atualizadas.
+ */
 async function coletarChavesAtualizadas(query) {
   const chaves = new Set();
   let offset = 0;
@@ -596,6 +698,9 @@ async function coletarChavesAtualizadas(query) {
   return chaves;
 }
 
+/**
+ * Executa a rotina expandir colunas exportacao.
+ */
 async function expandirColunasExportacao(colunas, query) {
   const chavesAtualizadas = await coletarChavesAtualizadas(query);
   if (chavesAtualizadas.size === 0) return colunas;
@@ -620,6 +725,9 @@ async function expandirColunasExportacao(colunas, query) {
   return resultado;
 }
 
+/**
+ * Executa a rotina aplicar filtros query.
+ */
 function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
   const planilhaIds = idsFromQuery(filtros.planilha_ids);
   const envioIds = idsFromQuery(filtros.envio_ids);
@@ -659,6 +767,9 @@ function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
   });
 }
 
+/**
+ * Executa a rotina listar linhas.
+ */
 async function listarLinhas(filtros = {}, opcoes = {}) {
   const page = Math.max(1, Number(filtros.page || 1));
   const pageSize = Math.min(500, Math.max(1, Number(filtros.page_size || filtros.pageSize || 200)));
@@ -692,6 +803,9 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
   };
 }
 
+/**
+ * Executa a rotina atualizar campo linha recebida.
+ */
 async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
   if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
@@ -730,6 +844,9 @@ async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}) {
   };
 }
 
+/**
+ * Executa a rotina listar envios do usuario.
+ */
 async function listarEnviosDoUsuario(usuarioId) {
   const envios = await LeadEnvio.query()
     .whereExists(
@@ -746,6 +863,9 @@ async function listarEnviosDoUsuario(usuarioId) {
   return envios.map(formatarEnvio);
 }
 
+/**
+ * Executa a rotina listar todos envios.
+ */
 async function listarTodosEnvios() {
   const envios = await LeadEnvio.query()
     .withGraphFetched('usuarios.usuario')
@@ -756,6 +876,9 @@ async function listarTodosEnvios() {
   return envios.map(formatarEnvio);
 }
 
+/**
+ * Executa a rotina montar alocacoes.
+ */
 function montarAlocacoes(usuarioIds, quantidadeTotal, alocacaoManual = {}) {
   const base = Math.floor(quantidadeTotal / usuarioIds.length);
   const sobra = quantidadeTotal % usuarioIds.length;
@@ -784,6 +907,9 @@ function montarAlocacoes(usuarioIds, quantidadeTotal, alocacaoManual = {}) {
   };
 }
 
+/**
+ * Executa a rotina buscar ids por criterios.
+ */
 async function buscarIdsPorCriterios(dados, quantidadeTotal) {
   if (Array.isArray(dados.linha_ids) && dados.linha_ids.length > 0) {
     return dados.linha_ids.map(Number).filter(Boolean).slice(0, quantidadeTotal);
@@ -804,6 +930,9 @@ async function buscarIdsPorCriterios(dados, quantidadeTotal) {
   return rows.map(row => row.id);
 }
 
+/**
+ * Executa a rotina dividir leads.
+ */
 async function dividirLeads(dados, usuarioId) {
   const usuarioIds = Array.isArray(dados.usuario_ids)
     ? dados.usuario_ids.map(Number).filter(Boolean)
@@ -885,6 +1014,9 @@ async function dividirLeads(dados, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina processar removido ini.
+ */
 async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes) {
   let colunas = null;
   let delimitador = ';';
@@ -896,6 +1028,9 @@ async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes)
   let loteBytes = 0;
   const amostra = [];
 
+  /**
+   * Executa a rotina atualizar progresso por bytes.
+   */
   async function atualizarProgressoPorBytes() {
     if (tamanhoBytes <= 0) return;
     const progresso = Math.min(99, Math.floor((bytesLidos / tamanhoBytes) * 100));
@@ -908,6 +1043,9 @@ async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes)
     });
   }
 
+  /**
+   * Executa a rotina flush.
+   */
   async function flush() {
     if (lote.length === 0) return;
     await inserirLeadLinhas(planilhaId, lote, 'processarArquivoCsv');
@@ -1029,6 +1167,9 @@ async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes)
   }
 }
 
+/**
+ * Executa a rotina iniciar upload.
+ */
 function iniciarUpload(req, usuarioId) {
   ensureImportDir();
 
@@ -1117,11 +1258,17 @@ function iniciarUpload(req, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina csv escape.
+ */
 function csvEscape(valor) {
   const texto = String(valor ?? '');
   return /[",;\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
 }
 
+/**
+ * Executa a rotina exportar csv.
+ */
 async function exportarCsv(filtros, res, opcoes = {}) {
   const colunasOriginais = Array.isArray(filtros.colunas) ? filtros.colunas : [];
   const query = LeadLinha.query();
@@ -1156,6 +1303,9 @@ async function exportarCsv(filtros, res, opcoes = {}) {
   res.end();
 }
 
+/**
+ * Executa a rotina marcar como futuro cliente.
+ */
 async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
   if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
@@ -1185,6 +1335,9 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
   return { linha: formatarLinha(atualizada) };
 }
 
+/**
+ * Executa a rotina listar futuros clientes.
+ */
 async function listarFuturosClientes(filtros = {}, usuarioId) {
   await limparFuturosClientesVencidosDaLixeira(usuarioId);
 
@@ -1214,6 +1367,9 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina limpar futuros clientes vencidos da lixeira.
+ */
 async function limparFuturosClientesVencidosDaLixeira(usuarioId = null) {
   const query = db('lead_linhas')
     .where('futuro_cliente', true)
@@ -1237,6 +1393,9 @@ async function limparFuturosClientesVencidosDaLixeira(usuarioId = null) {
   });
 }
 
+/**
+ * Executa a rotina listar futuros clientes lixeira.
+ */
 async function listarFuturosClientesLixeira(filtros = {}, usuarioId) {
   await limparFuturosClientesVencidosDaLixeira(usuarioId);
 
@@ -1267,6 +1426,9 @@ async function listarFuturosClientesLixeira(filtros = {}, usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina enviar futuro cliente para lixeira.
+ */
 async function enviarFuturoClienteParaLixeira(linhaId, usuarioId) {
   const agora = new Date();
 
@@ -1283,6 +1445,9 @@ async function enviarFuturoClienteParaLixeira(linhaId, usuarioId) {
     });
 }
 
+/**
+ * Executa a rotina restaurar futuro cliente.
+ */
 async function restaurarFuturoCliente(linhaId, usuarioId) {
   const atualizados = await db('lead_linhas')
     .where('id', Number(linhaId))
@@ -1305,6 +1470,9 @@ async function restaurarFuturoCliente(linhaId, usuarioId) {
   return formatarLinha(atualizada);
 }
 
+/**
+ * Executa a rotina excluir futuro cliente definitivo.
+ */
 async function excluirFuturoClienteDefinitivo(linhaId, usuarioId) {
   return db('lead_linhas')
     .where('id', Number(linhaId))

@@ -12,27 +12,45 @@ const PERMISSAO_RECEBER_EMAIL = 'notificacoes_receber_email';
 
 let transporter = null;
 
+/**
+ * Executa a rotina email user.
+ */
 function emailUser() {
   return process.env.EMAIL || process.env.SMTP_USER || '';
 }
 
+/**
+ * Executa a rotina email password.
+ */
 function emailPassword() {
   return process.env.EMAIL_PASSWORD || process.env.SMTP_PASS || '';
 }
 
+/**
+ * Executa a rotina email host.
+ */
 function emailHost() {
   return process.env.EMAIL_HOST || process.env.SMTP_HOST || 'smtp.hostinger.com';
 }
 
+/**
+ * Executa a rotina email port.
+ */
 function emailPort() {
   return Number(process.env.EMAIL_PORT || process.env.SMTP_PORT || 465);
 }
 
+/**
+ * Executa a rotina email secure.
+ */
 function emailSecure() {
   const valor = process.env.EMAIL_SECURE || process.env.SMTP_SECURE || 'true';
   return String(valor) !== 'false';
 }
 
+/**
+ * Executa a rotina status configuracao.
+ */
 function statusConfiguracao() {
   return {
     configurado: emailConfigurado(),
@@ -44,6 +62,9 @@ function statusConfiguracao() {
   };
 }
 
+/**
+ * Executa a rotina parse dados.
+ */
 function parseDados(dados) {
   if (!dados) return {};
   if (typeof dados === 'string') {
@@ -57,15 +78,24 @@ function parseDados(dados) {
   return dados;
 }
 
+/**
+ * Executa a rotina usuario pode receber email.
+ */
 function usuarioPodeReceberEmail(usuario) {
   if (!usuario?.ativo) return false;
   return usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_EMAIL);
 }
 
+/**
+ * Executa a rotina email configurado.
+ */
 function emailConfigurado() {
   return Boolean(emailUser() && emailPassword());
 }
 
+/**
+ * Executa a rotina get transporter.
+ */
 function getTransporter() {
   if (!emailConfigurado()) return null;
 
@@ -84,6 +114,9 @@ function getTransporter() {
   return transporter;
 }
 
+/**
+ * Executa a rotina escape html.
+ */
 function escapeHtml(valor) {
   return String(valor ?? '')
     .replace(/&/g, '&amp;')
@@ -93,22 +126,34 @@ function escapeHtml(valor) {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Executa a rotina frontend url.
+ */
 function frontendUrl() {
   return String(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
 }
 
+/**
+ * Executa a rotina absolute url.
+ */
 function absoluteUrl(path) {
   if (!path) return frontendUrl();
   if (/^https?:\/\//i.test(path)) return path;
   return `${frontendUrl()}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+/**
+ * Executa a rotina detalhes from entries.
+ */
 function detalhesFromEntries(entries) {
   return entries
     .filter(([, valor]) => valor !== null && valor !== undefined && String(valor).trim() !== '')
     .map(([label, valor]) => ({ label, value: valor }));
 }
 
+/**
+ * Executa a rotina montar acao.
+ */
 function montarAcao(notificacao) {
   const dados = parseDados(notificacao.dados);
   const vendaId = notificacao.entidade_id || dados.venda_id;
@@ -203,6 +248,9 @@ function montarAcao(notificacao) {
   }
 }
 
+/**
+ * Executa a rotina montar html.
+ */
 function montarHtml({ notificacao, usuario, actionUrl, actionLabel, detalhes }) {
   const detalhesHtml = detalhes.length > 0
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border-collapse:collapse;">${detalhes.map(item => `
@@ -255,6 +303,9 @@ function montarHtml({ notificacao, usuario, actionUrl, actionLabel, detalhes }) 
 </html>`;
 }
 
+/**
+ * Executa a rotina montar texto.
+ */
 function montarTexto({ notificacao, usuario, actionUrl, actionLabel, detalhes }) {
   const linhas = [
     `Ola, ${usuario.nome || 'tudo bem'}.`,
@@ -271,6 +322,9 @@ function montarTexto({ notificacao, usuario, actionUrl, actionLabel, detalhes })
   return linhas.join('\n');
 }
 
+/**
+ * Executa a rotina enviar email destinatario.
+ */
 async function enviarEmailDestinatario({ notificacao, destinatario, usuario }) {
   if (!usuarioPodeReceberEmail(usuario)) {
     await NotificacaoDestinatario.query()
@@ -317,6 +371,9 @@ async function enviarEmailDestinatario({ notificacao, destinatario, usuario }) {
   return true;
 }
 
+/**
+ * Executa a rotina enviar email teste.
+ */
 async function enviarEmailTeste(usuario) {
   if (!emailConfigurado()) {
     const error = new Error('SMTP nao configurado. Defina SMTP_USER/SMTP_PASS ou EMAIL/EMAIL_PASSWORD.');
@@ -364,6 +421,9 @@ async function enviarEmailTeste(usuario) {
   };
 }
 
+/**
+ * Executa a rotina enviar emails pendentes.
+ */
 async function enviarEmailsPendentes(notificacaoId) {
   if (!emailConfigurado()) return { enviados: 0, ignorado: true };
 
@@ -402,6 +462,9 @@ async function enviarEmailsPendentes(notificacaoId) {
   return { enviados };
 }
 
+/**
+ * Executa a rotina enviar emails pendentes async.
+ */
 function enviarEmailsPendentesAsync(notificacaoId) {
   setTimeout(() => {
     enviarEmailsPendentes(notificacaoId).catch(error => {

@@ -11,6 +11,9 @@ import { formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../utils/datetim
 
 const NOTA_VAZIA = { titulo: '', conteudo: '', retorno_agendado_para: null };
 
+/**
+ * Executa a rotina formatar data nota.
+ */
 function formatarDataNota(valor) {
   return formatUtcDateTime(valor, {
     day: '2-digit',
@@ -21,10 +24,16 @@ function formatarDataNota(valor) {
   });
 }
 
+/**
+ * Executa a rotina formatar data input.
+ */
 function formatarDataInput(valor) {
   return toLocalDateTimeInputFromUtc(valor);
 }
 
+/**
+ * Executa a rotina montar draft nota.
+ */
 function montarDraftNota(nota = NOTA_VAZIA) {
   return {
     titulo: nota.titulo || '',
@@ -33,6 +42,9 @@ function montarDraftNota(nota = NOTA_VAZIA) {
   };
 }
 
+/**
+ * Executa a rotina nota editor.
+ */
 function NotaEditor({ value, salvando, onChange, onCancel, onSave, saveLabel = 'Salvar' }) {
   const podeSalvar = String(value.titulo || '').trim() || String(value.conteudo || '').trim();
   const retornoAtivo = value.retorno_agendado_para !== null && value.retorno_agendado_para !== undefined;
@@ -95,6 +107,9 @@ function NotaEditor({ value, salvando, onChange, onCancel, onSave, saveLabel = '
   );
 }
 
+/**
+ * Executa a rotina notas entidade tab.
+ */
 function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasChange = () => {} }) {
   const [notas, setNotas] = useState([]);
   const [carregando, setCarregando] = useState(false);
@@ -107,6 +122,9 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
 
   const labelEntidade = useMemo(() => tipo === 'cliente' ? 'cliente' : 'venda', [tipo]);
 
+  /**
+   * Executa a rotina carregar notas.
+   */
   async function carregarNotas() {
     if (!entidadeId) return;
 
@@ -127,28 +145,43 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
     carregarNotas();
   }, [tipo, entidadeId]);
 
+  /**
+   * Executa a rotina iniciar nova nota.
+   */
   function iniciarNovaNota() {
     setCriando(true);
     setDraftNova(NOTA_VAZIA);
     setEditandoId(null);
   }
 
+  /**
+   * Executa a rotina iniciar edicao.
+   */
   function iniciarEdicao(nota) {
     setEditandoId(nota.id);
     setDraftEdicao(montarDraftNota(nota));
     setCriando(false);
   }
 
+  /**
+   * Executa a rotina adicionar pendente.
+   */
   function adicionarPendente() {
     onPendingNotasChange([...pendingNotas, { ...draftNova }]);
     setCriando(false);
     setDraftNova(NOTA_VAZIA);
   }
 
+  /**
+   * Executa a rotina remover pendente.
+   */
   function removerPendente(idx) {
     onPendingNotasChange(pendingNotas.filter((_, i) => i !== idx));
   }
 
+  /**
+   * Executa a rotina notificar atualizar.
+   */
   function notificarAtualizar(notasAtualizadas) {
     window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
     if (tipo === 'cliente' && entidadeId) {
@@ -158,6 +191,9 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
     }
   }
 
+  /**
+   * Executa a rotina salvar nova nota.
+   */
   async function salvarNovaNota() {
     setSalvando(true);
     setErro('');
@@ -176,6 +212,9 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
     }
   }
 
+  /**
+   * Executa a rotina salvar edicao.
+   */
   async function salvarEdicao() {
     if (!editandoId) return;
 
@@ -196,6 +235,9 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
     }
   }
 
+  /**
+   * Executa a rotina remover nota.
+   */
   async function removerNota(nota) {
     const confirmado = window.confirm('Excluir esta nota?');
     if (!confirmado) return;
@@ -215,6 +257,9 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
     }
   }
 
+  /**
+   * Executa a rotina remover retorno.
+   */
   async function removerRetorno(nota) {
     setSalvando(true);
     setErro('');

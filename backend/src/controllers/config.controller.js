@@ -6,6 +6,9 @@
  */
 const configService = require('../services/config.service');
 
+/**
+ * Executa a rotina operadoras.
+ */
 async function operadoras(req, res) {
   try {
     const dados = await configService.listarOperadorasAtivas();
@@ -20,6 +23,9 @@ async function operadoras(req, res) {
   }
 }
 
+/**
+ * Executa a rotina links externos.
+ */
 async function linksExternos(req, res) {
   try {
     const dados = await configService.listarLinksExternosAtivos();
@@ -34,6 +40,9 @@ async function linksExternos(req, res) {
   }
 }
 
+/**
+ * Executa a rotina tipos produto.
+ */
 async function tiposProduto(req, res) {
   try {
     const dados = await configService.listarTiposProdutoAtivos();
@@ -48,6 +57,9 @@ async function tiposProduto(req, res) {
   }
 }
 
+/**
+ * Executa a rotina tipos venda.
+ */
 async function tiposVenda(req, res) {
   try {
     const dados = await configService.listarTiposVendaAtivos();
@@ -58,6 +70,9 @@ async function tiposVenda(req, res) {
   }
 }
 
+/**
+ * Executa a rotina servicos.
+ */
 async function servicos(req, res) {
   try {
     const dados = await configService.listarServicosAtivos();
@@ -68,6 +83,9 @@ async function servicos(req, res) {
   }
 }
 
+/**
+ * Executa a rotina funil etapas.
+ */
 async function funilEtapas(req, res) {
   try {
     const dados = await configService.listarFunilEtapas();
@@ -78,6 +96,9 @@ async function funilEtapas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina regras comissao.
+ */
 async function regrasComissao(req, res) {
   try {
     const dados = await configService.listarRegrasComissaoAtivas();
@@ -88,6 +109,9 @@ async function regrasComissao(req, res) {
   }
 }
 
+/**
+ * Executa a rotina admin operadoras.
+ */
 async function adminOperadoras(req, res) {
   try {
     const dados = await configService.listarOperadoras();
@@ -98,6 +122,9 @@ async function adminOperadoras(req, res) {
   }
 }
 
+/**
+ * Executa a rotina admin tipos produto.
+ */
 async function adminTiposProduto(req, res) {
   try {
     const dados = await configService.listarTiposProduto();
@@ -108,6 +135,9 @@ async function adminTiposProduto(req, res) {
   }
 }
 
+/**
+ * Executa a rotina criar tipo produto.
+ */
 async function criarTipoProduto(req, res) {
   try {
     const tipoProduto = await configService.criarTipoProduto(req.body);
@@ -118,6 +148,9 @@ async function criarTipoProduto(req, res) {
   }
 }
 
+/**
+ * Executa a rotina atualizar tipo produto.
+ */
 async function atualizarTipoProduto(req, res) {
   try {
     const tipoProduto = await configService.atualizarTipoProduto(req.params.id, req.body);
@@ -133,6 +166,9 @@ async function atualizarTipoProduto(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir tipo produto.
+ */
 async function excluirTipoProduto(req, res) {
   try {
     const totalExcluido = await configService.excluirTipoProduto(req.params.id);
@@ -148,6 +184,9 @@ async function excluirTipoProduto(req, res) {
   }
 }
 
+/**
+ * Executa a rotina admin tipos venda.
+ */
 async function adminTiposVenda(req, res) {
   try {
     const dados = await configService.listarTiposVenda();
@@ -158,6 +197,9 @@ async function adminTiposVenda(req, res) {
   }
 }
 
+/**
+ * Executa a rotina criar tipo venda.
+ */
 async function criarTipoVenda(req, res) {
   try {
     const tipoVenda = await configService.criarTipoVenda(req.body);
@@ -168,6 +210,9 @@ async function criarTipoVenda(req, res) {
   }
 }
 
+/**
+ * Executa a rotina atualizar tipo venda.
+ */
 async function atualizarTipoVenda(req, res) {
   try {
     const tipoVenda = await configService.atualizarTipoVenda(req.params.id, req.body);
@@ -183,6 +228,9 @@ async function atualizarTipoVenda(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir tipo venda.
+ */
 async function excluirTipoVenda(req, res) {
   try {
     const totalExcluido = await configService.excluirTipoVenda(req.params.id);
@@ -198,6 +246,9 @@ async function excluirTipoVenda(req, res) {
   }
 }
 
+/**
+ * Executa a rotina admin servicos.
+ */
 async function adminServicos(req, res) {
   try {
     const dados = await configService.listarServicos();
@@ -208,6 +259,9 @@ async function adminServicos(req, res) {
   }
 }
 
+/**
+ * Executa a rotina criar servico.
+ */
 async function criarServico(req, res) {
   try {
     const servico = await configService.criarServico(req.body);
@@ -218,6 +272,9 @@ async function criarServico(req, res) {
   }
 }
 
+/**
+ * Executa a rotina atualizar servico.
+ */
 async function atualizarServico(req, res) {
   try {
     const servico = await configService.atualizarServico(req.params.id, req.body);
@@ -233,6 +290,9 @@ async function atualizarServico(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir servico.
+ */
 async function excluirServico(req, res) {
   try {
     const totalExcluido = await configService.excluirServico(req.params.id);
@@ -248,6 +308,9 @@ async function excluirServico(req, res) {
   }
 }
 
+/**
+ * Executa a rotina admin funil etapas.
+ */
 async function adminFunilEtapas(req, res) {
   try {
     const dados = await configService.listarFunilEtapas();
@@ -258,6 +321,9 @@ async function adminFunilEtapas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina admin regras comissao.
+ */
 async function adminRegrasComissao(req, res) {
   try {
     const dados = await configService.listarRegrasComissao();
@@ -268,6 +334,9 @@ async function adminRegrasComissao(req, res) {
   }
 }
 
+/**
+ * Executa a rotina criar regra comissao.
+ */
 async function criarRegraComissao(req, res) {
   try {
     const regra = await configService.criarRegraComissao(req.body);
@@ -278,6 +347,9 @@ async function criarRegraComissao(req, res) {
   }
 }
 
+/**
+ * Executa a rotina atualizar regra comissao.
+ */
 async function atualizarRegraComissao(req, res) {
   try {
     const regra = await configService.atualizarRegraComissao(req.params.id, req.body);
@@ -293,6 +365,9 @@ async function atualizarRegraComissao(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir regra comissao.
+ */
 async function excluirRegraComissao(req, res) {
   try {
     const totalExcluido = await configService.excluirRegraComissao(req.params.id);
@@ -308,6 +383,9 @@ async function excluirRegraComissao(req, res) {
   }
 }
 
+/**
+ * Executa a rotina criar funil etapa.
+ */
 async function criarFunilEtapa(req, res) {
   try {
     const etapa = await configService.criarFunilEtapa(req.body);
@@ -318,6 +396,9 @@ async function criarFunilEtapa(req, res) {
   }
 }
 
+/**
+ * Executa a rotina atualizar funil etapa.
+ */
 async function atualizarFunilEtapa(req, res) {
   try {
     const etapa = await configService.atualizarFunilEtapa(req.params.id, req.body);
@@ -333,6 +414,9 @@ async function atualizarFunilEtapa(req, res) {
   }
 }
 
+/**
+ * Executa a rotina reordenar funil etapas.
+ */
 async function reordenarFunilEtapas(req, res) {
   try {
     await configService.reordenarFunilEtapas(req.body.ordens);
@@ -343,6 +427,9 @@ async function reordenarFunilEtapas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir funil etapa.
+ */
 async function excluirFunilEtapa(req, res) {
   try {
     const resultado = await configService.excluirFunilEtapa(req.params.id);
@@ -358,6 +445,9 @@ async function excluirFunilEtapa(req, res) {
   }
 }
 
+/**
+ * Executa a rotina criar operadora.
+ */
 async function criarOperadora(req, res) {
   try {
     const operadora = await configService.criarOperadora(req.body);
@@ -368,6 +458,9 @@ async function criarOperadora(req, res) {
   }
 }
 
+/**
+ * Executa a rotina atualizar operadora.
+ */
 async function atualizarOperadora(req, res) {
   try {
     const operadora = await configService.atualizarOperadora(req.params.id, req.body);
@@ -383,6 +476,9 @@ async function atualizarOperadora(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir operadora.
+ */
 async function excluirOperadora(req, res) {
   try {
     const totalExcluido = await configService.excluirOperadora(req.params.id);
@@ -398,6 +494,9 @@ async function excluirOperadora(req, res) {
   }
 }
 
+/**
+ * Executa a rotina admin links externos.
+ */
 async function adminLinksExternos(req, res) {
   try {
     const dados = await configService.listarLinksExternos();
@@ -408,6 +507,9 @@ async function adminLinksExternos(req, res) {
   }
 }
 
+/**
+ * Executa a rotina criar link externo.
+ */
 async function criarLinkExterno(req, res) {
   try {
     const link = await configService.criarLinkExterno(req.body);
@@ -418,6 +520,9 @@ async function criarLinkExterno(req, res) {
   }
 }
 
+/**
+ * Executa a rotina atualizar link externo.
+ */
 async function atualizarLinkExterno(req, res) {
   try {
     const link = await configService.atualizarLinkExterno(req.params.id, req.body);
@@ -433,6 +538,9 @@ async function atualizarLinkExterno(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir link externo.
+ */
 async function excluirLinkExterno(req, res) {
   try {
     const totalExcluido = await configService.excluirLinkExterno(req.params.id);

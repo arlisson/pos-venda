@@ -3,6 +3,9 @@ const BATCH_MAX_BYTES = 2 * 1024 * 1024;
 const ROW_MAX_BYTES = 300000;
 const SAMPLE_SIZE = 200;
 
+/**
+ * Executa a rotina detect encoding.
+ */
 function detectEncoding(bytes) {
   if (bytes.length >= 2) {
     if (bytes[0] === 0xFF && bytes[1] === 0xFE) return 'utf-16le';
@@ -24,6 +27,9 @@ function detectEncoding(bytes) {
   return 'utf-8';
 }
 
+/**
+ * Executa a rotina create decoder.
+ */
 function createDecoder(encoding) {
   try {
     return new TextDecoder(encoding);
@@ -32,6 +38,9 @@ function createDecoder(encoding) {
   }
 }
 
+/**
+ * Executa a rotina parse csv line.
+ */
 function parseCsvLine(line, delimiter) {
   const values = [];
   let current = '';
@@ -58,12 +67,18 @@ function parseCsvLine(line, delimiter) {
   return values;
 }
 
+/**
+ * Executa a rotina detect delimiter.
+ */
 function detectDelimiter(line) {
   return [';', ',', '\t'].reduce((best, delimiter) => (
     parseCsvLine(line, delimiter).length > parseCsvLine(line, best).length ? delimiter : best
   ), ';');
 }
 
+/**
+ * Executa a rotina normalize duplicate columns.
+ */
 function normalizeDuplicateColumns(columns) {
   const counters = {};
   return columns.map((column, index) => {
@@ -74,6 +89,9 @@ function normalizeDuplicateColumns(columns) {
   });
 }
 
+/**
+ * Executa a rotina parse number.
+ */
 function parseNumber(value) {
   const text = String(value || '').trim();
   if (!text) return null;
@@ -95,6 +113,9 @@ function parseNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+/**
+ * Executa a rotina parse date.
+ */
 function parseDate(value) {
   const text = String(value || '').trim();
   if (!text) return null;
@@ -107,6 +128,9 @@ function parseDate(value) {
   return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
+/**
+ * Executa a rotina infer schema.
+ */
 function inferSchema(columns, sample) {
   return columns.reduce((acc, column) => {
     const values = sample.map(row => row[column]).filter(value => String(value || '').trim() !== '');
@@ -118,6 +142,9 @@ function inferSchema(columns, sample) {
   }, {});
 }
 
+/**
+ * Executa a rotina post progress.
+ */
 function postProgress(parsedBytes, totalBytes, parsedRows) {
   const progress = totalBytes > 0 ? Math.min(99, Math.floor((parsedBytes / totalBytes) * 100)) : 0;
   self.postMessage({ type: 'progress', progress, parsedRows });
@@ -143,6 +170,9 @@ self.onmessage = async (event) => {
     let parsedBytes = 0;
     const sample = [];
 
+    /**
+     * Executa a rotina flush batch.
+     */
     function flushBatch() {
       if (batch.length === 0) return;
       self.postMessage({
@@ -157,6 +187,9 @@ self.onmessage = async (event) => {
       batchBytes = 0;
     }
 
+    /**
+     * Executa a rotina add line.
+     */
     function addLine(line) {
       if (!line.trim()) return;
       const cleanLine = line.replace(/^\uFEFF/, '');

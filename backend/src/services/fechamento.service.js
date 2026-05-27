@@ -18,6 +18,9 @@ const CATEGORIA_POR_SERVICO = {
   'internet': 'internet'
 };
 
+/**
+ * Executa a rotina normalizar servico nome.
+ */
 function normalizarServicoNome(nome) {
   return String(nome || '')
     .trim()
@@ -26,15 +29,24 @@ function normalizarServicoNome(nome) {
     .replace(/[̀-ͯ]/g, '');
 }
 
+/**
+ * Executa a rotina categoria servico.
+ */
 function categoriaServico(servicoNome) {
   if (!servicoNome) return null;
   return CATEGORIA_POR_SERVICO[normalizarServicoNome(servicoNome)] || null;
 }
 
+/**
+ * Executa a rotina categoria painel.
+ */
 function categoriaPainel(servicoNome) {
   return categoriaServico(servicoNome) || 'outros';
 }
 
+/**
+ * Executa a rotina label categoria painel.
+ */
 function labelCategoriaPainel(categoria) {
   return ({
     movel: 'Móvel',
@@ -44,6 +56,9 @@ function labelCategoriaPainel(categoria) {
   })[categoria] || 'Outros';
 }
 
+/**
+ * Executa a rotina tipo venda normalizado.
+ */
 function tipoVendaNormalizado(tipoVendaNome) {
   if (!tipoVendaNome) return null;
   const nome = normalizarServicoNome(tipoVendaNome);
@@ -52,20 +67,32 @@ function tipoVendaNormalizado(tipoVendaNome) {
   return null;
 }
 
+/**
+ * Executa a rotina normalizar data.
+ */
 function normalizarData(valor) {
   if (!valor) return null;
   const texto = String(valor).slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(texto) ? texto : null;
 }
 
+/**
+ * Executa a rotina data venda referencia sql.
+ */
 function dataVendaReferenciaSQL(alias = 'v') {
   return `COALESCE(NULLIF(NULLIF(${alias}.data_venda, '0000-00-00'), '1899-11-30'), DATE(${alias}.created_at))`;
 }
 
+/**
+ * Executa a rotina data ativacao referencia sql.
+ */
 function dataAtivacaoReferenciaSQL(alias = 'v') {
   return `COALESCE(NULLIF(NULLIF(${alias}.data_ativacao, '0000-00-00'), '1899-11-30'), ${dataVendaReferenciaSQL(alias)})`;
 }
 
+/**
+ * Executa a rotina parse chips.
+ */
 function parseChips(rawChips) {
   if (!rawChips) return [];
 
@@ -93,6 +120,9 @@ function parseChips(rawChips) {
     .filter(item => item.quantidade > 0);
 }
 
+/**
+ * Executa a rotina parse numeros linha.
+ */
 function parseNumerosLinha(valor) {
   if (!valor) return [];
 
@@ -114,6 +144,9 @@ function parseNumerosLinha(valor) {
   return [];
 }
 
+/**
+ * Executa a rotina extrair numeros gigas.
+ */
 function extrairNumerosGigas(valor) {
   const texto = String(valor || '');
   const matches = texto.match(/\d+(?:[.,]\d+)?/g) || [];
@@ -123,6 +156,9 @@ function extrairNumerosGigas(valor) {
     .filter(numero => Number.isFinite(numero) && numero > 0);
 }
 
+/**
+ * Executa a rotina formatar gigas.
+ */
 function formatarGigas(numero) {
   const valor = Number(numero || 0);
   if (!Number.isFinite(valor) || valor <= 0) return null;
@@ -134,6 +170,9 @@ function formatarGigas(numero) {
   return `${texto}GB`;
 }
 
+/**
+ * Executa a rotina gigas unitarios.
+ */
 function gigasUnitarios(gbPrincipal, quantidade, gbFallback = '') {
   const totalChips = Math.max(Number(quantidade || 0), 0);
   if (totalChips === 0) return [];
@@ -161,6 +200,9 @@ function gigasUnitarios(gbPrincipal, quantidade, gbFallback = '') {
   return Array(totalChips).fill(texto);
 }
 
+/**
+ * Executa a rotina carregar regras comissao ativas.
+ */
 async function carregarRegrasComissaoAtivas() {
   return RegraComissao.query()
     .alias('rc')
@@ -174,6 +216,9 @@ async function carregarRegrasComissaoAtivas() {
     .orderBy('rc.id', 'asc');
 }
 
+/**
+ * Executa a rotina obter codigo etapa final.
+ */
 async function obterCodigoEtapaFinal() {
   try {
     const etapa = await FunilEtapa.query()
@@ -188,6 +233,9 @@ async function obterCodigoEtapaFinal() {
   }
 }
 
+/**
+ * Executa a rotina listar etapas painel.
+ */
 async function listarEtapasPainel() {
   try {
     const etapas = await FunilEtapa.query()
@@ -216,24 +264,39 @@ async function listarEtapasPainel() {
   ];
 }
 
+/**
+ * Executa a rotina nome etapa.
+ */
 function nomeEtapa(etapas, codigo) {
   if (codigo === CODIGO_RETORNO_HISTORICO) return 'Já retornou';
   if (codigo === 'retorno') return 'Retorno';
   return etapas.find(etapa => etapa.codigo === codigo)?.nome || codigo || 'Sem etapa';
 }
 
+/**
+ * Executa a rotina venda teve retorno.
+ */
 function vendaTeveRetorno(venda = {}) {
   return Boolean(venda.retornou_em || venda.motivo_retorno || venda.status_anterior_retorno);
 }
 
+/**
+ * Executa a rotina venda teve retorno corrigido.
+ */
 function vendaTeveRetornoCorrigido(venda = {}) {
   return venda.status_funil !== 'retorno' && vendaTeveRetorno(venda);
 }
 
+/**
+ * Executa a rotina valor texto.
+ */
 function valorTexto(valor) {
   return valor === null || valor === undefined ? '' : String(valor).trim();
 }
 
+/**
+ * Executa a rotina data para excel.
+ */
 function dataParaExcel(valor) {
   const data = normalizarData(valor);
   if (!data) return null;
@@ -241,6 +304,9 @@ function dataParaExcel(valor) {
   return new Date(ano, mes - 1, dia);
 }
 
+/**
+ * Executa a rotina nome arquivo seguro.
+ */
 function nomeArquivoSeguro(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -251,6 +317,9 @@ function nomeArquivoSeguro(valor) {
     .slice(0, 80);
 }
 
+/**
+ * Executa a rotina normalizar vendedoras venda.
+ */
 function normalizarVendedorasVenda(venda = {}) {
   const vinculadas = Array.isArray(venda.vendedoras) ? venda.vendedoras : [];
   const lista = vinculadas
@@ -272,6 +341,9 @@ function normalizarVendedorasVenda(venda = {}) {
   }] : [];
 }
 
+/**
+ * Executa a rotina vendedoras comissao linha.
+ */
 function vendedorasComissaoLinha(linha) {
   if (linha.vendedora?.id) {
     return [linha.vendedora];
@@ -282,6 +354,9 @@ function vendedorasComissaoLinha(linha) {
     : [];
 }
 
+/**
+ * Executa a rotina anexar vendedoras vendas.
+ */
 async function anexarVendedorasVendas(vendas = []) {
   const ids = vendas.map(venda => Number(venda.id)).filter(Boolean);
   if (ids.length === 0) return vendas;
@@ -315,6 +390,9 @@ async function anexarVendedorasVendas(vendas = []) {
   }));
 }
 
+/**
+ * Executa a rotina encontrar regra comissao.
+ */
 function encontrarRegraComissao(regras, valorUnitario, operadoraId) {
   const valor = Number(valorUnitario || 0);
   if (!Number.isFinite(valor)) return null;
@@ -330,6 +408,9 @@ function encontrarRegraComissao(regras, valorUnitario, operadoraId) {
     || null;
 }
 
+/**
+ * Executa a rotina montar regra comissao resumo.
+ */
 function montarRegraComissaoResumo(regra) {
   if (!regra) return null;
 
@@ -346,6 +427,9 @@ function montarRegraComissaoResumo(regra) {
   };
 }
 
+/**
+ * Executa a rotina quantidade chips venda.
+ */
 function quantidadeChipsVenda(venda) {
   const chips = parseChips(venda.valores_unitarios_chips);
   const totalChips = chips.reduce((soma, item) => soma + item.quantidade, 0);
@@ -355,6 +439,9 @@ function quantidadeChipsVenda(venda) {
   return linhas > 0 ? linhas : 0;
 }
 
+/**
+ * Executa a rotina quantidade chips por tipo.
+ */
 function quantidadeChipsPorTipo(venda, tipo) {
   const chips = parseChips(venda.valores_unitarios_chips);
   const temTipoPorItem = chips.length > 0 && chips.some(chip => chip.tipo_linha);
@@ -368,6 +455,9 @@ function quantidadeChipsPorTipo(venda, tipo) {
   return tipoVendaNormalizado(venda.tipo_venda_nome) === tipo ? quantidadeChipsVenda(venda) : 0;
 }
 
+/**
+ * Executa a rotina carregar vendas no periodo.
+ */
 async function carregarVendasNoPeriodo(filtros, criterioData = 'registro', opcoes = {}) {
   const inicio = normalizarData(filtros.data_inicio);
   const fim = normalizarData(filtros.data_fim);
@@ -503,6 +593,9 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro', opcoe
   };
 }
 
+/**
+ * Executa a rotina carregar venda fechamento por id.
+ */
 async function carregarVendaFechamentoPorId(id) {
   const venda = await Venda.query()
     .alias('v')
@@ -618,12 +711,18 @@ async function carregarVendaFechamentoPorId(id) {
   return comVendedoras;
 }
 
+/**
+ * Executa a rotina classificar secao.
+ */
 function classificarSecao(statusFunil, statusFinal = STATUS_FINAL_FALLBACK) {
   if (statusFunil === statusFinal) return 'ativas';
   if (statusFunil && statusFunil !== 'retorno') return 'tratando';
   return null;
 }
 
+/**
+ * Executa a rotina montar etapas zeradas.
+ */
 function montarEtapasZeradas(etapasBase = [], statusFinal = STATUS_FINAL_FALLBACK) {
   return etapasBase.map(etapa => ({
     codigo: etapa.codigo,
@@ -635,6 +734,9 @@ function montarEtapasZeradas(etapasBase = [], statusFinal = STATUS_FINAL_FALLBAC
   }));
 }
 
+/**
+ * Executa a rotina nova linha operadora.
+ */
 function novaLinhaOperadora(operadoraId, operadoraNome, etapasBase = [], statusFinal = STATUS_FINAL_FALLBACK) {
   return {
     operadora_id: operadoraId,
@@ -652,6 +754,9 @@ function novaLinhaOperadora(operadoraId, operadoraNome, etapasBase = [], statusF
   };
 }
 
+/**
+ * Executa a rotina somar etapa linha.
+ */
 function somarEtapaLinha(linha, venda, chips, etapasBase = [], statusFinal = STATUS_FINAL_FALLBACK) {
   const codigo = venda.status_funil || etapasBase[0]?.codigo || 'sem_etapa';
   let etapa = linha.etapas_funil.find(item => item.codigo === codigo);
@@ -672,6 +777,9 @@ function somarEtapaLinha(linha, venda, chips, etapasBase = [], statusFinal = STA
   etapa.ugrs += chips;
 }
 
+/**
+ * Executa a rotina somar retorno historico linha.
+ */
 function somarRetornoHistoricoLinha(linha, venda, chips) {
   if (!vendaTeveRetornoCorrigido(venda)) return;
 
@@ -693,6 +801,9 @@ function somarRetornoHistoricoLinha(linha, venda, chips) {
   etapa.ugrs += chips;
 }
 
+/**
+ * Executa a rotina agregar por operadora.
+ */
 function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapasBase = []) {
   const total = new Map();
   const tratando = new Map();
@@ -700,6 +811,9 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
 
   vendas.forEach(venda => {
     const chave = venda.operadora_id ?? 'sem_operadora';
+    /**
+     * Executa a rotina inicializa.
+     */
     const inicializa = (mapa) => {
       if (!mapa.has(chave)) {
         mapa.set(chave, novaLinhaOperadora(venda.operadora_id || null, venda.operadora_nome, etapasBase, statusFinal));
@@ -714,6 +828,9 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
     const chips = quantidadeChipsVenda(venda);
     const ehContrato = venda.status_funil === statusFinal;
 
+    /**
+     * Executa a rotina aplicar.
+     */
     const aplicar = (linha) => {
       linha.total_vendas += 1;
       if (ehContrato) {
@@ -740,6 +857,9 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
     }
   });
 
+  /**
+   * Executa a rotina finalizar.
+   */
   const finalizar = (mapa) => Array.from(mapa.values())
     .map(linha => ({
       ...linha,
@@ -755,6 +875,9 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
   };
 }
 
+/**
+ * Executa a rotina criar linha painel.
+ */
 function criarLinhaPainel(categoria) {
   return {
     categoria,
@@ -774,6 +897,9 @@ function criarLinhaPainel(categoria) {
   };
 }
 
+/**
+ * Executa a rotina montar painel gerencial.
+ */
 async function montarPainelGerencial(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
   const regrasComissao = await carregarRegrasComissaoAtivas();
   const etapas = await listarEtapasPainel();
@@ -882,6 +1008,9 @@ async function montarPainelGerencial(vendas, statusFinal = STATUS_FINAL_FALLBACK
     .sort((a, b) => ordem.indexOf(a.categoria) - ordem.indexOf(b.categoria));
 }
 
+/**
+ * Executa a rotina obter resumo.
+ */
 async function obterResumo(filtros = {}) {
   const { vendas: vendasRegistro, statusFinal } = await carregarVendasNoPeriodo(filtros, 'registro', { incluirRetornos: true });
   const { vendas: vendasPainel } = await carregarVendasNoPeriodo(filtros, 'registro', { incluirRetornos: true });
@@ -905,6 +1034,9 @@ async function obterResumo(filtros = {}) {
   };
 }
 
+/**
+ * Executa a rotina filtrar por secao.
+ */
 function filtrarPorSecao(vendas, secao, statusFinal = STATUS_FINAL_FALLBACK) {
   if (secao === 'tratando') {
     return vendas.filter(v => v.status_funil && v.status_funil !== statusFinal && v.status_funil !== 'retorno');
@@ -915,6 +1047,9 @@ function filtrarPorSecao(vendas, secao, statusFinal = STATUS_FINAL_FALLBACK) {
   return vendas;
 }
 
+/**
+ * Executa a rotina montar venda resumo.
+ */
 function montarVendaResumo(venda, statusFinal = STATUS_FINAL_FALLBACK) {
   const categoria = categoriaServico(venda.servico_nome);
   const chipsNovos = quantidadeChipsPorTipo(venda, 'novo');
@@ -963,6 +1098,9 @@ function montarVendaResumo(venda, statusFinal = STATUS_FINAL_FALLBACK) {
   };
 }
 
+/**
+ * Executa a rotina obter detalhes.
+ */
 async function obterDetalhes(filtros = {}) {
   const criterioData = filtros.secao === 'ativas' ? 'ativacao' : 'registro';
   const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, criterioData, {
@@ -983,6 +1121,9 @@ async function obterDetalhes(filtros = {}) {
     });
 }
 
+/**
+ * Executa a rotina obter detalhes chips.
+ */
 async function obterDetalhesChips(filtros = {}) {
   const criterioData = filtros.secao === 'ativas' ? 'ativacao' : 'registro';
   const { vendas: todasVendas, statusFinal } = await carregarVendasNoPeriodo(filtros, criterioData, {
@@ -997,9 +1138,15 @@ async function obterDetalhesChips(filtros = {}) {
   return montarRespostaLinhasChips(montarLinhasChips(filtradas, regrasComissao));
 }
 
+/**
+ * Executa a rotina montar linhas chips.
+ */
 function montarLinhasChips(vendas, regrasComissao = []) {
   const linhas = [];
 
+  /**
+   * Executa a rotina montar linha com regra.
+   */
   function montarLinhaComRegra(venda, chip) {
     const linha = montarLinhaChip(venda, chip);
     const regra = encontrarRegraComissao(regrasComissao, linha.valor_unitario, linha.operadora?.id);
@@ -1103,6 +1250,9 @@ function montarLinhasChips(vendas, regrasComissao = []) {
   });
 }
 
+/**
+ * Executa a rotina montar resposta linhas chips.
+ */
 function montarRespostaLinhasChips(linhasOrdenadas) {
   const totaisVendedora = new Map();
 
@@ -1148,6 +1298,9 @@ function montarRespostaLinhasChips(linhasOrdenadas) {
   };
 }
 
+/**
+ * Executa a rotina montar linha chip.
+ */
 function montarLinhaChip(venda, chip) {
   const operadoraVendaId = venda.operadora_id ? Number(venda.operadora_id) : null;
   const operadoraAtualClienteId = venda.cliente_operadora_atual_id ? Number(venda.cliente_operadora_atual_id) : null;
@@ -1273,6 +1426,9 @@ function montarLinhaChip(venda, chip) {
   };
 }
 
+/**
+ * Executa a rotina obter dossie venda.
+ */
 async function obterDossieVenda(id, filtros = {}, usuarioId) {
   const venda = await vendaService.buscarVendaPorId(id, usuarioId);
 
@@ -1308,6 +1464,9 @@ async function obterDossieVenda(id, filtros = {}, usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina montar linha exportacao venda.
+ */
 function montarLinhaExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FINAL_FALLBACK, grupo = null) {
   const quantidade = grupo ? grupo.quantidade : quantidadeChipsVenda(venda);
   const chipsNovos = grupo ? grupo.novo : quantidadeChipsPorTipo(venda, 'novo');
@@ -1356,6 +1515,9 @@ function montarLinhaExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FIN
   };
 }
 
+/**
+ * Executa a rotina montar linhas exportacao venda.
+ */
 function montarLinhasExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FINAL_FALLBACK) {
   const chips = parseChips(venda.valores_unitarios_chips);
   const vendedoras = normalizarVendedorasVenda(venda);
@@ -1393,6 +1555,9 @@ function montarLinhasExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FI
   }));
 }
 
+/**
+ * Executa a rotina aplicar estilo cabecalho.
+ */
 function aplicarEstiloCabecalho(worksheet) {
   const header = worksheet.getRow(1);
   header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -1413,6 +1578,9 @@ function aplicarEstiloCabecalho(worksheet) {
   });
 }
 
+/**
+ * Executa a rotina aplicar estilo planilha.
+ */
 function aplicarEstiloPlanilha(worksheet) {
   worksheet.views = [{ state: 'frozen', ySplit: 1 }];
   worksheet.autoFilter = {
@@ -1435,6 +1603,9 @@ function aplicarEstiloPlanilha(worksheet) {
   });
 }
 
+/**
+ * Executa a rotina gerar xlsx vendas periodo.
+ */
 async function gerarXlsxVendasPeriodo(filtros = {}) {
   const { vendas, statusFinal } = await carregarVendasNoPeriodo(filtros, 'registro', { incluirRetornos: true });
   const etapas = [

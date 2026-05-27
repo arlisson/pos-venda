@@ -15,10 +15,16 @@ const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPOS_RETORNO_VENDA = ['venda_retorno_registrado'];
 
+/**
+ * Executa a rotina format date.
+ */
 function formatDate(value) {
   return formatDateValue(value, { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+/**
+ * Executa a rotina tom notificacao.
+ */
 function tomNotificacao(notification) {
   switch (notification.tipo) {
     case 'venda_problema_aberto':
@@ -39,6 +45,9 @@ function tomNotificacao(notification) {
   }
 }
 
+/**
+ * Executa a rotina get notification target.
+ */
 function getNotificationTarget(notification) {
   if (notification.tipo === 'cliente_fidelidade') {
     return Number(notification.dados?.dias_restantes ?? 1) < 0
@@ -79,6 +88,9 @@ function getNotificationTarget(notification) {
   return null;
 }
 
+/**
+ * Executa a rotina get notification tooltip.
+ */
 function getNotificationTooltip(notification) {
   const titulo = String(notification?.titulo || '').trim();
   const descricao = TIPOS_PROBLEMA_VENDA.includes(notification?.tipo)
@@ -92,6 +104,9 @@ function getNotificationTooltip(notification) {
     .join('\n');
 }
 
+/**
+ * Executa a rotina header.
+ */
 function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen = false }) {
   const navigate = useNavigate();
   const [linksExternos, setLinksExternos] = useState([]);
@@ -104,6 +119,9 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
   const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
 
   useEffect(() => {
+    /**
+     * Executa a rotina carregar links.
+     */
     async function carregarLinks() {
       try {
         const dados = await listarLinksExternos();
@@ -131,6 +149,9 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
   }, []);
 
   useEffect(() => {
+    /**
+     * Executa a rotina handle click outside.
+     */
     function handleClickOutside(event) {
       if (linksMenuRef.current && !linksMenuRef.current.contains(event.target)) {
         setLinksOpen(false);
@@ -145,6 +166,9 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  /**
+   * Executa a rotina carregar notificacoes.
+   */
   async function carregarNotificacoes() {
     try {
       const dados = await listarNotificacoes({ limit: 50 });
@@ -171,6 +195,9 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
   useEffect(() => {
     if (!podeVerNotificacoes) return undefined;
 
+    /**
+     * Executa a rotina handle refresh notifications.
+     */
     function handleRefreshNotifications() {
       carregarNotificacoes();
     }
@@ -179,6 +206,9 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
     return () => window.removeEventListener('pos-venda:notificacoes-atualizar', handleRefreshNotifications);
   }, [podeVerNotificacoes]);
 
+  /**
+   * Executa a rotina handle open notifications.
+   */
   async function handleOpenNotifications() {
     setNotificationsOpen(open => !open);
 
@@ -187,6 +217,9 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
     }
   }
 
+  /**
+   * Executa a rotina handle mark read.
+   */
   async function handleMarkRead(notification) {
     const target = getNotificationTarget(notification);
 
@@ -204,6 +237,9 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
     }
   }
 
+  /**
+   * Executa a rotina handle mark all read.
+   */
   async function handleMarkAllRead() {
     await marcarTodasNotificacoesLidas();
     await carregarNotificacoes();

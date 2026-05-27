@@ -27,10 +27,16 @@ const FILTROS_INICIAIS = {
   regra: ''
 };
 
+/**
+ * Executa a rotina fmt moeda.
+ */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/**
+ * Executa a rotina fmt data.
+ */
 function fmtData(valor) {
   if (!valor) return '-';
   const iso = String(valor).slice(0, 10);
@@ -39,25 +45,40 @@ function fmtData(valor) {
   return `${dia}/${mes}/${ano}`;
 }
 
+/**
+ * Executa a rotina fmt bool.
+ */
 function fmtBool(valor) {
   if (valor === true) return 'Sim';
   if (valor === false) return 'Não';
   return '-';
 }
 
+/**
+ * Executa a rotina fmt texto.
+ */
 function fmtTexto(valor) {
   return String(valor || '').trim() || '-';
 }
 
+/**
+ * Executa a rotina linha teve retorno.
+ */
 function linhaTeveRetorno(linha = {}) {
   return linha.status_funil !== 'retorno' && Boolean(linha.retornou_em || linha.motivo_retorno || linha.status_anterior_retorno);
 }
 
+/**
+ * Executa a rotina fmt retorno badge.
+ */
 function fmtRetornoBadge(linha = {}) {
   if (linha.retornou_em) return `Já retornou em ${fmtData(linha.retornou_em)}`;
   return 'Já retornou';
 }
 
+/**
+ * Executa a rotina fmt lista.
+ */
 function fmtLista(valor) {
   if (!valor) return '-';
   if (Array.isArray(valor)) return valor.length ? valor.join(', ') : '-';
@@ -74,11 +95,17 @@ function fmtLista(valor) {
   }
 }
 
+/**
+ * Executa a rotina juntar valores.
+ */
 function juntarValores(valores, separador = ', ') {
   const texto = (valores || []).map(item => String(item || '').trim()).filter(Boolean).join(separador);
   return texto || '-';
 }
 
+/**
+ * Executa a rotina formatar horario aceite.
+ */
 function formatarHorarioAceite(linha) {
   const partes = [];
   const range = [linha.horario_aceite_inicio, linha.horario_aceite_fim].filter(Boolean);
@@ -88,6 +115,9 @@ function formatarHorarioAceite(linha) {
   return partes.join(' ou ') || '-';
 }
 
+/**
+ * Executa a rotina fmt endereco.
+ */
 function fmtEndereco(linha) {
   return juntarValores([
     linha.endereco,
@@ -100,6 +130,9 @@ function fmtEndereco(linha) {
   ]);
 }
 
+/**
+ * Executa a rotina fmt endereco real.
+ */
 function fmtEnderecoReal(linha) {
   return juntarValores([
     linha.endereco_real,
@@ -112,11 +145,17 @@ function fmtEnderecoReal(linha) {
   ]);
 }
 
+/**
+ * Executa a rotina fmt regra.
+ */
 function fmtRegra(regra) {
   if (!regra) return 'Sem regra';
   return `${fmtMoeda(regra.valor_min)} até ${fmtMoeda(regra.valor_max)}`;
 }
 
+/**
+ * Executa a rotina fmt repasse.
+ */
 function fmtRepasse(linha) {
   if (linha.cliente_base_propria && linha.cliente_base_operadora) return 'Nossa base + base da operadora';
   if (linha.cliente_base_propria) return 'Nossa base';
@@ -124,6 +163,9 @@ function fmtRepasse(linha) {
   return 'Cliente novo/portabilidade';
 }
 
+/**
+ * Executa a rotina fmt etapa funil.
+ */
 function fmtEtapaFunil(codigo) {
   const etapas = {
     aprovacao: 'Aprovação',
@@ -138,6 +180,9 @@ function fmtEtapaFunil(codigo) {
   return etapas[codigo] || codigo || '-';
 }
 
+/**
+ * Executa a rotina fmt prioridade funil.
+ */
 function fmtPrioridadeFunil(valor) {
   const prioridades = {
     alta: 'Alta',
@@ -148,12 +193,18 @@ function fmtPrioridadeFunil(valor) {
   return prioridades[chave] || fmtTexto(valor);
 }
 
+/**
+ * Executa a rotina classe etapa funil.
+ */
 function classeEtapaFunil(codigo) {
   if (codigo === 'retorno') return 'is-return';
   if (codigo === 'concluido') return 'is-final';
   return '';
 }
 
+/**
+ * Executa a rotina normalizar busca.
+ */
 function normalizarBusca(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -162,10 +213,16 @@ function normalizarBusca(valor) {
     .trim();
 }
 
+/**
+ * Executa a rotina chave opcao.
+ */
 function chaveOpcao(valor) {
   return normalizarBusca(valor);
 }
 
+/**
+ * Executa a rotina criar opcoes.
+ */
 function criarOpcoes(linhas, obterValor, obterLabel = obterValor) {
   const mapa = new Map();
 
@@ -182,6 +239,9 @@ function criarOpcoes(linhas, obterValor, obterLabel = obterValor) {
   return Array.from(mapa.values()).sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
 }
 
+/**
+ * Executa a rotina valores busca linha.
+ */
 function valoresBuscaLinha(linha) {
   const vendedorasLinha = Array.isArray(linha.vendedoras) && linha.vendedoras.length > 0
     ? linha.vendedoras
@@ -274,11 +334,17 @@ function valoresBuscaLinha(linha) {
   ].map(valor => normalizarBusca(valor)).join(' ');
 }
 
+/**
+ * Executa a rotina vendedoras comissao linha.
+ */
 function vendedorasComissaoLinha(linha) {
   if (linha.vendedora?.id) return [linha.vendedora];
   return Array.isArray(linha.vendedoras) ? linha.vendedoras.filter(item => item?.id) : [];
 }
 
+/**
+ * Executa a rotina nomes vendedoras linha.
+ */
 function nomesVendedorasLinha(linha) {
   if (linha.vendedora?.nome) {
     return linha.vendedora.nome;
@@ -291,6 +357,9 @@ function nomesVendedorasLinha(linha) {
   return lista.map(item => item?.nome).filter(Boolean).join(' / ') || '-';
 }
 
+/**
+ * Executa a rotina calcular totais.
+ */
 function calcularTotais(linhas) {
   const totaisVendedora = new Map();
 
@@ -334,6 +403,9 @@ function calcularTotais(linhas) {
   };
 }
 
+/**
+ * Executa a rotina detalhes ativas modal.
+ */
 function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda, reloadKey = 0 }) {
   const [dados, setDados] = useState(DADOS_VAZIOS);
   const [loading, setLoading] = useState(true);
@@ -449,11 +521,17 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
     ativas: 'Detalhes - Vendas ativas (linha por UGR)'
   };
 
+  /**
+   * Executa a rotina abrir venda.
+   */
   function abrirVenda(vendaId) {
     if (!vendaId) return;
     onAbrirVenda?.(vendaId);
   }
 
+  /**
+   * Executa a rotina handle linha key down.
+   */
   function handleLinhaKeyDown(event, vendaId) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -461,10 +539,16 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
     }
   }
 
+  /**
+   * Executa a rotina atualizar filtro.
+   */
   function atualizarFiltro(campo, valor) {
     setFiltros(prev => ({ ...prev, [campo]: valor }));
   }
 
+  /**
+   * Executa a rotina limpar filtros.
+   */
   function limparFiltros() {
     setBusca('');
     setFiltros(FILTROS_INICIAIS);

@@ -43,6 +43,9 @@ const routeConfigs = [
   { path: '/mensagens', title: 'Mensagens', sub: 'Conversas internas entre usuários', id: 'mensagens', end: true },
 ];
 
+/**
+ * Executa a rotina get route config.
+ */
 function getRouteConfig(pathname) {
   return (
     routeConfigs.find(config =>
@@ -51,6 +54,9 @@ function getRouteConfig(pathname) {
   );
 }
 
+/**
+ * Executa a rotina montar mapa referencias.
+ */
 function montarMapaReferencias(referencias = [], campo = 'total') {
   return referencias.reduce((mapa, item) => {
     if (item?.chave) mapa.set(item.chave, Number(item[campo] || 0));
@@ -58,6 +64,9 @@ function montarMapaReferencias(referencias = [], campo = 'total') {
   }, new Map());
 }
 
+/**
+ * Executa a rotina layout privado.
+ */
 function LayoutPrivado({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -101,12 +110,18 @@ function LayoutPrivado({ children }) {
     };
   }, []);
 
+  /**
+   * Executa a rotina handle logout.
+   */
   function handleLogout() {
     setMobileMenuOpen(false);
     logout();
     navigate('/login');
   }
 
+  /**
+   * Executa a rotina handle set page.
+   */
   const handleSetPage = (id) => {
     const routeMap = {
       dashboard: '/',
@@ -149,6 +164,9 @@ function LayoutPrivado({ children }) {
   }, [erroNovaVenda]);
 
   useEffect(() => {
+    /**
+     * Executa a rotina handle key down.
+     */
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         setMobileMenuOpen(false);
@@ -164,6 +182,9 @@ function LayoutPrivado({ children }) {
     };
   }, [mobileMenuOpen]);
 
+  /**
+   * Executa a rotina carregar dados nova venda.
+   */
   async function carregarDadosNovaVenda() {
     const [referenciasClientesData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
       podeListarVendas ? obterReferenciasClientesVendas() : Promise.resolve([]),
@@ -182,6 +203,9 @@ function LayoutPrivado({ children }) {
     setServicosNovaVenda(servicosData);
   }
 
+  /**
+   * Executa a rotina handle new sale.
+   */
   async function handleNewSale() {
     if (!podeCriarVenda || carregandoNovaVenda) return;
 
@@ -199,6 +223,9 @@ function LayoutPrivado({ children }) {
     }
   }
 
+  /**
+   * Executa a rotina salvar nova venda.
+   */
   async function salvarNovaVenda(dados, notasPendentes = [], arquivosPendentes = []) {
     setErroNovaVenda('');
     const vendaSalva = await criarVenda(dados);
@@ -225,6 +252,9 @@ function LayoutPrivado({ children }) {
     window.dispatchEvent(new CustomEvent('pos-venda:vendas-atualizadas'));
   }
 
+  /**
+   * Executa a rotina abrir cliente rapido.
+   */
   function abrirClienteRapido() {
     return new Promise(resolve => {
       setResolverClienteRapido(() => resolve);
@@ -232,6 +262,9 @@ function LayoutPrivado({ children }) {
     });
   }
 
+  /**
+   * Executa a rotina fechar cliente rapido.
+   */
   function fecharClienteRapido(cliente = null) {
     setClienteRapidoAberto(false);
     setResolverClienteRapido(resolve => {
@@ -240,6 +273,9 @@ function LayoutPrivado({ children }) {
     });
   }
 
+  /**
+   * Executa a rotina salvar cliente rapido.
+   */
   async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientesSelect() : [];
     setClientesNovaVenda(clientesAtualizados);
@@ -262,6 +298,9 @@ function LayoutPrivado({ children }) {
 
     let ativo = true;
 
+    /**
+     * Executa a rotina carregar.
+     */
     async function carregar() {
       try {
         const lista = await listarAprovacoesVenda({ status: 'pendente' });
@@ -289,6 +328,9 @@ function LayoutPrivado({ children }) {
 
     let ativo = true;
 
+    /**
+     * Executa a rotina carregar.
+     */
     async function carregar() {
       try {
         const dados = await contarMensagensNaoLidas();
@@ -309,6 +351,9 @@ function LayoutPrivado({ children }) {
     };
   }, [podeUsarChat]);
 
+  /**
+   * Executa a rotina carregar alertas urgentes.
+   */
   async function carregarAlertasUrgentes() {
     try {
       const dados = await listarNotificacoesUrgentes();
@@ -327,11 +372,17 @@ function LayoutPrivado({ children }) {
     return () => clearInterval(timer);
   }, [usuario?.id]);
 
+  /**
+   * Executa a rotina ocultar alerta urgente.
+   */
   function ocultarAlertaUrgente(notificacao) {
     const chave = notificacao.destinatario_id || notificacao.id;
     setAlertasUrgentes(prev => prev.filter(item => (item.destinatario_id || item.id) !== chave));
   }
 
+  /**
+   * Executa a rotina confirmar popup notificacao.
+   */
   function confirmarPopupNotificacao(notificacao) {
     marcarPopupNotificacaoVisto(notificacao.id)
       .then(() => {
@@ -340,11 +391,17 @@ function LayoutPrivado({ children }) {
       .catch(() => {});
   }
 
+  /**
+   * Executa a rotina fechar alerta urgente.
+   */
   function fecharAlertaUrgente(notificacao) {
     ocultarAlertaUrgente(notificacao);
     confirmarPopupNotificacao(notificacao);
   }
 
+  /**
+   * Executa a rotina tom alerta.
+   */
   function tomAlerta(notificacao) {
     switch (notificacao.tipo) {
       case 'venda_problema_aberto':
@@ -365,6 +422,9 @@ function LayoutPrivado({ children }) {
     }
   }
 
+  /**
+   * Executa a rotina get dados alerta.
+   */
   function getDadosAlerta(notificacao) {
     if (!notificacao?.dados) return {};
     if (typeof notificacao.dados === 'string') {
@@ -377,6 +437,9 @@ function LayoutPrivado({ children }) {
     return notificacao.dados;
   }
 
+  /**
+   * Executa a rotina montar rota alerta.
+   */
   function montarRotaAlerta(notificacao) {
     const dados = getDadosAlerta(notificacao);
     const entidadeId = notificacao.entidade_id || dados.entidade_id || '';
@@ -411,6 +474,9 @@ function LayoutPrivado({ children }) {
     }
   }
 
+  /**
+   * Executa a rotina abrir venda alerta.
+   */
   function abrirVendaAlerta(notificacao) {
     const rota = montarRotaAlerta(notificacao);
     ocultarAlertaUrgente(notificacao);

@@ -30,6 +30,9 @@ const FUNIL_STAGE_IDS = FUNIL_STAGES.map(s => s.id);
 const STAGE_NAMES_MAP = Object.fromEntries(FUNIL_STAGES.map(s => [s.id, s.name]));
 STAGE_NAMES_MAP.retorno = 'Retorno';
 
+/**
+ * Executa a rotina parse dados.
+ */
 function parseDados(dados) {
   if (!dados) return {};
   if (typeof dados === 'object') return dados;
@@ -40,6 +43,9 @@ function parseDados(dados) {
   }
 }
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(valor) {
   return formatUtcDateTime(valor, {
     day: '2-digit',
@@ -50,10 +56,16 @@ function formatarData(valor) {
   });
 }
 
+/**
+ * Executa a rotina formatar acao.
+ */
 function formatarAcao(acao) {
   return ACAO_LABELS[acao] || acao.replaceAll('.', ' ');
 }
 
+/**
+ * Executa a rotina get tipo.
+ */
 function getTipo(log) {
   if (log.acao?.includes('falha')) return 'danger';
   if (log.acao === 'venda.excluida_definitivamente') return 'deleted';
@@ -63,6 +75,9 @@ function getTipo(log) {
   return 'success';
 }
 
+/**
+ * Executa a rotina marker icon.
+ */
 function MarkerIcon({ log, size = 11 }) {
   switch (log.acao) {
     case 'venda.enviada_lixeira':
@@ -77,6 +92,9 @@ function MarkerIcon({ log, size = 11 }) {
   }
 }
 
+/**
+ * Executa a rotina extrair nome venda.
+ */
 function extrairNomeVenda(logs, vendaId) {
   for (const log of logs) {
     const dados = parseDados(log.dados);
@@ -92,6 +110,9 @@ function extrairNomeVenda(logs, vendaId) {
   return `Venda #${vendaId}`;
 }
 
+/**
+ * Executa a rotina build stage progression.
+ */
 function buildStageProgression(logs) {
   const sorted = [...logs].sort((a, b) => getUtcDateTimeTimestamp(a.created_at) - getUtcDateTimeTimestamp(b.created_at));
   const reached = new Map();
@@ -144,6 +165,9 @@ function buildStageProgression(logs) {
   return { stages, hasRetorno, currentStage };
 }
 
+/**
+ * Executa a rotina get connector type.
+ */
 function getConnectorType(stageA, stageB) {
   if (stageA.status === 'skipped' || stageB.status === 'skipped') return 'skip';
   if (
@@ -153,6 +177,9 @@ function getConnectorType(stageA, stageB) {
   return 'pending';
 }
 
+/**
+ * Executa a rotina agrupar logs venda.
+ */
 function agruparLogsVenda(logs = []) {
   const grupos = new Map();
 
@@ -176,6 +203,9 @@ function agruparLogsVenda(logs = []) {
   })).sort((a, b) => getUtcDateTimeTimestamp(b.maisRecente?.created_at) - getUtcDateTimeTimestamp(a.maisRecente?.created_at));
 }
 
+/**
+ * Executa a rotina get deletion status.
+ */
 function getDeletionStatus(logs) {
   const sorted = [...logs].sort((a, b) => getUtcDateTimeTimestamp(a.created_at) - getUtcDateTimeTimestamp(b.created_at));
   let status = null;
@@ -187,6 +217,9 @@ function getDeletionStatus(logs) {
   return status;
 }
 
+/**
+ * Executa a rotina funil tracker.
+ */
 function FunilTracker({ progression, logSelecionado, onClickLog }) {
   const { stages, hasRetorno } = progression;
 
@@ -236,6 +269,9 @@ function FunilTracker({ progression, logSelecionado, onClickLog }) {
   );
 }
 
+/**
+ * Executa a rotina venda excluida card.
+ */
 function VendaExcluidaCard({ grupo, logSelecionado, onClick }) {
   const [expandido, setExpandido] = useState(false);
   const progression = buildStageProgression(grupo.logs);
@@ -329,6 +365,9 @@ function VendaExcluidaCard({ grupo, logSelecionado, onClick }) {
   );
 }
 
+/**
+ * Executa a rotina detalhe card.
+ */
 function DetalheCard({ log, onClose }) {
   const dados = parseDados(log.dados);
   const stageDe = dados.alteracoes?.status_funil
@@ -394,6 +433,9 @@ function DetalheCard({ log, onClose }) {
   );
 }
 
+/**
+ * Executa a rotina historico lixeira page.
+ */
 function HistoricoLixeiraPage() {
   const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
@@ -406,6 +448,9 @@ function HistoricoLixeiraPage() {
   const [itensPorPagina, setItensPorPagina] = useState(20);
   const [total, setTotal] = useState(0);
 
+  /**
+   * Executa a rotina carregar.
+   */
   async function carregar(pagina = paginaAtual, porPagina = itensPorPagina) {
     setCarregando(true);
     setErro('');

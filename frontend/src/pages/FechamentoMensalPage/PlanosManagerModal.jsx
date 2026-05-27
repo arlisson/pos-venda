@@ -1,5 +1,8 @@
 import React from 'react';
 
+/**
+ * Executa a rotina planos manager modal.
+ */
 function PlanosManagerModal({ onClose = () => {} }) {
   return (
     <div className="modal-overlay" onClick={onClose}>

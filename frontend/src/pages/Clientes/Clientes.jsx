@@ -307,6 +307,9 @@ function formatarResumoOperadoras(cliente) {
   };
 }
 
+/**
+ * Executa a rotina formatar data hora nota.
+ */
 function formatarDataHoraNota(valor) {
   return formatUtcDateTime(valor, {
     day: '2-digit',
@@ -317,16 +320,25 @@ function formatarDataHoraNota(valor) {
   });
 }
 
+/**
+ * Executa a rotina formatar data hora registro.
+ */
 function formatarDataHoraRegistro(valor) {
   return formatarDataHoraNota(valor) || '-';
 }
 
+/**
+ * Executa a rotina inicio do dia.
+ */
 function inicioDoDia(data) {
   const dia = new Date(data);
   dia.setHours(0, 0, 0, 0);
   return dia;
 }
 
+/**
+ * Executa a rotina diferenca dias calendario.
+ */
 function diferencaDiasCalendario(dataReferencia) {
   const data = parseUtcDateTime(dataReferencia);
   if (!data) return null;
@@ -336,6 +348,9 @@ function diferencaDiasCalendario(dataReferencia) {
   return Math.round((diaRetorno.getTime() - hoje.getTime()) / 86400000);
 }
 
+/**
+ * Executa a rotina get retorno nota status.
+ */
 function getRetornoNotaStatus(cliente) {
   const resumo = cliente.notas_resumo || {};
   const proximoRetorno = resumo.proximo_retorno_agendado_para;
@@ -377,6 +392,9 @@ function getRetornoNotaStatus(cliente) {
   };
 }
 
+/**
+ * Executa a rotina confirmar lixeira modal.
+ */
 function ConfirmarLixeiraModal({ cliente, excluindo, onClose, onConfirm }) {
   if (!cliente) return null;
 
@@ -416,6 +434,9 @@ function ConfirmarLixeiraModal({ cliente, excluindo, onClose, onConfirm }) {
   );
 }
 
+/**
+ * Executa a rotina confirmar limpeza base modal.
+ */
 function ConfirmarLimpezaBaseModal({ aberto, limpando, onClose, onConfirm }) {
   if (!aberto) return null;
 
@@ -468,6 +489,9 @@ const CAMPOS_IMPORTACAO_BASE = [
   { name: 'operadora_atual', label: 'Operadora atual' }
 ];
 
+/**
+ * Executa a rotina importar base anterior modal.
+ */
 function ImportarBaseAnteriorModal({ onClose, onImported }) {
   const [arquivo, setArquivo] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -479,6 +503,9 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
   const colunas = preview?.colunas || [];
   const podeImportar = Boolean(arquivo && preview && mapeamento.cnpj && !carregando);
 
+  /**
+   * Executa a rotina carregar preview.
+   */
   async function carregarPreview(file) {
     setArquivo(file || null);
     setPreview(null);
@@ -500,6 +527,9 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
     }
   }
 
+  /**
+   * Executa a rotina executar importacao.
+   */
   async function executarImportacao(event) {
     event.preventDefault();
     if (!podeImportar) return;
@@ -519,6 +549,9 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
     }
   }
 
+  /**
+   * Executa a rotina atualizar mapeamento.
+   */
   function atualizarMapeamento(campo, coluna) {
     setMapeamento(prev => ({ ...prev, [campo]: coluna }));
   }
@@ -626,6 +659,9 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
   );
 }
 
+/**
+ * Executa a rotina lista avisos importacao.
+ */
 function ListaAvisosImportacao({ titulo, itens }) {
   if (!itens?.length) return null;
 
@@ -636,6 +672,9 @@ function ListaAvisosImportacao({ titulo, itens }) {
   );
 }
 
+/**
+ * Executa a rotina importar vendas empresas modal.
+ */
 function ImportarVendasEmpresasModal({ onClose, onImported }) {
   const [arquivo, setArquivo] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -653,6 +692,9 @@ function ImportarVendasEmpresasModal({ onClose, onImported }) {
   const avisos = preview?.avisos || resultado?.avisos || {};
   const amostras = preview?.amostras || [];
 
+  /**
+   * Executa a rotina carregar preview.
+   */
   async function carregarPreview(file) {
     setArquivo(file || null);
     setPreview(null);
@@ -674,6 +716,9 @@ function ImportarVendasEmpresasModal({ onClose, onImported }) {
     }
   }
 
+  /**
+   * Executa a rotina atualizar mapeamento.
+   */
   async function atualizarMapeamento(campo, coluna) {
     const proximo = { ...mapeamento, [campo]: coluna };
     setMapeamento(proximo);
@@ -693,6 +738,9 @@ function ImportarVendasEmpresasModal({ onClose, onImported }) {
     }
   }
 
+  /**
+   * Executa a rotina executar importacao.
+   */
   async function executarImportacao(event) {
     event.preventDefault();
     if (!podeImportar) return;
@@ -963,6 +1011,9 @@ function Clientes() {
     return () => clearTimeout(timer);
   }, [erro]);
 
+  /**
+   * Executa a rotina carregar dados estaticos.
+   */
   async function carregarDadosEstaticos() {
     try {
       const [operadorasData, contagemData] = await Promise.all([
@@ -976,6 +1027,9 @@ function Clientes() {
     }
   }
 
+  /**
+   * Executa a rotina carregar clientes.
+   */
   async function carregarClientes(proximosFiltros = filtros, pagina = paginaAtual, porPagina = itensPorPagina) {
     setErro('');
     setCarregando(true);
@@ -999,6 +1053,9 @@ function Clientes() {
     }
   }
 
+  /**
+   * Executa a rotina carregar dados venda modal.
+   */
   async function carregarDadosVendaModal() {
     if (dadosVendaModalCarregados) return;
 
@@ -1059,6 +1116,9 @@ function Clientes() {
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   useEffect(() => {
+    /**
+     * Executa a rotina handle notas atualizar.
+     */
     function handleNotasAtualizar({ detail }) {
       const { clienteId, notas } = detail;
       setClientes(prev => prev.map(c => {
@@ -1098,11 +1158,17 @@ function Clientes() {
     return mapa;
   }, [vendasConcluidasContagem]);
 
+  /**
+   * Executa a rotina handle buscar.
+   */
   async function handleBuscar(event) {
     event.preventDefault();
     await carregarClientes(filtros);
   }
 
+  /**
+   * Executa a rotina exportar clientes.
+   */
   async function exportarClientes() {
     setErro('');
     setExportando(true);
@@ -1117,6 +1183,9 @@ function Clientes() {
     }
   }
 
+  /**
+   * Executa a rotina limpar filtros.
+   */
   function limparFiltros() {
     setBuscaCampo('geral');
     setBusca('');
@@ -1130,15 +1199,24 @@ function Clientes() {
     setClienteIdFiltro('');
   }
 
+  /**
+   * Executa a rotina alterar busca campo.
+   */
   function alterarBuscaCampo(campo) {
     setBuscaCampo(campo || 'geral');
     setBusca('');
   }
 
+  /**
+   * Executa a rotina alterar busca valor.
+   */
   function alterarBuscaValor(valor) {
     setBusca(formatarBuscaClientesPorCampo(buscaCampo, valor));
   }
 
+  /**
+   * Executa a rotina abrir novo cliente.
+   */
   function abrirNovoCliente() {
     setClienteModal(null);
     setClienteModalAba('cliente');
@@ -1146,6 +1224,9 @@ function Clientes() {
     setModalAberto(true);
   }
 
+  /**
+   * Executa a rotina abrir edicao cliente.
+   */
   function abrirEdicaoCliente(cliente) {
     if (!podeEditar) return;
     setClienteModal(cliente);
@@ -1154,6 +1235,9 @@ function Clientes() {
     setModalAberto(true);
   }
 
+  /**
+   * Executa a rotina abrir notas cliente.
+   */
   function abrirNotasCliente(cliente) {
     setClienteModal(cliente);
     setClienteModalAba('notas');
@@ -1161,6 +1245,9 @@ function Clientes() {
     setModalAberto(true);
   }
 
+  /**
+   * Executa a rotina salvar cliente.
+   */
   async function salvarCliente() {
     setErro('');
     const editando = Boolean(clienteModal);
@@ -1175,6 +1262,9 @@ function Clientes() {
     setSucesso(editando ? 'Cliente atualizado com sucesso.' : 'Cliente cadastrado com sucesso.');
   }
 
+  /**
+   * Executa a rotina abrir venda do cliente.
+   */
   async function abrirVendaDoCliente(vendaResumo) {
     if (!vendaResumo?.id || carregandoVendaModal) return;
 
@@ -1196,6 +1286,9 @@ function Clientes() {
     }
   }
 
+  /**
+   * Executa a rotina salvar venda modal.
+   */
   async function salvarVendaModal(dados) {
     if (!vendaModal?.id) return;
 
@@ -1218,6 +1311,9 @@ function Clientes() {
     }
   }
 
+  /**
+   * Executa a rotina enviar pos venda modal.
+   */
   async function enviarPosVendaModal(venda) {
     if (!venda?.id) return;
 
@@ -1238,12 +1334,18 @@ function Clientes() {
     }
   }
 
+  /**
+   * Executa a rotina finalizar importacao base anterior.
+   */
   async function finalizarImportacaoBaseAnterior(resultado) {
     setImportModalAberto(false);
     await carregarClientes(filtros);
     setSucesso(`Importacao concluida: ${resultado.criados || 0} criado(s) e ${resultado.atualizados || 0} atualizado(s).`);
   }
 
+  /**
+   * Executa a rotina finalizar importacao vendas empresas.
+   */
   async function finalizarImportacaoVendasEmpresas(resultado) {
     setImportModalAberto(false);
     await Promise.all([
@@ -1253,6 +1355,9 @@ function Clientes() {
     setSucesso(`Importacao concluida: ${resultado.vendas_criadas || 0} venda(s), ${resultado.clientes_criados || 0} cliente(s) novo(s) e ${resultado.clientes_atualizados || 0} atualizado(s).`);
   }
 
+  /**
+   * Executa a rotina confirmar exclusao cliente.
+   */
   async function confirmarExclusaoCliente() {
     if (!clienteParaLixeira) return;
 
@@ -1269,6 +1374,9 @@ function Clientes() {
     }
   }
 
+  /**
+   * Executa a rotina confirmar limpeza base anterior.
+   */
   async function confirmarLimpezaBaseAnterior() {
     setLimpandoBase(true);
     setErro('');

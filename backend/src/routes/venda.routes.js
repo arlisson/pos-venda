@@ -9,6 +9,9 @@ const authMiddleware = require('../middlewares/auth.middleware');
 const { auditar } = require('../middlewares/audit.middleware');
 const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 
+/**
+ * Executa a rotina obter movimentacao status.
+ */
 function obterMovimentacaoStatus(venda) {
   const historico = Array.isArray(venda?.historico) ? venda.historico : [];
   const movimentacao = historico.find(item => item.status_novo || item.status_anterior);

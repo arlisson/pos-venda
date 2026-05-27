@@ -8,13 +8,22 @@ const notificacaoService = require('./notificacao.service');
 
 const TIPOS_VALIDOS = ['cliente', 'venda'];
 
+/**
+ * Executa a rotina validar tipo.
+ */
 function validarTipo(tipo) {
   if (!TIPOS_VALIDOS.includes(tipo)) {
     throw new Error('Tipo de entidade inválido.');
   }
 }
 
+/**
+ * Executa a rotina formatar date time sql.
+ */
 function formatarDateTimeSQL(data = new Date()) {
+  /**
+   * Executa a rotina pad.
+   */
   const pad = (value) => String(value).padStart(2, '0');
 
   return [
@@ -28,6 +37,9 @@ function formatarDateTimeSQL(data = new Date()) {
   ].join(':');
 }
 
+/**
+ * Executa a rotina parse data hora retorno.
+ */
 function parseDataHoraRetorno(valor) {
   if (!valor) return null;
 
@@ -40,6 +52,9 @@ function parseDataHoraRetorno(valor) {
   return formatarDateTimeSQL(data);
 }
 
+/**
+ * Executa a rotina formatar nota.
+ */
 function formatarNota(nota) {
   if (!nota) return null;
 
@@ -56,6 +71,9 @@ function formatarNota(nota) {
   };
 }
 
+/**
+ * Executa a rotina usuario pode acessar entidade.
+ */
 async function usuarioPodeAcessarEntidade(tipo, entidadeId, usuarioId) {
   validarTipo(tipo);
 
@@ -67,6 +85,9 @@ async function usuarioPodeAcessarEntidade(tipo, entidadeId, usuarioId) {
   return Boolean(venda);
 }
 
+/**
+ * Executa a rotina montar payload.
+ */
 function montarPayload(dados = {}) {
   const titulo = String(dados.titulo || '').trim().slice(0, 160);
   const conteudo = String(dados.conteudo || '').trim();
@@ -86,6 +107,9 @@ function montarPayload(dados = {}) {
   return payload;
 }
 
+/**
+ * Executa a rotina listar notas.
+ */
 async function listarNotas(tipo, entidadeId, usuarioId) {
   validarTipo(tipo);
 
@@ -104,6 +128,9 @@ async function listarNotas(tipo, entidadeId, usuarioId) {
   return notas.map(formatarNota);
 }
 
+/**
+ * Executa a rotina criar nota.
+ */
 async function criarNota(tipo, entidadeId, usuarioId, dados) {
   validarTipo(tipo);
 
@@ -125,6 +152,9 @@ async function criarNota(tipo, entidadeId, usuarioId, dados) {
   return formatarNota(await db('entidade_notas').where({ id }).first());
 }
 
+/**
+ * Executa a rotina atualizar nota.
+ */
 async function atualizarNota(notaId, usuarioId, dados) {
   const nota = await db('entidade_notas')
     .where({ id: Number(notaId), usuario_id: Number(usuarioId) })
@@ -150,6 +180,9 @@ async function atualizarNota(notaId, usuarioId, dados) {
   return formatarNota(await db('entidade_notas').where({ id: Number(notaId) }).first());
 }
 
+/**
+ * Executa a rotina excluir nota.
+ */
 async function excluirNota(notaId, usuarioId) {
   const total = await db('entidade_notas')
     .where({ id: Number(notaId), usuario_id: Number(usuarioId) })

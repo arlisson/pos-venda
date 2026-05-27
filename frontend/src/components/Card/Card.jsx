@@ -1,5 +1,8 @@
 import React from 'react';
 
+/**
+ * Executa a rotina card.
+ */
 function Card({ children, className = '' }) {
   return (
     <section className={`panel ${className}`}>

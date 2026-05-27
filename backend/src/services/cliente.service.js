@@ -26,12 +26,18 @@ const CAMPOS = [
   'base_anterior_sistema'
 ];
 
+/**
+ * Executa a rotina limpar valor.
+ */
 function limparValor(valor) {
   if (valor === undefined) return undefined;
   if (valor === '') return null;
   return valor;
 }
 
+/**
+ * Executa a rotina normalizar data.
+ */
 function normalizarData(valor) {
   if (!valor) return null;
 
@@ -55,7 +61,13 @@ function normalizarData(valor) {
   return `${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
 }
 
+/**
+ * Executa a rotina formatar date time sql.
+ */
 function formatarDateTimeSQL(data = new Date()) {
+  /**
+   * Executa a rotina pad.
+   */
   const pad = (value) => String(value).padStart(2, '0');
 
   return [
@@ -69,12 +81,18 @@ function formatarDateTimeSQL(data = new Date()) {
   ].join(':');
 }
 
+/**
+ * Executa a rotina adicionar um mes.
+ */
 function adicionarUmMes(data = new Date()) {
   const proxima = new Date(data);
   proxima.setMonth(proxima.getMonth() + 1);
   return proxima;
 }
 
+/**
+ * Executa a rotina separar telefone.
+ */
 function separarTelefone(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
 
@@ -88,6 +106,9 @@ function separarTelefone(valor) {
   };
 }
 
+/**
+ * Executa a rotina normalizar valor monetario.
+ */
 function normalizarValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
   if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
@@ -102,6 +123,9 @@ function normalizarValorMonetario(valor) {
   return Number.isFinite(numero) ? numero : null;
 }
 
+/**
+ * Executa a rotina normalizar texto.
+ */
 function normalizarTexto(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -110,37 +134,61 @@ function normalizarTexto(valor) {
     .trim();
 }
 
+/**
+ * Executa a rotina sanitizar cnpj.
+ */
 function sanitizarCnpj(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 14);
 }
 
+/**
+ * Executa a rotina apenas digitos.
+ */
 function apenasDigitos(valor) {
   return String(valor || '').replace(/\D/g, '');
 }
 
+/**
+ * Executa a rotina sql somente digitos.
+ */
 function sqlSomenteDigitos(coluna) {
   return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${coluna}, '.', ''), '/', ''), '-', ''), '(', ''), ')', ''), ' ', '')`;
 }
 
+/**
+ * Executa a rotina sanitizar cpf.
+ */
 function sanitizarCpf(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 11);
 }
 
+/**
+ * Executa a rotina formatar cnpj.
+ */
 function formatarCnpj(valor) {
   const digitos = sanitizarCnpj(valor);
   if (digitos.length !== 14) return String(valor || '').trim();
   return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
 }
 
+/**
+ * Executa a rotina formatar cpf.
+ */
 function formatarCpf(valor) {
   const digitos = sanitizarCpf(valor);
   if (digitos.length !== 11) return String(valor || '').trim();
   return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9)}`;
 }
 
+/**
+ * Executa a rotina validar digitos cnpj.
+ */
 function validarDigitosCnpj(cnpj) {
   if (!/^\d{14}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
 
+  /**
+   * Executa a rotina calcular digito.
+   */
   const calcularDigito = (base) => {
     const pesos = base === 12
       ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -153,9 +201,15 @@ function validarDigitosCnpj(cnpj) {
   return calcularDigito(12) === Number(cnpj[12]) && calcularDigito(13) === Number(cnpj[13]);
 }
 
+/**
+ * Executa a rotina validar digitos cpf.
+ */
 function validarDigitosCpf(cpf) {
   if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
 
+  /**
+   * Executa a rotina calc.
+   */
   const calc = (n) => {
     const soma = Array.from({ length: n }, (_, i) => Number(cpf[i]) * (n + 1 - i)).reduce((a, b) => a + b, 0);
     const r = (soma * 10) % 11;
@@ -165,6 +219,9 @@ function validarDigitosCpf(cpf) {
   return calc(9) === Number(cpf[9]) && calc(10) === Number(cpf[10]);
 }
 
+/**
+ * Executa a rotina normalizar documento obrigatorio.
+ */
 function normalizarDocumentoObrigatorio(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
 
@@ -191,6 +248,9 @@ function normalizarDocumentoObrigatorio(valor) {
   throw criarHttpError(400, 'Informe um CPF ou CNPJ valido.');
 }
 
+/**
+ * Executa a rotina texto celula.
+ */
 function textoCelula(valor) {
   if (valor === null || valor === undefined) return '';
   if (valor instanceof Date) return valor.toISOString().slice(0, 10);
@@ -204,6 +264,9 @@ function textoCelula(valor) {
   return String(valor).trim();
 }
 
+/**
+ * Executa a rotina obter valor linha.
+ */
 function obterValorLinha(row, headerMap, coluna) {
   if (!coluna) return '';
   const index = headerMap.get(coluna);
@@ -211,16 +274,25 @@ function obterValorLinha(row, headerMap, coluna) {
   return textoCelula(row.getCell(index).value);
 }
 
+/**
+ * Executa a rotina somar numero.
+ */
 function somarNumero(valor) {
   const numero = normalizarValorMonetario(valor);
   return numero === null ? 0 : numero;
 }
 
+/**
+ * Executa a rotina normalizar inteiro.
+ */
 function normalizarInteiro(valor) {
   const numero = Number(String(valor || '').replace(/\D/g, ''));
   return Number.isFinite(numero) ? numero : 0;
 }
 
+/**
+ * Executa a rotina normalizar inteiro opcional.
+ */
 function normalizarInteiroOpcional(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
   const numero = Number(valor);
@@ -228,6 +300,9 @@ function normalizarInteiroOpcional(valor) {
   return Math.max(Math.trunc(numero), 0);
 }
 
+/**
+ * Executa a rotina normalizar operadoras cliente.
+ */
 function normalizarOperadorasCliente(dados = {}) {
   const fonte = Array.isArray(dados.operadoras_atuais)
     ? dados.operadoras_atuais
@@ -284,6 +359,9 @@ function normalizarOperadorasCliente(dados = {}) {
   }));
 }
 
+/**
+ * Executa a rotina ordenar operadoras cliente.
+ */
 function ordenarOperadorasCliente(operadoras = []) {
   return [...operadoras].sort((a, b) => (
     Number(a.id || 0) - Number(b.id || 0)
@@ -291,6 +369,9 @@ function ordenarOperadorasCliente(operadoras = []) {
   ));
 }
 
+/**
+ * Executa a rotina obter resumo operadoras cliente.
+ */
 function obterResumoOperadorasCliente(operadoras = []) {
   const ordenadas = ordenarOperadorasCliente(operadoras);
   const primeira = ordenadas[0] || null;
@@ -310,6 +391,9 @@ function obterResumoOperadorasCliente(operadoras = []) {
   };
 }
 
+/**
+ * Executa a rotina formatar operadoras cliente.
+ */
 function formatarOperadorasCliente(operadoras = []) {
   return ordenarOperadorasCliente(operadoras).map(item => ({
     id: item.id,
@@ -323,6 +407,9 @@ function formatarOperadorasCliente(operadoras = []) {
   }));
 }
 
+/**
+ * Executa a rotina sincronizar operadoras cliente.
+ */
 async function sincronizarOperadorasCliente(clienteId, operadoras, trx = null) {
   const clienteIdNormalizado = Number(clienteId);
   const linhas = normalizarOperadorasCliente({ operadoras_atuais: operadoras });
@@ -342,6 +429,9 @@ async function sincronizarOperadorasCliente(clienteId, operadoras, trx = null) {
   await atualizarResumoLegadoCliente(clienteIdNormalizado, trx);
 }
 
+/**
+ * Executa a rotina atualizar resumo legado cliente.
+ */
 async function atualizarResumoLegadoCliente(clienteId, trx = null) {
   const clienteIdNormalizado = Number(clienteId);
   const operadoras = await ClienteOperadora.query(trx)
@@ -361,22 +451,34 @@ async function atualizarResumoLegadoCliente(clienteId, trx = null) {
   return resumo;
 }
 
+/**
+ * Executa a rotina escolher texto.
+ */
 function escolherTexto(...valores) {
   return valores.find(valor => String(valor || '').trim()) || '';
 }
 
+/**
+ * Executa a rotina complementar campo.
+ */
 function complementarCampo(payload, cliente, campo, valor) {
   if (cliente[campo] === null || cliente[campo] === undefined || cliente[campo] === '') {
     payload[campo] = valor || null;
   }
 }
 
+/**
+ * Executa a rotina criar http error.
+ */
 function criarHttpError(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
 }
 
+/**
+ * Executa a rotina normalizar paginacao.
+ */
 function normalizarPaginacao(filtros = {}) {
   const opcoesPorPagina = new Set([20, 50, 100]);
   const page = Math.max(Number.parseInt(filtros.page, 10) || 1, 1);
@@ -385,6 +487,9 @@ function normalizarPaginacao(filtros = {}) {
   return { page, perPage };
 }
 
+/**
+ * Executa a rotina ler arquivo multipart.
+ */
 function lerArquivoMultipart(req) {
   return new Promise((resolve, reject) => {
     const busboy = Busboy({ headers: req.headers });
@@ -433,6 +538,9 @@ function lerArquivoMultipart(req) {
   });
 }
 
+/**
+ * Executa a rotina ler workbook.
+ */
 async function lerWorkbook(buffer) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
@@ -443,6 +551,9 @@ async function lerWorkbook(buffer) {
   return worksheet;
 }
 
+/**
+ * Executa a rotina obter cabecalhos.
+ */
 function obterCabecalhos(worksheet) {
   const headerRow = worksheet.getRow(1);
   const colunas = [];
@@ -461,9 +572,15 @@ function obterCabecalhos(worksheet) {
   return colunas;
 }
 
+/**
+ * Executa a rotina sugerir mapeamento.
+ */
 function sugerirMapeamento(colunas) {
   const porTexto = new Map(colunas.map(coluna => [normalizarTexto(coluna.nome), coluna.nome]));
 
+  /**
+   * Executa a rotina achar.
+   */
   function achar(...termos) {
     const termosNorm = termos.map(normalizarTexto);
     for (const [texto, nome] of porTexto.entries()) {
@@ -490,6 +607,9 @@ function sugerirMapeamento(colunas) {
   };
 }
 
+/**
+ * Executa a rotina montar amostras.
+ */
 function montarAmostras(worksheet, colunas) {
   const amostras = [];
   const limite = Math.min(worksheet.rowCount, 6);
@@ -527,11 +647,17 @@ async function previewImportacaoBaseAnterior(req) {
   };
 }
 
+/**
+ * Executa a rotina montar mapa operadoras.
+ */
 async function montarMapaOperadoras(trx = null) {
   const operadoras = await Operadora.query(trx).select('id', 'nome');
   return new Map(operadoras.map(operadora => [normalizarTexto(operadora.nome), operadora]));
 }
 
+/**
+ * Executa a rotina consolidar linhas importacao.
+ */
 function consolidarLinhasImportacao(worksheet, mapeamento, operadorasPorNome) {
   const colunas = obterCabecalhos(worksheet);
   const headerMap = new Map(colunas.map(coluna => [coluna.nome, coluna.index]));
@@ -614,6 +740,9 @@ function consolidarLinhasImportacao(worksheet, mapeamento, operadorasPorNome) {
   return { clientes: Array.from(porCnpj.values()), resultado };
 }
 
+/**
+ * Executa a rotina parse mapeamento.
+ */
 function parseMapeamento(valor) {
   if (!valor) return {};
   if (typeof valor === 'object') return valor;
@@ -624,6 +753,9 @@ function parseMapeamento(valor) {
   }
 }
 
+/**
+ * Executa a rotina montar payload importacao.
+ */
 function montarPayloadImportacao(dados, clienteExistente = null) {
   const telefoneWhatsapp = separarTelefone(dados.whatsapp);
   const telefoneFixo = separarTelefone(dados.fixo);
@@ -729,6 +861,9 @@ async function importarBaseAnterior(req, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina montar payload.
+ */
 function montarPayload(dados) {
   const dadosNormalizados = { ...dados };
 
@@ -795,6 +930,9 @@ function montarPayload(dados) {
   return payload;
 }
 
+/**
+ * Executa a rotina buscar cliente duplicado por cnpj.
+ */
 async function buscarClienteDuplicadoPorCnpj(cnpjDigitos, ignorarId = null, trx = null) {
   if (!cnpjDigitos) return null;
 
@@ -849,6 +987,9 @@ async function verificarDocumentoCliente(documento, opcoes = {}) {
   };
 }
 
+/**
+ * Executa a rotina lancar erro cnpj duplicado.
+ */
 function lancarErroCnpjDuplicado(cliente) {
   const nome = cliente.razao_social || cliente.nome || `#${cliente.id}`;
   const sufixo = cliente.excluido_em
@@ -858,6 +999,9 @@ function lancarErroCnpjDuplicado(cliente) {
   throw criarHttpError(409, `Ja existe um cliente cadastrado com este documento (${nome}).${sufixo}`);
 }
 
+/**
+ * Executa a rotina buscar escopo clientes.
+ */
 async function buscarEscopoClientes(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -874,6 +1018,9 @@ async function buscarEscopoClientes(usuarioId) {
 }
 
 
+/**
+ * Executa a rotina aplicar escopo clientes.
+ */
 function aplicarEscopoClientes(query, usuarioId, escopo) {
   if (escopo.podeVerTodos) {
     return query;
@@ -888,6 +1035,9 @@ function aplicarEscopoClientes(query, usuarioId, escopo) {
   return query;
 }
 
+/**
+ * Executa a rotina montar aviso fidelidade.
+ */
 function montarAvisoFidelidade(cliente) {
   if (!cliente.fidelidade_fim || cliente.fidelidade_fim === '1899-11-30') {
     return null;
@@ -915,6 +1065,9 @@ function montarAvisoFidelidade(cliente) {
   };
 }
 
+/**
+ * Executa a rotina valor data excel.
+ */
 function valorDataExcel(valor) {
   const texto = valor instanceof Date
     ? [
@@ -932,6 +1085,9 @@ function valorDataExcel(valor) {
   return new Date(Date.UTC(ano, mes - 1, dia));
 }
 
+/**
+ * Executa a rotina nome arquivo seguro.
+ */
 function nomeArquivoSeguro(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -941,6 +1097,9 @@ function nomeArquivoSeguro(valor) {
     .slice(0, 80) || 'exportacao';
 }
 
+/**
+ * Executa a rotina aplicar estilo exportacao.
+ */
 function aplicarEstiloExportacao(worksheet) {
   worksheet.views = [{ state: 'frozen', ySplit: 1 }];
   worksheet.autoFilter = {
@@ -970,6 +1129,9 @@ function aplicarEstiloExportacao(worksheet) {
   });
 }
 
+/**
+ * Executa a rotina formatar telefone exportacao.
+ */
 function formatarTelefoneExportacao(ddd, numero) {
   const d = String(ddd || '').trim();
   const n = String(numero || '').trim();
@@ -977,6 +1139,9 @@ function formatarTelefoneExportacao(ddd, numero) {
   return d ? `(${d}) ${n}` : n;
 }
 
+/**
+ * Executa a rotina formatar operadoras exportacao.
+ */
 function formatarOperadorasExportacao(cliente) {
   const operadoras = cliente.operadoras_atuais || cliente.operadorasAtuais || [];
   if (operadoras.length > 0) {
@@ -1058,6 +1223,9 @@ async function gerarXlsxClientes(filtros = {}, usuarioId) {
   return { buffer, nome: `clientes-${nomeArquivoSeguro(data)}.xlsx` };
 }
 
+/**
+ * Executa a rotina formatar cliente.
+ */
 function formatarCliente(cliente) {
   if (!cliente) return cliente;
 
@@ -1078,6 +1246,9 @@ function formatarCliente(cliente) {
   };
 }
 
+/**
+ * Executa a rotina montar resumo notas clientes.
+ */
 async function montarResumoNotasClientes(clientes, usuarioId) {
   const ids = clientes.map(cliente => Number(cliente.id)).filter(Boolean);
 
@@ -1109,6 +1280,9 @@ async function montarResumoNotasClientes(clientes, usuarioId) {
   ])));
 }
 
+/**
+ * Executa a rotina montar resumo vendas clientes.
+ */
 async function montarResumoVendasClientes(clientes) {
   const ids = clientes.map(cliente => Number(cliente.id)).filter(Boolean);
 
@@ -1128,6 +1302,9 @@ async function montarResumoVendasClientes(clientes) {
   ]));
 }
 
+/**
+ * Executa a rotina adicionar resumo notas clientes.
+ */
 async function adicionarResumoNotasClientes(clientes, usuarioId) {
   const resumoPorCliente = await montarResumoNotasClientes(clientes, usuarioId);
 
@@ -1143,6 +1320,9 @@ async function adicionarResumoNotasClientes(clientes, usuarioId) {
   }));
 }
 
+/**
+ * Executa a rotina adicionar resumo vendas relacionadas.
+ */
 async function adicionarResumoVendasRelacionadas(clientes) {
   const resumoPorCliente = await montarResumoVendasClientes(clientes);
 
@@ -1152,6 +1332,9 @@ async function adicionarResumoVendasRelacionadas(clientes) {
   }));
 }
 
+/**
+ * Executa a rotina aplicar busca clientes.
+ */
 function aplicarBuscaClientes(query, termo) {
   const busca = `%${termo}%`;
   const cnpjDigitos = sanitizarCnpj(termo);
@@ -1177,6 +1360,9 @@ function aplicarBuscaClientes(query, termo) {
   });
 }
 
+/**
+ * Executa a rotina aplicar busca campo clientes.
+ */
 function aplicarBuscaCampoClientes(query, filtros = {}) {
   const campo = String(filtros.busca_campo || '').trim();
   const valor = String(filtros.busca_valor || '').trim();
@@ -1228,6 +1414,9 @@ function aplicarBuscaCampoClientes(query, filtros = {}) {
   }
 }
 
+/**
+ * Executa a rotina subquery soma chips cliente.
+ */
 function subquerySomaChipsCliente() {
   return Cliente.knex().raw(`(
     SELECT COALESCE(SUM(co.quantidade_chips), 0)
@@ -1236,6 +1425,9 @@ function subquerySomaChipsCliente() {
   )`);
 }
 
+/**
+ * Executa a rotina aplicar filtro fidelidade operadoras.
+ */
 function aplicarFiltroFidelidadeOperadoras(query, tipo) {
   const knex = Cliente.knex();
 
@@ -1578,6 +1770,9 @@ async function excluirCliente(id, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina normalizar cliente ids.
+ */
 function normalizarClienteIds(ids) {
   return [...new Set([ids]
     .flat()
@@ -1585,6 +1780,9 @@ function normalizarClienteIds(ids) {
     .filter(Boolean))];
 }
 
+/**
+ * Executa a rotina buscar source keys notificacoes cliente.
+ */
 async function buscarSourceKeysNotificacoesCliente(clienteIds, trx) {
   const notas = await trx('entidade_notas')
     .select('id')
@@ -1601,6 +1799,9 @@ async function buscarSourceKeysNotificacoesCliente(clienteIds, trx) {
   return sourceKeys;
 }
 
+/**
+ * Executa a rotina excluir notificacoes clientes.
+ */
 async function excluirNotificacoesClientes(clienteIdsEntrada, trx) {
   const clienteIds = normalizarClienteIds(clienteIdsEntrada);
   if (clienteIds.length === 0) return 0;
@@ -1640,6 +1841,9 @@ async function excluirNotificacoesClientes(clienteIdsEntrada, trx) {
   return notificacaoIds.length;
 }
 
+/**
+ * Executa a rotina contar vendas relacionadas cliente.
+ */
 async function contarVendasRelacionadasCliente(clienteId, trx = null) {
   const resultado = await Venda.query(trx)
     .where('cliente_id', clienteId)
@@ -1649,6 +1853,9 @@ async function contarVendasRelacionadasCliente(clienteId, trx = null) {
   return Number(resultado?.total || 0);
 }
 
+/**
+ * Executa a rotina limpar clientes vencidos da lixeira.
+ */
 async function limparClientesVencidosDaLixeira() {
   return Cliente.transaction(async trx => {
     const agora = formatarDateTimeSQL();

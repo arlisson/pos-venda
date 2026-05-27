@@ -6,6 +6,9 @@
  */
 const leadPlanilhaService = require('../services/lead-planilha.service');
 
+/**
+ * Executa a rotina index.
+ */
 async function index(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarPlanilhas());
@@ -15,6 +18,9 @@ async function index(req, res) {
   }
 }
 
+/**
+ * Executa a rotina store.
+ */
 async function store(req, res) {
   try {
     const planilha = await leadPlanilhaService.criarPlanilha(req.body, req.usuario.id);
@@ -25,6 +31,9 @@ async function store(req, res) {
   }
 }
 
+/**
+ * Executa a rotina upload.
+ */
 async function upload(req, res) {
   try {
     const planilha = await leadPlanilhaService.iniciarUpload(req, req.usuario.id);
@@ -35,6 +44,9 @@ async function upload(req, res) {
   }
 }
 
+/**
+ * Executa a rotina status.
+ */
 async function status(req, res) {
   try {
     const planilha = await leadPlanilhaService.buscarStatus(req.params.id);
@@ -50,6 +62,9 @@ async function status(req, res) {
   }
 }
 
+/**
+ * Executa a rotina store linhas.
+ */
 async function storeLinhas(req, res) {
   try {
     const resultado = await leadPlanilhaService.salvarLinhasLote(req.params.id, req.body.linhas || []);
@@ -60,6 +75,9 @@ async function storeLinhas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina finalizar.
+ */
 async function finalizar(req, res) {
   try {
     const planilha = await leadPlanilhaService.finalizarPlanilha(req.params.id, req.body || {});
@@ -71,6 +89,9 @@ async function finalizar(req, res) {
   }
 }
 
+/**
+ * Executa a rotina erro.
+ */
 async function erro(req, res) {
   try {
     const planilha = await leadPlanilhaService.marcarErroPlanilha(req.params.id, req.body?.message || req.body?.mensagem);
@@ -82,6 +103,9 @@ async function erro(req, res) {
   }
 }
 
+/**
+ * Executa a rotina update schema.
+ */
 async function updateSchema(req, res) {
   try {
     const planilha = await leadPlanilhaService.atualizarSchema(req.params.id, req.body.schema_colunas);
@@ -97,6 +121,9 @@ async function updateSchema(req, res) {
   }
 }
 
+/**
+ * Executa a rotina destroy.
+ */
 async function destroy(req, res) {
   try {
     await leadPlanilhaService.excluirPlanilha(req.params.id);
@@ -110,6 +137,9 @@ async function destroy(req, res) {
   }
 }
 
+/**
+ * Executa a rotina linhas.
+ */
 async function linhas(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarLinhas(req.query));
@@ -119,6 +149,9 @@ async function linhas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina exportar.
+ */
 async function exportar(req, res) {
   try {
     await leadPlanilhaService.exportarCsv(req.body || {}, res);
@@ -131,6 +164,9 @@ async function exportar(req, res) {
   }
 }
 
+/**
+ * Executa a rotina dividir.
+ */
 async function dividir(req, res) {
   try {
     return res.json(await leadPlanilhaService.dividirLeads(req.body, req.usuario.id));
@@ -140,6 +176,9 @@ async function dividir(req, res) {
   }
 }
 
+/**
+ * Executa a rotina envios.
+ */
 async function envios(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarTodosEnvios());
@@ -149,6 +188,9 @@ async function envios(req, res) {
   }
 }
 
+/**
+ * Executa a rotina meus envios.
+ */
 async function meusEnvios(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarEnviosDoUsuario(req.usuario.id));
@@ -158,6 +200,9 @@ async function meusEnvios(req, res) {
   }
 }
 
+/**
+ * Executa a rotina minhas linhas.
+ */
 async function minhasLinhas(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarLinhas(req.query, { usuarioId: req.usuario.id }));
@@ -167,6 +212,9 @@ async function minhasLinhas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina atualizar meu campo.
+ */
 async function atualizarMeuCampo(req, res) {
   try {
     return res.json(await leadPlanilhaService.atualizarCampoLinhaRecebida(req.params.id, req.usuario.id, req.body || {}));
@@ -177,6 +225,9 @@ async function atualizarMeuCampo(req, res) {
   }
 }
 
+/**
+ * Executa a rotina exportar minhas.
+ */
 async function exportarMinhas(req, res) {
   try {
     await leadPlanilhaService.exportarCsv(req.body || {}, res, { usuarioId: req.usuario.id });
@@ -189,6 +240,9 @@ async function exportarMinhas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina marcar futuro cliente.
+ */
 async function marcarFuturoCliente(req, res) {
   try {
     return res.json(await leadPlanilhaService.marcarComoFuturoCliente(req.params.id, req.usuario.id, req.body || {}));
@@ -199,6 +253,9 @@ async function marcarFuturoCliente(req, res) {
   }
 }
 
+/**
+ * Executa a rotina listar futuros clientes.
+ */
 async function listarFuturosClientes(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarFuturosClientes(req.query, req.usuario.id));
@@ -208,6 +265,9 @@ async function listarFuturosClientes(req, res) {
   }
 }
 
+/**
+ * Executa a rotina listar futuros clientes lixeira.
+ */
 async function listarFuturosClientesLixeira(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarFuturosClientesLixeira(req.query, req.usuario.id));
@@ -217,6 +277,9 @@ async function listarFuturosClientesLixeira(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir futuro cliente.
+ */
 async function excluirFuturoCliente(req, res) {
   try {
     const total = await leadPlanilhaService.enviarFuturoClienteParaLixeira(req.params.id, req.usuario.id);
@@ -233,6 +296,9 @@ async function excluirFuturoCliente(req, res) {
   }
 }
 
+/**
+ * Executa a rotina restaurar futuro cliente.
+ */
 async function restaurarFuturoCliente(req, res) {
   try {
     const linha = await leadPlanilhaService.restaurarFuturoCliente(req.params.id, req.usuario.id);
@@ -249,6 +315,9 @@ async function restaurarFuturoCliente(req, res) {
   }
 }
 
+/**
+ * Executa a rotina excluir futuro cliente definitivo.
+ */
 async function excluirFuturoClienteDefinitivo(req, res) {
   try {
     const total = await leadPlanilhaService.excluirFuturoClienteDefinitivo(req.params.id, req.usuario.id);

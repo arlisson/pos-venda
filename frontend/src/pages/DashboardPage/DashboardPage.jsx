@@ -14,13 +14,22 @@ import * as I from '../../components/Icons';
 import { formatUtcDateTime, getUtcDateTimeTimestamp, parseUtcDateTime } from '../../utils/datetime';
 import './DashboardPage.css';
 
+/**
+ * Executa a rotina format brl.
+ */
 const formatBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+/**
+ * Executa a rotina is money goal.
+ */
 const isMoneyGoal = (campanha) => (
   /R\$/i.test(campanha.desc || '') ||
   ['valor', 'receita', 'faturamento'].some(key => String(campanha.tipo || '').toLowerCase().includes(key))
 );
 
+/**
+ * Executa a rotina format goal value.
+ */
 const formatGoalValue = (campanha, value) => (
   isMoneyGoal(campanha) ? formatBRL(value) : value
 );
@@ -45,10 +54,16 @@ const TIPO_VENDA_PARADA = 'venda_parada_funil';
 const RETORNO_PRE_AVISO_MINUTOS = 15;
 const NOTIFICATION_DRAWER_KEYS = ['retornos', 'fidelidade', 'ligacoes', 'vendas-paradas', 'problemas'];
 
+/**
+ * Executa a rotina get campanha key.
+ */
 function getCampanhaKey(campanha) {
   return campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`;
 }
 
+/**
+ * Executa a rotina get campanha scope.
+ */
 function getCampanhaScope(campanha) {
   const periodo = PERIOD_LABELS[campanha.periodo] || 'Diária';
   const categoria = CATEGORY_LABELS[campanha.categoria] || campanha.categoria || 'Campanha';
@@ -75,6 +90,9 @@ const TODAY_VIEW_MODES = [
 
 const TODAY_STATS_COLORS = ['#2563eb', '#16a34a', '#e87900', '#9333ea'];
 
+/**
+ * Executa a rotina today donut.
+ */
 function TodayDonut({ items }) {
   const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0);
   let offset = 0;
@@ -115,6 +133,9 @@ function TodayDonut({ items }) {
   );
 }
 
+/**
+ * Executa a rotina today overview.
+ */
 function TodayOverview({ items, stats }) {
   const maxValue = Math.max(...items.map(item => Math.max(0, Number(item.value) || 0)), 1);
   const salesItems = items.filter(item => ['vendasDia', 'valorDia', 'concluidasDia'].includes(item.key));
@@ -193,6 +214,9 @@ function TodayOverview({ items, stats }) {
   );
 }
 
+/**
+ * Executa a rotina today stats chart.
+ */
 function TodayStatsChart({ items, type }) {
   const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0);
   const maxValue = Math.max(...items.map(item => Math.max(0, Number(item.value) || 0)), 1);
@@ -292,6 +316,9 @@ function TodayStatsChart({ items, type }) {
   );
 }
 
+/**
+ * Executa a rotina reward modal.
+ */
 function RewardModal({ gift, onClose }) {
   if (!gift) return null;
   return (
@@ -325,9 +352,15 @@ function RewardModal({ gift, onClose }) {
   );
 }
 
+/**
+ * Executa a rotina contatos marcados modal.
+ */
 function ContatosMarcadosModal({ open, notificacoes, onClose, onOpenNotification }) {
   if (!open) return null;
 
+  /**
+   * Executa a rotina handle open notification.
+   */
   async function handleOpenNotification(notificacao) {
     onClose();
     await onOpenNotification(notificacao);
@@ -388,9 +421,15 @@ function ContatosMarcadosModal({ open, notificacoes, onClose, onOpenNotification
   );
 }
 
+/**
+ * Executa a rotina problemas modal.
+ */
 function ProblemasModal({ open, notificacoes, onClose, onOpenNotification }) {
   if (!open) return null;
 
+  /**
+   * Executa a rotina handle open.
+   */
   async function handleOpen(notificacao) {
     onClose();
     await onOpenNotification(notificacao);
@@ -453,6 +492,9 @@ function ProblemasModal({ open, notificacoes, onClose, onOpenNotification }) {
   );
 }
 
+/**
+ * Executa a rotina get initials.
+ */
 function getInitials(name) {
   if (!name) return '??';
   return name
@@ -464,6 +506,9 @@ function getInitials(name) {
     .toUpperCase();
 }
 
+/**
+ * Executa a rotina get notification target.
+ */
 function getNotificationTarget(notificacao) {
   if (notificacao.tipo === 'cliente_fidelidade') {
     return Number(notificacao.dados?.dias_restantes ?? 1) < 0
@@ -504,11 +549,17 @@ function getNotificationTarget(notificacao) {
   return null;
 }
 
+/**
+ * Executa a rotina get retorno timestamp.
+ */
 function getRetornoTimestamp(notificacao) {
   const valor = notificacao?.dados?.retorno_agendado_para || notificacao?.updated_at;
   return getUtcDateTimeTimestamp(valor, Number.MAX_SAFE_INTEGER);
 }
 
+/**
+ * Executa a rotina formatar retorno resumo.
+ */
 function formatarRetornoResumo(notificacao) {
   const valor = notificacao?.dados?.retorno_agendado_para;
   if (!valor) return 'sem data definida';
@@ -521,6 +572,9 @@ function formatarRetornoResumo(notificacao) {
   }, 'sem data definida');
 }
 
+/**
+ * Executa a rotina get retorno minutos para vencer.
+ */
 function getRetornoMinutosParaVencer(notificacao) {
   const data = parseUtcDateTime(notificacao?.dados?.retorno_agendado_para);
   if (!data) return null;
@@ -528,6 +582,9 @@ function getRetornoMinutosParaVencer(notificacao) {
   return Math.ceil((data.getTime() - Date.now()) / 60000);
 }
 
+/**
+ * Executa a rotina retorno deve aparecer no card.
+ */
 function retornoDeveAparecerNoCard(notificacao) {
   if (!TIPOS_RETORNO_NOTA.includes(notificacao.tipo)) return false;
   if (notificacao.tipo === 'nota_retorno_due') return true;
@@ -536,6 +593,9 @@ function retornoDeveAparecerNoCard(notificacao) {
   return minutos !== null && minutos > 0 && minutos <= RETORNO_PRE_AVISO_MINUTOS;
 }
 
+/**
+ * Executa a rotina formatar prazo relativo.
+ */
 function formatarPrazoRelativo(valor) {
   if (!valor) return 'Pendente';
 
@@ -549,6 +609,9 @@ function formatarPrazoRelativo(valor) {
   return `Pendência há ${diffDias} dia${diffDias === 1 ? '' : 's'}`;
 }
 
+/**
+ * Executa a rotina get notificacao titulo.
+ */
 function getNotificacaoTitulo(notificacao) {
   return notificacao?.dados?.cliente_nome
     || notificacao?.dados?.venda_nome
@@ -557,6 +620,9 @@ function getNotificacaoTitulo(notificacao) {
     || 'Sem titulo';
 }
 
+/**
+ * Executa a rotina get notificacao descricao.
+ */
 function getNotificacaoDescricao(notificacao) {
   if (!notificacao) return '';
 
@@ -577,6 +643,9 @@ function getNotificacaoDescricao(notificacao) {
   return notificacao.mensagem;
 }
 
+/**
+ * Executa a rotina montar tooltip notificacao.
+ */
 function montarTooltipNotificacao(titulo, descricao) {
   return [titulo, descricao]
     .map(valor => String(valor || '').trim())
@@ -585,6 +654,9 @@ function montarTooltipNotificacao(titulo, descricao) {
     .join('\n');
 }
 
+/**
+ * Executa a rotina get notificacao tooltip.
+ */
 function getNotificacaoTooltip(notificacao) {
   if (!notificacao) return '';
 
@@ -596,6 +668,9 @@ function getNotificacaoTooltip(notificacao) {
   return montarTooltipNotificacao(titulo, descricao);
 }
 
+/**
+ * Executa a rotina get fidelidade prazo.
+ */
 function getFidelidadePrazo(notificacao) {
   const dias = Number(notificacao?.dados?.dias_restantes);
   if (!Number.isFinite(dias)) return 'Sem data';
@@ -604,6 +679,9 @@ function getFidelidadePrazo(notificacao) {
   return `Vence em ${dias} dias`;
 }
 
+/**
+ * Executa a rotina get retorno prazo.
+ */
 function getRetornoPrazo(notificacao) {
   if (notificacao?.tipo === 'nota_retorno_due') return 'Ligação vencida';
 
@@ -617,6 +695,9 @@ function getRetornoPrazo(notificacao) {
   return formatarRetornoResumo(notificacao);
 }
 
+/**
+ * Executa a rotina get venda parada prazo.
+ */
 function getVendaParadaPrazo(notificacao) {
   const horas = Number(notificacao?.dados?.horas);
 
@@ -628,11 +709,17 @@ function getVendaParadaPrazo(notificacao) {
   return formatarPrazoRelativo(notificacao?.dados?.data_entrada || notificacao?.updated_at);
 }
 
+/**
+ * Executa a rotina get venda retorno timestamp.
+ */
 function getVendaRetornoTimestamp(venda) {
   const valor = venda?.retornou_em || venda?.updated_at || venda?.ultima_atividade_em;
   return getUtcDateTimeTimestamp(valor, 0);
 }
 
+/**
+ * Executa a rotina formatar data retorno venda.
+ */
 function formatarDataRetornoVenda(venda) {
   const timestamp = getVendaRetornoTimestamp(venda);
   if (!timestamp) return 'Retorno registrado';
@@ -645,14 +732,23 @@ function formatarDataRetornoVenda(venda) {
   });
 }
 
+/**
+ * Executa a rotina get venda retorno titulo.
+ */
 function getVendaRetornoTitulo(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
+/**
+ * Executa a rotina get venda retorno descricao.
+ */
 function getVendaRetornoDescricao(venda) {
   return venda?.motivo_retorno || 'Sem motivo informado';
 }
 
+/**
+ * Executa a rotina montar mapa referencias.
+ */
 function montarMapaReferencias(referencias = [], campo = 'total') {
   return referencias.reduce((mapa, item) => {
     if (item?.chave) mapa.set(item.chave, Number(item[campo] || 0));
@@ -660,6 +756,9 @@ function montarMapaReferencias(referencias = [], campo = 'total') {
   }, new Map());
 }
 
+/**
+ * Executa a rotina dashboard page.
+ */
 function DashboardPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -758,6 +857,9 @@ function DashboardPage() {
     }
 
     const mediaQuery = window.matchMedia('(max-width: 760px)');
+    /**
+     * Executa a rotina handle change.
+     */
     const handleChange = event => setTeamGoalMobileLayout(event.matches);
 
     setTeamGoalMobileLayout(mediaQuery.matches);
@@ -833,6 +935,9 @@ function DashboardPage() {
     }
 
     let ativo = true;
+    /**
+     * Executa a rotina carregar notificacoes dashboard.
+     */
     const carregarNotificacoesDashboard = () => {
       listarNotificacoes({ limit: 24 })
         .then(data => {
@@ -844,6 +949,9 @@ function DashboardPage() {
     carregarNotificacoesDashboard();
     const timer = setInterval(carregarNotificacoesDashboard, 60000);
 
+    /**
+     * Executa a rotina handle refresh notifications.
+     */
     function handleRefreshNotifications() {
       carregarNotificacoesDashboard();
     }
@@ -857,6 +965,9 @@ function DashboardPage() {
     };
   }, [podeVerNotificacoes]);
 
+  /**
+   * Executa a rotina handle read notification.
+   */
   async function handleReadNotification(notificacao) {
     if (!notificacao.lida) {
       await marcarNotificacaoLida(notificacao.id);
@@ -873,6 +984,9 @@ function DashboardPage() {
     }
   }
 
+  /**
+   * Executa a rotina marcar notificacao como lida local.
+   */
   async function marcarNotificacaoComoLidaLocal(notificacao) {
     if (!notificacao?.id || notificacao.lida) return;
 
@@ -883,6 +997,9 @@ function DashboardPage() {
     window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
   }
 
+  /**
+   * Executa a rotina abrir cliente no dashboard.
+   */
   async function abrirClienteNoDashboard(clienteId, aba = 'cliente') {
     if (!clienteId) return;
 
@@ -892,6 +1009,9 @@ function DashboardPage() {
     setClienteModalAba(aba);
   }
 
+  /**
+   * Executa a rotina abrir venda no dashboard.
+   */
   async function abrirVendaNoDashboard(vendaId, aba = 'venda', problemaId = null) {
     if (!vendaId) return;
 
@@ -903,6 +1023,9 @@ function DashboardPage() {
     setVendaModalProblemaId(problemaId);
   }
 
+  /**
+   * Executa a rotina abrir notificacao no dashboard.
+   */
   async function abrirNotificacaoNoDashboard(notificacao) {
     await marcarNotificacaoComoLidaLocal(notificacao);
 
@@ -923,6 +1046,9 @@ function DashboardPage() {
     }
   }
 
+  /**
+   * Executa a rotina salvar cliente dashboard.
+   */
   async function salvarClienteDashboard(clienteSalvo) {
     setClienteModal(null);
     setClientes(prev => {
@@ -933,6 +1059,9 @@ function DashboardPage() {
     });
   }
 
+  /**
+   * Executa a rotina salvar venda dashboard.
+   */
   async function salvarVendaDashboard(vendaSalva) {
     setVendaModal(null);
     setVendaModalAba('venda');
@@ -1100,6 +1229,9 @@ function DashboardPage() {
     }
   ];
 
+  /**
+   * Executa a rotina toggle notification drawer.
+   */
   function toggleNotificationDrawer(key) {
     setOpenNotificationDrawers(prev => {
       const next = new Set(prev);
@@ -1112,10 +1244,16 @@ function DashboardPage() {
     });
   }
 
+  /**
+   * Executa a rotina is team goal drawer open.
+   */
   function isTeamGoalDrawerOpen(id) {
     return !teamGoalMobileLayout || openTeamGoalDrawers.has(String(id));
   }
 
+  /**
+   * Executa a rotina toggle team goal drawer.
+   */
   function toggleTeamGoalDrawer(id) {
     const key = String(id);
     setOpenTeamGoalDrawers(prev => {
@@ -1143,6 +1281,9 @@ function DashboardPage() {
       ? 'vence hoje'
       : `vence em ${proximaFidelidade?.dados?.dias_restantes} dias`;
 
+  /**
+   * Executa a rotina handle open gift.
+   */
   const handleOpenGift = async (campanha) => {
     setClaimingId(campanha.id);
     setFeedback(null);

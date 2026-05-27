@@ -7,10 +7,16 @@ import { excluirClienteDefinitivo, listarClientesLixeira, restaurarCliente } fro
 import { formatDateValue } from '../../utils/datetime';
 import './Clientes.css';
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(value) {
   return formatDateValue(value, undefined, '-');
 }
 
+/**
+ * Executa a rotina confirmar exclusao definitiva modal.
+ */
 function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, excluindo, onClose, onConfirm, onToggleExcluirVendas }) {
   if (!cliente) return null;
   const totalVendasRelacionadas = Number(cliente.vendas_relacionadas_total || 0);
@@ -78,6 +84,9 @@ function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, 
     </div>
   );
 }
+/**
+ * Executa a rotina clientes lixeira page.
+ */
 function ClientesLixeiraPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
@@ -106,6 +115,9 @@ function ClientesLixeiraPage() {
     return () => clearTimeout(timer);
   }, [sucesso]);
 
+  /**
+   * Executa a rotina carregar clientes.
+   */
   async function carregarClientes(proximosFiltros = filtros) {
     setErro('');
     setCarregando(true);
@@ -125,11 +137,17 @@ function ClientesLixeiraPage() {
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
+  /**
+   * Executa a rotina handle buscar.
+   */
   async function handleBuscar(event) {
     event.preventDefault();
     await carregarClientes({ busca });
   }
 
+  /**
+   * Executa a rotina handle restaurar.
+   */
   async function handleRestaurar(cliente) {
     setProcessandoId(cliente.id);
     setErro('');
@@ -146,6 +164,9 @@ function ClientesLixeiraPage() {
     }
   }
 
+  /**
+   * Executa a rotina confirmar exclusao definitiva.
+   */
   async function confirmarExclusaoDefinitiva() {
     if (!clienteParaExcluir) return;
 

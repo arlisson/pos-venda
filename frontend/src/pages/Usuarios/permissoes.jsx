@@ -9,6 +9,9 @@ export const PERMISSAO_POS_VENDA = {
 };
 export const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
 
+/**
+ * Executa a rotina garantir permissao pos venda.
+ */
 export function garantirPermissaoPosVenda(permissoes = []) {
   if (permissoes.some(permissao => permissao.chave === PERMISSAO_POS_VENDA.chave)) {
     return permissoes;
@@ -438,10 +441,16 @@ export const GRUPOS_PERMISSOES = [
   }
 ];
 
+/**
+ * Executa a rotina get chaves grupo.
+ */
 export function getChavesGrupo(grupo) {
   return Array.from(new Set(grupo.secoes.flatMap(secao => secao.itens.map(item => item.chave))));
 }
 
+/**
+ * Executa a rotina get permissoes declaradas.
+ */
 export function getPermissoesDeclaradas() {
   return GRUPOS_PERMISSOES.flatMap(grupo => (
     grupo.secoes.flatMap(secao => (
@@ -454,6 +463,9 @@ export function getPermissoesDeclaradas() {
   ));
 }
 
+/**
+ * Executa a rotina montar grupos permissoes.
+ */
 export function montarGruposPermissoes(permissoes = []) {
   const permissoesPorChave = [...permissoes, ...getPermissoesDeclaradas()].reduce((acc, permissao) => {
     acc[permissao.chave] = permissao;
@@ -503,17 +515,26 @@ export function montarGruposPermissoes(permissoes = []) {
     : gruposSemanticos;
 }
 
+/**
+ * Executa a rotina copiar permissoes select.
+ */
 export function CopiarPermissoesSelect({ value, onChange, options, placeholder = 'Selecione um usuário' }) {
   const [aberto, setAberto] = useState(false);
   const wrapperRef = useRef(null);
 
   useEffect(() => {
     if (!aberto) return undefined;
+    /**
+     * Executa a rotina handle click fora.
+     */
     function handleClickFora(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setAberto(false);
       }
     }
+    /**
+     * Executa a rotina handle esc.
+     */
     function handleEsc(event) {
       if (event.key === 'Escape') setAberto(false);
     }
@@ -568,6 +589,9 @@ export function CopiarPermissoesSelect({ value, onChange, options, placeholder =
   );
 }
 
+/**
+ * Executa a rotina parse permissoes usuario.
+ */
 export function parsePermissoesUsuario(permissoes) {
   if (!permissoes) return [];
   if (Array.isArray(permissoes)) return permissoes;
@@ -577,6 +601,9 @@ export function parsePermissoesUsuario(permissoes) {
   return Object.entries(permissoes).filter(([, v]) => v).map(([k]) => k);
 }
 
+/**
+ * Executa a rotina normalizar permissoes usuario.
+ */
 export function normalizarPermissoesUsuario(permissoes) {
   if (!permissoes) return {};
   if (typeof permissoes === 'string') {
@@ -591,6 +618,9 @@ export function normalizarPermissoesUsuario(permissoes) {
   return permissoes;
 }
 
+/**
+ * Executa a rotina get permissoes selecionadas usuario.
+ */
 export function getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis = []) {
   if (usuario?.role?.nome !== 'admin') {
     return parsePermissoesUsuario(usuario?.permissoes);
@@ -604,6 +634,9 @@ export function getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis 
   ));
 }
 
+/**
+ * Executa a rotina montar permissoes admin para salvar.
+ */
 export function montarPermissoesAdminParaSalvar(selecionadas = [], permissoesDisponiveis = []) {
   return permissoesDisponiveis.map(permissao => permissao.chave).reduce((acc, chave) => {
     if (!selecionadas.includes(chave)) {
@@ -614,10 +647,16 @@ export function montarPermissoesAdminParaSalvar(selecionadas = [], permissoesDis
   }, {});
 }
 
+/**
+ * Executa a rotina get permissoes copiaveis.
+ */
 export function getPermissoesCopiaveis(usuarioOrigem, permissoesDisponiveis) {
   return getPermissoesSelecionadasUsuario(usuarioOrigem, permissoesDisponiveis);
 }
 
+/**
+ * Executa a rotina permissao card.
+ */
 export function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle }) {
   return (
     <label
@@ -636,6 +675,9 @@ export function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, on
   );
 }
 
+/**
+ * Executa a rotina seletor bloco permissoes.
+ */
 function SeletorBlocoPermissoes({ titulo, total, selecionadas, onToggle }) {
   const checkboxRef = useRef(null);
   const todasSelecionadas = total > 0 && selecionadas === total;
@@ -663,6 +705,9 @@ function SeletorBlocoPermissoes({ titulo, total, selecionadas, onToggle }) {
   );
 }
 
+/**
+ * Executa a rotina permissao grupo.
+ */
 export function PermissaoGrupo({ grupo, selecionadas, onToggle, onToggleBloco }) {
   const chaves = getChavesGrupo(grupo);
   const selecionadasNoGrupo = chaves.filter(chave => selecionadas.includes(chave)).length;

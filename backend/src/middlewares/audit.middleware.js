@@ -28,6 +28,9 @@ function auditar(config) {
     const sendOriginal = res.send.bind(res);
     let registrado = false;
 
+    /**
+     * Executa a rotina registrar se sucesso.
+     */
     function registrarSeSucesso(body) {
       const statusCode = res.statusCode;
 

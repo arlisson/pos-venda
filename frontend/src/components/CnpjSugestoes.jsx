@@ -1,15 +1,24 @@
 import { formatDateValue } from '../utils/datetime';
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(valor) {
   return formatDateValue(valor, undefined, 'sem data da fonte');
 }
 
+/**
+ * Executa a rotina get confianca label.
+ */
 function getConfiancaLabel(valor) {
   if (valor === 'alta') return 'alta';
   if (valor === 'baixa') return 'baixa';
   return 'media';
 }
 
+/**
+ * Executa a rotina formatar mensagem resumo cnpj.
+ */
 export function formatarMensagemResumoCnpj(dados) {
   if (!dados) return '';
 

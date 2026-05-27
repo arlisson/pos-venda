@@ -37,6 +37,9 @@ const MOTIVO_LABEL = {
   cliente_com_venda_existente: 'Cliente com venda existente'
 };
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(valor) {
   return formatUtcDateTime(valor, {
     day: '2-digit',
@@ -47,10 +50,16 @@ function formatarData(valor) {
   }, '-');
 }
 
+/**
+ * Executa a rotina nome venda.
+ */
 function nomeVenda(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
+/**
+ * Executa a rotina nomes vendedoras.
+ */
 function nomesVendedoras(venda) {
   const nomes = Array.isArray(venda?.vendedoras) && venda.vendedoras.length > 0
     ? venda.vendedoras.map(item => item.nome).filter(Boolean)
@@ -59,6 +68,9 @@ function nomesVendedoras(venda) {
   return nomes.length > 0 ? nomes.join(', ') : '-';
 }
 
+/**
+ * Executa a rotina vendas aprovacoes page.
+ */
 function VendasAprovacoesPage() {
   const [searchParams] = useSearchParams();
   const usuario = getUsuarioLocal();
@@ -86,6 +98,9 @@ function VendasAprovacoesPage() {
   const [sucesso, setSucesso] = useState('');
   const solicitacaoFoco = searchParams.get('solicitacao_id');
 
+  /**
+   * Executa a rotina carregar.
+   */
   async function carregar() {
     setCarregando(true);
     setErro('');
@@ -101,6 +116,9 @@ function VendasAprovacoesPage() {
     }
   }
 
+  /**
+   * Executa a rotina carregar auxiliares.
+   */
   async function carregarAuxiliares() {
     try {
       const [clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
@@ -151,6 +169,9 @@ function VendasAprovacoesPage() {
     });
   }, [solicitacoes, solicitacaoFoco]);
 
+  /**
+   * Executa a rotina aprovar.
+   */
   async function aprovar(solicitacao) {
     setSalvandoId(solicitacao.id);
     setErro('');
@@ -167,6 +188,9 @@ function VendasAprovacoesPage() {
     }
   }
 
+  /**
+   * Executa a rotina recusar.
+   */
   async function recusar(solicitacao) {
     setSalvandoId(solicitacao.id);
     setErro('');
@@ -185,6 +209,9 @@ function VendasAprovacoesPage() {
     }
   }
 
+  /**
+   * Executa a rotina abrir venda.
+   */
   async function abrirVenda(solicitacao) {
     setErro('');
     setCarregandoVendaId(solicitacao.venda_id);
@@ -201,6 +228,9 @@ function VendasAprovacoesPage() {
     }
   }
 
+  /**
+   * Executa a rotina salvar venda modal.
+   */
   async function salvarVendaModal(dados) {
     if (!vendaModal?.id) return;
 
@@ -212,6 +242,9 @@ function VendasAprovacoesPage() {
     await carregar();
   }
 
+  /**
+   * Executa a rotina enviar pos venda modal.
+   */
   async function enviarPosVendaModal(venda) {
     const resultado = await enviarVendaParaPosVenda(venda.id);
     const atualizada = await buscarVendaPorId(venda.id);
@@ -224,6 +257,9 @@ function VendasAprovacoesPage() {
     await carregar();
   }
 
+  /**
+   * Executa a rotina aprovar eenviar pos venda modal.
+   */
   async function aprovarEEnviarPosVendaModal(venda) {
     if (solicitacaoModal?.id) {
       await aprovarSolicitacaoVenda(solicitacaoModal.id);

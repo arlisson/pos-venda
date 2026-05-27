@@ -36,6 +36,9 @@ const CNPJ_LABELS_CLIENTE = Object.fromEntries(
   Object.entries(CNPJ_SUGESTOES_CLIENTE).map(([campo, config]) => [campo, config.label])
 );
 
+/**
+ * Executa a rotina normalizar data input.
+ */
 function normalizarDataInput(valor) {
   if (!valor) return '';
 
@@ -48,11 +51,17 @@ function normalizarDataInput(valor) {
   return texto;
 }
 
+/**
+ * Executa a rotina apenas digitos.
+ */
 function apenasDigitos(valor, limite) {
   const digitos = String(valor || '').replace(/\D/g, '');
   return limite ? digitos.slice(0, limite) : digitos;
 }
 
+/**
+ * Executa a rotina formatar cnpj.
+ */
 function formatarCnpj(valor) {
   const digitos = apenasDigitos(valor, 14);
 
@@ -63,10 +72,16 @@ function formatarCnpj(valor) {
   return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
 }
 
+/**
+ * Executa a rotina obter nome cliente documento.
+ */
 function obterNomeClienteDocumento(cliente) {
   return cliente?.razao_social || cliente?.nome || `#${cliente?.id}`;
 }
 
+/**
+ * Executa a rotina formatar mensagem documento duplicado.
+ */
 function formatarMensagemDocumentoDuplicado(cliente) {
   if (!cliente) return '';
   const sufixo = cliente.excluido
@@ -75,6 +90,9 @@ function formatarMensagemDocumentoDuplicado(cliente) {
   return `Ja existe um cliente cadastrado com este documento (${obterNomeClienteDocumento(cliente)}).${sufixo}`;
 }
 
+/**
+ * Executa a rotina formatar telefone com ddd.
+ */
 function formatarTelefoneComDdd(valor, celular = false) {
   const digitos = apenasDigitos(valor, celular ? 11 : 10);
 
@@ -94,10 +112,16 @@ function formatarTelefoneComDdd(valor, celular = false) {
   return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
 }
 
+/**
+ * Executa a rotina juntar telefone.
+ */
 function juntarTelefone(ddd, numero, celular = false) {
   return formatarTelefoneComDdd(`${ddd || ''}${numero || ''}`, celular);
 }
 
+/**
+ * Executa a rotina separar telefone.
+ */
 function separarTelefone(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
 
@@ -111,6 +135,9 @@ function separarTelefone(valor) {
   };
 }
 
+/**
+ * Executa a rotina parse valor input.
+ */
 function parseValorInput(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
   if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
@@ -119,6 +146,9 @@ function parseValorInput(valor) {
   return Number.isFinite(numero) ? numero : null;
 }
 
+/**
+ * Executa a rotina formatar input moeda br.
+ */
 function formatarInputMoedaBR(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
 
@@ -130,6 +160,9 @@ function formatarInputMoedaBR(valor) {
   });
 }
 
+/**
+ * Executa a rotina formatar valor pago input.
+ */
 function formatarValorPagoInput(valor) {
   if (valor === undefined || valor === null || valor === '') return '';
 
@@ -139,6 +172,9 @@ function formatarValorPagoInput(valor) {
   });
 }
 
+/**
+ * Executa a rotina nova operadora cliente.
+ */
 function novaOperadoraCliente(dados = {}) {
   return {
     operadora_id: dados.operadora_id ? String(dados.operadora_id) : '',
@@ -148,6 +184,9 @@ function novaOperadoraCliente(dados = {}) {
   };
 }
 
+/**
+ * Executa a rotina normalizar operadoras cliente form.
+ */
 function normalizarOperadorasClienteForm(cliente) {
   const operadorasCliente = cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
   if (Array.isArray(operadorasCliente) && operadorasCliente.length > 0) {
@@ -166,6 +205,9 @@ function normalizarOperadorasClienteForm(cliente) {
   return [];
 }
 
+/**
+ * Executa a rotina montar payload.
+ */
 function montarPayload(form) {
   const whatsapp = separarTelefone(form.whatsapp);
   const fixo = separarTelefone(form.fixo);
@@ -193,6 +235,9 @@ function montarPayload(form) {
   };
 }
 
+/**
+ * Executa a rotina cliente form page.
+ */
 function ClienteFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -221,6 +266,9 @@ function ClienteFormPage() {
   }, [erro]);
 
   useEffect(() => {
+    /**
+     * Executa a rotina carregar.
+     */
     async function carregar() {
       setErro('');
       setCarregando(true);
@@ -266,6 +314,9 @@ function ClienteFormPage() {
 
   const titulo = useMemo(() => editando ? 'Editar cliente' : 'Novo cliente', [editando]);
 
+  /**
+   * Executa a rotina atualizar campo.
+   */
   function atualizarCampo(campo, valor) {
     setForm(prev => ({
       ...prev,
@@ -273,6 +324,9 @@ function ClienteFormPage() {
     }));
   }
 
+  /**
+   * Executa a rotina alterar tipo busca.
+   */
   function alterarTipoBusca(tipo) {
     setTipoBusca(tipo);
     setForm(prev => ({ ...prev, cnpj: '' }));
@@ -285,6 +339,9 @@ function ClienteFormPage() {
     ultimoDocumentoVerificadoRef.current = '';
   }
 
+  /**
+   * Executa a rotina adicionar operadora cliente.
+   */
   function adicionarOperadoraCliente() {
     setForm(prev => ({
       ...prev,
@@ -292,6 +349,9 @@ function ClienteFormPage() {
     }));
   }
 
+  /**
+   * Executa a rotina atualizar operadora cliente.
+   */
   function atualizarOperadoraCliente(index, campo, valor) {
     setForm(prev => ({
       ...prev,
@@ -301,6 +361,9 @@ function ClienteFormPage() {
     }));
   }
 
+  /**
+   * Executa a rotina remover operadora cliente.
+   */
   function removerOperadoraCliente(index) {
     setForm(prev => ({
       ...prev,
@@ -308,10 +371,16 @@ function ClienteFormPage() {
     }));
   }
 
+  /**
+   * Executa a rotina formatar mensagem cnpj.
+   */
   function formatarMensagemCnpj(dados) {
     return formatarMensagemResumoCnpj(dados);
   }
 
+  /**
+   * Executa a rotina montar sugestoes cnpj.
+   */
   function montarSugestoesCnpj(dados) {
     return Object.entries(CNPJ_SUGESTOES_CLIENTE).reduce((acc, [campoApi]) => {
       const valor = dados[campoApi];
@@ -320,6 +389,9 @@ function ClienteFormPage() {
     }, {});
   }
 
+  /**
+   * Executa a rotina aceitar sugestao cnpj.
+   */
   function aceitarSugestaoCnpj(campoApi) {
     const valor = cnpjSugestoes[campoApi];
     const config = CNPJ_SUGESTOES_CLIENTE[campoApi];
@@ -348,6 +420,9 @@ function ClienteFormPage() {
     });
   }
 
+  /**
+   * Executa a rotina recusar sugestao cnpj.
+   */
   function recusarSugestaoCnpj(campoApi) {
     setCnpjSugestoes(prev => {
       const proximo = { ...prev };
@@ -356,6 +431,9 @@ function ClienteFormPage() {
     });
   }
 
+  /**
+   * Executa a rotina buscar dados cnpj.
+   */
   async function buscarDadosCnpj(manual = false) {
     const cnpj = sanitizarCnpj(form.cnpj);
 
@@ -398,6 +476,9 @@ function ClienteFormPage() {
     }
   }
 
+  /**
+   * Executa a rotina verificar duplicidade documento.
+   */
   async function verificarDuplicidadeDocumento(documento) {
     const digitos = tipoBusca === 'cpf' ? sanitizarCpf(documento) : sanitizarCnpj(documento);
     const tamanhoEsperado = tipoBusca === 'cpf' ? 11 : 14;
@@ -507,6 +588,9 @@ function ClienteFormPage() {
     return () => clearTimeout(timeout);
   }, [form.cnpj, tipoBusca]);
 
+  /**
+   * Executa a rotina handle submit.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');

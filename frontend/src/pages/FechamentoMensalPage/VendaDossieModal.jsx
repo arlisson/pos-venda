@@ -20,10 +20,16 @@ const ABAS_BASE = [
   { id: 'notas', label: 'Notas' }
 ];
 
+/**
+ * Executa a rotina fmt moeda.
+ */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/**
+ * Executa a rotina fmt data.
+ */
 function fmtData(valor) {
   if (!valor) return '-';
   const iso = String(valor).slice(0, 10);
@@ -32,6 +38,9 @@ function fmtData(valor) {
   return `${dia}/${mes}/${ano}`;
 }
 
+/**
+ * Executa a rotina fmt data hora.
+ */
 function fmtDataHora(valor) {
   return formatUtcDateTime(valor, {
     day: '2-digit',
@@ -42,16 +51,25 @@ function fmtDataHora(valor) {
   }, valor ? String(valor) : '-');
 }
 
+/**
+ * Executa a rotina valor.
+ */
 function valor(valor) {
   return valor || '-';
 }
 
+/**
+ * Executa a rotina valor boolean.
+ */
 function valorBoolean(valor) {
   if (valor === true) return 'Sim';
   if (valor === false) return 'Não';
   return '-';
 }
 
+/**
+ * Executa a rotina fmt etapa funil.
+ */
 function fmtEtapaFunil(codigo) {
   const etapas = {
     aprovacao: 'Aprovação',
@@ -66,6 +84,9 @@ function fmtEtapaFunil(codigo) {
   return etapas[codigo] || valor(codigo);
 }
 
+/**
+ * Executa a rotina fmt prioridade funil.
+ */
 function fmtPrioridadeFunil(valorPrioridade) {
   const prioridades = {
     alta: 'Alta',
@@ -76,6 +97,9 @@ function fmtPrioridadeFunil(valorPrioridade) {
   return prioridades[chave] || valor(valorPrioridade);
 }
 
+/**
+ * Executa a rotina fmt repasse.
+ */
 function fmtRepasse(linha) {
   if (linha.cliente_base_propria && linha.cliente_base_operadora) return 'Nossa base + base da operadora';
   if (linha.cliente_base_propria) return 'Nossa base';
@@ -83,6 +107,9 @@ function fmtRepasse(linha) {
   return 'Cliente novo/portabilidade';
 }
 
+/**
+ * Executa a rotina juntar valores.
+ */
 function juntarValores(valores, separador = ', ') {
   const texto = (valores || [])
     .map(item => String(item || '').trim())
@@ -92,6 +119,9 @@ function juntarValores(valores, separador = ', ') {
   return texto || '-';
 }
 
+/**
+ * Executa a rotina formatar horario aceite.
+ */
 function formatarHorarioAceite(venda) {
   const partes = [];
   const range = [venda.horario_aceite_inicio, venda.horario_aceite_fim].filter(Boolean);
@@ -101,11 +131,17 @@ function formatarHorarioAceite(venda) {
   return partes.join(' ou ') || '-';
 }
 
+/**
+ * Executa a rotina nomes vendedoras.
+ */
 function nomesVendedoras(venda) {
   const nomes = (venda.vendedoras || []).map(item => item.nome).filter(Boolean);
   return nomes.length > 0 ? nomes.join(', ') : valor(venda.vendedora?.nome);
 }
 
+/**
+ * Executa a rotina formatar endereco.
+ */
 function formatarEndereco(venda) {
   return juntarValores([
     venda.endereco,
@@ -118,6 +154,9 @@ function formatarEndereco(venda) {
   ]);
 }
 
+/**
+ * Executa a rotina formatar endereco real.
+ */
 function formatarEnderecoReal(venda) {
   return juntarValores([
     venda.endereco_real,
@@ -130,6 +169,9 @@ function formatarEnderecoReal(venda) {
   ]);
 }
 
+/**
+ * Executa a rotina formatar lista.
+ */
 function formatarLista(valorCampo) {
   if (!valorCampo) return '-';
   if (Array.isArray(valorCampo)) {
@@ -141,6 +183,9 @@ function formatarLista(valorCampo) {
   return String(valorCampo);
 }
 
+/**
+ * Executa a rotina info grid.
+ */
 function InfoGrid({ itens }) {
   return (
     <div className="fechamento-modal-table-wrapper dossie-info-table-wrap">
@@ -170,6 +215,9 @@ function InfoGrid({ itens }) {
   );
 }
 
+/**
+ * Executa a rotina resumo tab.
+ */
 function ResumoTab({ dossie }) {
   const venda = dossie.venda || {};
   const total = dossie.total_geral || {};
@@ -254,6 +302,9 @@ function ResumoTab({ dossie }) {
   );
 }
 
+/**
+ * Executa a rotina linhas tab.
+ */
 function LinhasTab({ dossie }) {
   const linhas = dossie.linhas || [];
 
@@ -297,6 +348,9 @@ function LinhasTab({ dossie }) {
   );
 }
 
+/**
+ * Executa a rotina cliente tab.
+ */
 function ClienteTab({ dossie }) {
   const venda = dossie.venda || {};
   const cliente = venda.cliente || {};
@@ -321,6 +375,9 @@ function ClienteTab({ dossie }) {
   );
 }
 
+/**
+ * Executa a rotina operacional tab.
+ */
 function OperacionalTab({ dossie }) {
   const venda = dossie.venda || {};
   const historico = venda.historico || [];
@@ -359,6 +416,9 @@ function OperacionalTab({ dossie }) {
   );
 }
 
+/**
+ * Executa a rotina documentos tab.
+ */
 function DocumentosTab({ vendaId }) {
   const [dados, setDados] = useState({ arquivos: [], pacote: null });
   const [loading, setLoading] = useState(true);
@@ -422,6 +482,9 @@ function DocumentosTab({ vendaId }) {
   );
 }
 
+/**
+ * Executa a rotina venda dossie modal.
+ */
 function VendaDossieModal({ vendaId, periodo, onClose }) {
   const [dossie, setDossie] = useState(null);
   const [loading, setLoading] = useState(true);

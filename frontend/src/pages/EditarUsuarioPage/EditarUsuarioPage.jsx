@@ -29,6 +29,9 @@ const PERMISSAO_POS_VENDA = {
   descricao: 'Permite editar vendas enviadas ao pós-venda e movimentar vendas no funil.'
 };
 
+/**
+ * Executa a rotina garantir permissao pos venda.
+ */
 function garantirPermissaoPosVenda(permissoes = []) {
   if (permissoes.some(permissao => permissao.chave === PERMISSAO_POS_VENDA.chave)) {
     return permissoes;
@@ -37,6 +40,9 @@ function garantirPermissaoPosVenda(permissoes = []) {
   return [...permissoes, PERMISSAO_POS_VENDA];
 }
 
+/**
+ * Executa a rotina editar usuario page.
+ */
 function EditarUsuarioPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -69,6 +75,9 @@ function EditarUsuarioPage() {
     .toUpperCase() || 'U';
 
   useEffect(() => {
+    /**
+     * Executa a rotina carregar dados.
+     */
     async function carregarDados() {
       try {
         const usuarioLogado = getUsuarioLocal();
@@ -114,6 +123,9 @@ function EditarUsuarioPage() {
     carregarDados();
   }, [id]);
 
+  /**
+   * Executa a rotina handle permissao change.
+   */
   function handlePermissaoChange(chave, opcoes = {}) {
     setPermissoesSelecionadas((atuais) => {
       if (opcoes.grupoExclusivo) {
@@ -129,6 +141,9 @@ function EditarUsuarioPage() {
     });
   }
 
+  /**
+   * Executa a rotina handle bloco permissoes change.
+   */
   function handleBlocoPermissoesChange(chaves, selecionar) {
     setPermissoesSelecionadas((atuais) => {
       if (!selecionar) {
@@ -185,6 +200,9 @@ function EditarUsuarioPage() {
     return () => clearTimeout(timer);
   }, [erro]);
 
+  /**
+   * Executa a rotina handle submit.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
 

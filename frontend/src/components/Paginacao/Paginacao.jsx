@@ -6,6 +6,9 @@ const OPCOES_POR_PAGINA = [20, 50, 100];
 
 // Sempre retorna exatamente 7 slots — sem layout shift ao navegar.
 // Slots são números ou as strings fixas 'ellipsis-start' / 'ellipsis-end'.
+/**
+ * Executa a rotina gerar paginas.
+ */
 function gerarPaginas(total, atual) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
@@ -18,12 +21,18 @@ function gerarPaginas(total, atual) {
   return [1, 'ellipsis-start', atual - 1, atual, atual + 1, 'ellipsis-end', total];
 }
 
+/**
+ * Executa a rotina seletor itens por pagina.
+ */
 function SeletorItensPorPagina({ id, value, onChange }) {
   const [aberto, setAberto] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
 
+  /**
+   * Executa a rotina calcular posicao.
+   */
   function calcularPosicao() {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
@@ -42,6 +51,9 @@ function SeletorItensPorPagina({ id, value, onChange }) {
   useEffect(() => {
     if (!aberto) return;
 
+    /**
+     * Executa a rotina fechar fora.
+     */
     function fecharFora(event) {
       if (
         !triggerRef.current?.contains(event.target) &&
@@ -62,12 +74,18 @@ function SeletorItensPorPagina({ id, value, onChange }) {
     };
   }, [aberto]);
 
+  /**
+   * Executa a rotina selecionar.
+   */
   function selecionar(n) {
     onChange(n);
     setAberto(false);
     triggerRef.current?.focus();
   }
 
+  /**
+   * Executa a rotina handle key down.
+   */
   function handleKeyDown(event) {
     if (event.key === 'Escape') setAberto(false);
   }
@@ -124,6 +142,9 @@ function SeletorItensPorPagina({ id, value, onChange }) {
   );
 }
 
+/**
+ * Executa a rotina paginacao.
+ */
 function Paginacao({ total, paginaAtual, itensPorPagina, onPagina, onItensPorPagina }) {
   const uid = useId();
   const totalPaginas = Math.ceil(total / itensPorPagina);

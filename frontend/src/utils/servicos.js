@@ -38,6 +38,9 @@ export function normalizarNomeServicoParaFiltro(nome) {
     .trim();
 }
 
+/**
+ * Executa a rotina escolher servico canonico.
+ */
 function escolherServicoCanonico(servicos = []) {
   return servicos.find(servico => String(servico?.nome || '').trim() === 'Telefonia m\u00f3vel')
     || servicos[0];

@@ -36,6 +36,9 @@ const OPS = {
   ]
 };
 
+/**
+ * Executa a rotina normalizar texto.
+ */
 function normalizarTexto(valor) {
   return String(valor ?? '')
     .normalize('NFD')
@@ -44,6 +47,9 @@ function normalizarTexto(valor) {
     .trim();
 }
 
+/**
+ * Executa a rotina get valor coluna.
+ */
 function getValorColuna(linha, coluna) {
   if (!coluna) return '';
   if (coluna.planilhaId && Number(linha.planilha_id) !== Number(coluna.planilhaId)) return '';
@@ -52,16 +58,25 @@ function getValorColuna(linha, coluna) {
   return linha.dados_json?.[source?.nome || coluna.nome] ?? '';
 }
 
+/**
+ * Executa a rotina get status distribuicao.
+ */
 function getStatusDistribuicao(linha) {
   return linha.atribuido_para_id || linha.atribuidoPara || linha.envio_id || linha.envio
     ? 'Enviado'
     : 'Não enviado';
 }
 
+/**
+ * Executa a rotina formatar numero.
+ */
 function formatarNumero(valor) {
   return Number(valor || 0).toLocaleString('pt-BR');
 }
 
+/**
+ * Executa a rotina get conflitos colunas.
+ */
 function getConflitosColunas(planilhasSelecionadas) {
   const mapa = new Map();
 
@@ -87,6 +102,9 @@ function getConflitosColunas(planilhasSelecionadas) {
     .filter(grupo => new Set(grupo.ocorrencias.map(item => item.planilhaId)).size > 1);
 }
 
+/**
+ * Executa a rotina montar filtros backend.
+ */
 function montarFiltrosBackend(filtros, colunas, planilhasSelecionadas, schema) {
   return filtros.map(filtro => {
     const coluna = colunas.find(item => item.id === filtro.coluna);
@@ -105,6 +123,9 @@ function montarFiltrosBackend(filtros, colunas, planilhasSelecionadas, schema) {
   });
 }
 
+/**
+ * Executa a rotina dividir modal.
+ */
 function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDivisao, onClose, onSave }) {
   const [nome, setNome] = useState(`Envio ${new Date().toLocaleDateString('pt-BR')}`);
   const [usuarios, setUsuarios] = useState([]);
@@ -115,10 +136,16 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   const [erro, setErro] = useState('');
   const [incluirEnviados, setIncluirEnviados] = useState(false);
 
+  /**
+   * Executa a rotina toggle usuario.
+   */
   function toggleUsuario(id) {
     setUsuarios(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
   }
 
+  /**
+   * Executa a rotina mover coluna.
+   */
   function moverColuna(index, direcao) {
     const novoIndex = index + direcao;
     if (novoIndex < 0 || novoIndex >= colunasVisiveis.length) return;
@@ -128,6 +155,9 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
     setColunasVisiveis(proximas);
   }
 
+  /**
+   * Executa a rotina submit.
+   */
   async function submit(event) {
     event.preventDefault();
     setErro('');
@@ -307,9 +337,15 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   );
 }
 
+/**
+ * Executa a rotina mesclar colunas modal.
+ */
 function MesclarColunasModal({ grupos, defaultSelecionadas, onClose, onConfirm }) {
   const [selecionadas, setSelecionadas] = useState(defaultSelecionadas);
 
+  /**
+   * Executa a rotina toggle.
+   */
   function toggle(chave) {
     setSelecionadas(prev => (
       prev.includes(chave)
@@ -318,10 +354,16 @@ function MesclarColunasModal({ grupos, defaultSelecionadas, onClose, onConfirm }
     ));
   }
 
+  /**
+   * Executa a rotina selecionar todas.
+   */
   function selecionarTodas() {
     setSelecionadas(grupos.map(grupo => grupo.chave));
   }
 
+  /**
+   * Executa a rotina limpar todas.
+   */
   function limparTodas() {
     setSelecionadas([]);
   }
@@ -377,6 +419,9 @@ function MesclarColunasModal({ grupos, defaultSelecionadas, onClose, onConfirm }
   );
 }
 
+/**
+ * Executa a rotina excluir planilha modal.
+ */
 function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }) {
   if (!planilha) return null;
 
@@ -427,6 +472,9 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
   );
 }
 
+/**
+ * Executa a rotina admin leads page.
+ */
 function AdminLeadsPage() {
   const inputRef = useRef(null);
   const [planilhas, setPlanilhas] = useState([]);
@@ -452,6 +500,9 @@ function AdminLeadsPage() {
   const [excluindoId, setExcluindoId] = useState(null);
   const [erroExclusao, setErroExclusao] = useState('');
 
+  /**
+   * Executa a rotina carregar base.
+   */
   async function carregarBase() {
     setCarregando(true);
     setErro('');
@@ -588,6 +639,9 @@ function AdminLeadsPage() {
     ? Math.round((Number(resumoLeads.enviados || 0) / Number(resumoLeads.total || 1)) * 100)
     : 0;
 
+  /**
+   * Executa a rotina importar arquivo.
+   */
   async function importarArquivo(file) {
     if (!file.name.toLowerCase().endsWith('.csv')) return;
 
@@ -616,10 +670,16 @@ function AdminLeadsPage() {
       let sentBatches = 0;
       let totalBatches = 0;
 
+      /**
+       * Executa a rotina update import status.
+       */
       function updateImportStatus() {
         setProcessando(`Parseando ${parsedProgress}% | Enviando lote ${sentBatches}/${Math.max(totalBatches, sentBatches)}`);
       }
 
+      /**
+       * Executa a rotina finish with error.
+       */
       function finishWithError(error) {
         if (rejected) return;
         rejected = true;
@@ -628,6 +688,9 @@ function AdminLeadsPage() {
         reject(error);
       }
 
+      /**
+       * Executa a rotina send batch.
+       */
       async function sendBatch(item) {
         for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
           try {
@@ -640,6 +703,9 @@ function AdminLeadsPage() {
         }
       }
 
+      /**
+       * Executa a rotina try finish.
+       */
       async function tryFinish() {
         if (!finishedParsing || active > 0 || queue.length > 0 || rejected) return;
 
@@ -656,6 +722,9 @@ function AdminLeadsPage() {
         }
       }
 
+      /**
+       * Executa a rotina pump queue.
+       */
       function pumpQueue() {
         while (active < maxParallel && queue.length > 0 && !rejected) {
           const item = queue.shift();
@@ -716,6 +785,9 @@ function AdminLeadsPage() {
     });
   }
 
+  /**
+   * Executa a rotina handle upload.
+   */
   async function handleUpload(event) {
     const files = Array.from(event.target.files || []);
     event.target.value = '';
@@ -734,6 +806,9 @@ function AdminLeadsPage() {
     }
   }
 
+  /**
+   * Executa a rotina toggle planilha.
+   */
   function togglePlanilha(id) {
     const jaSelecionada = selecionadas.includes(id);
     const proximas = jaSelecionada ? selecionadas.filter(item => item !== id) : [...selecionadas, id];
@@ -754,6 +829,9 @@ function AdminLeadsPage() {
     setSelecionadas(proximas);
   }
 
+  /**
+   * Executa a rotina aplicar mesclagem colunas.
+   */
   function aplicarMesclagemColunas(chaves) {
     const conflitos = modalMesclar?.grupos || [];
     const chavesConflito = new Set(conflitos.map(grupo => grupo.chave));
@@ -768,6 +846,9 @@ function AdminLeadsPage() {
     setModalMesclar(null);
   }
 
+  /**
+   * Executa a rotina adicionar filtro.
+   */
   function adicionarFiltro() {
     if (!novoFiltro.coluna) return;
     setFiltros(prev => [...prev, { ...novoFiltro, id: crypto.randomUUID() }]);
@@ -775,6 +856,9 @@ function AdminLeadsPage() {
     setPagina(1);
   }
 
+  /**
+   * Executa a rotina exportar csv backend.
+   */
   async function exportarCsvBackend() {
     const blob = await exportarLeadLinhas({
       planilha_ids: selecionadas,
@@ -790,6 +874,9 @@ function AdminLeadsPage() {
     URL.revokeObjectURL(url);
   }
 
+  /**
+   * Executa a rotina alterar tipo.
+   */
   async function alterarTipo(planilha, coluna, tipo) {
     const schemaAtualizado = {
       ...(planilha.schema_colunas || {}),
@@ -799,6 +886,9 @@ function AdminLeadsPage() {
     setPlanilhas(prev => prev.map(item => item.id === planilha.id ? atualizada : item));
   }
 
+  /**
+   * Executa a rotina salvar divisao.
+   */
   async function salvarDivisao(payload) {
     const resultado = await dividirLeadLinhas({
       ...payload,
@@ -816,6 +906,9 @@ function AdminLeadsPage() {
     return resultado;
   }
 
+  /**
+   * Executa a rotina confirmar exclusao planilha.
+   */
   async function confirmarExclusaoPlanilha() {
     if (!modalExcluir) return;
 
@@ -843,6 +936,9 @@ function AdminLeadsPage() {
     }
   }
 
+  /**
+   * Executa a rotina get tipo coluna por id.
+   */
   function getTipoColunaPorId(colunaId) {
     const coluna = colunas.find(item => item.id === colunaId);
     if (!coluna) return 'string';

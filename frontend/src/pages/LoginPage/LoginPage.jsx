@@ -4,6 +4,9 @@ import * as I from '../../components/Icons';
 import { login } from '../../services/auth.service';
 import logo from '../../assets/LogoClaraSemFundo.png';
 
+/**
+ * Executa a rotina login page.
+ */
 function LoginPage() {
   const navigate = useNavigate();
 
@@ -13,6 +16,9 @@ function LoginPage() {
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
 
+  /**
+   * Executa a rotina handle submit.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');

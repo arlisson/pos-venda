@@ -13,11 +13,17 @@ const TIPO_NOTIFICACAO = 'venda_parada_funil';
 const PERMISSAO_VENDAS_PARADAS = 'notificacoes_vendas_paradas';
 const HORAS_LIMITE = 5 * 24; // 5 dias corridos em horas
 
+/**
+ * Executa a rotina usuario tem permissao.
+ */
 function usuarioTemPermissao(usuario, permissao) {
   if (!usuario || !usuario.ativo) return false;
   return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
+/**
+ * Executa a rotina horas decorridas.
+ */
 function horasDecorridas(dataInicio, dataFim) {
   if (!dataInicio || !dataFim) return 0;
   const inicio = parseUtcDateTime(dataInicio);
@@ -26,6 +32,9 @@ function horasDecorridas(dataInicio, dataFim) {
   return (fim - inicio) / (1000 * 60 * 60);
 }
 
+/**
+ * Executa a rotina registrar entrada estagio.
+ */
 async function registrarEntradaEstagio(vendaId, etapaCodigo, dataEntrada = new Date(), trx = null) {
   try {
     const executor = trx || db;
@@ -49,6 +58,9 @@ async function registrarEntradaEstagio(vendaId, etapaCodigo, dataEntrada = new D
   }
 }
 
+/**
+ * Executa a rotina desativar notificacao venda parada.
+ */
 async function desativarNotificacaoVendaParada(vendaId, etapaCodigo, trx = null) {
   try {
     const sourceKey = `${TIPO_NOTIFICACAO}:${vendaId}:${etapaCodigo}`;
@@ -71,6 +83,9 @@ async function desativarNotificacaoVendaParada(vendaId, etapaCodigo, trx = null)
   }
 }
 
+/**
+ * Executa a rotina garantir registros entrada ativos.
+ */
 async function garantirRegistrosEntradaAtivos() {
   const vendasSemRegistro = await db('vendas as v')
     .join('funil_etapas as fe', 'v.status_funil', 'fe.codigo')
@@ -106,6 +121,9 @@ async function garantirRegistrosEntradaAtivos() {
   }
 }
 
+/**
+ * Executa a rotina sincronizar vendas paradas.
+ */
 async function sincronizarVendasParadas() {
   try {
     const agora = new Date();
@@ -198,6 +216,9 @@ async function sincronizarVendasParadas() {
   }
 }
 
+/**
+ * Executa a rotina obter destinatarios venda.
+ */
 async function obterDestinatariosVenda(venda) {
   try {
     const usuarios = await Usuario.query()

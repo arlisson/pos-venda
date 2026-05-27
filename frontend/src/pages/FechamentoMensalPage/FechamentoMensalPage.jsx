@@ -19,6 +19,9 @@ import PainelGerencial from './PainelGerencial';
 import { TableSheet } from '../../components/Icons';
 import './FechamentoMensalPage.css';
 
+/**
+ * Executa a rotina data iso.
+ */
 function dataISO(data) {
   return [
     data.getFullYear(),
@@ -27,6 +30,9 @@ function dataISO(data) {
   ].join('-');
 }
 
+/**
+ * Executa a rotina periodo mes atual.
+ */
 function periodoMesAtual() {
   const hoje = new Date();
   const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
@@ -38,10 +44,16 @@ function periodoMesAtual() {
   };
 }
 
+/**
+ * Executa a rotina data valida.
+ */
 function dataValida(valor) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(valor || ''));
 }
 
+/**
+ * Executa a rotina chave cliente venda.
+ */
 function chaveClienteVenda(venda = {}) {
   if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
   if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
@@ -56,6 +68,9 @@ function chaveClienteVenda(venda = {}) {
   return nome ? `nome:${nome}` : '';
 }
 
+/**
+ * Executa a rotina contar vendas por cliente.
+ */
 function contarVendasPorCliente(vendas = []) {
   return vendas.reduce((acc, venda) => {
     const chave = chaveClienteVenda(venda);
@@ -65,6 +80,9 @@ function contarVendasPorCliente(vendas = []) {
   }, new Map());
 }
 
+/**
+ * Executa a rotina fechamento mensal page.
+ */
 function FechamentoMensalPage() {
   const [periodo, setPeriodo] = useState(() => periodoMesAtual());
   const [periodoConsulta, setPeriodoConsulta] = useState(() => periodoMesAtual());
@@ -113,6 +131,9 @@ function FechamentoMensalPage() {
     carregarResumo(periodoConsulta);
   }, [periodoConsulta, carregarResumo]);
 
+  /**
+   * Executa a rotina carregar dados venda.
+   */
   async function carregarDadosVenda() {
     const [vendasData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
       listarVendas(),
@@ -131,6 +152,9 @@ function FechamentoMensalPage() {
     setServicos(servicosData || []);
   }
 
+  /**
+   * Executa a rotina abrir venda.
+   */
   async function abrirVenda(vendaId) {
     if (!vendaId) return;
     setErro('');
@@ -152,12 +176,18 @@ function FechamentoMensalPage() {
     }
   }
 
+  /**
+   * Executa a rotina fechar venda.
+   */
   function fecharVenda() {
     setModalVendaAberto(false);
     setModalVenda(null);
     setModalModoEdicao(false);
   }
 
+  /**
+   * Executa a rotina atualizar dados fechamento.
+   */
   async function atualizarDadosFechamento() {
     await Promise.all([
       carregarResumo(periodoConsulta, { sinalizarLoading: false }),
@@ -166,6 +196,9 @@ function FechamentoMensalPage() {
     setDetalhesReloadKey(prev => prev + 1);
   }
 
+  /**
+   * Executa a rotina salvar venda.
+   */
   async function salvarVenda(dados) {
     setErro('');
 
@@ -180,6 +213,9 @@ function FechamentoMensalPage() {
     }
   }
 
+  /**
+   * Executa a rotina enviar pos venda.
+   */
   async function enviarPosVenda(venda) {
     setErro('');
 
@@ -194,6 +230,9 @@ function FechamentoMensalPage() {
     }
   }
 
+  /**
+   * Executa a rotina abrir cliente rapido.
+   */
   function abrirClienteRapido() {
     return new Promise(resolve => {
       setResolverClienteRapido(() => resolve);
@@ -201,6 +240,9 @@ function FechamentoMensalPage() {
     });
   }
 
+  /**
+   * Executa a rotina fechar cliente rapido.
+   */
   function fecharClienteRapido(cliente = null) {
     setClienteRapidoAberto(false);
     setResolverClienteRapido(resolve => {
@@ -209,6 +251,9 @@ function FechamentoMensalPage() {
     });
   }
 
+  /**
+   * Executa a rotina salvar cliente rapido.
+   */
   async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
     setClientes(clientesAtualizados || []);
@@ -216,6 +261,9 @@ function FechamentoMensalPage() {
     return clienteCriado;
   }
 
+  /**
+   * Executa a rotina atualizar periodo.
+   */
   function atualizarPeriodo(campo, valor) {
     setPeriodo(prev => ({ ...prev, [campo]: valor }));
 
@@ -224,6 +272,9 @@ function FechamentoMensalPage() {
     }
   }
 
+  /**
+   * Executa a rotina exportar vendas.
+   */
   async function exportarVendas() {
     if (!dataValida(periodoConsulta.data_inicio) || !dataValida(periodoConsulta.data_fim)) {
       setErro('Informe um período válido para exportar.');

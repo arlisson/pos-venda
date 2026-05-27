@@ -44,6 +44,9 @@ import {
 import { parseUtcDateTime } from '../../utils/datetime';
 import '../VendasPage/VendasPage.css';
 
+/**
+ * Executa a rotina format brl.
+ */
 const formatBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const STAGE_LABELS = {
@@ -51,6 +54,9 @@ const STAGE_LABELS = {
   retorno: 'Retorno',
 };
 
+/**
+ * Executa a rotina problema venda modal.
+ */
 function ProblemaVendaModal({ venda, usuario, onClose }) {
   if (!venda) return null;
 
@@ -76,6 +82,9 @@ function ProblemaVendaModal({ venda, usuario, onClose }) {
   );
 }
 
+/**
+ * Executa a rotina email template modal.
+ */
 function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
   if (!dados) return null;
 
@@ -109,6 +118,9 @@ function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
   );
 }
 
+/**
+ * Executa a rotina normalizar ativo.
+ */
 function normalizarAtivo(valor) {
   if (typeof valor === 'string') {
     return !['0', 'false'].includes(valor.trim().toLowerCase());
@@ -117,6 +129,9 @@ function normalizarAtivo(valor) {
   return ![false, 0].includes(valor);
 }
 
+/**
+ * Executa a rotina normalizar etapas funil.
+ */
 function normalizarEtapasFunil(etapas = [], usarFallback = true) {
   const normalizadas = etapas
     .map((etapa, index) => {
@@ -137,6 +152,9 @@ function normalizarEtapasFunil(etapas = [], usarFallback = true) {
   return normalizadas.length > 0 || !usarFallback ? normalizadas : FALLBACK_STAGES;
 }
 
+/**
+ * Executa a rotina montar stage labels.
+ */
 function montarStageLabels(stages = []) {
   return {
     ...STAGE_LABELS,
@@ -150,6 +168,9 @@ const PRIORITIES = {
   baixa: { label: 'Prioridade Baixa', color: '#eab308' },
 };
 
+/**
+ * Executa a rotina get priority info.
+ */
 function getPriorityInfo(priority) {
   const key = PRIORITIES[priority] ? priority : 'media';
   return { key, ...PRIORITIES[key] };
@@ -168,6 +189,9 @@ const STATUS_CANCELADA_FILTRO = '__cancelada';
 
 const UFS_BRASIL = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
+/**
+ * Executa a rotina parse date.
+ */
 function parseDate(value) {
   if (!value) return new Date();
   // Strings do banco vêm em UTC ("YYYY-MM-DD HH:MM:SS"); adiciona Z para evitar
@@ -175,14 +199,23 @@ function parseDate(value) {
   return parseUtcDateTime(value) || new Date();
 }
 
+/**
+ * Executa a rotina format date.
+ */
 function formatDate(d) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+/**
+ * Executa a rotina format date time.
+ */
 function formatDateTime(d) {
   return `${formatDate(d)} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
+/**
+ * Executa a rotina time ago.
+ */
 function timeAgo(d) {
   const diff = Date.now() - d.getTime();
   const mins = Math.floor(diff / 60000);
@@ -194,6 +227,9 @@ function timeAgo(d) {
   return `${days}d atrás`;
 }
 
+/**
+ * Executa a rotina initials.
+ */
 function initials(name) {
   return String(name || 'SV')
     .split(/\s+/)
@@ -204,6 +240,9 @@ function initials(name) {
     .toUpperCase() || 'SV';
 }
 
+/**
+ * Executa a rotina normalizar busca.
+ */
 function normalizarBusca(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -212,6 +251,9 @@ function normalizarBusca(valor) {
     .trim();
 }
 
+/**
+ * Executa a rotina montar texto busca venda.
+ */
 function montarTextoBuscaVenda(sale) {
   const raw = sale.raw || {};
   const campos = [
@@ -258,6 +300,9 @@ function montarTextoBuscaVenda(sale) {
   return normalizarBusca(campos.filter(Boolean).join(' '));
 }
 
+/**
+ * Executa a rotina venda corresponde busca.
+ */
 function vendaCorrespondeBusca(sale, busca) {
   const termos = normalizarBusca(busca).split(/\s+/).filter(Boolean);
   if (termos.length === 0) return true;
@@ -266,17 +311,26 @@ function vendaCorrespondeBusca(sale, busca) {
   return termos.every(termo => texto.includes(termo));
 }
 
+/**
+ * Executa a rotina normalizar numero filtro.
+ */
 function normalizarNumeroFiltro(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
   const numero = Number(String(valor).replace(/\./g, '').replace(',', '.'));
   return Number.isFinite(numero) ? numero : null;
 }
 
+/**
+ * Executa a rotina obter data venda filtro.
+ */
 function obterDataVendaFiltro(sale) {
   const raw = sale.raw || {};
   return String(raw.data_venda || raw.criado_em || raw.created_at || '').slice(0, 10);
 }
 
+/**
+ * Executa a rotina obter vendedoras venda.
+ */
 function obterVendedorasVenda(venda = {}) {
   const vendedoras = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
     ? venda.vendedoras
@@ -285,6 +339,9 @@ function obterVendedorasVenda(venda = {}) {
   return vendedoras.map(item => String(item?.id || item?.usuario_id || item?.vendedora_id || '')).filter(Boolean);
 }
 
+/**
+ * Executa a rotina venda corresponde filtros.
+ */
 function vendaCorrespondeFiltros(sale, filtros) {
   const raw = sale.raw || {};
   const valorMin = normalizarNumeroFiltro(filtros.valorMin);
@@ -312,6 +369,9 @@ function vendaCorrespondeFiltros(sale, filtros) {
   return true;
 }
 
+/**
+ * Executa a rotina get chave cliente venda.
+ */
 function getChaveClienteVenda(venda = {}) {
   if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
   if (venda.cliente?.id) return `cliente:${venda.cliente.id}`;
@@ -323,6 +383,9 @@ function getChaveClienteVenda(venda = {}) {
   return nome ? `nome:${nome}` : '';
 }
 
+/**
+ * Executa a rotina contar vendas por cliente.
+ */
 function contarVendasPorCliente(vendas = []) {
   return vendas.reduce((acc, venda) => {
     const chave = getChaveClienteVenda(venda);
@@ -332,6 +395,9 @@ function contarVendasPorCliente(vendas = []) {
   }, new Map());
 }
 
+/**
+ * Executa a rotina seller avatar.
+ */
 function SellerAvatar({ seller, className = 'mini-avatar' }) {
   return (
     <span className={className}>
@@ -344,18 +410,30 @@ function SellerAvatar({ seller, className = 'mini-avatar' }) {
   );
 }
 
+/**
+ * Executa a rotina get client.
+ */
 function getClient(venda) {
   return venda.nome || venda.razao_social || `Venda #${venda.id}`;
 }
 
+/**
+ * Executa a rotina get operator.
+ */
 function getOperator(venda) {
   return venda.operadora?.nome || venda.operadora || 'Sem operadora';
 }
 
+/**
+ * Executa a rotina get plan.
+ */
 function getPlan(venda) {
   return venda.produto_fechado || formatarNomeServico(venda.servico?.nome) || venda.tipoVenda?.nome || 'Plano não informado';
 }
 
+/**
+ * Executa a rotina get seller photo.
+ */
 function getSellerPhoto(venda) {
   return venda.vendedora?.foto_perfil
     || venda.vendedora?.fotoPerfil
@@ -364,6 +442,9 @@ function getSellerPhoto(venda) {
     || '';
 }
 
+/**
+ * Executa a rotina get seller photo from user.
+ */
 function getSellerPhotoFromUser(usuario = {}) {
   return usuario.foto_perfil
     || usuario.fotoPerfil
@@ -372,6 +453,9 @@ function getSellerPhotoFromUser(usuario = {}) {
     || '';
 }
 
+/**
+ * Executa a rotina get sellers.
+ */
 function getSellers(venda = {}) {
   const vendedoras = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
     ? venda.vendedoras
@@ -401,10 +485,16 @@ function getSellers(venda = {}) {
   }];
 }
 
+/**
+ * Executa a rotina get history author.
+ */
 function getHistoryAuthor(item) {
   return item.usuario?.nome || (item.usuario_id ? `Usuário #${item.usuario_id}` : 'Sistema');
 }
 
+/**
+ * Executa a rotina get history title.
+ */
 function getHistoryTitle(item, stageLabels = STAGE_LABELS) {
   if (item.acao === 'venda.criada') return 'Venda cadastrada';
   if (item.acao === 'venda.retorno_registrado') return 'Marcada como retorno';
@@ -419,16 +509,25 @@ function getHistoryTitle(item, stageLabels = STAGE_LABELS) {
   return item.acao || 'Atualização registrada';
 }
 
+/**
+ * Executa a rotina get history label.
+ */
 function getHistoryLabel(item, stageLabels = STAGE_LABELS) {
   return [getHistoryTitle(item, stageLabels), item.observacao].filter(Boolean).join(' - ');
 }
 
+/**
+ * Executa a rotina get history type.
+ */
 function getHistoryType(item) {
   if (item.acao === 'venda.criada') return 'create';
   if (item.acao === 'venda.observacao_adicionada') return 'obs';
   return 'move';
 }
 
+/**
+ * Executa a rotina map historico venda.
+ */
 function mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabels = STAGE_LABELS) {
   const historico = Array.isArray(venda.historico) ? venda.historico : [];
 
@@ -452,6 +551,9 @@ function mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabe
   }));
 }
 
+/**
+ * Executa a rotina get etapas puladas.
+ */
 function getEtapasPuladas(item, stages) {
   if (item.tipo !== 'move' || !item.statusAnterior || !item.statusNovo) {
     return [];
@@ -471,6 +573,9 @@ function getEtapasPuladas(item, stages) {
   return stages.slice(origem + 1, destino);
 }
 
+/**
+ * Executa a rotina build sale delivery progress.
+ */
 function buildSaleDeliveryProgress(sale, stages) {
   const etapas = stages.filter(stage => stage.id !== 'retorno');
   const etapaAtualIndex = Math.max(0, etapas.findIndex(stage => stage.id === sale.stage));
@@ -518,6 +623,9 @@ function buildSaleDeliveryProgress(sale, stages) {
   };
 }
 
+/**
+ * Executa a rotina get delivery connector type.
+ */
 function getDeliveryConnectorType(stageA, stageB) {
   if (stageA.status === 'skipped' || stageB.status === 'skipped') return 'skip';
   if (
@@ -527,6 +635,9 @@ function getDeliveryConnectorType(stageA, stageB) {
   return 'pending';
 }
 
+/**
+ * Executa a rotina sale event item.
+ */
 function SaleEventItem({ item }) {
   const [aberto, setAberto] = useState(false);
   const isCancel = item.acaoRaw === 'venda.cancelada';
@@ -577,6 +688,9 @@ function SaleEventItem({ item }) {
   );
 }
 
+/**
+ * Executa a rotina sale event list.
+ */
 function SaleEventList({ sale }) {
   const eventos = Array.isArray(sale.historico) ? sale.historico : [];
 
@@ -606,6 +720,9 @@ function SaleEventList({ sale }) {
   );
 }
 
+/**
+ * Executa a rotina sale delivery tracker.
+ */
 function SaleDeliveryTracker({ sale, stages, stageLabels }) {
   const progress = buildSaleDeliveryProgress(sale, stages);
 
@@ -659,6 +776,9 @@ function SaleDeliveryTracker({ sale, stages, stageLabels }) {
   );
 }
 
+/**
+ * Executa a rotina map venda to sale.
+ */
 function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
   const sellers = getSellers(venda);
   const seller = sellers[0];
@@ -696,6 +816,9 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
   };
 }
 
+/**
+ * Executa a rotina sale modal.
+ */
 function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFullSale, openingFullSale, podeCancelar, podeReverterCancelamento, onCancelSale, onReverterCancelamento }) {
   const [tab, setTab] = useState('info');
   const [novaFase, setNovaFase] = useState(sale.stage);
@@ -740,6 +863,9 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
     || novaPrioridade !== (sale.priority || 'media')
     || observacao.trim() !== '';
 
+  /**
+   * Executa a rotina submit status.
+   */
   async function submitStatus(status, statusObservacao = observacao.trim(), motivoRetorno = '', options = {}) {
     setSaving(true);
     setError('');
@@ -756,10 +882,16 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
     }
   }
 
+  /**
+   * Executa a rotina handle atualizar.
+   */
   function handleAtualizar() {
     submitStatus(novaFase);
   }
 
+  /**
+   * Executa a rotina handle prioridade click.
+   */
   function handlePrioridadeClick(prioridade) {
     setNovaPrioridade(prioridade);
 
@@ -769,10 +901,16 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
     submitStatus(sale.stage, '', '', { prioridade });
   }
 
+  /**
+   * Executa a rotina handle confirm retorno.
+   */
   function handleConfirmRetorno({ motivo, observacao: observacaoRetorno }) {
     return submitStatus('retorno', observacaoRetorno, motivo, { rethrow: true });
   }
 
+  /**
+   * Executa a rotina handle confirm cancelamento.
+   */
   async function handleConfirmCancelamento({ motivo }) {
     setSaving(true);
     setError('');
@@ -788,6 +926,9 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
     }
   }
 
+  /**
+   * Executa a rotina handle confirm reverter.
+   */
   async function handleConfirmReverter({ observacao }) {
     setSaving(true);
     setError('');
@@ -1065,11 +1206,17 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
   );
 }
 
+/**
+ * Executa a rotina return reason modal.
+ */
 function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
   const [motivo, setMotivo] = useState('');
   const [observacao, setObservacao] = useState('');
   const [error, setError] = useState('');
 
+  /**
+   * Executa a rotina handle submit.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
     const observacaoNormalizada = observacao.trim();
@@ -1152,10 +1299,16 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
   );
 }
 
+/**
+ * Executa a rotina revert cancelamento modal.
+ */
 function RevertCancelamentoModal({ sale, saving, onClose, onConfirm }) {
   const [observacao, setObservacao] = useState('');
   const [error, setError] = useState('');
 
+  /**
+   * Executa a rotina handle submit.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
@@ -1222,10 +1375,16 @@ function RevertCancelamentoModal({ sale, saving, onClose, onConfirm }) {
   );
 }
 
+/**
+ * Executa a rotina cancel reason modal.
+ */
 function CancelReasonModal({ sale, saving, onClose, onConfirm }) {
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState('');
 
+  /**
+   * Executa a rotina handle submit.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
     const motivoLimpo = motivo.trim();
@@ -1299,6 +1458,9 @@ function CancelReasonModal({ sale, saving, onClose, onConfirm }) {
   );
 }
 
+/**
+ * Executa a rotina delete stage modal.
+ */
 function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
   const vendasCount = Number(stage?.vendasCount || 0);
 
@@ -1346,6 +1508,9 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
   );
 }
 
+/**
+ * Executa a rotina sale card.
+ */
 function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp, onProblema, podeOperarPosVenda }) {
   const priorityInfo = getPriorityInfo(sale.priority);
   const cancelada = Boolean(sale.canceladaEm);
@@ -1456,6 +1621,9 @@ const NOVA_ETAPA = {
   etapa_final: false
 };
 
+/**
+ * Executa a rotina sortable column.
+ */
 function SortableColumn({ id, disabled, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id, disabled });
@@ -1473,6 +1641,9 @@ const DADOS_MODAL_VENDA_INICIAIS = {
   etapasFunil: []
 };
 
+/**
+ * Executa a rotina funil page.
+ */
 function FunilPage() {
   const usuario = getUsuarioLocal();
   const podeGerenciarEtapas = temPermissao(usuario, 'crud_funil_etapas');
@@ -1550,6 +1721,9 @@ function FunilPage() {
     return contarVendasPorCliente(ativas);
   }, [dadosModalVenda.vendas, dadosModalVenda.etapasFunil]);
 
+  /**
+   * Executa a rotina carregar dados modal venda.
+   */
   async function carregarDadosModalVenda({ force = false } = {}) {
     if (dadosModalVenda.loaded && !force) {
       return dadosModalVenda;
@@ -1588,6 +1762,9 @@ function FunilPage() {
     return dados;
   }
 
+  /**
+   * Executa a rotina abrir venda completa.
+   */
   async function abrirVendaCompleta(sale) {
     if (!podeAbrirVendaCompleta || !sale?.id) return;
 
@@ -1609,11 +1786,17 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina fechar venda completa.
+   */
   function fecharVendaCompleta() {
     setVendaCompleta(null);
     setModalVendaModoEdicao(false);
   }
 
+  /**
+   * Executa a rotina salvar venda completa.
+   */
   async function salvarVendaCompleta(dados) {
     if (!vendaCompleta?.id) return;
 
@@ -1624,6 +1807,9 @@ function FunilPage() {
     setStageFeedback({ type: 'success', message: 'Venda atualizada com sucesso.' });
   }
 
+  /**
+   * Executa a rotina enviar pos venda completa.
+   */
   async function enviarPosVendaCompleta(venda) {
     const resultado = await enviarVendaParaPosVenda(venda.id);
     fecharVendaCompleta();
@@ -1638,6 +1824,9 @@ function FunilPage() {
     });
   }
 
+  /**
+   * Executa a rotina abrir cliente rapido.
+   */
   function abrirClienteRapido(clienteInicial = null) {
     return new Promise(resolve => {
       resolverClienteRapidoRef.current = resolve;
@@ -1646,6 +1835,9 @@ function FunilPage() {
     });
   }
 
+  /**
+   * Executa a rotina fechar cliente rapido.
+   */
   function fecharClienteRapido(cliente = null) {
     setClienteRapidoAberto(false);
     setClienteRapidoInicial(null);
@@ -1653,6 +1845,9 @@ function FunilPage() {
     resolverClienteRapidoRef.current = null;
   }
 
+  /**
+   * Executa a rotina salvar cliente rapido.
+   */
   async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
     setDadosModalVenda(prev => ({ ...prev, clientes: clientesAtualizados }));
@@ -1660,6 +1855,9 @@ function FunilPage() {
     return clienteCriado;
   }
 
+  /**
+   * Executa a rotina handle baixar xlsx claro.
+   */
   async function handleBaixarXlsxClaro(venda) {
     if (!venda?.id) return;
     setBaixandoXlsxId(venda.id);
@@ -1673,6 +1871,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina abrir email venda.
+   */
   async function abrirEmailVenda(venda) {
     if (!venda?.id) return;
     setGerandoEmailId(venda.id);
@@ -1687,6 +1888,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina copiar email venda.
+   */
   async function copiarEmailVenda() {
     if (!emailTemplate?.texto) return;
 
@@ -1711,6 +1915,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina abrir mensagem whatsapp.
+   */
   function abrirMensagemWhatsapp(venda) {
     if (!venda?.id) return;
     const documentosFaltantes = obterDocumentosFaltantesPadrao(venda);
@@ -1721,6 +1928,9 @@ function FunilPage() {
     });
   }
 
+  /**
+   * Executa a rotina atualizar documentos whatsapp.
+   */
   function atualizarDocumentosWhatsapp(documentosFaltantes) {
     setWhatsappMensagem(prev => {
       if (!prev) return prev;
@@ -1732,6 +1942,9 @@ function FunilPage() {
     });
   }
 
+  /**
+   * Executa a rotina copiar mensagem whatsapp.
+   */
   async function copiarMensagemWhatsapp() {
     if (!whatsappMensagem?.texto) return;
 
@@ -1759,6 +1972,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina sincronizar etapas.
+   */
   function sincronizarEtapas(etapas, { atualizarAdmin = false, fallbackAdminEtapa = null } = {}) {
     const etapasNormalizadas = normalizarEtapasFunil(etapas, !atualizarAdmin);
     const etapasComFallback = fallbackAdminEtapa
@@ -1781,6 +1997,9 @@ function FunilPage() {
     return montarStageLabels(etapasComFallback);
   }
 
+  /**
+   * Executa a rotina carregar etapas admin.
+   */
   async function carregarEtapasAdmin(fallbackAdminEtapa = null) {
     if (!podeGerenciarEtapas) return;
 
@@ -1799,6 +2018,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina carregar vendas.
+   */
   async function carregarVendas() {
     setLoading(true);
     setError('');
@@ -1842,11 +2064,17 @@ function FunilPage() {
     return () => clearTimeout(timer);
   }, [stageFeedback.message]);
 
+  /**
+   * Executa a rotina atualizar etapas apos crud.
+   */
   async function atualizarEtapasAposCrud(message, fallbackAdminEtapa = null) {
     await carregarEtapasAdmin(fallbackAdminEtapa);
     setStageFeedback({ type: 'success', message });
   }
 
+  /**
+   * Executa a rotina handle create stage.
+   */
   async function handleCreateStage(event) {
     event.preventDefault();
 
@@ -1872,6 +2100,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle drag end.
+   */
   async function handleDragEnd({ active, over }) {
     if (!over || active.id === over.id) return;
     const oldIndex = stagesVisiveis.findIndex(s => s.id === active.id);
@@ -1886,6 +2117,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle save stage name.
+   */
   async function handleSaveStageName(stage) {
     const nome = editStageNames[stage.adminId]?.trim();
     if (!stage.adminId || !nome || nome === stage.name) return;
@@ -1909,6 +2143,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle toggle stage.
+   */
   async function handleToggleStage(stage) {
     if (!stage.adminId) return;
 
@@ -1931,6 +2168,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle delete stage.
+   */
   async function handleDeleteStage(stage) {
     if (!stage.adminId) return;
 
@@ -1957,6 +2197,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle toggle final stage.
+   */
   async function handleToggleFinalStage(stage) {
     if (!stage.adminId) return;
 
@@ -1978,6 +2221,9 @@ function FunilPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle update sale.
+   */
   async function handleUpdateSale(saleId, novaFase, novaPrioridade, observacao, motivoRetorno) {
     if (novaFase === 'retorno') {
       await atualizarStatusVenda(saleId, {
@@ -2007,6 +2253,9 @@ function FunilPage() {
     }));
   }
 
+  /**
+   * Executa a rotina handle cancelar venda.
+   */
   async function handleCancelarVenda(saleId, motivo) {
     const vendaAtualizada = await cancelarVenda(saleId, motivo);
     setSales(prev => prev.map(sale => {
@@ -2018,6 +2267,9 @@ function FunilPage() {
     }));
   }
 
+  /**
+   * Executa a rotina handle reverter cancelamento venda.
+   */
   async function handleReverterCancelamentoVenda(saleId, observacao) {
     const vendaAtualizada = await reverterCancelamentoVenda(saleId, observacao);
     setSales(prev => prev.map(sale => {
@@ -2029,6 +2281,9 @@ function FunilPage() {
     }));
   }
 
+  /**
+   * Executa a rotina limpar filtros.
+   */
   function limparFiltros() {
     setVendedoraId('');
     setOperadoraId('');

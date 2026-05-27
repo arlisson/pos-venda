@@ -7,6 +7,9 @@
 const Campanha = require('../models/Campanha');
 const knex = require('../database/connection');
 
+/**
+ * Executa a rotina validar campanha.
+ */
 function validarCampanha(campanha) {
   if (!campanha.desc || !Number(campanha.target)) {
     return 'Alvo e descricao sao obrigatorios.';
@@ -27,10 +30,16 @@ function validarCampanha(campanha) {
   return null;
 }
 
+/**
+ * Executa a rotina campanha eh gift.
+ */
 function campanhaEhGift(campanha) {
   return campanha.is_gift === true || campanha.is_gift === 1 || campanha.is_gift === '1';
 }
 
+/**
+ * Executa a rotina to date str.
+ */
 function toDateStr(d) {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -38,6 +47,9 @@ function toDateStr(d) {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Executa a rotina get ciclo.
+ */
 function getCiclo(periodo, baseDate = new Date()) {
   if (periodo === 'semanal') {
     const diaSemana = baseDate.getDay();
@@ -84,6 +96,9 @@ function getCiclo(periodo, baseDate = new Date()) {
   };
 }
 
+/**
+ * Executa a rotina normalizar texto.
+ */
 function normalizarTexto(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -92,6 +107,9 @@ function normalizarTexto(valor) {
     .trim();
 }
 
+/**
+ * Executa a rotina somar quantidade chips.
+ */
 function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas, fallback = 0) {
   if (valoresUnitariosChips) {
     try {
@@ -114,11 +132,17 @@ function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas, fallback 
   return Number(quantidadeLinhas || 0) || fallback;
 }
 
+/**
+ * Executa a rotina normalizar tipo linha chip.
+ */
 function normalizarTipoLinhaChip(valor) {
   const tipo = normalizarTexto(valor);
   return tipo.includes('porta') ? 'portabilidade' : 'novo';
 }
 
+/**
+ * Executa a rotina somar quantidade chips por tipo.
+ */
 function somarQuantidadeChipsPorTipo(valoresUnitariosChips, tipoLinha) {
   if (!valoresUnitariosChips) return null;
 
@@ -142,6 +166,9 @@ function somarQuantidadeChipsPorTipo(valoresUnitariosChips, tipoLinha) {
   }
 }
 
+/**
+ * Executa a rotina quantidade categoria venda.
+ */
 function quantidadeCategoriaVenda(venda, categoria) {
   const porTipo = categoria === 'chip_novo'
     ? somarQuantidadeChipsPorTipo(venda.valores_unitarios_chips, 'novo')
@@ -163,6 +190,9 @@ function quantidadeCategoriaVenda(venda, categoria) {
   return 0;
 }
 
+/**
+ * Executa a rotina listar clientes do ciclo.
+ */
 async function listarClientesDoCiclo(usuarioId, ciclo) {
   return knex('clientes')
     .select('id', 'operadora_atual_id')
@@ -171,6 +201,9 @@ async function listarClientesDoCiclo(usuarioId, ciclo) {
     .whereRaw('DATE(created_at) < ?', [ciclo.fimStr]);
 }
 
+/**
+ * Executa a rotina listar vendas do ciclo.
+ */
 async function listarVendasDoCiclo(vendedoraId, ciclo) {
   const dataReferencia = "COALESCE(NULLIF(NULLIF(v.data_venda, '0000-00-00'), '1899-11-30'), NULLIF(DATE(v.criado_em), '0000-00-00'), DATE(v.created_at))";
 
@@ -191,14 +224,23 @@ async function listarVendasDoCiclo(vendedoraId, ciclo) {
     .whereRaw(`${dataReferencia} < ?`, [ciclo.fimStr]);
 }
 
+/**
+ * Executa a rotina venda pertence operadora.
+ */
 function vendaPertenceOperadora(venda, operadoraId) {
   return !operadoraId || Number(venda.operadora_id) === Number(operadoraId);
 }
 
+/**
+ * Executa a rotina cliente pertence operadora.
+ */
 function clientePertenceOperadora(cliente, operadoraId) {
   return !operadoraId || Number(cliente.operadora_atual_id) === Number(operadoraId);
 }
 
+/**
+ * Executa a rotina classificar vendas.
+ */
 function classificarVendas(rows, clientes = []) {
   const totais = {
     registro_cliente: clientes.length,
@@ -222,6 +264,9 @@ function classificarVendas(rows, clientes = []) {
   return totais;
 }
 
+/**
+ * Executa a rotina calcular valor campanha.
+ */
 function calcularValorCampanha(campanha, vendas, clientes) {
   const categoria = campanha.categoria || 'registro_cliente';
   const operadoraId = campanha.operadora_id ? Number(campanha.operadora_id) : null;
@@ -261,6 +306,9 @@ function calcularValorCampanha(campanha, vendas, clientes) {
   }, 0);
 }
 
+/**
+ * Executa a rotina calcular progresso.
+ */
 async function calcularProgresso(usuarioId, ciclo, campanhas = []) {
   const [clientes, vendas] = await Promise.all([
     listarClientesDoCiclo(usuarioId, ciclo),
@@ -280,6 +328,9 @@ async function calcularProgresso(usuarioId, ciclo, campanhas = []) {
   };
 }
 
+/**
+ * Executa a rotina agrupar resgates por usuario.
+ */
 function agruparResgatesPorUsuario(resgates = []) {
   return resgates.reduce((acc, resgate) => {
     const usuarioId = Number(resgate.usuario_id);

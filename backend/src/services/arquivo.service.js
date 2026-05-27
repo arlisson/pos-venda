@@ -21,7 +21,13 @@ const EXTENSOES_POR_MIME = {
   'image/webp': '.webp'
 };
 
+/**
+ * Executa a rotina formatar date time sql.
+ */
 function formatarDateTimeSQL(data = new Date()) {
+  /**
+   * Executa a rotina pad.
+   */
   const pad = valor => String(valor).padStart(2, '0');
 
   return [
@@ -35,18 +41,30 @@ function formatarDateTimeSQL(data = new Date()) {
   ].join(':');
 }
 
+/**
+ * Executa a rotina garantir diretorio.
+ */
 async function garantirDiretorio(dir) {
   await fs.promises.mkdir(dir, { recursive: true });
 }
 
+/**
+ * Executa a rotina caminho relativo ativo.
+ */
 function caminhoRelativoAtivo(hash, extensao) {
   return path.join('ativos', hash.slice(0, 2), hash.slice(2, 4), `${hash}${extensao || ''}`);
 }
 
+/**
+ * Executa a rotina caminho absoluto.
+ */
 function caminhoAbsoluto(relativo) {
   return path.resolve(STORAGE_DIR, relativo);
 }
 
+/**
+ * Executa a rotina normalizar nome arquivo.
+ */
 function normalizarNomeArquivo(nome) {
   const base = path.basename(String(nome || 'arquivo'));
   return base
@@ -56,6 +74,9 @@ function normalizarNomeArquivo(nome) {
     .slice(0, 180) || 'arquivo';
 }
 
+/**
+ * Executa a rotina extensao por arquivo.
+ */
 function extensaoPorArquivo(nome, mimeType) {
   const ext = path.extname(String(nome || '')).toLowerCase().slice(0, 20);
   return ext || EXTENSOES_POR_MIME[mimeType] || '';
@@ -63,6 +84,9 @@ function extensaoPorArquivo(nome, mimeType) {
 
 // Lê 1 arquivo do multipart e grava num temp + calcula hash em streaming.
 // Retorna { tempPath, nomeOriginal, mimeType, extensao, tamanhoBytes, hashSha256, campos }.
+/**
+ * Executa a rotina receber upload.
+ */
 async function receberUpload(req, { allowedTypes, maxFileBytes }) {
   await garantirDiretorio(path.join(STORAGE_DIR, 'tmp'));
 
@@ -153,6 +177,9 @@ async function receberUpload(req, { allowedTypes, maxFileBytes }) {
 
 // Dedup por hash: se já existir um Arquivo válido com o mesmo hash, reusa.
 // Caso contrário, move o tmp para ativos/aa/bb/<hash>.<ext> e cria/atualiza a linha.
+/**
+ * Executa a rotina materializar arquivo.
+ */
 async function materializarArquivo(upload, usuarioId) {
   const existente = await Arquivo.query()
     .where('hash_sha256', upload.hashSha256)
@@ -200,6 +227,9 @@ async function materializarArquivo(upload, usuarioId) {
 // `idadeMinimaHoras` desde o upload, (b) não tem nenhum vínculo ativo em
 // `venda_arquivos` ou `mensagem_arquivos`. Roda em batch limitado pra não
 // segurar o event loop em bases grandes.
+/**
+ * Executa a rotina limpar arquivos orfaos.
+ */
 async function limparArquivosOrfaos({ idadeMinimaHoras = 24, limite = 500 } = {}) {
   const Arquivo = require('../models/Arquivo');
   const knex = Arquivo.knex();
@@ -238,6 +268,9 @@ async function limparArquivosOrfaos({ idadeMinimaHoras = 24, limite = 500 } = {}
   return removidos;
 }
 
+/**
+ * Executa a rotina abrir stream arquivo.
+ */
 async function abrirStreamArquivo(arquivo) {
   if (!arquivo) {
     const error = new Error('Arquivo nao encontrado.');

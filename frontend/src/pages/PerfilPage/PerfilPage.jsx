@@ -5,6 +5,9 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { buscarPerfil, logout } from '../../services/auth.service';
 import './PerfilPage.css';
 
+/**
+ * Executa a rotina perfil page.
+ */
 function PerfilPage() {
   const navigate = useNavigate();
   const [usuario, setUsuario] = useState(null);
@@ -18,6 +21,9 @@ function PerfilPage() {
   }, [erro]);
 
   useEffect(() => {
+    /**
+     * Executa a rotina carregar perfil.
+     */
     async function carregarPerfil() {
       try {
         const data = await buscarPerfil();
@@ -33,6 +39,9 @@ function PerfilPage() {
     carregarPerfil();
   }, []);
 
+  /**
+   * Executa a rotina get initials.
+   */
   const getInitials = (name) => {
     if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);

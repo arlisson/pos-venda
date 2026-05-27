@@ -21,7 +21,13 @@ const TIPOS_NOTIFICACAO_PROBLEMA = [
   'venda_problema_correcao'
 ];
 
+/**
+ * Executa a rotina formatar date time sql.
+ */
 function formatarDateTimeSQL(data = new Date()) {
+  /**
+   * Executa a rotina pad.
+   */
   const pad = valor => String(valor).padStart(2, '0');
 
   return [
@@ -35,24 +41,39 @@ function formatarDateTimeSQL(data = new Date()) {
   ].join(':');
 }
 
+/**
+ * Executa a rotina erro.
+ */
 function erro(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
 }
 
+/**
+ * Executa a rotina buscar usuario.
+ */
 async function buscarUsuario(usuarioId) {
   return Usuario.query().findById(usuarioId).withGraphFetched('role');
 }
 
+/**
+ * Executa a rotina usuario eh admin.
+ */
 function usuarioEhAdmin(usuario) {
   return usuario?.role?.nome === 'admin';
 }
 
+/**
+ * Executa a rotina usuario pode ver todas.
+ */
 function usuarioPodeVerTodas(usuario) {
   return usuarioTemPermissaoLocal(usuario, 'vendas_ver_todas');
 }
 
+/**
+ * Executa a rotina buscar venda acessivel.
+ */
 async function buscarVendaAcessivel(vendaId, usuarioId, trx = null) {
   const usuario = await buscarUsuario(usuarioId);
   const venda = await Venda.query(trx)
@@ -70,10 +91,16 @@ async function buscarVendaAcessivel(vendaId, usuarioId, trx = null) {
   return vinculado ? venda : null;
 }
 
+/**
+ * Executa a rotina nome venda.
+ */
 function nomeVenda(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
+/**
+ * Executa a rotina buscar problema completo.
+ */
 async function buscarProblemaCompleto(problemaId, trx = null) {
   return VendaProblema.query(trx)
     .findById(problemaId)
@@ -81,6 +108,9 @@ async function buscarProblemaCompleto(problemaId, trx = null) {
     .modifyGraph('eventos', builder => builder.orderBy('created_at', 'asc').orderBy('id', 'asc'));
 }
 
+/**
+ * Executa a rotina buscar problema ativo.
+ */
 async function buscarProblemaAtivo(vendaId, trx = null) {
   const problema = await VendaProblema.query(trx)
     .where('venda_id', vendaId)
@@ -91,6 +121,9 @@ async function buscarProblemaAtivo(vendaId, trx = null) {
   return problema ? buscarProblemaCompleto(problema.id, trx) : null;
 }
 
+/**
+ * Executa a rotina listar problemas ativos.
+ */
 async function listarProblemasAtivos(vendaId, trx = null) {
   return VendaProblema.query(trx)
     .where('venda_id', vendaId)
@@ -101,6 +134,9 @@ async function listarProblemasAtivos(vendaId, trx = null) {
     .orderBy('id', 'desc');
 }
 
+/**
+ * Executa a rotina registrar evento.
+ */
 async function registrarEvento({ problemaId, usuarioId, tipo, mensagem, dados = {}, trx }) {
   return VendaProblemaEvento.query(trx).insertAndFetch({
     problema_id: Number(problemaId),
@@ -111,6 +147,9 @@ async function registrarEvento({ problemaId, usuarioId, tipo, mensagem, dados = 
   });
 }
 
+/**
+ * Executa a rotina registrar historico venda.
+ */
 async function registrarHistoricoVenda({ vendaId, usuarioId, acao, observacao, dados = {}, trx }) {
   return VendaHistorico.query(trx).insert({
     venda_id: Number(vendaId),
@@ -122,6 +161,9 @@ async function registrarHistoricoVenda({ vendaId, usuarioId, acao, observacao, d
   });
 }
 
+/**
+ * Executa a rotina criar notificacao problema.
+ */
 async function criarNotificacaoProblema({ tipo, problema, evento, destinatariosIds, titulo, mensagem, nivel = 'danger', trx }) {
   await Notificacao.query(trx)
     .where('source_key', 'like', `venda_problema:%:${problema.id}:%`)
@@ -168,6 +210,9 @@ async function criarNotificacaoProblema({ tipo, problema, evento, destinatariosI
   return notificacao;
 }
 
+/**
+ * Executa a rotina resolver destinatarios.
+ */
 async function resolverDestinatarios(venda, dados, trx) {
   if (dados.modo_destinatario === 'manual') {
     const ids = [...new Set((dados.destinatarios || []).map(Number).filter(Boolean))];
@@ -199,6 +244,9 @@ async function resolverDestinatarios(venda, dados, trx) {
   return ids;
 }
 
+/**
+ * Executa a rotina abrir problema.
+ */
 async function abrirProblema(vendaId, dados, usuarioId) {
   const motivo = String(dados.motivo || '').trim();
 
@@ -262,6 +310,9 @@ async function abrirProblema(vendaId, dados, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina obter ativo.
+ */
 async function obterAtivo(vendaId, usuarioId) {
   const venda = await buscarVendaAcessivel(vendaId, usuarioId);
 
@@ -272,6 +323,9 @@ async function obterAtivo(vendaId, usuarioId) {
   return buscarProblemaAtivo(venda.id);
 }
 
+/**
+ * Executa a rotina listar ativos.
+ */
 async function listarAtivos(vendaId, usuarioId) {
   const venda = await buscarVendaAcessivel(vendaId, usuarioId);
 
@@ -282,10 +336,16 @@ async function listarAtivos(vendaId, usuarioId) {
   return listarProblemasAtivos(venda.id);
 }
 
+/**
+ * Executa a rotina usuario eh responsavel.
+ */
 function usuarioEhResponsavel(problema, usuarioId) {
   return (problema.destinatarios || []).some(item => Number(item.usuario_id) === Number(usuarioId));
 }
 
+/**
+ * Executa a rotina resolver problema.
+ */
 async function resolverProblema(problemaId, dados, usuarioId) {
   const mensagem = String(dados.mensagem || '').trim();
 
@@ -355,6 +415,9 @@ async function resolverProblema(problemaId, dados, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina solicitar correcao.
+ */
 async function solicitarCorrecao(problemaId, dados, usuarioId) {
   const mensagem = String(dados.mensagem || '').trim();
 
@@ -417,6 +480,9 @@ async function solicitarCorrecao(problemaId, dados, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina verificar problema.
+ */
 async function verificarProblema(problemaId, usuarioId) {
   return VendaProblema.transaction(async trx => {
     const problema = await buscarProblemaCompleto(problemaId, trx);
@@ -463,6 +529,9 @@ async function verificarProblema(problemaId, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina usuario tem notificacao problema.
+ */
 async function usuarioTemNotificacaoProblema(usuarioId) {
   const total = await db('notificacao_destinatarios as nd')
     .join('notificacoes as n', 'nd.notificacao_id', 'n.id')
@@ -475,6 +544,9 @@ async function usuarioTemNotificacaoProblema(usuarioId) {
   return Number(total?.total || 0) > 0;
 }
 
+/**
+ * Executa a rotina listar destinatarios disponiveis.
+ */
 async function listarDestinatariosDisponiveis() {
   return Usuario.query()
     .withGraphFetched('role')

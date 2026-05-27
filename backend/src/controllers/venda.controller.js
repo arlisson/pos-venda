@@ -9,6 +9,9 @@ const vendaImportacaoEmpresasService = require('../services/venda-importacao-emp
 const { gerarXlsxClaro } = require('../services/venda-xlsx-claro.service');
 const { _internals } = require('../services/venda-email-template.service');
 
+/**
+ * Executa a rotina index.
+ */
 async function index(req, res) {
   try {
     const vendas = await vendaService.listarVendas(req.query, req.usuario.id);
@@ -23,6 +26,9 @@ async function index(req, res) {
   }
 }
 
+/**
+ * Executa a rotina referencias clientes.
+ */
 async function referenciasClientes(req, res) {
   try {
     const referencias = await vendaService.obterReferenciasClientes(req.usuario.id);
@@ -36,6 +42,9 @@ async function referenciasClientes(req, res) {
   }
 }
 
+/**
+ * Executa a rotina resumo.
+ */
 async function resumo(req, res) {
   try {
     const resumoDashboard = await vendaService.obterResumoDashboard(req.usuario.id);
@@ -50,6 +59,9 @@ async function resumo(req, res) {
   }
 }
 
+/**
+ * Executa a rotina relatorios.
+ */
 async function relatorios(req, res) {
   try {
     const relatorio = await vendaService.obterRelatoriosVendas(req.query, req.usuario.id);
@@ -64,6 +76,9 @@ async function relatorios(req, res) {
   }
 }
 
+/**
+ * Executa a rotina exportar.
+ */
 async function exportar(req, res) {
   try {
     const { buffer, nome } = await vendaService.gerarXlsxVendas(req.query, req.usuario.id);
@@ -80,6 +95,9 @@ async function exportar(req, res) {
   }
 }
 
+/**
+ * Executa a rotina show.
+ */
 async function show(req, res) {
   try {
     const venda = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
@@ -100,6 +118,9 @@ async function show(req, res) {
   }
 }
 
+/**
+ * Executa a rotina email template.
+ */
 async function emailTemplate(req, res) {
   try {
     const resultado = await vendaService.gerarEmailTemplateVenda(req.params.id, req.usuario.id);
@@ -120,6 +141,9 @@ async function emailTemplate(req, res) {
   }
 }
 
+/**
+ * Executa a rotina store.
+ */
 async function store(req, res) {
   try {
     const venda = await vendaService.criarVenda(req.body, req.usuario.id);
@@ -135,6 +159,9 @@ async function store(req, res) {
   }
 }
 
+/**
+ * Executa a rotina preview importacao empresas.
+ */
 async function previewImportacaoEmpresas(req, res) {
   try {
     const preview = await vendaImportacaoEmpresasService.preview(req);
@@ -147,6 +174,9 @@ async function previewImportacaoEmpresas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina importar empresas.
+ */
 async function importarEmpresas(req, res) {
   try {
     const resultado = await vendaImportacaoEmpresasService.importar(req, req.usuario.id);
@@ -159,6 +189,9 @@ async function importarEmpresas(req, res) {
   }
 }
 
+/**
+ * Executa a rotina update.
+ */
 async function update(req, res) {
   try {
     const venda = await vendaService.atualizarVenda(req.params.id, req.body, req.usuario.id);
@@ -181,6 +214,9 @@ async function update(req, res) {
   }
 }
 
+/**
+ * Executa a rotina update status.
+ */
 async function updateStatus(req, res) {
   try {
     const resultado = await vendaService.atualizarStatusVenda(req.params.id, req.body, req.usuario.id);
@@ -215,6 +251,9 @@ async function updateStatus(req, res) {
   }
 }
 
+/**
+ * Executa a rotina enviar pos venda.
+ */
 async function enviarPosVenda(req, res) {
   try {
     const resultado = await vendaService.enviarVendaParaPosVenda(req.params.id, req.usuario.id);
@@ -253,6 +292,9 @@ async function enviarPosVenda(req, res) {
   }
 }
 
+/**
+ * Executa a rotina destroy.
+ */
 async function destroy(req, res) {
   try {
     const totalExcluido = await vendaService.excluirVenda(req.params.id, req.usuario.id);
@@ -273,6 +315,9 @@ async function destroy(req, res) {
   }
 }
 
+/**
+ * Executa a rotina lixeira.
+ */
 async function lixeira(req, res) {
   try {
     const vendas = await vendaService.listarVendasLixeira(req.query, req.usuario.id);
@@ -287,6 +332,9 @@ async function lixeira(req, res) {
   }
 }
 
+/**
+ * Executa a rotina restore.
+ */
 async function restore(req, res) {
   try {
     const venda = await vendaService.restaurarVenda(req.params.id, req.usuario.id);
@@ -307,6 +355,9 @@ async function restore(req, res) {
   }
 }
 
+/**
+ * Executa a rotina destroy definitivo.
+ */
 async function destroyDefinitivo(req, res) {
   try {
     const totalExcluido = await vendaService.excluirVendaDefinitivo(req.params.id, req.usuario.id);
@@ -327,6 +378,9 @@ async function destroyDefinitivo(req, res) {
   }
 }
 
+/**
+ * Executa a rotina vendedoras.
+ */
 async function vendedoras(req, res) {
   try {
     const usuarios = await vendaService.listarVendedoras(req.usuario.id);
@@ -341,6 +395,9 @@ async function vendedoras(req, res) {
   }
 }
 
+/**
+ * Executa a rotina xlsx claro.
+ */
 async function xlsxClaro(req, res) {
   try {
     const venda = await vendaService.buscarVendaPorId(req.params.id, req.usuario.id);
@@ -366,6 +423,9 @@ async function xlsxClaro(req, res) {
   }
 }
 
+/**
+ * Executa a rotina cancelar.
+ */
 async function cancelar(req, res) {
   try {
     const resultado = await vendaService.cancelarVenda(req.params.id, {
@@ -393,6 +453,9 @@ async function cancelar(req, res) {
   }
 }
 
+/**
+ * Executa a rotina reverter cancelamento.
+ */
 async function reverterCancelamento(req, res) {
   try {
     const resultado = await vendaService.reverterCancelamentoVenda(req.params.id, req.usuario.id, {
@@ -444,6 +507,9 @@ module.exports = {
   referenciasClientes
 };
 
+/**
+ * Executa a rotina contagem por cliente.
+ */
 async function contagemPorCliente(req, res) {
   try {
     const contagem = await vendaService.contarVendasConcluidasPorCliente();

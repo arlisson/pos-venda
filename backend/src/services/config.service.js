@@ -10,14 +10,23 @@ const FunilEtapa = require('../models/FunilEtapa');
 const RegraComissao = require('../models/RegraComissao');
 const Venda = require('../models/Venda');
 
+/**
+ * Executa a rotina order config.
+ */
 function orderConfig(query) {
   return query.orderBy('nome', 'asc').orderBy('id', 'asc');
 }
 
+/**
+ * Executa a rotina select config.
+ */
 function selectConfig(query) {
   return query.select('id', 'nome', 'ativo', 'created_at', 'updated_at');
 }
 
+/**
+ * Executa a rotina ocultar ordem.
+ */
 function ocultarOrdem(registro) {
   if (!registro) return registro;
 
@@ -27,10 +36,16 @@ function ocultarOrdem(registro) {
   return semOrdem;
 }
 
+/**
+ * Executa a rotina listar operadoras.
+ */
 async function listarOperadoras() {
   return orderConfig(selectConfig(Operadora.query()));
 }
 
+/**
+ * Executa a rotina listar links externos.
+ */
 async function listarLinksExternos() {
   return LinkExterno.query()
     .select('id', 'chave', 'nome', 'url', 'dot', 'ativo', 'created_at', 'updated_at')
@@ -38,24 +53,39 @@ async function listarLinksExternos() {
     .orderBy('id', 'asc');
 }
 
+/**
+ * Executa a rotina listar tipos produto.
+ */
 async function listarTiposProduto() {
   return orderConfig(selectConfig(TipoProduto.query()));
 }
 
+/**
+ * Executa a rotina listar tipos venda.
+ */
 async function listarTiposVenda() {
   return orderConfig(selectConfig(TipoVenda.query()));
 }
 
+/**
+ * Executa a rotina listar servicos.
+ */
 async function listarServicos() {
   return orderConfig(selectConfig(Servico.query()));
 }
 
+/**
+ * Executa a rotina listar funil etapas.
+ */
 async function listarFunilEtapas() {
   return FunilEtapa.query()
     .orderBy('ordem', 'asc')
     .orderBy('nome', 'asc');
 }
 
+/**
+ * Executa a rotina listar regras comissao.
+ */
 async function listarRegrasComissao() {
   return RegraComissao.query()
     .alias('rc')
@@ -81,22 +111,37 @@ async function listarRegrasComissao() {
     .orderBy('rc.id', 'asc');
 }
 
+/**
+ * Executa a rotina listar operadoras ativas.
+ */
 async function listarOperadorasAtivas() {
   return orderConfig(selectConfig(Operadora.query().where('ativo', true)));
 }
 
+/**
+ * Executa a rotina listar tipos produto ativos.
+ */
 async function listarTiposProdutoAtivos() {
   return orderConfig(selectConfig(TipoProduto.query().where('ativo', true)));
 }
 
+/**
+ * Executa a rotina listar tipos venda ativos.
+ */
 async function listarTiposVendaAtivos() {
   return orderConfig(selectConfig(TipoVenda.query().where('ativo', true)));
 }
 
+/**
+ * Executa a rotina listar servicos ativos.
+ */
 async function listarServicosAtivos() {
   return orderConfig(selectConfig(Servico.query().where('ativo', true)));
 }
 
+/**
+ * Executa a rotina listar funil etapas ativas.
+ */
 async function listarFunilEtapasAtivas() {
   return FunilEtapa.query()
     .where('ativo', true)
@@ -104,6 +149,9 @@ async function listarFunilEtapasAtivas() {
     .orderBy('nome', 'asc');
 }
 
+/**
+ * Executa a rotina listar links externos ativos.
+ */
 async function listarLinksExternosAtivos() {
   return LinkExterno.query()
     .where('ativo', true)
@@ -112,6 +160,9 @@ async function listarLinksExternosAtivos() {
     .orderBy('id', 'asc');
 }
 
+/**
+ * Executa a rotina listar regras comissao ativas.
+ */
 async function listarRegrasComissaoAtivas() {
   return RegraComissao.query()
     .alias('rc')
@@ -138,6 +189,9 @@ async function listarRegrasComissaoAtivas() {
     .orderBy('rc.id', 'asc');
 }
 
+/**
+ * Executa a rotina criar operadora.
+ */
 async function criarOperadora(dados) {
   const operadora = await Operadora.query().insert({
     nome: dados.nome,
@@ -147,6 +201,9 @@ async function criarOperadora(dados) {
   return ocultarOrdem(operadora);
 }
 
+/**
+ * Executa a rotina atualizar operadora.
+ */
 async function atualizarOperadora(id, dados) {
   const atualizacao = {};
 
@@ -157,10 +214,16 @@ async function atualizarOperadora(id, dados) {
   return ocultarOrdem(operadora);
 }
 
+/**
+ * Executa a rotina excluir operadora.
+ */
 async function excluirOperadora(id) {
   return Operadora.query().deleteById(id);
 }
 
+/**
+ * Executa a rotina criar tipo produto.
+ */
 async function criarTipoProduto(dados) {
   const tipoProduto = await TipoProduto.query().insert({
     nome: dados.nome,
@@ -170,6 +233,9 @@ async function criarTipoProduto(dados) {
   return ocultarOrdem(tipoProduto);
 }
 
+/**
+ * Executa a rotina atualizar tipo produto.
+ */
 async function atualizarTipoProduto(id, dados) {
   const atualizacao = {};
 
@@ -180,10 +246,16 @@ async function atualizarTipoProduto(id, dados) {
   return ocultarOrdem(tipoProduto);
 }
 
+/**
+ * Executa a rotina excluir tipo produto.
+ */
 async function excluirTipoProduto(id) {
   return TipoProduto.query().deleteById(id);
 }
 
+/**
+ * Executa a rotina criar tipo venda.
+ */
 async function criarTipoVenda(dados) {
   const tipoVenda = await TipoVenda.query().insert({
     nome: dados.nome,
@@ -193,6 +265,9 @@ async function criarTipoVenda(dados) {
   return ocultarOrdem(tipoVenda);
 }
 
+/**
+ * Executa a rotina atualizar tipo venda.
+ */
 async function atualizarTipoVenda(id, dados) {
   const atualizacao = {};
 
@@ -203,10 +278,16 @@ async function atualizarTipoVenda(id, dados) {
   return ocultarOrdem(tipoVenda);
 }
 
+/**
+ * Executa a rotina excluir tipo venda.
+ */
 async function excluirTipoVenda(id) {
   return TipoVenda.query().deleteById(id);
 }
 
+/**
+ * Executa a rotina criar servico.
+ */
 async function criarServico(dados) {
   const servico = await Servico.query().insert({
     nome: dados.nome,
@@ -216,6 +297,9 @@ async function criarServico(dados) {
   return ocultarOrdem(servico);
 }
 
+/**
+ * Executa a rotina atualizar servico.
+ */
 async function atualizarServico(id, dados) {
   const atualizacao = {};
 
@@ -226,10 +310,16 @@ async function atualizarServico(id, dados) {
   return ocultarOrdem(servico);
 }
 
+/**
+ * Executa a rotina excluir servico.
+ */
 async function excluirServico(id) {
   return Servico.query().deleteById(id);
 }
 
+/**
+ * Executa a rotina normalizar codigo etapa.
+ */
 function normalizarCodigoEtapa(valor) {
   return String(valor || '')
     .trim()
@@ -241,6 +331,9 @@ function normalizarCodigoEtapa(valor) {
     .slice(0, 40);
 }
 
+/**
+ * Executa a rotina criar funil etapa.
+ */
 async function criarFunilEtapa(dados) {
   const codigo = normalizarCodigoEtapa(dados.codigo || dados.nome);
 
@@ -276,12 +369,18 @@ async function criarFunilEtapa(dados) {
   });
 }
 
+/**
+ * Executa a rotina reordenar funil etapas.
+ */
 async function reordenarFunilEtapas(ordens) {
   await Promise.all(
     ordens.map(({ id, ordem }) => FunilEtapa.query().patchAndFetchById(id, { ordem }))
   );
 }
 
+/**
+ * Executa a rotina atualizar funil etapa.
+ */
 async function atualizarFunilEtapa(id, dados) {
   const atualizacao = {};
 
@@ -296,6 +395,9 @@ async function atualizarFunilEtapa(id, dados) {
   return FunilEtapa.query().patchAndFetchById(id, atualizacao);
 }
 
+/**
+ * Executa a rotina validar etapa final unica.
+ */
 async function validarEtapaFinalUnica(etapaFinal, ignorarId = null) {
   if (!etapaFinal) return;
 
@@ -311,6 +413,9 @@ async function validarEtapaFinalUnica(etapaFinal, ignorarId = null) {
   }
 }
 
+/**
+ * Executa a rotina excluir funil etapa.
+ */
 async function excluirFunilEtapa(id) {
   const etapa = await FunilEtapa.query().findById(id);
 
@@ -341,6 +446,9 @@ async function excluirFunilEtapa(id) {
   };
 }
 
+/**
+ * Executa a rotina parse valor monetario.
+ */
 function parseValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
   const texto = String(valor).trim().replace(/[^\d,.-]/g, '');
@@ -353,6 +461,9 @@ function parseValorMonetario(valor) {
   return Number(texto);
 }
 
+/**
+ * Executa a rotina normalizar regra comissao.
+ */
 function normalizarRegraComissao(dados) {
   const valorMin = parseValorMonetario(dados.valor_min);
   const valorMax = parseValorMonetario(dados.valor_max);
@@ -406,6 +517,9 @@ function normalizarRegraComissao(dados) {
   };
 }
 
+/**
+ * Executa a rotina validar sobreposicao regra comissao.
+ */
 async function validarSobreposicaoRegraComissao(regra, ignorarId = null) {
   if (!regra.ativo) return;
 
@@ -428,6 +542,9 @@ async function validarSobreposicaoRegraComissao(regra, ignorarId = null) {
   }
 }
 
+/**
+ * Executa a rotina criar regra comissao.
+ */
 async function criarRegraComissao(dados) {
   const regra = normalizarRegraComissao(dados);
   await validarSobreposicaoRegraComissao(regra);
@@ -436,6 +553,9 @@ async function criarRegraComissao(dados) {
   return ocultarOrdem(regraCriada);
 }
 
+/**
+ * Executa a rotina atualizar regra comissao.
+ */
 async function atualizarRegraComissao(id, dados) {
   const atual = await RegraComissao.query().findById(id);
 
@@ -457,10 +577,16 @@ async function atualizarRegraComissao(id, dados) {
   return ocultarOrdem(regraAtualizada);
 }
 
+/**
+ * Executa a rotina excluir regra comissao.
+ */
 async function excluirRegraComissao(id) {
   return RegraComissao.query().deleteById(id);
 }
 
+/**
+ * Executa a rotina criar link externo.
+ */
 async function criarLinkExterno(dados) {
   const link = await LinkExterno.query().insert({
     chave: dados.chave,
@@ -473,6 +599,9 @@ async function criarLinkExterno(dados) {
   return ocultarOrdem(link);
 }
 
+/**
+ * Executa a rotina atualizar link externo.
+ */
 async function atualizarLinkExterno(id, dados) {
   const atualizacao = {};
 
@@ -486,6 +615,9 @@ async function atualizarLinkExterno(id, dados) {
   return ocultarOrdem(link);
 }
 
+/**
+ * Executa a rotina excluir link externo.
+ */
 async function excluirLinkExterno(id) {
   return LinkExterno.query().deleteById(id);
 }

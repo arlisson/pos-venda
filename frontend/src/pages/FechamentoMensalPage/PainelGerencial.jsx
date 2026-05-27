@@ -1,3 +1,6 @@
+/**
+ * Executa a rotina fmt moeda.
+ */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -12,6 +15,9 @@ const INDICADORES = [
   { key: 'net_add', label: 'Net add', destaque: true }
 ];
 
+/**
+ * Executa a rotina painel gerencial.
+ */
 function PainelGerencial({ linhas = [], loading }) {
   return (
     <section className="fechamento-painel">

@@ -34,6 +34,9 @@ export default function SelectFiltro({
     ...opcoesFiltradas.map(op => ({ value: String(op.value), disabled: !!op.disabled })),
   ];
 
+  /**
+   * Executa a rotina proximo selecionavel.
+   */
   function proximoSelecionavel(de, dir) {
     const n = itensNavegaveis.length;
     if (n === 0) return -1;
@@ -45,6 +48,9 @@ export default function SelectFiltro({
     return -1;
   }
 
+  /**
+   * Executa a rotina calcular posicao.
+   */
   function calcularPosicao() {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
@@ -73,6 +79,9 @@ export default function SelectFiltro({
   useEffect(() => {
     if (!aberto) return;
 
+    /**
+     * Executa a rotina fechar fora.
+     */
     function fecharFora(e) {
       if (
         !triggerRef.current?.contains(e.target) &&
@@ -94,12 +103,18 @@ export default function SelectFiltro({
     };
   }, [aberto]);
 
+  /**
+   * Executa a rotina selecionar.
+   */
   function selecionar(val) {
     onChange(val);
     setAberto(false);
     setBusca('');
   }
 
+  /**
+   * Executa a rotina handle key down.
+   */
   function handleKeyDown(e) {
     if (e.key === 'Escape') {
       setAberto(false);
@@ -125,6 +140,9 @@ export default function SelectFiltro({
     }
   }
 
+  /**
+   * Executa a rotina alternar menu.
+   */
   function alternarMenu() {
     if (aberto) setBusca('');
     setAberto(v => !v);
@@ -209,6 +227,9 @@ export default function SelectFiltro({
   );
 }
 
+/**
+ * Executa a rotina normalizar busca.
+ */
 function normalizarBusca(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -217,6 +238,9 @@ function normalizarBusca(valor) {
     .trim();
 }
 
+/**
+ * Executa a rotina search icon.
+ */
 function SearchIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -226,6 +250,9 @@ function SearchIcon() {
   );
 }
 
+/**
+ * Executa a rotina check icon.
+ */
 function CheckIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 12 12" fill="none">

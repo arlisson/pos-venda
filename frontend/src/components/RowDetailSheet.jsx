@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 import * as I from './Icons';
 
+/**
+ * Executa a rotina row detail sheet field.
+ */
 export function RowDetailSheetField({ label, children }) {
   if (children === null || children === undefined || children === '' || children === false) {
     return null;
@@ -13,12 +16,18 @@ export function RowDetailSheetField({ label, children }) {
   );
 }
 
+/**
+ * Executa a rotina row detail sheet.
+ */
 function RowDetailSheet({ open, onClose, title, subtitle, footer, children }) {
   useEffect(() => {
     if (!open) return undefined;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
+    /**
+     * Executa a rotina handle key.
+     */
     function handleKey(event) {
       if (event.key === 'Escape') {
         onClose?.();

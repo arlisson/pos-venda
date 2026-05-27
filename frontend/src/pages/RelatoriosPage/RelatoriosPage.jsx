@@ -46,6 +46,9 @@ const EMPTY_REPORT = {
 };
 
 // === Helpers ===
+/**
+ * Executa a rotina formatar moeda.
+ */
 function formatarMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', {
     style: 'currency',
@@ -53,6 +56,9 @@ function formatarMoeda(valor) {
   });
 }
 
+/**
+ * Executa a rotina obter iniciais.
+ */
 function obterIniciais(nome = '') {
   const iniciais = nome
     .split(' ')
@@ -65,6 +71,9 @@ function obterIniciais(nome = '') {
   return iniciais || '--';
 }
 
+/**
+ * Executa a rotina nice max.
+ */
 function niceMax(v) {
   if (v <= 0) return 10;
   const exp = Math.floor(Math.log10(v));
@@ -77,12 +86,18 @@ function niceMax(v) {
   return nice * Math.pow(10, exp);
 }
 
+/**
+ * Executa a rotina fmt compact brl.
+ */
 function fmtCompactBRL(v) {
   if (v >= 1000000) return `R$ ${(v / 1000000).toFixed(1).replace('.', ',')}M`;
   if (v >= 1000) return `R$ ${(v / 1000).toFixed(v >= 10000 ? 0 : 1).replace('.', ',')}k`;
   return `R$ ${v.toFixed(0)}`;
 }
 
+/**
+ * Executa a rotina parse isodate.
+ */
 function parseISODate(iso) {
   if (!iso) return null;
   const [ano, mes, dia] = String(iso).slice(0, 10).split('-').map(Number);
@@ -90,12 +105,18 @@ function parseISODate(iso) {
   return new Date(ano, mes - 1, dia);
 }
 
+/**
+ * Executa a rotina fmt dia mes.
+ */
 function fmtDiaMes(iso) {
   const data = parseISODate(iso);
   if (!data) return '';
   return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
 }
 
+/**
+ * Executa a rotina fmt range.
+ */
 function fmtRange(inicio, fim) {
   const ini = fmtDiaMes(inicio);
   const end = fmtDiaMes(fim);
@@ -103,6 +124,9 @@ function fmtRange(inicio, fim) {
   return `${ini} — ${end}`;
 }
 
+/**
+ * Executa a rotina delta text.
+ */
 function deltaText(curr, prev) {
   if (prev === 0 && curr === 0) return { sign: 0, abs: 0, pct: 0 };
   const abs = curr - prev;
@@ -110,11 +134,17 @@ function deltaText(curr, prev) {
   return { sign: Math.sign(abs), abs: Math.abs(abs), pct: Math.abs(pct) };
 }
 
+/**
+ * Executa a rotina operadora cor.
+ */
 function operadoraCor(nome, indice) {
   return OPERATOR_COLORS[nome] || FALLBACK_COLORS[indice % FALLBACK_COLORS.length];
 }
 
 // === Sparkline (pequeno, inline) ===
+/**
+ * Executa a rotina sparkline.
+ */
 function Sparkline({ values, accent = 'var(--text)', w = 80, h = 24 }) {
   if (!values || values.length < 2) return null;
   const max = Math.max(...values, 1);
@@ -136,6 +166,9 @@ function Sparkline({ values, accent = 'var(--text)', w = 80, h = 24 }) {
 }
 
 // === Gráfico de linha com média e destaque de pico ===
+/**
+ * Executa a rotina line chart.
+ */
 function LineChart({ data, height = 280, color = '#4f46e5' }) {
   const [hoverIdx, setHoverIdx] = useState(null);
   const W = 800;
@@ -150,7 +183,13 @@ function LineChart({ data, height = 280, color = '#4f46e5' }) {
   const avg = total / values.length;
   const peakIdx = values.indexOf(maxRaw);
 
+  /**
+   * Executa a rotina x s.
+   */
   const xS = (i) => pad.left + (i / Math.max(data.length - 1, 1)) * innerW;
+  /**
+   * Executa a rotina y s.
+   */
   const yS = (v) => pad.top + (1 - v / maxV) * innerH;
   const pts = data.map((d, i) => [xS(i), yS(d.revenue)]);
   const linePts = pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
@@ -172,6 +211,9 @@ function LineChart({ data, height = 280, color = '#4f46e5' }) {
     ? Math.min(hoveredPoint[1] - 8, hoverTooltipY + 30)
     : 0;
 
+  /**
+   * Executa a rotina handle mouse move.
+   */
   const handleMouseMove = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const mouseX = ((event.clientX - rect.left) / rect.width) * W;
@@ -349,6 +391,9 @@ function LineChart({ data, height = 280, color = '#4f46e5' }) {
 }
 
 // === Donut ===
+/**
+ * Executa a rotina donut.
+ */
 function Donut({ slices, size = 170, thickness = 24, center }) {
   const total = slices.reduce((s, x) => s + x.value, 0) || 1;
   const r = size / 2 - thickness / 2;
@@ -401,6 +446,9 @@ function Donut({ slices, size = 170, thickness = 24, center }) {
 }
 
 // === Delta inline ===
+/**
+ * Executa a rotina delta.
+ */
 function Delta({ value, suffix = '%', inverse = false }) {
   const positive = value > 0;
   const negative = value < 0;
@@ -415,10 +463,16 @@ function Delta({ value, suffix = '%', inverse = false }) {
   );
 }
 
+/**
+ * Executa a rotina empty state.
+ */
 function EmptyState({ children, style }) {
   return <div className="empty" style={style}>{children}</div>;
 }
 
+/**
+ * Executa a rotina relatorios page.
+ */
 function RelatoriosPage() {
   const [periodo, setPeriodo] = useState('mes_atual');
   const [dataInicio, setDataInicio] = useState('');
@@ -439,6 +493,9 @@ function RelatoriosPage() {
   useEffect(() => {
     let ativo = true;
 
+    /**
+     * Executa a rotina carregar relatorio.
+     */
     async function carregarRelatorio() {
       setCarregando(true);
       setErro('');

@@ -2,10 +2,16 @@ import { useEffect, useState } from 'react';
 import * as I from '../../components/Icons';
 import { getDetalhes } from '../../services/fechamento.service';
 
+/**
+ * Executa a rotina fmt moeda.
+ */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/**
+ * Executa a rotina fmt data.
+ */
 function fmtData(valor) {
   if (!valor) return '—';
   const iso = String(valor).slice(0, 10);
@@ -14,10 +20,16 @@ function fmtData(valor) {
   return `${dia}/${mes}/${ano}`;
 }
 
+/**
+ * Executa a rotina venda teve retorno.
+ */
 function vendaTeveRetorno(venda = {}) {
   return venda.status_funil !== 'retorno' && Boolean(venda.retornou_em || venda.motivo_retorno || venda.status_anterior_retorno);
 }
 
+/**
+ * Executa a rotina fmt retorno badge.
+ */
 function fmtRetornoBadge(venda = {}) {
   if (venda.retornou_em) return `Já retornou em ${fmtData(venda.retornou_em)}`;
   return 'Já retornou';
@@ -33,6 +45,9 @@ const STATUS_LABEL = {
   retorno: 'Retorno'
 };
 
+/**
+ * Executa a rotina detalhes modal.
+ */
 function DetalhesModal({ secao, periodo, onClose }) {
   const [dados, setDados] = useState([]);
   const [loading, setLoading] = useState(true);

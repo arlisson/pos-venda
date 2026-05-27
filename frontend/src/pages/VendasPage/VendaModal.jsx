@@ -165,6 +165,9 @@ const CAMPOS_ENDERECO_REAL_VENDA = [
 const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' };
 const NUMERO_PORTADO_VAZIO = '';
 
+/**
+ * Executa a rotina obter data atual input.
+ */
 function obterDataAtualInput() {
   const hoje = new Date();
   return [
@@ -174,6 +177,9 @@ function obterDataAtualInput() {
   ].join('-');
 }
 
+/**
+ * Executa a rotina criar venda vazia.
+ */
 function criarVendaVazia() {
   return {
     ...VENDA_VAZIA,
@@ -234,6 +240,9 @@ const DDDS_VALIDOS = new Set([
   91, 92, 93, 94, 95, 96, 97, 98, 99
 ]);
 
+/**
+ * Executa a rotina validar numero telefone.
+ */
 function validarNumeroTelefone(valor) {
   const digitos = (valor || '').replace(/\D/g, '');
   if (digitos.length < 10) return { valido: false, motivo: 'Número muito curto' };
@@ -312,12 +321,18 @@ const CAMPOS = [
   { name: 'observacoes', label: 'Observações da Venda', type: 'longText', span: true, maxRows: 6 },
 ];
 
+/**
+ * Executa a rotina valor obrigatorio nao preenchido.
+ */
 function valorObrigatorioNaoPreenchido(valor) {
   if (Array.isArray(valor)) return valor.length === 0;
   if (valor && typeof valor === 'object') return Object.keys(valor).length === 0;
   return valor === undefined || valor === null || String(valor).trim() === '';
 }
 
+/**
+ * Executa a rotina obter erro campos obrigatorios venda.
+ */
 function obterErroCamposObrigatoriosVenda(form) {
   const camposNaoPreenchidos = CAMPOS
     .filter(campo => campo.required && valorObrigatorioNaoPreenchido(form[campo.name]))
@@ -338,6 +353,9 @@ const STATUS_FUNIL_FILTROS = [
   { id: 'retorno', label: 'Retorno' }
 ];
 
+/**
+ * Executa a rotina normalizar status funil filtros.
+ */
 function normalizarStatusFunilFiltros(etapas = []) {
   const normalizados = etapas
     .map(etapa => ({
@@ -352,6 +370,9 @@ function normalizarStatusFunilFiltros(etapas = []) {
   ];
 }
 
+/**
+ * Executa a rotina to input date.
+ */
 function toInputDate(value) {
   if (!value) return '';
 
@@ -366,6 +387,9 @@ function toInputDate(value) {
   return isDataVendaValida(texto) ? texto : '';
 }
 
+/**
+ * Executa a rotina normalizar data venda input.
+ */
 function normalizarDataVendaInput(value) {
   if (!value) return '';
 
@@ -385,7 +409,13 @@ function normalizarDataVendaInput(value) {
   return isDataVendaValida(data) ? data : '';
 }
 
+/**
+ * Executa a rotina gerar protocolo data hora.
+ */
 function gerarProtocoloDataHora(data = new Date()) {
+  /**
+   * Executa a rotina pad.
+   */
   const pad = value => String(value).padStart(2, '0');
 
   return [
@@ -398,6 +428,9 @@ function gerarProtocoloDataHora(data = new Date()) {
   ].join('');
 }
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(value) {
   if (!value) return '-';
 
@@ -408,6 +441,9 @@ function formatarData(value) {
   return dia && mes && ano ? `${dia}/${mes}/${ano}` : value;
 }
 
+/**
+ * Executa a rotina formatar data hora.
+ */
 function formatarDataHora(value) {
   if (!value) return '-';
 
@@ -423,6 +459,9 @@ function formatarDataHora(value) {
   });
 }
 
+/**
+ * Executa a rotina is data venda valida.
+ */
 function isDataVendaValida(value) {
   if (!value) return false;
 
@@ -440,6 +479,9 @@ function isDataVendaValida(value) {
     && data.getDate() === Number(dia);
 }
 
+/**
+ * Executa a rotina formatar moeda.
+ */
 function formatarMoeda(value) {
   if (value === null || value === undefined || value === '') return '-';
 
@@ -449,6 +491,9 @@ function formatarMoeda(value) {
   });
 }
 
+/**
+ * Executa a rotina parse valor input.
+ */
 function parseValorInput(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
   if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
@@ -456,6 +501,9 @@ function parseValorInput(valor) {
   return Number(String(valor).replace(/\./g, '').replace(',', '.')) || 0;
 }
 
+/**
+ * Executa a rotina formatar input moeda br.
+ */
 function formatarInputMoedaBR(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
 
@@ -469,11 +517,17 @@ function formatarInputMoedaBR(valor) {
   });
 }
 
+/**
+ * Executa a rotina apenas digitos.
+ */
 function apenasDigitos(valor, limite) {
   const digitos = String(valor || '').replace(/\D/g, '');
   return limite ? digitos.slice(0, limite) : digitos;
 }
 
+/**
+ * Executa a rotina formatar telefone com ddd.
+ */
 function formatarTelefoneComDdd(valor, celular = true) {
   const limite = celular ? 11 : 10;
   const digitos = apenasDigitos(valor, limite);
@@ -494,6 +548,9 @@ function formatarTelefoneComDdd(valor, celular = true) {
   return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
 }
 
+/**
+ * Executa a rotina formatar cpf.
+ */
 function formatarCpf(valor) {
   const digitos = apenasDigitos(valor, 11);
 
@@ -503,6 +560,9 @@ function formatarCpf(valor) {
   return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9)}`;
 }
 
+/**
+ * Executa a rotina validar cpf.
+ */
 function validarCpf(valor) {
   const cpf = apenasDigitos(valor, 11);
 
@@ -510,6 +570,9 @@ function validarCpf(valor) {
   if (cpf.length !== 11) return false;
   if (/^(\d)\1{10}$/.test(cpf)) return false;
 
+  /**
+   * Executa a rotina calcular digito.
+   */
   const calcularDigito = tamanho => {
     let soma = 0;
 
@@ -524,6 +587,9 @@ function validarCpf(valor) {
   return calcularDigito(9) === Number(cpf[9]) && calcularDigito(10) === Number(cpf[10]);
 }
 
+/**
+ * Executa a rotina obter erro cpf venda.
+ */
 function obterErroCpfVenda(form) {
   if (!validarCpf(form.cpf_representante_legal)) {
     return 'CPF RL inválido. Confira os 11 dígitos antes de salvar.';
@@ -536,6 +602,9 @@ function obterErroCpfVenda(form) {
   return '';
 }
 
+/**
+ * Executa a rotina obter erro cpf campo.
+ */
 function obterErroCpfCampo(campo, valor) {
   if (!CAMPOS_CPF_VENDA.includes(campo)) return '';
 
@@ -547,6 +616,9 @@ function obterErroCpfCampo(campo, valor) {
   return '';
 }
 
+/**
+ * Executa a rotina formatar cnpj.
+ */
 function formatarCnpj(valor) {
   const digitos = apenasDigitos(valor, 14);
 
@@ -557,6 +629,9 @@ function formatarCnpj(valor) {
   return `${digitos.slice(0, 2)}.${digitos.slice(2, 5)}.${digitos.slice(5, 8)}/${digitos.slice(8, 12)}-${digitos.slice(12)}`;
 }
 
+/**
+ * Executa a rotina formatar cep.
+ */
 function formatarCep(valor) {
   const digitos = apenasDigitos(valor, 8);
 
@@ -564,6 +639,9 @@ function formatarCep(valor) {
   return `${digitos.slice(0, 5)}-${digitos.slice(5)}`;
 }
 
+/**
+ * Executa a rotina formatar dia vencimento.
+ */
 function formatarDiaVencimento(valor) {
   const digitos = apenasDigitos(valor, 2);
   if (!digitos) return '';
@@ -572,6 +650,9 @@ function formatarDiaVencimento(valor) {
   return dia > 0 ? String(dia) : '';
 }
 
+/**
+ * Executa a rotina formatar rg.
+ */
 function formatarRg(valor) {
   let limpo = String(valor || '').toUpperCase().replace(/[^\dX]/g, '');
   const terminaEmX = limpo.endsWith('X');
@@ -586,6 +667,9 @@ function formatarRg(valor) {
   return `${limpo.slice(0, 2)}.${limpo.slice(2, 5)}.${limpo.slice(5, 8)}-${limpo.slice(8)}`;
 }
 
+/**
+ * Executa a rotina formatar campo venda.
+ */
 function formatarCampoVenda(campo, valor) {
   if (campo === 'telefone' || campo === 'telefone_representante_legal' || campo === 'telefone_administrador') return formatarTelefoneComDdd(valor, true);
   if (campo === 'fixo_ddd') return formatarTelefoneComDdd(valor, false);
@@ -601,6 +685,9 @@ function formatarCampoVenda(campo, valor) {
   return valor;
 }
 
+/**
+ * Executa a rotina get input mode campo.
+ */
 function getInputModeCampo(campo) {
   if ([
     'telefone', 'fixo_ddd', 'telefone_representante_legal', 'telefone_administrador',
@@ -612,6 +699,9 @@ function getInputModeCampo(campo) {
   return undefined;
 }
 
+/**
+ * Executa a rotina get max length campo.
+ */
 function getMaxLengthCampo(campo, maxLength) {
   const limites = {
     telefone: 15,
@@ -636,10 +726,16 @@ function getMaxLengthCampo(campo, maxLength) {
   return limites[campo] || maxLength;
 }
 
+/**
+ * Executa a rotina normalizar itens chips input.
+ */
 function normalizarItensChipsInput(itens) {
   return Array.isArray(itens) ? itens : parseItensChips(itens);
 }
 
+/**
+ * Executa a rotina normalizar ids vendedoras input.
+ */
 function normalizarIdsVendedorasInput(vendedoras) {
   if (!Array.isArray(vendedoras)) return [];
 
@@ -657,12 +753,18 @@ function normalizarIdsVendedorasInput(vendedoras) {
   ));
 }
 
+/**
+ * Executa a rotina calcular total itens chips.
+ */
 function calcularTotalItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => (
     acc + (Number(item.quantidade || 0) * parseValorInput(item.valor_unitario))
   ), 0);
 }
 
+/**
+ * Executa a rotina resumir gigas itens chips.
+ */
 function resumirGigasItensChips(itens = []) {
   const valores = normalizarItensChipsInput(itens)
     .map(item => String(item.gb || '').trim())
@@ -671,6 +773,9 @@ function resumirGigasItensChips(itens = []) {
   return Array.from(new Set(valores)).join(', ');
 }
 
+/**
+ * Executa a rotina normalizar tipo linha chip.
+ */
 function normalizarTipoLinhaChip(valor, fallback = 'novo') {
   const texto = normalizarTextoBusca(valor);
   if (texto.includes('porta')) return 'portabilidade';
@@ -678,10 +783,16 @@ function normalizarTipoLinhaChip(valor, fallback = 'novo') {
   return fallback;
 }
 
+/**
+ * Executa a rotina somar quantidade itens chips.
+ */
 function somarQuantidadeItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => acc + Number(item.quantidade || 0), 0);
 }
 
+/**
+ * Executa a rotina limitar itens chips por quantidade linhas.
+ */
 function limitarItensChipsPorQuantidadeLinhas(itens = [], limiteQuantidade = 0) {
   const lista = normalizarItensChipsInput(itens);
   const limite = Number(limiteQuantidade || 0);
@@ -702,6 +813,9 @@ function limitarItensChipsPorQuantidadeLinhas(itens = [], limiteQuantidade = 0) 
   });
 }
 
+/**
+ * Executa a rotina somar quantidade portabilidade itens chips.
+ */
 function somarQuantidadePortabilidadeItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => (
     normalizarTipoLinhaChip(item.tipo_linha) === 'portabilidade'
@@ -710,14 +824,23 @@ function somarQuantidadePortabilidadeItensChips(itens = []) {
   ), 0);
 }
 
+/**
+ * Executa a rotina tem chip portabilidade.
+ */
 function temChipPortabilidade(itens = []) {
   return somarQuantidadePortabilidadeItensChips(itens) > 0;
 }
 
+/**
+ * Executa a rotina formatar tipo linha chip label.
+ */
 function formatarTipoLinhaChipLabel(tipo) {
   return normalizarTipoLinhaChip(tipo) === 'portabilidade' ? 'Portabilidade' : 'Novo';
 }
 
+/**
+ * Executa a rotina inferir tipos servico de chips.
+ */
 function inferirTiposServicoDeChips(itens = []) {
   const tipos = new Set(
     normalizarItensChipsInput(itens).map(item =>
@@ -728,6 +851,9 @@ function inferirTiposServicoDeChips(itens = []) {
   return resultado.length > 0 ? resultado : ['novo'];
 }
 
+/**
+ * Executa a rotina resumir tipos linha itens chips.
+ */
 function resumirTiposLinhaItensChips(itens = []) {
   const tipos = normalizarItensChipsInput(itens)
     .map(item => formatarTipoLinhaChipLabel(item.tipo_linha || item.tipo || item.categoria))
@@ -736,6 +862,9 @@ function resumirTiposLinhaItensChips(itens = []) {
   return Array.from(new Set(tipos)).join(', ');
 }
 
+/**
+ * Executa a rotina obter tipo venda tabela.
+ */
 function obterTipoVendaTabela(venda = {}) {
   return venda.tipoVenda?.nome
     || resumirTiposLinhaItensChips(venda.valores_unitarios_chips)
@@ -743,6 +872,9 @@ function obterTipoVendaTabela(venda = {}) {
     || '-';
 }
 
+/**
+ * Executa a rotina get chaves cliente venda.
+ */
 function getChavesClienteVenda(venda = {}) {
   const chaves = new Set();
   const clienteId = venda.cliente_id || venda.cliente?.id;
@@ -767,6 +899,9 @@ function getChavesClienteVenda(venda = {}) {
   return chaves;
 }
 
+/**
+ * Executa a rotina contar vendas por cliente.
+ */
 function contarVendasPorCliente(vendas = []) {
   return vendas.reduce((acc, venda) => {
     const chaves = getChavesClienteVenda(venda);
@@ -778,6 +913,9 @@ function contarVendasPorCliente(vendas = []) {
   }, new Map());
 }
 
+/**
+ * Executa a rotina parse itens chips.
+ */
 function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
   if (!valor) return [{ ...ITEM_CHIP_VAZIO }];
 
@@ -822,6 +960,9 @@ function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
   return [{ ...ITEM_CHIP_VAZIO }];
 }
 
+/**
+ * Executa a rotina normalizar texto busca.
+ */
 function normalizarTextoBusca(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -830,10 +971,16 @@ function normalizarTextoBusca(valor) {
     .trim();
 }
 
+/**
+ * Executa a rotina is tipo portabilidade.
+ */
 function isTipoPortabilidade(tipoVenda) {
   return normalizarTextoBusca(tipoVenda?.nome).includes('portabilidade');
 }
 
+/**
+ * Executa a rotina parse numeros portados.
+ */
 function parseNumerosPortados(valor) {
   if (!valor) return [NUMERO_PORTADO_VAZIO];
 
@@ -861,6 +1008,9 @@ function parseNumerosPortados(valor) {
   return [NUMERO_PORTADO_VAZIO];
 }
 
+/**
+ * Executa a rotina montar numeros portados.
+ */
 function montarNumerosPortados(valor) {
   return (Array.isArray(valor) ? valor : parseNumerosPortados(valor))
     .map(item => String(item || '').trim())
@@ -871,6 +1021,9 @@ function montarNumerosPortados(valor) {
 const parseNumerosAtivados = parseNumerosPortados;
 const montarNumerosAtivados = montarNumerosPortados;
 
+/**
+ * Executa a rotina parse cliente solicitou servicos.
+ */
 function parseClienteSolicitouServicos(valor) {
   if (!valor) return [];
 
@@ -895,6 +1048,9 @@ function parseClienteSolicitouServicos(valor) {
   return [];
 }
 
+/**
+ * Executa a rotina parse cliente solicitou numeros.
+ */
 function parseClienteSolicitouNumeros(valor) {
   const vazio = { bloqueio: [], cancelamento: [] };
   if (!valor) return vazio;
@@ -915,6 +1071,9 @@ function parseClienteSolicitouNumeros(valor) {
   };
 }
 
+/**
+ * Executa a rotina montar cliente solicitou numeros.
+ */
 function montarClienteSolicitouNumeros(numeros = {}) {
   return {
     bloqueio: (Array.isArray(numeros.bloqueio) ? numeros.bloqueio : parseNumerosPortados(numeros.bloqueio))
@@ -926,6 +1085,9 @@ function montarClienteSolicitouNumeros(numeros = {}) {
   };
 }
 
+/**
+ * Executa a rotina montar linhas cliente solicitou.
+ */
 function montarLinhasClienteSolicitou(form) {
   const servicos = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
   const numeros = parseClienteSolicitouNumeros(form.cliente_solicitou_numeros);
@@ -939,6 +1101,9 @@ function montarLinhasClienteSolicitou(form) {
     .filter(item => apenasDigitos(item.numero).length > 2);
 }
 
+/**
+ * Executa a rotina ajustar quantidade numeros solicitados.
+ */
 function ajustarQuantidadeNumerosSolicitados(value, quantidade) {
   const total = Math.max(Number(quantidade || 0), 0);
   const atuais = Array.isArray(value) ? value : parseNumerosPortados(value);
@@ -948,6 +1113,9 @@ function ajustarQuantidadeNumerosSolicitados(value, quantidade) {
 
 const TIPO_LOCAL_CPF_OPCOES = ['casa', 'hotel', 'condomínio', 'shopping'];
 
+/**
+ * Executa a rotina parse tipo local cpf.
+ */
 function parseTipoLocalCpf(valor) {
   if (!valor) return { selecionado: '', outros: '' };
   const str = String(valor).trim();
@@ -960,9 +1128,15 @@ function parseTipoLocalCpf(valor) {
   return { selecionado: TIPO_LOCAL_CPF_OPCOES.includes(str) ? str : '', outros: '' };
 }
 
+/**
+ * Executa a rotina tipo local cpf input.
+ */
 function TipoLocalCpfInput({ value, onChange, disabled }) {
   const { selecionado, outros } = parseTipoLocalCpf(value);
 
+  /**
+   * Executa a rotina selecionar.
+   */
   function selecionar(opcao) {
     if (disabled) return;
     if (opcao === selecionado) {
@@ -1003,6 +1177,9 @@ function TipoLocalCpfInput({ value, onChange, disabled }) {
   );
 }
 
+/**
+ * Executa a rotina normalizar venda.
+ */
 function normalizarVenda(venda) {
   // Montar array de vendedoras a partir da relação (junction) ou do campo legado
   const vendedorasIds = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
@@ -1041,10 +1218,16 @@ function normalizarVenda(venda) {
   };
 }
 
+/**
+ * Executa a rotina obter operadoras cliente.
+ */
 function obterOperadorasCliente(cliente) {
   return cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
 }
 
+/**
+ * Executa a rotina resolver operadora atual cliente.
+ */
 function resolverOperadoraAtualCliente(cliente, operadoraVendaId) {
   const operadorasCliente = obterOperadorasCliente(cliente);
   const operadoraVenda = operadoraVendaId ? Number(operadoraVendaId) : null;
@@ -1056,6 +1239,9 @@ function resolverOperadoraAtualCliente(cliente, operadoraVendaId) {
   return cliente?.operadora_atual_id || cliente?.operadoraAtual?.id || '';
 }
 
+/**
+ * Executa a rotina formatar resumo operadoras cliente.
+ */
 function formatarResumoOperadorasCliente(cliente) {
   const operadorasCliente = obterOperadorasCliente(cliente);
   if (operadorasCliente.length === 0) {
@@ -1068,6 +1254,9 @@ function formatarResumoOperadorasCliente(cliente) {
   return `${titulo} - ${chips} chips`;
 }
 
+/**
+ * Executa a rotina montar dados cliente venda.
+ */
 function montarDadosClienteVenda(cliente, clienteId = '', operadoraVendaId = '') {
   const telefoneWhatsapp = cliente
     ? formatarTelefoneComDdd([cliente.whatsapp_ddd, cliente.whatsapp_numero].filter(Boolean).join(''), true)
@@ -1119,6 +1308,9 @@ function montarDadosClienteVenda(cliente, clienteId = '', operadoraVendaId = '')
   };
 }
 
+/**
+ * Executa a rotina tipos servico input.
+ */
 function TiposServicoInput({ value, onChange }) {
   const selecionados = Array.isArray(value) && value.length > 0 ? value : ['novo'];
   const opcoes = [
@@ -1126,6 +1318,9 @@ function TiposServicoInput({ value, onChange }) {
     { value: 'portabilidade', label: 'Portabilidade' }
   ];
 
+  /**
+   * Executa a rotina toggle tipo.
+   */
   function toggleTipo(tipo) {
     if (selecionados.includes(tipo)) {
       const proximos = selecionados.filter(t => t !== tipo);
@@ -1155,6 +1350,9 @@ function TiposServicoInput({ value, onChange }) {
   );
 }
 
+/**
+ * Executa a rotina itens chips input.
+ */
 function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 0, tiposServico = ['novo'] }) {
   const itens = Array.isArray(value) && value.length > 0 ? value : [{ ...ITEM_CHIP_VAZIO }];
   const total = calcularTotalItensChips(itens);
@@ -1173,6 +1371,9 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
     ? vendedoras.filter(vendedora => !vendedorasUsadas.has(String(vendedora.id)))
     : [];
 
+  /**
+   * Executa a rotina atualizar item.
+   */
   function atualizarItem(index, campo, novoValor) {
     let valor = novoValor;
 
@@ -1191,12 +1392,18 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
     }));
   }
 
+  /**
+   * Executa a rotina adicionar item.
+   */
   function adicionarItem() {
     if (limiteAtingido) return;
     const tipo_linha = mostrarTipoLinha ? 'novo' : (tiposServico[0] || 'novo');
     onChange([...itens, { ...ITEM_CHIP_VAZIO, tipo_linha }]);
   }
 
+  /**
+   * Executa a rotina remover item.
+   */
   function removerItem(index) {
     if (limite > 0) {
       const quantidadeItem = Number(itens[index]?.quantidade || 0);
@@ -1319,6 +1526,9 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   );
 }
 
+/**
+ * Executa a rotina vendedoras select.
+ */
 export function VendedorasSelect({ value = [], options = [], onChange, idProtegido = null, disabled = false }) {
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const [buscaVendedora, setBuscaVendedora] = useState('');
@@ -1334,6 +1544,9 @@ export function VendedorasSelect({ value = [], options = [], onChange, idProtegi
     : disponiveis;
 
   useEffect(() => {
+    /**
+     * Executa a rotina handle click fora.
+     */
     function handleClickFora(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setDropdownAberto(false);
@@ -1348,6 +1561,9 @@ export function VendedorasSelect({ value = [], options = [], onChange, idProtegi
     if (dropdownAberto) buscaInputRef.current?.focus();
   }, [dropdownAberto]);
 
+  /**
+   * Executa a rotina adicionar.
+   */
   function adicionar(vendedora) {
     if (disabled) return;
     onChange([...value, String(vendedora.id)]);
@@ -1355,12 +1571,18 @@ export function VendedorasSelect({ value = [], options = [], onChange, idProtegi
     setBuscaVendedora('');
   }
 
+  /**
+   * Executa a rotina remover.
+   */
   function remover(id) {
     if (disabled) return;
     if (idProtegido !== null && String(id) === String(idProtegido)) return;
     onChange(value.filter(v => v !== String(id)));
   }
 
+  /**
+   * Executa a rotina alternar dropdown.
+   */
   function alternarDropdown() {
     if (dropdownAberto) setBuscaVendedora('');
     setDropdownAberto(prev => !prev);
@@ -1427,15 +1649,24 @@ export function VendedorasSelect({ value = [], options = [], onChange, idProtegi
   );
 }
 
+/**
+ * Executa a rotina montar prefixo ddd.
+ */
 function montarPrefixoDdd(ddd) {
   const digitos = apenasDigitos(ddd, 2);
   return digitos.length === 2 ? `(${digitos}) ` : '';
 }
 
+/**
+ * Executa a rotina numero linha tem apenas ddd ou vazio.
+ */
 function numeroLinhaTemApenasDddOuVazio(valor) {
   return apenasDigitos(valor).length <= 2;
 }
 
+/**
+ * Executa a rotina ajustar quantidade numeros portados.
+ */
 function ajustarQuantidadeNumerosPortados(value, quantidade, dddPadrao = '') {
   const total = Math.max(Number(quantidade || 0), 0);
   const prefixoDdd = montarPrefixoDdd(dddPadrao);
@@ -1450,23 +1681,35 @@ function ajustarQuantidadeNumerosPortados(value, quantidade, dddPadrao = '') {
   });
 }
 
+/**
+ * Executa a rotina numeros linha input.
+ */
 function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao = '', labelAdicionar = 'Adicionar número' }) {
   const numeros = Array.isArray(value) && value.length > 0 ? value : [NUMERO_PORTADO_VAZIO];
   const limite = Math.max(Number(quantidadeEsperada || 0), 0);
   const limiteAtingido = limite > 0 && numeros.length >= limite;
   const numeroVazio = montarPrefixoDdd(dddPadrao) || NUMERO_PORTADO_VAZIO;
 
+  /**
+   * Executa a rotina atualizar numero.
+   */
   function atualizarNumero(index, novoValor) {
     onChange(numeros.map((numero, numeroIndex) => (
       numeroIndex === index ? novoValor : numero
     )));
   }
 
+  /**
+   * Executa a rotina adicionar numero.
+   */
   function adicionarNumero() {
     if (limiteAtingido) return;
     onChange([...numeros, numeroVazio]);
   }
 
+  /**
+   * Executa a rotina remover numero.
+   */
   function removerNumero(index) {
     const proximos = numeros.filter((_, numeroIndex) => numeroIndex !== index);
     onChange(proximos.length > 0 ? proximos : [NUMERO_PORTADO_VAZIO]);
@@ -1511,14 +1754,23 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao 
   );
 }
 
+/**
+ * Executa a rotina numeros portados input.
+ */
 function NumerosPortadosInput(props) {
   return <NumerosLinhaInput {...props} labelAdicionar="Adicionar número" />;
 }
 
+/**
+ * Executa a rotina numeros ativados input.
+ */
 function NumerosAtivadosInput(props) {
   return <NumerosLinhaInput {...props} labelAdicionar="Adicionar número ativado" />;
 }
 
+/**
+ * Executa a rotina cliente solicitou input.
+ */
 function ClienteSolicitouInput({ form, onToggle, onOpenQuantidades }) {
   const servicos = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
   const nenhumSelecionado = servicos.includes('nenhum_servico');
@@ -1590,6 +1842,9 @@ function ClienteSolicitouInput({ form, onToggle, onOpenQuantidades }) {
   );
 }
 
+/**
+ * Executa a rotina cliente solicitou quantidade modal.
+ */
 function ClienteSolicitouQuantidadeModal({ servicos, quantidades, onChange, onClose, onConfirm }) {
   const bloqueioSelecionado = servicos.includes('bloqueio');
   const cancelamentoSelecionado = servicos.includes('cancelamento');
@@ -1636,9 +1891,15 @@ function ClienteSolicitouQuantidadeModal({ servicos, quantidades, onChange, onCl
   );
 }
 
+/**
+ * Executa a rotina cliente solicitou numeros modal.
+ */
 function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange, onClose, onConfirm }) {
   const selecionados = CLIENTE_SOLICITOU_ACOES.filter(acao => servicos.includes(acao));
 
+  /**
+   * Executa a rotina atualizar numero.
+   */
   function atualizarNumero(tipo, index, valor) {
     onChange({
       ...numeros,
@@ -1721,6 +1982,9 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
   );
 }
 
+/**
+ * Executa a rotina cliente solicitou resolucao tab.
+ */
 function ClienteSolicitouResolucaoTab({ form, onChange, disabled }) {
   const linhas = montarLinhasClienteSolicitou(form);
 
@@ -1798,6 +2062,9 @@ function ClienteSolicitouResolucaoTab({ form, onChange, disabled }) {
   );
 }
 
+/**
+ * Executa a rotina obter autor cancelamento.
+ */
 function obterAutorCancelamento(venda, evento) {
   if (evento?.usuario?.nome) return evento.usuario.nome;
   if (evento?.usuario_id) return `Usuario #${evento.usuario_id}`;
@@ -1806,6 +2073,9 @@ function obterAutorCancelamento(venda, evento) {
   return 'Sistema';
 }
 
+/**
+ * Executa a rotina montar eventos cancelamento venda.
+ */
 function montarEventosCancelamentoVenda(venda) {
   const historico = Array.isArray(venda?.historico) ? venda.historico : [];
   const eventos = historico
@@ -1829,6 +2099,9 @@ function montarEventosCancelamentoVenda(venda) {
   return eventos;
 }
 
+/**
+ * Executa a rotina venda cancelamento tab.
+ */
 function VendaCancelamentoTab({ venda }) {
   const eventos = montarEventosCancelamentoVenda(venda);
   const motivoAtual = venda?.motivo_cancelamento || eventos[0]?.motivo || '';
@@ -1875,6 +2148,9 @@ function VendaCancelamentoTab({ venda }) {
   );
 }
 
+/**
+ * Executa a rotina responsaveis recebimento input.
+ */
 function ResponsaveisRecebimentoInput({ form, onChange }) {
   const slots = [
     { nomeKey: 'responsavel_recebimento', rgKey: 'rg_responsavel_recebimento' },
@@ -1900,6 +2176,9 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
     }
   ];
 
+  /**
+   * Executa a rotina obter tipo responsavel.
+   */
   function obterTipoResponsavel(slot) {
     if (tiposResponsaveis[slot.nomeKey]) return tiposResponsaveis[slot.nomeKey];
 
@@ -1916,6 +2195,9 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
     return encontrado?.value || 'outra';
   }
 
+  /**
+   * Executa a rotina selecionar tipo.
+   */
   function selecionarTipo(slot, tipo) {
     setTiposResponsaveis(prev => ({
       ...prev,
@@ -1936,6 +2218,9 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
     }
   }
 
+  /**
+   * Executa a rotina remover linha.
+   */
   function removerLinha(index) {
     const slot = slots[index];
     onChange(slot.nomeKey, '');
@@ -1999,6 +2284,9 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
   );
 }
 
+/**
+ * Executa a rotina cliente venda select.
+ */
 function ClienteVendaSelect({
   value,
   clientes,
@@ -2031,6 +2319,9 @@ function ClienteVendaSelect({
   }).slice(0, 8);
 
   useEffect(() => {
+    /**
+     * Executa a rotina handle click fora.
+     */
     function handleClickFora(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setAberto(false);
@@ -2041,12 +2332,18 @@ function ClienteVendaSelect({
     return () => document.removeEventListener('mousedown', handleClickFora);
   }, []);
 
+  /**
+   * Executa a rotina selecionar cliente.
+   */
   function selecionarCliente(cliente) {
     onChange(String(cliente.id));
     setBusca('');
     setAberto(false);
   }
 
+  /**
+   * Executa a rotina limpar cliente.
+   */
   function limparCliente() {
     onChange('');
     setBusca('');
@@ -2054,6 +2351,9 @@ function ClienteVendaSelect({
     window.requestAnimationFrame(() => inputRef.current?.focus());
   }
 
+  /**
+   * Executa a rotina handle key down.
+   */
   function handleKeyDown(event) {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
@@ -2220,6 +2520,9 @@ function ClienteVendaSelect({
   );
 }
 
+/**
+ * Executa a rotina formatar tamanho arquivo.
+ */
 function formatarTamanhoArquivo(bytes) {
   const tamanho = Number(bytes || 0);
 
@@ -2234,6 +2537,9 @@ function formatarTamanhoArquivo(bytes) {
   return `${tamanho} B`;
 }
 
+/**
+ * Executa a rotina label status pacote.
+ */
 function labelStatusPacote(status) {
   const labels = {
     pendente: 'Pacote pendente',
@@ -2247,12 +2553,18 @@ function labelStatusPacote(status) {
   return labels[status] || 'Sem pacote';
 }
 
+/**
+ * Executa a rotina get icon status pacote.
+ */
 function getIconStatusPacote(status) {
   if (status === 'pronto') return <I.Check size={12} />;
   if (status === 'erro' || status === 'desatualizado') return <I.AlertTriangle size={12} />;
   return <I.Note size={12} />;
 }
 
+/**
+ * Executa a rotina arquivos venda tab.
+ */
 function ArquivosVendaTab({
   venda,
   podeEditar,
@@ -2271,6 +2583,9 @@ function ArquivosVendaTab({
   const [erro, setErro] = useState('');
   const [mensagem, setMensagem] = useState('');
 
+  /**
+   * Executa a rotina carregar.
+   */
   async function carregar() {
     if (!venda?.id) return;
 
@@ -2311,6 +2626,9 @@ function ArquivosVendaTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pacote?.status, venda?.id, podeVisualizar]);
 
+  /**
+   * Executa a rotina handle upload.
+   */
   async function handleUpload(event) {
     const files = Array.from(event.target.files || []);
     event.target.value = '';
@@ -2348,6 +2666,9 @@ function ArquivosVendaTab({
     }
   }
 
+  /**
+   * Executa a rotina handle excluir.
+   */
   async function handleExcluir(arquivo) {
     if (!window.confirm(`Excluir o arquivo "${arquivo.nome_original}" desta venda?`)) return;
 
@@ -2361,6 +2682,9 @@ function ArquivosVendaTab({
     }
   }
 
+  /**
+   * Executa a rotina handle gerar pacote.
+   */
   async function handleGerarPacote() {
     setErro('');
 
@@ -2373,6 +2697,9 @@ function ArquivosVendaTab({
   }
 
   if (!venda?.id) {
+    /**
+     * Executa a rotina handle upload offline.
+     */
     function handleUploadOffline(event) {
       const files = Array.from(event.target.files || []);
       event.target.value = '';
@@ -2383,6 +2710,9 @@ function ArquivosVendaTab({
       ]);
     }
 
+    /**
+     * Executa a rotina remover pendente.
+     */
     function removerPendente(idx) {
       onPendingArquivosChange(pendingArquivos.filter((_, i) => i !== idx));
     }
@@ -2635,6 +2965,9 @@ function ArquivosVendaTab({
   );
 }
 
+/**
+ * Executa a rotina marcar problema modal.
+ */
 function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
   const [motivo, setMotivo] = useState('');
   const [modo, setModo] = useState('responsaveis');
@@ -2642,6 +2975,9 @@ function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
 
+  /**
+   * Executa a rotina salvar.
+   */
   async function salvar() {
     setErro('');
     setSalvando(true);
@@ -2659,6 +2995,9 @@ function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
     }
   }
 
+  /**
+   * Executa a rotina toggle usuario.
+   */
   function toggleUsuario(id) {
     setDestinatarios(prev => (
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
@@ -2718,6 +3057,9 @@ function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
   );
 }
 
+/**
+ * Executa a rotina venda modal.
+ */
 function VendaModal({
   venda,
   initialValues,
@@ -2755,6 +3097,9 @@ function VendaModal({
     
     // Para novo venda, tenta carregar rascunho salvo, depois initialDraft, depois formulário vazio
     if (!editando) {
+      /**
+       * Executa a rotina saved draft.
+       */
       const savedDraft = (() => {
         try {
           const draft = localStorage.getItem(`form_draft_${draftKey}`);
@@ -2842,6 +3187,9 @@ function VendaModal({
     body.style.transition = 'height 320ms cubic-bezier(0.22, 1, 0.36, 1)';
     body.style.height = `${novaAltura}px`;
     let finalizado = false;
+    /**
+     * Executa a rotina finalizar.
+     */
     const finalizar = () => {
       if (finalizado) return;
       finalizado = true;
@@ -2851,6 +3199,9 @@ function VendaModal({
       body.style.overflowY = overflowAnterior;
       body.removeEventListener('transitionend', onEnd);
     };
+    /**
+     * Executa a rotina on end.
+     */
     const onEnd = (e) => {
       if (e.target !== body || e.propertyName !== 'height') return;
       finalizar();
@@ -3007,6 +3358,9 @@ function VendaModal({
     onDraftChange(form);
   }, [venda, somenteVisualizacao, form, onDraftChange]);
 
+  /**
+   * Executa a rotina handle close.
+   */
   function handleClose() {
     if (!venda && !somenteVisualizacao && onDraftChange) {
       onDraftChange(form);
@@ -3015,6 +3369,9 @@ function VendaModal({
     onClose();
   }
 
+  /**
+   * Executa a rotina limpar dados venda.
+   */
   function limparDadosVenda() {
     if (editando || somenteVisualizacao || vendaBloqueadaParaUsuario || salvando) return;
 
@@ -3044,6 +3401,9 @@ function VendaModal({
     cepPreenchidoPorCnpjRef.current = '';
   }
 
+  /**
+   * Executa a rotina atualizar campo.
+   */
   function atualizarCampo(campo, valor) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
@@ -3092,6 +3452,9 @@ function VendaModal({
     });
   }
 
+  /**
+   * Executa a rotina atualizar resolucao cliente solicitou.
+   */
   function atualizarResolucaoClienteSolicitou(campo, valor) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
@@ -3113,10 +3476,16 @@ function VendaModal({
     });
   }
 
+  /**
+   * Executa a rotina formatar mensagem cnpj.
+   */
   function formatarMensagemCnpj(dados) {
     return formatarMensagemResumoCnpj(dados);
   }
 
+  /**
+   * Executa a rotina montar sugestoes cnpj.
+   */
   function montarSugestoesCnpj(dados) {
     return Object.entries(CNPJ_SUGESTOES_VENDA).reduce((acc, [campoApi]) => {
       const valor = dados[campoApi];
@@ -3125,6 +3494,9 @@ function VendaModal({
     }, {});
   }
 
+  /**
+   * Executa a rotina atualizar cliente venda.
+   */
   function atualizarClienteVenda(valor, clienteSelecionado = null) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
@@ -3161,12 +3533,18 @@ function VendaModal({
     }
   }, [clientesDisponiveis]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Executa a rotina atualizar vendedoras venda.
+   */
   function atualizarVendedorasVenda(ids) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario || !podeCompartilharVendaEfetivo) return;
 
     setForm(prev => ({ ...prev, vendedoras: ids }));
   }
 
+  /**
+   * Executa a rotina alternar endereco real.
+   */
   function alternarEnderecoReal(marcado) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
@@ -3180,6 +3558,9 @@ function VendaModal({
     }
   }
 
+  /**
+   * Executa a rotina abrir cliente solicitou quantidades.
+   */
   function abrirClienteSolicitouQuantidades(servicos = clienteSolicitouServicos) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
@@ -3194,6 +3575,9 @@ function VendaModal({
     setClienteSolicitouQuantidadeAberta(true);
   }
 
+  /**
+   * Executa a rotina alternar cliente solicitou servico.
+   */
   function alternarClienteSolicitouServico(servico) {
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
@@ -3238,6 +3622,9 @@ function VendaModal({
     });
   }
 
+  /**
+   * Executa a rotina confirmar cliente solicitou quantidades.
+   */
   function confirmarClienteSolicitouQuantidades() {
     const selecionados = parseClienteSolicitouServicos(clienteSolicitouServicosDraft);
     const bloqueioQtd = selecionados.includes('bloqueio') ? Number(clienteSolicitouQuantidadesDraft.bloqueio || 0) : 0;
@@ -3274,6 +3661,9 @@ function VendaModal({
     setClienteSolicitouNumerosAberto(true);
   }
 
+  /**
+   * Executa a rotina confirmar cliente solicitou numeros.
+   */
   function confirmarClienteSolicitouNumeros() {
     const numeros = montarClienteSolicitouNumeros(clienteSolicitouNumerosDraft);
     const bloqueioQtd = Number(form.cliente_solicitou_bloqueio_qtd || clienteSolicitouQuantidadesDraft.bloqueio || 0);
@@ -3286,6 +3676,9 @@ function VendaModal({
     setClienteSolicitouNumerosAberto(false);
   }
 
+  /**
+   * Executa a rotina aceitar sugestao cnpj.
+   */
   function aceitarSugestaoCnpj(campoApi) {
     const valor = cnpjSugestoes[campoApi];
     const config = CNPJ_SUGESTOES_VENDA[campoApi];
@@ -3315,6 +3708,9 @@ function VendaModal({
     });
   }
 
+  /**
+   * Executa a rotina recusar sugestao cnpj.
+   */
   function recusarSugestaoCnpj(campoApi) {
     setCnpjSugestoes(prev => {
       const proximo = { ...prev };
@@ -3323,6 +3719,9 @@ function VendaModal({
     });
   }
 
+  /**
+   * Executa a rotina buscar dados cnpj.
+   */
   async function buscarDadosCnpj(manual = false) {
     // Preenchimento via API de CNPJ desativado: cadastro manual evita dados divergentes.
     return;
@@ -3370,6 +3769,9 @@ function VendaModal({
     }
   }
 
+  /**
+   * Executa a rotina alterar tipo busca.
+   */
   function alterarTipoBusca(tipo) {
     setTipoBusca(tipo);
     setForm(prev => ({ ...prev, cnpj: '' }));
@@ -3378,6 +3780,9 @@ function VendaModal({
     setCnpjSugestoes({});
   }
 
+  /**
+   * Executa a rotina alterar aceite mode.
+   */
   function alterarAceiteMode(modo) {
     setAceiteMode(modo);
     if (modo === 'fixo') {
@@ -3564,6 +3969,9 @@ function VendaModal({
   }, [somenteVisualizacao, vendaAtivada, quantidadeNumerosAtivados, form.ddd]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  /**
+   * Executa a rotina handle start edit.
+   */
   function handleStartEdit(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -3572,6 +3980,9 @@ function VendaModal({
     onStartEdit();
   }
 
+  /**
+   * Executa a rotina handle submit.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -3810,6 +4221,9 @@ function VendaModal({
     }
   }
 
+  /**
+   * Executa a rotina handle enviar pos venda.
+   */
   async function handleEnviarPosVenda() {
     if (!venda?.id || salvando || enviadaPosVenda) return;
 

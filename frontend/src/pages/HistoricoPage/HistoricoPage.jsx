@@ -78,6 +78,9 @@ const DEFAULT_STAGE_NAMES_MAP = {
   retorno: 'Retorno'
 };
 
+/**
+ * Executa a rotina parse dados.
+ */
 function parseDados(dados) {
   if (!dados) return {};
   if (typeof dados === 'object') return dados;
@@ -89,6 +92,9 @@ function parseDados(dados) {
   }
 }
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(valor) {
   return formatUtcDateTime(valor, {
     day: '2-digit',
@@ -99,14 +105,23 @@ function formatarData(valor) {
   });
 }
 
+/**
+ * Executa a rotina formatar acao.
+ */
 function formatarAcao(acao) {
   return ACAO_LABELS[acao] || acao.replaceAll('.', ' ');
 }
 
+/**
+ * Executa a rotina is plain object.
+ */
 function isPlainObject(valor) {
   return valor && typeof valor === 'object' && !Array.isArray(valor);
 }
 
+/**
+ * Executa a rotina formatar campo.
+ */
 function formatarCampo(campo = '') {
   const labels = {
     id: 'ID',
@@ -140,6 +155,9 @@ function formatarCampo(campo = '') {
     .replace(/\b\w/g, letra => letra.toUpperCase());
 }
 
+/**
+ * Executa a rotina formatar valor.
+ */
 function formatarValor(valor, campo = '', stageNamesMap = DEFAULT_STAGE_NAMES_MAP) {
   if (valor === null || valor === undefined || valor === '') return 'Nao informado';
   if (typeof valor === 'boolean') return valor ? 'Sim' : 'Nao';
@@ -154,6 +172,9 @@ function formatarValor(valor, campo = '', stageNamesMap = DEFAULT_STAGE_NAMES_MA
   return JSON.stringify(valor);
 }
 
+/**
+ * Executa a rotina extrair motivo cancelamento.
+ */
 function extrairMotivoCancelamento(log) {
   const dados = parseDados(log?.dados);
   const motivo = dados?.motivo_cancelamento
@@ -168,6 +189,9 @@ function extrairMotivoCancelamento(log) {
   return motivo ? String(motivo).trim() : null;
 }
 
+/**
+ * Executa a rotina get resumo alteracoes.
+ */
 function getResumoAlteracoes(alteracoes = {}, stageNamesMap = DEFAULT_STAGE_NAMES_MAP) {
   if (!isPlainObject(alteracoes)) return [];
 
@@ -196,6 +220,9 @@ function getResumoAlteracoes(alteracoes = {}, stageNamesMap = DEFAULT_STAGE_NAME
   return rows;
 }
 
+/**
+ * Executa a rotina get campos visiveis.
+ */
 function getCamposVisiveis(objeto = {}, ocultar = []) {
   if (!isPlainObject(objeto)) return [];
   const ocultos = new Set(ocultar);
@@ -205,6 +232,9 @@ function getCamposVisiveis(objeto = {}, ocultar = []) {
     .slice(0, 12);
 }
 
+/**
+ * Executa a rotina montar mapa referencias.
+ */
 function montarMapaReferencias(referencias = [], campo) {
   const mapa = new Map();
   referencias.forEach(item => {
@@ -213,6 +243,9 @@ function montarMapaReferencias(referencias = [], campo) {
   return mapa;
 }
 
+/**
+ * Executa a rotina resumo alteracoes.
+ */
 function ResumoAlteracoes({ alteracoes, stageNamesMap }) {
   const rows = getResumoAlteracoes(alteracoes, stageNamesMap);
 
@@ -241,6 +274,9 @@ function ResumoAlteracoes({ alteracoes, stageNamesMap }) {
   );
 }
 
+/**
+ * Executa a rotina lista campos.
+ */
 function ListaCampos({ titulo, dados, ocultar = [], stageNamesMap }) {
   const campos = getCamposVisiveis(dados, ocultar);
 
@@ -261,6 +297,9 @@ function ListaCampos({ titulo, dados, ocultar = [], stageNamesMap }) {
   );
 }
 
+/**
+ * Executa a rotina dados operacao.
+ */
 function DadosOperacao({ dados, stageNamesMap }) {
   if (!dados || Object.keys(dados).length === 0) return null;
 
@@ -293,6 +332,9 @@ function DadosOperacao({ dados, stageNamesMap }) {
   );
 }
 
+/**
+ * Executa a rotina normalizar etapas.
+ */
 function normalizarEtapas(etapas = []) {
   return etapas
     .map((etapa, index) => ({
@@ -305,6 +347,9 @@ function normalizarEtapas(etapas = []) {
     .sort((a, b) => a.ordem - b.ordem);
 }
 
+/**
+ * Executa a rotina montar mapa nomes etapas.
+ */
 function montarMapaNomesEtapas(etapas = []) {
   return {
     ...DEFAULT_STAGE_NAMES_MAP,
@@ -313,6 +358,9 @@ function montarMapaNomesEtapas(etapas = []) {
   };
 }
 
+/**
+ * Executa a rotina get movimentacao historico.
+ */
 function getMovimentacaoHistorico(log) {
   const dados = parseDados(log.dados);
   const movimentacao = dados?.movimentacao || {};
@@ -331,6 +379,9 @@ function getMovimentacaoHistorico(log) {
   };
 }
 
+/**
+ * Executa a rotina calcular etapas puladas.
+ */
 function calcularEtapasPuladas(statusAnterior, statusNovo, etapas = []) {
   if (!statusAnterior || !statusNovo || statusAnterior === statusNovo) return [];
   if (statusAnterior === 'retorno' || statusNovo === 'retorno') return [];
@@ -343,6 +394,9 @@ function calcularEtapasPuladas(statusAnterior, statusNovo, etapas = []) {
   return etapas.slice(origem + 1, destino);
 }
 
+/**
+ * Executa a rotina enriquecer grupo com pulos.
+ */
 function enriquecerGrupoComPulos(grupo, etapas = []) {
   const primeiraEtapa = etapas[0]?.id || null;
   let statusAtual = null;
@@ -367,6 +421,9 @@ function enriquecerGrupoComPulos(grupo, etapas = []) {
   return { ...grupo, logs };
 }
 
+/**
+ * Executa a rotina montar detalhe.
+ */
 function montarDetalhe(log) {
   const dados = parseDados(log.dados);
   const partes = [];
@@ -386,6 +443,9 @@ function montarDetalhe(log) {
   return partes.length ? ` · ${partes.join(' ')}` : '';
 }
 
+/**
+ * Executa a rotina get tipo.
+ */
 function getTipo(log) {
   if (log.acao?.includes('falha')) return 'danger';
   if (log.acao === 'venda.cancelada') return 'danger';
@@ -396,6 +456,9 @@ function getTipo(log) {
   return 'success';
 }
 
+/**
+ * Executa a rotina marker icon.
+ */
 function MarkerIcon({ log, size = 12 }) {
   switch (log.acao) {
     case 'venda.cancelada':
@@ -412,6 +475,9 @@ function MarkerIcon({ log, size = 12 }) {
   }
 }
 
+/**
+ * Executa a rotina historico item.
+ */
 function HistoricoItem({ log, selecionado, compacto, onClick }) {
   const tipo = getTipo(log);
   const usuario = log.usuario?.nome || (log.usuario_id ? `Usuário #${log.usuario_id}` : 'Sistema');
@@ -460,6 +526,9 @@ function HistoricoItem({ log, selecionado, compacto, onClick }) {
   );
 }
 
+/**
+ * Executa a rotina extrair nome venda.
+ */
 function extrairNomeVenda(logs, vendaId) {
   for (const log of logs) {
     const dados = parseDados(log.dados);
@@ -478,6 +547,9 @@ function extrairNomeVenda(logs, vendaId) {
   return `Venda #${vendaId}`;
 }
 
+/**
+ * Executa a rotina build stage progression.
+ */
 function buildStageProgression(logs, etapas = []) {
   const sorted = [...logs].sort((a, b) => getUtcDateTimeTimestamp(a.created_at) - getUtcDateTimeTimestamp(b.created_at));
   const stagesBase = etapas.length > 0 ? etapas : FUNIL_STAGES;
@@ -556,6 +628,9 @@ function buildStageProgression(logs, etapas = []) {
   return { stages, hasRetorno, currentStage, cancelamento };
 }
 
+/**
+ * Executa a rotina get connector type.
+ */
 function getConnectorType(stageA, stageB) {
   if (stageA.status === 'skipped' || stageB.status === 'skipped') return 'skip';
   if (
@@ -565,6 +640,9 @@ function getConnectorType(stageA, stageB) {
   return 'pending';
 }
 
+/**
+ * Executa a rotina funil tracker.
+ */
 function FunilTracker({ progression, logSelecionado, onClickLog }) {
   const { stages, hasRetorno } = progression;
 
@@ -624,6 +702,9 @@ function FunilTracker({ progression, logSelecionado, onClickLog }) {
   );
 }
 
+/**
+ * Executa a rotina get grupo venda id.
+ */
 function getGrupoVendaId(log) {
   if (log.entidade_id) return String(log.entidade_id);
 
@@ -631,6 +712,9 @@ function getGrupoVendaId(log) {
   return String(dados?.venda?.id || dados?.venda_id || log.id);
 }
 
+/**
+ * Executa a rotina agrupar logs venda.
+ */
 function agruparLogsVenda(logs = []) {
   const grupos = new Map();
 
@@ -654,6 +738,9 @@ function agruparLogsVenda(logs = []) {
   })).sort((a, b) => getUtcDateTimeTimestamp(b.maisRecente?.created_at) - getUtcDateTimeTimestamp(a.maisRecente?.created_at));
 }
 
+/**
+ * Executa a rotina venda historico grupo.
+ */
 function VendaHistoricoGrupo({ grupo, etapasFunil, stageNamesMap, logSelecionado, onClick, onAbrirVenda, modalCarregando }) {
   const [expandido, setExpandido] = useState(false);
   const progression = buildStageProgression(grupo.logs, etapasFunil);
@@ -744,6 +831,9 @@ function VendaHistoricoGrupo({ grupo, etapasFunil, stageNamesMap, logSelecionado
   );
 }
 
+/**
+ * Executa a rotina detalhe card.
+ */
 function DetalheCard({ log, stageNamesMap = DEFAULT_STAGE_NAMES_MAP, onClose, onAbrirVenda, onAbrirCliente, podeAbrirCliente, modalCarregando }) {
   const dados = parseDados(log.dados);
   const motivoCancelamento = extrairMotivoCancelamento(log);
@@ -863,6 +953,9 @@ function DetalheCard({ log, stageNamesMap = DEFAULT_STAGE_NAMES_MAP, onClose, on
   );
 }
 
+/**
+ * Executa a rotina historico page.
+ */
 function HistoricoPage() {
   const navigate = useNavigate();
   const usuarioLogado = getUsuarioLocal();
@@ -908,6 +1001,9 @@ function HistoricoPage() {
   );
   const stageNamesMap = useMemo(() => montarMapaNomesEtapas(etapasFunil), [etapasFunil]);
 
+  /**
+   * Executa a rotina carregar.
+   */
   async function carregar(pagina = paginaAtual, porPagina = itensPorPagina) {
     setCarregando(true);
     setErro('');
@@ -959,6 +1055,9 @@ function HistoricoPage() {
       .map(grupo => enriquecerGrupoComPulos(grupo, etapasFunil));
   }, [modoVendasCompacto, logs, etapasFunil]);
 
+  /**
+   * Executa a rotina carregar dados venda modal.
+   */
   async function carregarDadosVendaModal() {
     if (dadosVendaModalCarregados) return;
 
@@ -987,6 +1086,9 @@ function HistoricoPage() {
     setDadosVendaModalCarregados(true);
   }
 
+  /**
+   * Executa a rotina abrir venda.
+   */
   async function abrirVenda(vendaId) {
     if (!vendaId) return;
     setErro('');
@@ -1004,6 +1106,9 @@ function HistoricoPage() {
     }
   }
 
+  /**
+   * Executa a rotina abrir cliente.
+   */
   async function abrirCliente(clienteId) {
     if (!clienteId || !podeEditarCliente) return;
     setErro('');
@@ -1022,6 +1127,9 @@ function HistoricoPage() {
     }
   }
 
+  /**
+   * Executa a rotina salvar venda modal.
+   */
   async function salvarVendaModal(dados) {
     if (!vendaModal?.id) return;
     setErro('');
@@ -1038,6 +1146,9 @@ function HistoricoPage() {
     }
   }
 
+  /**
+   * Executa a rotina enviar pos venda modal.
+   */
   async function enviarPosVendaModal(venda) {
     if (!venda?.id) return;
     setErro('');

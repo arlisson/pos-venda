@@ -7,6 +7,9 @@ const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario');
 const { montarMapaPermissoesEfetivas } = require('../utils/permissoes');
 
+/**
+ * Executa a rotina validar foto perfil.
+ */
 function validarFotoPerfil(fotoPerfil) {
   if (fotoPerfil === null || fotoPerfil === '') {
     return null;
@@ -31,6 +34,9 @@ function validarFotoPerfil(fotoPerfil) {
   return fotoPerfil;
 }
 
+/**
+ * Executa a rotina montar usuario com permissoes.
+ */
 async function montarUsuarioComPermissoes(usuario) {
   const usuarioJson = usuario.toJSON();
 
@@ -40,6 +46,9 @@ async function montarUsuarioComPermissoes(usuario) {
   };
 }
 
+/**
+ * Executa a rotina atualizar perfil.
+ */
 async function atualizarPerfil(usuarioId, dados) {
   const dadosAtualizacao = {};
 
@@ -76,6 +85,9 @@ async function atualizarPerfil(usuarioId, dados) {
   return montarUsuarioComPermissoes(usuario);
 }
 
+/**
+ * Executa a rotina login.
+ */
 async function login(email, senha) {
   
   const usuario = await Usuario.query()
@@ -117,6 +129,9 @@ async function login(email, senha) {
   };
 }
 
+/**
+ * Executa a rotina buscar usuario logado.
+ */
 async function buscarUsuarioLogado(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)

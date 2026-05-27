@@ -12,20 +12,32 @@ const TIPO_NOTIFICACAO = 'venda_cancelada';
 const PERMISSAO_RECEBER = 'notificacoes_venda_cancelada';
 const PERMISSAO_RECEBER_TODAS = 'notificacoes_receber_todas';
 
+/**
+ * Executa a rotina usuario pode receber.
+ */
 function usuarioPodeReceber(usuario) {
   if (!usuario || !usuario.ativo) return false;
   return usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER)
     || usuarioTemPermissaoLocal(usuario, PERMISSAO_RECEBER_TODAS);
 }
 
+/**
+ * Executa a rotina source key venda.
+ */
 function sourceKeyVenda(vendaId) {
   return `venda_cancelada:${vendaId}`;
 }
 
+/**
+ * Executa a rotina nome venda.
+ */
 function nomeVenda(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
+/**
+ * Executa a rotina listar destinatarios.
+ */
 async function listarDestinatarios(usuarioDisparadorId) {
   const usuarios = await Usuario.query()
     .withGraphFetched('role')
@@ -55,6 +67,9 @@ async function listarDestinatarios(usuarioDisparadorId) {
   return todos;
 }
 
+/**
+ * Executa a rotina criar notificacao cancelamento.
+ */
 async function criarNotificacaoCancelamento({ venda, motivo, usuarioId, trx = null }) {
   if (!venda?.id) return null;
 
@@ -132,6 +147,9 @@ async function criarNotificacaoCancelamento({ venda, motivo, usuarioId, trx = nu
   return notificacao;
 }
 
+/**
+ * Executa a rotina desativar notificacao cancelamento.
+ */
 async function desativarNotificacaoCancelamento(vendaId, trx = null) {
   return Notificacao.query(trx)
     .where('source_key', sourceKeyVenda(vendaId))

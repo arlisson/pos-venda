@@ -5,18 +5,27 @@ const Usuario = require('../models/Usuario');
 const bcrypt = require('bcrypt');
 
 
+/**
+ * Executa a rotina listar usuarios.
+ */
 async function listarUsuarios() {
   return Usuario.query()
     .withGraphFetched('role')
     .orderBy('nome', 'asc');
 }
 
+/**
+ * Executa a rotina buscar usuario por id.
+ */
 async function buscarUsuarioPorId(id) {
   return Usuario.query()
     .findById(id)
     .withGraphFetched('role');
 }
 
+/**
+ * Executa a rotina criar usuario.
+ */
 async function criarUsuario(dados) {
   const senhaHash = await bcrypt.hash(dados.senha, 10);
 
@@ -30,6 +39,9 @@ async function criarUsuario(dados) {
   });
 }
 
+/**
+ * Executa a rotina atualizar usuario.
+ */
 async function atualizarUsuario(id, dados) {
   const dadosAtualizacao = {};
 
@@ -60,6 +72,9 @@ async function atualizarUsuario(id, dados) {
   return Usuario.query().patchAndFetchById(id, dadosAtualizacao);
 }
 
+/**
+ * Executa a rotina excluir usuario.
+ */
 async function excluirUsuario(id) {
   return Usuario.query().deleteById(id);
 }

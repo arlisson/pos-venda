@@ -21,10 +21,16 @@ import {
 } from './permissoes';
 import './Usuarios.css';
 
+/**
+ * Executa a rotina get permissoes iniciais.
+ */
 function getPermissoesIniciais(usuario, permissoesDisponiveis = []) {
   return getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis);
 }
 
+/**
+ * Executa a rotina modal permissoes.
+ */
 function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   const [usuario, setUsuario] = useState(null);
   const [permissoes, setPermissoes] = useState([]);
@@ -36,6 +42,9 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   const [erro, setErro] = useState('');
 
   useEffect(() => {
+    /**
+     * Executa a rotina carregar.
+     */
     async function carregar() {
       try {
         const [usuarioData, permissoesData] = await Promise.all([
@@ -58,6 +67,9 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
     carregar();
   }, [usuarioId]);
 
+  /**
+   * Executa a rotina toggle.
+   */
   function toggle(chave, opcoes = {}) {
     setAvisoCopia('');
     setSelecionadas(prev => {
@@ -72,6 +84,9 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
     });
   }
 
+  /**
+   * Executa a rotina toggle bloco.
+   */
   function toggleBloco(chaves, selecionar) {
     setAvisoCopia('');
     setSelecionadas(prev => {
@@ -83,6 +98,9 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
     });
   }
 
+  /**
+   * Executa a rotina copiar permissoes.
+   */
   function copiarPermissoes() {
     const usuarioOrigem = usuarios.find(item => String(item.id) === String(usuarioOrigemId));
 
@@ -96,6 +114,9 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
     setAvisoCopia(`Permissões de ${usuarioOrigem.nome} copiadas. Revise e salve para aplicar.`);
   }
 
+  /**
+   * Executa a rotina handle save.
+   */
   async function handleSave() {
     setSalvando(true);
     setErro('');
@@ -194,6 +215,9 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   );
 }
 
+/**
+ * Executa a rotina usuarios.
+ */
 function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -224,6 +248,9 @@ function Usuarios() {
   }, [erro]);
 
   useEffect(() => {
+    /**
+     * Executa a rotina carregar usuarios.
+     */
     async function carregarUsuarios() {
       try {
         const dados = await listarUsuarios();
@@ -238,6 +265,9 @@ function Usuarios() {
     carregarUsuarios();
   }, []);
 
+  /**
+   * Executa a rotina handle delete.
+   */
   async function handleDelete(u) {
     if (deletando === u.id) {
       try {
@@ -254,6 +284,9 @@ function Usuarios() {
     }
   }
 
+  /**
+   * Executa a rotina handle save permissoes.
+   */
   async function handleSavePermissoes(id, permissoesSelecionadas) {
     await atualizarUsuario(id, {
       permissoes: permissoesSelecionadas
@@ -272,6 +305,9 @@ function Usuarios() {
     setSucesso('Permissões atualizadas com sucesso.');
   }
 
+  /**
+   * Executa a rotina get initials.
+   */
   const getInitials = (name) => {
     if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);

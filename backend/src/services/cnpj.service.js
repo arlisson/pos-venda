@@ -29,17 +29,29 @@ class CnpjConsultaError extends Error {
   }
 }
 
+/**
+ * Executa a rotina sanitizar cnpj.
+ */
 function sanitizarCnpj(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 14);
 }
 
+/**
+ * Executa a rotina is cnpj repetido.
+ */
 function isCnpjRepetido(cnpj) {
   return /^(\d)\1{13}$/.test(cnpj);
 }
 
+/**
+ * Executa a rotina validar digitos cnpj.
+ */
 function validarDigitosCnpj(cnpj) {
   if (!/^\d{14}$/.test(cnpj) || isCnpjRepetido(cnpj)) return false;
 
+  /**
+   * Executa a rotina calcular digito.
+   */
   const calcularDigito = (base) => {
     const pesos = base === 12
       ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -52,6 +64,9 @@ function validarDigitosCnpj(cnpj) {
   return calcularDigito(12) === Number(cnpj[12]) && calcularDigito(13) === Number(cnpj[13]);
 }
 
+/**
+ * Executa a rotina validar cnpj.
+ */
 function validarCnpj(valor) {
   const cnpj = sanitizarCnpj(valor);
 
@@ -66,6 +81,9 @@ function validarCnpj(valor) {
   return cnpj;
 }
 
+/**
+ * Executa a rotina parse json seguro.
+ */
 function parseJsonSeguro(valor, fallback) {
   if (!valor) return fallback;
   if (typeof valor !== 'string') return valor;
@@ -77,7 +95,13 @@ function parseJsonSeguro(valor, fallback) {
   }
 }
 
+/**
+ * Executa a rotina formatar date time sql.
+ */
 function formatarDateTimeSQL(data = new Date()) {
+  /**
+   * Executa a rotina pad.
+   */
   const pad = (value) => String(value).padStart(2, '0');
 
   return [
@@ -91,24 +115,39 @@ function formatarDateTimeSQL(data = new Date()) {
   ].join(':');
 }
 
+/**
+ * Executa a rotina adicionar dias.
+ */
 function adicionarDias(data, dias) {
   const proxima = new Date(data);
   proxima.setDate(proxima.getDate() + dias);
   return proxima;
 }
 
+/**
+ * Executa a rotina normalizar telefone.
+ */
 function normalizarTelefone(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 11);
 }
 
+/**
+ * Executa a rotina primeiro valor.
+ */
 function primeiroValor(...valores) {
   return valores.find(valor => String(valor || '').trim()) || '';
 }
 
+/**
+ * Executa a rotina normalizar texto.
+ */
 function normalizarTexto(valor) {
   return String(valor || '').trim();
 }
 
+/**
+ * Executa a rotina criar payload vazio.
+ */
 function criarPayloadVazio() {
   return {
     razaoSocial: '',
@@ -127,12 +166,18 @@ function criarPayloadVazio() {
   };
 }
 
+/**
+ * Executa a rotina contar campos preenchidos.
+ */
 function contarCamposPreenchidos(payload) {
   return Object.entries(payload)
     .filter(([campo, valor]) => campo !== 'fonte' && String(valor || '').trim())
     .map(([campo]) => campo);
 }
 
+/**
+ * Executa a rotina normalizar brasil api.
+ */
 function normalizarBrasilApi(data) {
   return {
     razaoSocial: normalizarTexto(data.razao_social),
@@ -152,6 +197,9 @@ function normalizarBrasilApi(data) {
   };
 }
 
+/**
+ * Executa a rotina normalizar cnpja.
+ */
 function normalizarCnpja(data) {
   const telefone = Array.isArray(data.phones) ? data.phones[0] : null;
   const email = Array.isArray(data.emails) ? data.emails[0] : null;
@@ -178,6 +226,9 @@ function normalizarCnpja(data) {
   };
 }
 
+/**
+ * Executa a rotina normalizar cnpjws.
+ */
 function normalizarCnpjws(data) {
   const estabelecimento = data.estabelecimento || {};
   const cidade = estabelecimento.cidade || {};
@@ -207,6 +258,9 @@ function normalizarCnpjws(data) {
   };
 }
 
+/**
+ * Executa a rotina get axios error code.
+ */
 function getAxiosErrorCode(error) {
   const status = error.response?.status;
   if (status === 404) return 'nao_encontrado';
@@ -215,6 +269,9 @@ function getAxiosErrorCode(error) {
   return 'erro';
 }
 
+/**
+ * Executa a rotina consultar fonte.
+ */
 async function consultarFonte(fonte, url, normalizar) {
   try {
     const response = await axios.get(url, {
@@ -242,6 +299,9 @@ async function consultarFonte(fonte, url, normalizar) {
   }
 }
 
+/**
+ * Executa a rotina resumir payload bruto.
+ */
 function resumirPayloadBruto(fonte, data) {
   if (fonte === 'BrasilAPI') {
     return {
@@ -281,6 +341,9 @@ function resumirPayloadBruto(fonte, data) {
   };
 }
 
+/**
+ * Executa a rotina data para iso.
+ */
 function dataParaIso(valor) {
   if (!valor) return null;
   const data = new Date(valor);
@@ -288,12 +351,18 @@ function dataParaIso(valor) {
   return data.toISOString();
 }
 
+/**
+ * Executa a rotina dias desde.
+ */
 function diasDesde(valor, referencia = new Date()) {
   const iso = dataParaIso(valor);
   if (!iso) return null;
   return Math.floor((referencia.getTime() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
 }
 
+/**
+ * Executa a rotina normalizar para comparacao.
+ */
 function normalizarParaComparacao(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -303,6 +372,9 @@ function normalizarParaComparacao(valor) {
     .toUpperCase();
 }
 
+/**
+ * Executa a rotina calcular confianca.
+ */
 function calcularConfianca(atualizadoEm, divergente, referencia = new Date()) {
   if (divergente) return 'baixa';
 
@@ -313,6 +385,9 @@ function calcularConfianca(atualizadoEm, divergente, referencia = new Date()) {
   return 'baixa';
 }
 
+/**
+ * Executa a rotina combinar resultados.
+ */
 function combinarResultados(resultados) {
   const combinado = criarPayloadVazio();
   const fontesComSucesso = [];
@@ -402,6 +477,9 @@ function combinarResultados(resultados) {
   };
 }
 
+/**
+ * Executa a rotina buscar cache.
+ */
 async function buscarCache(cnpj) {
   const agora = formatarDateTimeSQL();
   const registro = await db('cnpj_consultas_cache')
@@ -414,6 +492,9 @@ async function buscarCache(cnpj) {
   return montarPayloadCache(registro);
 }
 
+/**
+ * Executa a rotina montar payload cache.
+ */
 function montarPayloadCache(registro) {
   const payload = parseJsonSeguro(registro.payload_normalizado, {});
   const fontesPorCampo = Object.fromEntries(
@@ -445,6 +526,9 @@ function montarPayloadCache(registro) {
   };
 }
 
+/**
+ * Executa a rotina salvar cache.
+ */
 async function salvarCache(cnpj, payload, resultados) {
   const agora = new Date();
   const registro = {
@@ -471,6 +555,9 @@ async function salvarCache(cnpj, payload, resultados) {
     .merge(registro);
 }
 
+/**
+ * Executa a rotina consultar cnpj.
+ */
 async function consultarCnpj(valor) {
   const cnpj = validarCnpj(valor);
   const cache = await buscarCache(cnpj);

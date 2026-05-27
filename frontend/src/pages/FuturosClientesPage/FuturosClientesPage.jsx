@@ -19,6 +19,9 @@ import './FuturosClientesPage.css';
 
 // ─── Helpers de colunas de lead ──────────────────────────────────────────────
 
+/**
+ * Executa a rotina normalizar texto lead.
+ */
 function normalizarTextoLead(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -27,6 +30,9 @@ function normalizarTextoLead(valor) {
     .trim();
 }
 
+/**
+ * Executa a rotina get valor lead recebido.
+ */
 function getValorLeadRecebido(linha, coluna) {
   if (!coluna) return '';
   if (coluna.atualizada) {
@@ -39,6 +45,9 @@ function getValorLeadRecebido(linha, coluna) {
   return linha.dados_json?.[source?.nome || coluna.nome] ?? '';
 }
 
+/**
+ * Executa a rotina get nome coluna lead recebido.
+ */
 function getNomeColunaLeadRecebido(linha, coluna) {
   if (!coluna) return '';
   if (typeof coluna === 'string') return coluna;
@@ -47,16 +56,25 @@ function getNomeColunaLeadRecebido(linha, coluna) {
   return source?.nome || coluna.nome || coluna.label || '';
 }
 
+/**
+ * Executa a rotina get label coluna lead recebido.
+ */
 function getLabelColunaLeadRecebido(coluna) {
   if (typeof coluna === 'string') return coluna;
   return coluna?.label || coluna?.nome || '';
 }
 
+/**
+ * Executa a rotina get coluna key lead recebido.
+ */
 function getColunaKeyLeadRecebido(coluna) {
   if (typeof coluna === 'string') return coluna;
   return coluna?.id || coluna?.nome || coluna?.label || '';
 }
 
+/**
+ * Executa a rotina criar coluna atualizada lead recebido.
+ */
 function criarColunaAtualizadaLeadRecebido(coluna) {
   const key = getColunaKeyLeadRecebido(coluna);
   const nome = typeof coluna === 'string' ? coluna : coluna?.nome || coluna?.label || '';
@@ -75,6 +93,9 @@ function criarColunaAtualizadaLeadRecebido(coluna) {
   };
 }
 
+/**
+ * Executa a rotina linha tem coluna atualizada.
+ */
 function linhaTemColunaAtualizada(linhas, coluna) {
   return linhas.some(linha => {
     const nome = getNomeColunaLeadRecebido(linha, coluna);
@@ -82,6 +103,9 @@ function linhaTemColunaAtualizada(linhas, coluna) {
   });
 }
 
+/**
+ * Executa a rotina get valor lead por nome.
+ */
 function getValorLeadPorNome(linha, nomeColuna) {
   if (!nomeColuna) return '';
   const dados = linha.dados_json || {};
@@ -89,6 +113,9 @@ function getValorLeadPorNome(linha, nomeColuna) {
   return dados[nomeAtualizado] ?? dados[nomeColuna] ?? '';
 }
 
+/**
+ * Executa a rotina get colunas mapeaveis lead.
+ */
 function getColunasMapeaveisLead(linha, colunas) {
   const opcoes = new Map();
 
@@ -116,6 +143,9 @@ function getColunasMapeaveisLead(linha, colunas) {
   return Array.from(opcoes.values());
 }
 
+/**
+ * Executa a rotina sugerir coluna venda.
+ */
 function sugerirColunaVenda(campo, opcoes) {
   const aliases = [campo.label, campo.name, ...(campo.aliases || [])].map(normalizarTextoLead);
   const encontrada = opcoes.find(opcao => {
@@ -135,6 +165,9 @@ const CAMPOS_VENDA_LEAD = [
   { name: 'responsavel_nome', label: 'Responsável', aliases: ['responsavel', 'responsável', 'contato', 'rep'] }
 ];
 
+/**
+ * Executa a rotina montar cliente preenchido.
+ */
 function montarClientePreenchido(vendaPreenchida) {
   if (!vendaPreenchida) return null;
   const nome = vendaPreenchida.nome || vendaPreenchida.razao_social || '';
@@ -149,6 +182,9 @@ function montarClientePreenchido(vendaPreenchida) {
   };
 }
 
+/**
+ * Executa a rotina montar venda preenchida do lead.
+ */
 function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
   const payload = usuario?.id ? { vendedora_id: String(usuario.id) } : {};
 
@@ -163,6 +199,9 @@ function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
   return payload;
 }
 
+/**
+ * Executa a rotina formatar data hora.
+ */
 function formatarDataHora(valor) {
   return formatUtcDateTime(valor, {
     day: '2-digit', month: '2-digit', year: '2-digit',
@@ -170,18 +209,30 @@ function formatarDataHora(valor) {
   }, '-');
 }
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(valor) {
   return formatDateValue(valor, undefined, '-');
 }
 
+/**
+ * Executa a rotina is futuro cliente na lixeira.
+ */
 function isFuturoClienteNaLixeira(linha) {
   return Boolean(linha?.futuro_cliente && linha?.futuro_cliente_excluido_em);
 }
 
+/**
+ * Executa a rotina is futuro cliente ativo.
+ */
 function isFuturoClienteAtivo(linha) {
   return Boolean(linha?.futuro_cliente && !linha?.futuro_cliente_excluido_em);
 }
 
+/**
+ * Executa a rotina render lead status.
+ */
 function renderLeadStatus(linha) {
   if (isFuturoClienteNaLixeira(linha)) {
     return (
@@ -208,10 +259,16 @@ function renderLeadStatus(linha) {
   return <span className="muted">-</span>;
 }
 
+/**
+ * Executa a rotina formatar para datetime local.
+ */
 function formatarParaDatetimeLocal(valor) {
   return toLocalDateTimeInputFromUtc(valor);
 }
 
+/**
+ * Executa a rotina datetime retorno para iso.
+ */
 function datetimeRetornoParaIso(valor) {
   if (!valor) return null;
 
@@ -221,6 +278,9 @@ function datetimeRetornoParaIso(valor) {
 
 // ─── Modal: registrar venda ───────────────────────────────────────────────────
 
+/**
+ * Executa a rotina registrar venda lead modal.
+ */
 function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }) {
   const opcoesColunas = useMemo(() => getColunasMapeaveisLead(linha, colunas), [linha, colunas]);
   const [mapeamento, setMapeamento] = useState(() => (
@@ -230,10 +290,16 @@ function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }
     }), {})
   ));
 
+  /**
+   * Executa a rotina atualizar mapeamento.
+   */
   function atualizarMapeamento(campo, valor) {
     setMapeamento(prev => ({ ...prev, [campo]: valor }));
   }
 
+  /**
+   * Executa a rotina submit.
+   */
   function submit(event) {
     event.preventDefault();
     onConfirm(montarVendaPreenchidaDoLead(linha, mapeamento, usuario));
@@ -293,11 +359,17 @@ function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }
 
 // ─── Modal: atualizar campo ───────────────────────────────────────────────────
 
+/**
+ * Executa a rotina lead atualizacao modal.
+ */
 function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
   const [valor, setValor] = useState(dados?.valorAtualizado || '');
 
   if (!dados) return null;
 
+  /**
+   * Executa a rotina submit.
+   */
   function submit(event) {
     event.preventDefault();
     onSave(valor);
@@ -350,6 +422,9 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
 
 // ─── Modal: adicionar lead (popup intermediário) ──────────────────────────────
 
+/**
+ * Executa a rotina adicionar lead modal.
+ */
 function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda, onFuturoClienteSalvo }) {
   const [etapa, setEtapa] = useState('opcoes'); // 'opcoes' | 'venda' | 'futuro'
   const [notas, setNotas] = useState('');
@@ -367,6 +442,9 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
       }));
   }, [linha]);
 
+  /**
+   * Executa a rotina salvar futuro cliente.
+   */
   async function salvarFuturoCliente(event) {
     event.preventDefault();
     setSalvando(true);
@@ -484,6 +562,9 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 
 // ─── Aba: leads recebidos ─────────────────────────────────────────────────────
 
+/**
+ * Executa a rotina leads recebidos view.
+ */
 function LeadsRecebidosView() {
   const navigate = useNavigate();
   const [envios, setEnvios] = useState([]);
@@ -572,11 +653,17 @@ function LeadsRecebidosView() {
   const totalColunasTabela = colunas.length + 2 + ((podeRegistrarVenda || podeRegistrarFuturo) ? 1 : 0);
   const totalFuturosClientesAtivos = linhas.filter(isFuturoClienteAtivo).length;
 
+  /**
+   * Executa a rotina toggle envio.
+   */
   function toggleEnvio(id) {
     setSelecionados(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
     setPagina(1);
   }
 
+  /**
+   * Executa a rotina abrir atualizacao.
+   */
   function abrirAtualizacao(linha, coluna) {
     const nomeColuna = getNomeColunaLeadRecebido(linha, coluna);
     if (!nomeColuna) return;
@@ -591,6 +678,9 @@ function LeadsRecebidosView() {
     });
   }
 
+  /**
+   * Executa a rotina salvar atualizacao.
+   */
   async function salvarAtualizacao(valor) {
     if (!modalAtualizacao || !valor.trim()) {
       setErroAtualizacao('Informe a informação atualizada.');
@@ -620,6 +710,9 @@ function LeadsRecebidosView() {
     }
   }
 
+  /**
+   * Executa a rotina continuar registro venda.
+   */
   function continuarRegistroVenda(vendaPreenchida) {
     navigate('/vendas?nova=1', {
       state: {
@@ -633,6 +726,9 @@ function LeadsRecebidosView() {
     });
   }
 
+  /**
+   * Executa a rotina handle futuro cliente salvo.
+   */
   function handleFuturoClienteSalvo(linhaAtualizada) {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
     setModalAdicionar(null);
@@ -798,6 +894,9 @@ function LeadsRecebidosView() {
 
 // ─── Modal: detalhe do futuro cliente ────────────────────────────────────────
 
+/**
+ * Executa a rotina futuro cliente detalhe modal.
+ */
 function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVenda }) {
   const [etapa, setEtapa] = useState('ver'); // 'ver' | 'venda'
   const [notas, setNotas] = useState(linha.futuro_cliente_notas || '');
@@ -817,6 +916,9 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
       }));
   }, [linha]);
 
+  /**
+   * Executa a rotina salvar.
+   */
   async function salvar(event) {
     event.preventDefault();
     setSalvando(true);
@@ -921,6 +1023,9 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
 
 // ─── Aba: futuros clientes ────────────────────────────────────────────────────
 
+/**
+ * Executa a rotina confirmar futuro cliente lixeira modal.
+ */
 function ConfirmarFuturoClienteLixeiraModal({ linha, tipo, processando, onClose, onConfirm }) {
   if (!linha || !tipo) return null;
 
@@ -966,6 +1071,9 @@ function ConfirmarFuturoClienteLixeiraModal({ linha, tipo, processando, onClose,
   );
 }
 
+/**
+ * Executa a rotina futuros clientes main view.
+ */
 function FuturosClientesMainView() {
   const navigate = useNavigate();
   const [linhas, setLinhas] = useState([]);
@@ -1027,11 +1135,17 @@ function FuturosClientesMainView() {
   const totalPaginas = Math.max(1, Math.ceil(total / 50));
   const totalColunasTabela = colunasDados.length + 4 + (modoLixeira ? 2 : 0) + (podeGerenciar ? 1 : 0);
 
+  /**
+   * Executa a rotina handle atualizado.
+   */
   function handleAtualizado(linhaAtualizada) {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
     setLinhaAtiva(null);
   }
 
+  /**
+   * Executa a rotina alternar modo lixeira.
+   */
   function alternarModoLixeira(proximoModo) {
     setModoLixeira(proximoModo);
     setPagina(1);
@@ -1040,6 +1154,9 @@ function FuturosClientesMainView() {
     setSucesso('');
   }
 
+  /**
+   * Executa a rotina confirmar mover para lixeira.
+   */
   async function confirmarMoverParaLixeira() {
     const linha = confirmacaoLixeira?.linha;
     if (!linha) return;
@@ -1061,6 +1178,9 @@ function FuturosClientesMainView() {
     }
   }
 
+  /**
+   * Executa a rotina handle restaurar.
+   */
   async function handleRestaurar(linha) {
     setProcessandoId(linha.id);
     setErro('');
@@ -1078,6 +1198,9 @@ function FuturosClientesMainView() {
     }
   }
 
+  /**
+   * Executa a rotina confirmar exclusao definitiva.
+   */
   async function confirmarExclusaoDefinitiva() {
     const linha = confirmacaoLixeira?.linha;
     if (!linha) return;
@@ -1099,6 +1222,9 @@ function FuturosClientesMainView() {
     }
   }
 
+  /**
+   * Executa a rotina handle registrar venda.
+   */
   function handleRegistrarVenda(vendaPreenchida) {
     navigate('/vendas?nova=1', {
       state: {
@@ -1324,6 +1450,9 @@ function FuturosClientesMainView() {
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
+/**
+ * Executa a rotina futuros clientes page.
+ */
 function FuturosClientesPage() {
   const [abaAtiva, setAbaAtiva] = useState('futuros');
 

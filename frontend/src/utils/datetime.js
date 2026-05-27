@@ -13,10 +13,16 @@ const DEFAULT_DATE_TIME_OPTIONS = {
   minute: '2-digit'
 };
 
+/**
+ * Executa a rotina is valid date.
+ */
 function isValidDate(date) {
   return date instanceof Date && !Number.isNaN(date.getTime());
 }
 
+/**
+ * Executa a rotina parse date only.
+ */
 function parseDateOnly(value) {
   const text = String(value || '').trim();
   if (!DATE_ONLY_RE.test(text)) return null;
@@ -131,6 +137,9 @@ export function toLocalDateTimeInputFromUtc(value) {
   const date = parseUtcDateTime(value);
   if (!date) return '';
 
+  /**
+   * Executa a rotina pad.
+   */
   const pad = part => String(part).padStart(2, '0');
   return [
     date.getFullYear(),

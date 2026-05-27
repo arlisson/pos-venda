@@ -5,11 +5,17 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { atualizarPerfil, buscarPerfil } from '../../services/auth.service';
 import './EditarPerfilPage.css';
 
+/**
+ * Executa a rotina get initials.
+ */
 const getInitials = (name) => {
   if (!name) return '??';
   return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
 };
 
+/**
+ * Executa a rotina medir senha.
+ */
 function medirSenha(senha) {
   if (!senha) return { nivel: 0, label: 'Opcional' };
 
@@ -24,6 +30,9 @@ function medirSenha(senha) {
   return { nivel: 3, label: 'Forte' };
 }
 
+/**
+ * Executa a rotina editar perfil page.
+ */
 function EditarPerfilPage() {
   const navigate = useNavigate();
   const [usuario, setUsuario] = useState(null);
@@ -49,6 +58,9 @@ function EditarPerfilPage() {
   }, [erro]);
 
   useEffect(() => {
+    /**
+     * Executa a rotina carregar.
+     */
     async function carregar() {
       try {
         const perfil = await buscarPerfil();
@@ -71,6 +83,9 @@ function EditarPerfilPage() {
   const fotoAlterada = fotoPerfil !== (usuario?.foto_perfil || '');
   const temAlteracoes = (isAdmin && nomeAlterado) || senha.trim() !== '' || fotoAlterada;
 
+  /**
+   * Executa a rotina handle foto change.
+   */
   function handleFotoChange(event) {
     const arquivo = event.target.files?.[0];
 
@@ -94,6 +109,9 @@ function EditarPerfilPage() {
     reader.readAsDataURL(arquivo);
   }
 
+  /**
+   * Executa a rotina handle submit.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
     setErro('');

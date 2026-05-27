@@ -11,6 +11,9 @@ const server = app.listen(PORT, () => {
 server.requestTimeout = 30 * 60 * 1000;
 server.headersTimeout = 31 * 60 * 1000;
 
+/**
+ * Executa a rotina limpar arquivos vencidos.
+ */
 function limparArquivosVencidos() {
   vendaArquivoService.limparArquivosIndividuaisVencidos()
     .catch(error => {

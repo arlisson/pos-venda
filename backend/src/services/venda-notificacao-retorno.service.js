@@ -9,14 +9,23 @@ const notificacaoService = require('./notificacao.service');
 
 const TIPO_NOTIFICACAO = 'venda_retorno_registrado';
 
+/**
+ * Executa a rotina source key venda.
+ */
 function sourceKeyVenda(vendaId) {
   return `venda_retorno:${vendaId}`;
 }
 
+/**
+ * Executa a rotina nome venda.
+ */
 function nomeVenda(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
+/**
+ * Executa a rotina listar destinatarios venda.
+ */
 async function listarDestinatariosVenda(vendaId, trx = null) {
   const knex = Venda.knex();
   const builder = knex('venda_vendedoras')
@@ -35,6 +44,9 @@ async function listarDestinatariosVenda(vendaId, trx = null) {
   return venda?.vendedora_id ? [Number(venda.vendedora_id)] : [];
 }
 
+/**
+ * Executa a rotina criar ou atualizar notificacao retorno.
+ */
 async function criarOuAtualizarNotificacaoRetorno({ venda, statusAnterior, motivo, usuarioId, trx = null }) {
   if (!venda?.id) return null;
 
@@ -119,6 +131,9 @@ async function criarOuAtualizarNotificacaoRetorno({ venda, statusAnterior, motiv
   return notificacao;
 }
 
+/**
+ * Executa a rotina desativar notificacao retorno.
+ */
 async function desativarNotificacaoRetorno(vendaId, trx = null) {
   return Notificacao.query(trx)
     .where('source_key', sourceKeyVenda(vendaId))

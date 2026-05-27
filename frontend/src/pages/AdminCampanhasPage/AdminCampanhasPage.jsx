@@ -18,6 +18,9 @@ const CATEGORIAS = [
   { value: 'internet', label: 'Internet' },
 ];
 
+/**
+ * Executa a rotina admin campanhas page.
+ */
 function AdminCampanhasPage() {
   const [campanhas, setCampanhas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +38,9 @@ function AdminCampanhasPage() {
     return () => clearTimeout(timer);
   }, [message]);
 
+  /**
+   * Executa a rotina load campanhas.
+   */
   async function loadCampanhas() {
     try {
       const [data, operadorasData] = await Promise.all([
@@ -50,6 +56,9 @@ function AdminCampanhasPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle campanhas change.
+   */
   function handleCampanhasChange(id, field, value) {
     setCampanhas(prev => prev.map(campanha => {
       if (campanha.id !== id) return campanha;
@@ -63,6 +72,9 @@ function AdminCampanhasPage() {
     }));
   }
 
+  /**
+   * Executa a rotina handle add campanha.
+   */
   async function handleAddCampanha() {
     setSaving(true);
     setMessage(null);
@@ -87,6 +99,9 @@ function AdminCampanhasPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle delete campanha.
+   */
   async function handleDeleteCampanha(id) {
     if (!window.confirm('Deseja excluir esta campanha?')) return;
 
@@ -105,6 +120,9 @@ function AdminCampanhasPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle save.
+   */
   async function handleSave() {
     setSaving(true);
     setMessage(null);

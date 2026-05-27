@@ -20,6 +20,9 @@ import './MensagensPage.css';
 const ANEXO_TIPOS_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 const ANEXO_TAMANHO_MAX_MB = 50;
 
+/**
+ * Executa a rotina formatar tamanho.
+ */
 function formatarTamanho(bytes) {
   if (!bytes) return '';
   const kb = bytes / 1024;
@@ -30,6 +33,9 @@ function formatarTamanho(bytes) {
 const INTERVALO_THREAD = 3500;
 const INTERVALO_CONVERSAS = 10000;
 
+/**
+ * Executa a rotina get initials.
+ */
 function getInitials(nome) {
   if (!nome) return '??';
   return nome
@@ -40,16 +46,25 @@ function getInitials(nome) {
     .substring(0, 2);
 }
 
+/**
+ * Executa a rotina formatar hora.
+ */
 function formatarHora(valor) {
   return formatUtcDateTime(valor, { hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * Executa a rotina formatar data lista.
+ */
 function formatarDataLista(valor) {
   if (!valor) return '';
   return formatUtcDateTime(valor, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 // Considera iguais se mesmos ids e mesmos status (recebida/lida) — evita re-render à toa.
+/**
+ * Executa a rotina mesma lista.
+ */
 function mesmaLista(a, b) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
@@ -66,6 +81,9 @@ function mesmaLista(a, b) {
 // Componente que mostra anexo dentro de uma bolha. Para imagens, baixa via API
 // autenticada e cria um object URL para o <img>. Para PDFs/outros, mostra um
 // mini-card com botão de download.
+/**
+ * Executa a rotina anexo bolha.
+ */
 function AnexoBolha({ anexo, baixarAnexo = baixarAnexoMensagem }) {
   const [objectUrl, setObjectUrl] = useState(null);
   const [baixando, setBaixando] = useState(false);
@@ -88,6 +106,9 @@ function AnexoBolha({ anexo, baixarAnexo = baixarAnexoMensagem }) {
     };
   }, [anexo, ehImagem, baixarAnexo]);
 
+  /**
+   * Executa a rotina baixar.
+   */
   async function baixar() {
     if (baixando) return;
     setBaixando(true);
@@ -128,6 +149,9 @@ function AnexoBolha({ anexo, baixarAnexo = baixarAnexoMensagem }) {
   );
 }
 
+/**
+ * Executa a rotina avatar.
+ */
 function Avatar({ contato }) {
   if (contato?.foto_perfil) {
     return (
@@ -140,6 +164,9 @@ function Avatar({ contato }) {
   return <span className="chat-avatar chat-avatar--iniciais">{getInitials(contato?.nome)}</span>;
 }
 
+/**
+ * Executa a rotina mensagens page.
+ */
 function MensagensPage() {
   const usuarioLocal = useMemo(() => getUsuarioLocal(), []);
   const meuId = Number(usuarioLocal?.id);
@@ -241,6 +268,9 @@ function MensagensPage() {
     let ativo = true;
     const contatoId = contatoSelecionado.id;
 
+    /**
+     * Executa a rotina carregar.
+     */
     async function carregar(forcarRolagem) {
       try {
         const idAntes = ultimoIdRef.current;
@@ -280,6 +310,9 @@ function MensagensPage() {
     }
   }, [mensagens, pendentes]);
 
+  /**
+   * Executa a rotina selecionar contato.
+   */
   function selecionarContato(contato, modoOrigem = 'minhas') {
     setErro('');
     setMensagens([]);
@@ -295,6 +328,9 @@ function MensagensPage() {
     carregarConversas();
   }
 
+  /**
+   * Executa a rotina selecionar conversa interna.
+   */
   function selecionarConversaInterna(conversa) {
     const participantes = conversa.participantes || [];
     selecionarContato(
@@ -308,10 +344,16 @@ function MensagensPage() {
     );
   }
 
+  /**
+   * Executa a rotina abrir selecao arquivo.
+   */
   function abrirSelecaoArquivo() {
     if (inputAnexoRef.current) inputAnexoRef.current.click();
   }
 
+  /**
+   * Executa a rotina handle arquivo selecionado.
+   */
   async function handleArquivoSelecionado(evento) {
     const file = evento.target.files?.[0];
     evento.target.value = '';
@@ -342,10 +384,16 @@ function MensagensPage() {
     }
   }
 
+  /**
+   * Executa a rotina remover anexo pendente.
+   */
   function removerAnexoPendente() {
     setAnexoPendente(null);
   }
 
+  /**
+   * Executa a rotina handle excluir mensagem.
+   */
   async function handleExcluirMensagem(mensagem) {
     if (!window.confirm('Excluir esta mensagem? Esta ação não pode ser desfeita.')) return;
 
@@ -372,6 +420,9 @@ function MensagensPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle enviar.
+   */
   async function handleEnviar(evento) {
     evento.preventDefault();
     const conteudo = texto.trim();
@@ -417,6 +468,9 @@ function MensagensPage() {
     }
   }
 
+  /**
+   * Executa a rotina handle tecla input.
+   */
   function handleTeclaInput(evento) {
     if (evento.key === 'Enter' && !evento.shiftKey) {
       evento.preventDefault();

@@ -41,10 +41,16 @@ const TIPO_VENDA_PARADA = vendaNotificacaoParadaService.TIPO_NOTIFICACAO;
 const PERMISSAO_VENDAS_PARADAS = vendaNotificacaoParadaService.PERMISSAO_VENDAS_PARADAS;
 const RETORNO_PRE_AVISO_MINUTOS = 15;
 
+/**
+ * Executa a rotina usuario tem permissao local.
+ */
 function usuarioTemPermissaoLocal(usuario, permissao) {
   return usuarioTemPermissaoLocalImportado(usuario, permissao);
 }
 
+/**
+ * Executa a rotina listar admins ativos.
+ */
 async function listarAdminsAtivos(trx = null) {
   const usuarios = await Usuario.query(trx)
     .withGraphFetched('role')
@@ -55,6 +61,9 @@ async function listarAdminsAtivos(trx = null) {
     .map(usuario => Number(usuario.id));
 }
 
+/**
+ * Executa a rotina formatar data iso.
+ */
 function formatarDataISO(data = new Date()) {
   return [
     data.getFullYear(),
@@ -63,6 +72,9 @@ function formatarDataISO(data = new Date()) {
   ].join('-');
 }
 
+/**
+ * Executa a rotina parse data dia.
+ */
 function parseDataDia(valor) {
   if (!valor || valor === '1899-11-30') return null;
 
@@ -72,6 +84,9 @@ function parseDataDia(valor) {
   return Number.isNaN(data.getTime()) ? null : data;
 }
 
+/**
+ * Executa a rotina calcular dias restantes.
+ */
 function calcularDiasRestantes(fidelidadeFim) {
   const fim = parseDataDia(fidelidadeFim);
 
@@ -83,6 +98,9 @@ function calcularDiasRestantes(fidelidadeFim) {
   return Math.ceil((fim.getTime() - hoje.getTime()) / 86400000);
 }
 
+/**
+ * Executa a rotina montar texto dias.
+ */
 function montarTextoDias(diasRestantes) {
   if (diasRestantes < 0) {
     const diasVencida = Math.abs(diasRestantes);
@@ -94,6 +112,9 @@ function montarTextoDias(diasRestantes) {
   return `termina em ${diasRestantes} dias`;
 }
 
+/**
+ * Executa a rotina montar nivel.
+ */
 function montarNivel(diasRestantes) {
   if (diasRestantes < 0) return 'danger';
   if (diasRestantes <= 3) return 'danger';
@@ -101,10 +122,16 @@ function montarNivel(diasRestantes) {
   return 'info';
 }
 
+/**
+ * Executa a rotina parse data hora.
+ */
 function parseDataHora(valor) {
   return parseUtcDateTime(valor);
 }
 
+/**
+ * Executa a rotina formatar data hora br.
+ */
 function formatarDataHoraBR(valor) {
   const data = parseDataHora(valor);
   if (!data) return '';
@@ -118,6 +145,9 @@ function formatarDataHoraBR(valor) {
   });
 }
 
+/**
+ * Executa a rotina listar usuarios destinatarios.
+ */
 async function listarUsuariosDestinatarios(cliente) {
   const usuarios = await Usuario.query()
     .withGraphFetched('role')
@@ -141,6 +171,9 @@ async function listarUsuariosDestinatarios(cliente) {
   return Array.from(ids);
 }
 
+/**
+ * Executa a rotina desativar notificacao fidelidade cliente.
+ */
 async function desativarNotificacaoFidelidadeCliente(clienteId, trx = null) {
   return Notificacao.query(trx)
     .where(function () {
@@ -150,6 +183,9 @@ async function desativarNotificacaoFidelidadeCliente(clienteId, trx = null) {
     .patch({ ativa: false, updated_at: new Date() });
 }
 
+/**
+ * Executa a rotina desativar notificacoes retorno nota.
+ */
 async function desativarNotificacoesRetornoNota(notaId, trx = null) {
   const sourceKeys = [
     `${TIPO_NOTA_RETORNO_PRE}:${notaId}`,
@@ -171,6 +207,9 @@ async function desativarNotificacoesRetornoNota(notaId, trx = null) {
     .patch({ ativa: false, updated_at: new Date() });
 }
 
+/**
+ * Executa a rotina sincronizar fidelidade cliente.
+ */
 async function sincronizarFidelidadeCliente(clienteId, trx = null) {
   const cliente = await Cliente.query(trx)
     .findById(clienteId)
@@ -282,6 +321,9 @@ async function sincronizarFidelidadeCliente(clienteId, trx = null) {
   return ultimaNotificacao;
 }
 
+/**
+ * Executa a rotina sincronizar notificacoes fidelidade.
+ */
 async function sincronizarNotificacoesFidelidade() {
   const clientes = await Cliente.query()
     .select('id')
@@ -298,6 +340,9 @@ async function sincronizarNotificacoesFidelidade() {
   }
 }
 
+/**
+ * Executa a rotina salvar notificacao retorno nota.
+ */
 async function salvarNotificacaoRetornoNota(nota, etapa, agora) {
   const retorno = parseDataHora(nota.retorno_agendado_para);
   if (!retorno) {
@@ -362,6 +407,9 @@ async function salvarNotificacaoRetornoNota(nota, etapa, agora) {
   return notificacao;
 }
 
+/**
+ * Executa a rotina sincronizar retornos notas.
+ */
 async function sincronizarRetornosNotas(usuarioId = null) {
   const agora = new Date();
   const limitePreAviso = new Date(agora.getTime() + RETORNO_PRE_AVISO_MINUTOS * 60000);
@@ -394,6 +442,9 @@ async function sincronizarRetornosNotas(usuarioId = null) {
   }
 }
 
+/**
+ * Executa a rotina parse dados.
+ */
 function parseDados(dados) {
   if (!dados) return {};
 
@@ -408,6 +459,9 @@ function parseDados(dados) {
   return dados;
 }
 
+/**
+ * Executa a rotina aplicar join destinatario usuario.
+ */
 function aplicarJoinDestinatarioUsuario(query, usuarioId) {
   return query.leftJoin('notificacao_destinatarios as nd', function () {
     this.on('nd.notificacao_id', '=', 'n.id')
@@ -415,6 +469,9 @@ function aplicarJoinDestinatarioUsuario(query, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina aplicar filtro tipos visiveis.
+ */
 function aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, podeVerAprovacoes, podeVerVendasParadas }) {
   if (!podeReceberTodas) {
     query.whereNotNull('nd.id');
@@ -432,6 +489,9 @@ function aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, pode
   return query;
 }
 
+/**
+ * Executa a rotina mapear notificacao.
+ */
 function mapearNotificacao(notificacao) {
   return {
     ...notificacao,
@@ -440,6 +500,9 @@ function mapearNotificacao(notificacao) {
   };
 }
 
+/**
+ * Executa a rotina excluir notificacoes por ids.
+ */
 async function excluirNotificacoesPorIds(notificacaoIds, trx) {
   const ids = [...new Set(notificacaoIds.map(id => Number(id)).filter(Boolean))];
   if (ids.length === 0) return 0;
@@ -455,6 +518,9 @@ async function excluirNotificacoesPorIds(notificacaoIds, trx) {
   return ids.length;
 }
 
+/**
+ * Executa a rotina buscar notificacoes sem entidade.
+ */
 async function buscarNotificacoesSemEntidade(tabela, trx) {
   const alias = tabela === 'clientes' ? 'c' : 'v';
 
@@ -470,6 +536,9 @@ async function buscarNotificacoesSemEntidade(tabela, trx) {
     .select('n.id');
 }
 
+/**
+ * Executa a rotina limpar notificacoes sem objeto referente.
+ */
 async function limparNotificacoesSemObjetoReferente() {
   return db.transaction(async trx => {
     const [notificacoesClientes, notificacoesVendas] = await Promise.all([
@@ -484,6 +553,9 @@ async function limparNotificacoesSemObjetoReferente() {
   });
 }
 
+/**
+ * Executa a rotina listar notificacoes.
+ */
 async function listarNotificacoes(usuarioId, filtros = {}) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
@@ -545,6 +617,9 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
   };
 }
 
+/**
+ * Executa a rotina listar urgentes.
+ */
 async function listarUrgentes(usuarioId) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
@@ -588,6 +663,9 @@ async function listarUrgentes(usuarioId) {
   return notificacoes.map(mapearNotificacao);
 }
 
+/**
+ * Executa a rotina marcar como lida.
+ */
 async function marcarComoLida(notificacaoId, usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -627,6 +705,9 @@ async function marcarComoLida(notificacaoId, usuarioId) {
   return true;
 }
 
+/**
+ * Executa a rotina marcar todas como lidas.
+ */
 async function marcarTodasComoLidas(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -675,6 +756,9 @@ async function marcarTodasComoLidas(usuarioId) {
   return notificacoes.length;
 }
 
+/**
+ * Executa a rotina marcar popup visto.
+ */
 async function marcarPopupVisto(notificacaoId, usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)

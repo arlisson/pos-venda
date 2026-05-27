@@ -32,6 +32,9 @@ const ALLOWED_TYPES = String(
   process.env.VENDA_ARQUIVOS_ALLOWED_TYPES || 'application/pdf,image/jpeg,image/png,image/webp'
 ).split(',').map(item => item.trim()).filter(Boolean);
 
+/**
+ * Executa a rotina buscar escopo vendas.
+ */
 async function buscarEscopoVendas(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -48,6 +51,9 @@ async function buscarEscopoVendas(usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina usuario tem permissao.
+ */
 async function usuarioTemPermissao(usuarioId, permissao) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -60,6 +66,9 @@ async function usuarioTemPermissao(usuarioId, permissao) {
   return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
+/**
+ * Executa a rotina usuario pode acessar venda.
+ */
 async function usuarioPodeAcessarVenda(vendaId, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
 
@@ -88,6 +97,9 @@ async function usuarioPodeAcessarVenda(vendaId, usuarioId) {
   return Boolean(vinculo);
 }
 
+/**
+ * Executa a rotina garantir acesso venda.
+ */
 async function garantirAcessoVenda(vendaId, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(vendaId, usuarioId);
 
@@ -98,12 +110,18 @@ async function garantirAcessoVenda(vendaId, usuarioId) {
   }
 }
 
+/**
+ * Executa a rotina adicionar dias.
+ */
 function adicionarDias(data, dias) {
   const nova = new Date(data);
   nova.setDate(nova.getDate() + dias);
   return nova;
 }
 
+/**
+ * Executa a rotina formatar arquivo venda.
+ */
 function formatarArquivoVenda(row) {
   return {
     id: row.id,
@@ -132,6 +150,9 @@ function formatarArquivoVenda(row) {
   };
 }
 
+/**
+ * Executa a rotina formatar pacote.
+ */
 function formatarPacote(pacote) {
   if (!pacote) return null;
 
@@ -150,6 +171,9 @@ function formatarPacote(pacote) {
   };
 }
 
+/**
+ * Executa a rotina listar arquivos.
+ */
 async function listarArquivos(vendaId, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
 
@@ -179,6 +203,9 @@ async function listarArquivos(vendaId, usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina receber arquivo upload.
+ */
 async function receberArquivoUpload(req, vendaId, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
 
@@ -212,6 +239,9 @@ async function receberArquivoUpload(req, vendaId, usuarioId) {
   return arquivoVenda;
 }
 
+/**
+ * Executa a rotina salvar arquivo venda.
+ */
 async function salvarArquivoVenda(vendaId, usuarioId, upload) {
   const arquivo = await materializarArquivo(upload, usuarioId);
 
@@ -240,6 +270,9 @@ async function salvarArquivoVenda(vendaId, usuarioId, upload) {
   return formatarArquivoVenda(completo);
 }
 
+/**
+ * Executa a rotina buscar vinculo arquivo.
+ */
 async function buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
 
@@ -258,6 +291,9 @@ async function buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId) {
   return vinculo;
 }
 
+/**
+ * Executa a rotina preparar download arquivo.
+ */
 async function prepararDownloadArquivo(vendaId, arquivoVendaId, usuarioId) {
   const vinculo = await buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId);
   const absPath = caminhoAbsoluto(vinculo.arquivo.storage_path);
@@ -278,6 +314,9 @@ async function prepararDownloadArquivo(vendaId, arquivoVendaId, usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina excluir arquivo venda.
+ */
 async function excluirArquivoVenda(vendaId, arquivoVendaId, usuarioId) {
   await buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId);
 
@@ -297,6 +336,9 @@ async function excluirArquivoVenda(vendaId, arquivoVendaId, usuarioId) {
   return total;
 }
 
+/**
+ * Executa a rotina obter pacote.
+ */
 async function obterPacote(vendaId, usuarioId, opcoes = {}) {
   if (opcoes.validarAcesso !== false) {
     await garantirAcessoVenda(vendaId, usuarioId);
@@ -310,6 +352,9 @@ async function obterPacote(vendaId, usuarioId, opcoes = {}) {
   return formatarPacote(pacote);
 }
 
+/**
+ * Executa a rotina solicitar pacote venda.
+ */
 async function solicitarPacoteVenda(vendaId, usuarioId, opcoes = {}) {
   if (opcoes.validarAcesso !== false) {
     await garantirAcessoVenda(vendaId, usuarioId);
@@ -347,6 +392,9 @@ async function solicitarPacoteVenda(vendaId, usuarioId, opcoes = {}) {
   return formatarPacote(pacote);
 }
 
+/**
+ * Executa a rotina gerar pacote venda.
+ */
 async function gerarPacoteVenda(vendaId, usuarioId, pacoteId = null) {
   const pacote = pacoteId
     ? await VendaArquivoPacote.query().findById(pacoteId)
@@ -415,6 +463,9 @@ async function gerarPacoteVenda(vendaId, usuarioId, pacoteId = null) {
   }
 }
 
+/**
+ * Executa a rotina nome unico zip.
+ */
 function nomeUnicoZip(nome, usados) {
   const limpo = normalizarNomeArquivo(nome);
   const ext = path.extname(limpo);
@@ -431,6 +482,9 @@ function nomeUnicoZip(nome, usados) {
   return candidato;
 }
 
+/**
+ * Executa a rotina criar zip venda.
+ */
 async function criarZipVenda(destino, arquivos) {
   await fs.promises.unlink(destino).catch(() => {});
 
@@ -456,6 +510,9 @@ async function criarZipVenda(destino, arquivos) {
   });
 }
 
+/**
+ * Executa a rotina hash arquivo.
+ */
 async function hashArquivo(absPath) {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('sha256');
@@ -474,6 +531,9 @@ async function hashArquivo(absPath) {
   });
 }
 
+/**
+ * Executa a rotina preparar download pacote.
+ */
 async function prepararDownloadPacote(vendaId, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
 
@@ -500,6 +560,9 @@ async function prepararDownloadPacote(vendaId, usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina marcar pacote desatualizado.
+ */
 async function marcarPacoteDesatualizado(vendaId) {
   await VendaArquivoPacote.query()
     .patch({
@@ -510,6 +573,9 @@ async function marcarPacoteDesatualizado(vendaId) {
     .where('status', 'pronto');
 }
 
+/**
+ * Executa a rotina limpar arquivos individuais vencidos.
+ */
 async function limparArquivosIndividuaisVencidos() {
   const vencidos = await VendaArquivo.query()
     .whereNotNull('remover_apos')

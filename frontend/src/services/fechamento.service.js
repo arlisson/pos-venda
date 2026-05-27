@@ -3,6 +3,9 @@
  */
 import { apiBlob, apiGet } from './api';
 
+/**
+ * Executa a rotina montar query.
+ */
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
   Object.entries(filtros).forEach(([chave, valor]) => {
@@ -13,22 +16,37 @@ function montarQuery(filtros = {}) {
   return qs ? `?${qs}` : '';
 }
 
+/**
+ * Executa a rotina get resumo.
+ */
 export async function getResumo(filtros = {}) {
   return apiGet(`/fechamento/resumo${montarQuery(filtros)}`);
 }
 
+/**
+ * Executa a rotina get detalhes.
+ */
 export async function getDetalhes(filtros = {}) {
   return apiGet(`/fechamento/detalhes${montarQuery(filtros)}`);
 }
 
+/**
+ * Executa a rotina get detalhes chips.
+ */
 export async function getDetalhesChips(filtros = {}) {
   return apiGet(`/fechamento/detalhes-chips${montarQuery(filtros)}`);
 }
 
+/**
+ * Executa a rotina get dossie venda.
+ */
 export async function getDossieVenda(id, filtros = {}) {
   return apiGet(`/fechamento/vendas/${id}/dossie${montarQuery(filtros)}`);
 }
 
+/**
+ * Executa a rotina baixar blob.
+ */
 function baixarBlob(blob, nomeArquivo) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -40,6 +58,9 @@ function baixarBlob(blob, nomeArquivo) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Executa a rotina exportar vendas periodo.
+ */
 export async function exportarVendasPeriodo(filtros = {}) {
   const blob = await apiBlob(`/fechamento/exportar-vendas${montarQuery(filtros)}`);
   const inicio = filtros.data_inicio || 'inicio';

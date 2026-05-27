@@ -1,13 +1,22 @@
 import * as I from '../../components/Icons';
 
+/**
+ * Executa a rotina fmt moeda.
+ */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/**
+ * Executa a rotina somar coluna.
+ */
 function somarColuna(linhas, campo) {
   return linhas.reduce((soma, linha) => soma + Number(linha[campo] || 0), 0);
 }
 
+/**
+ * Executa a rotina etapas da secao.
+ */
 function etapasDaSecao(linhas) {
   const mapa = new Map();
 
@@ -30,6 +39,9 @@ function etapasDaSecao(linhas) {
   return Array.from(mapa.values()).filter(etapa => etapa.vendas > 0 || etapa.ugrs > 0);
 }
 
+/**
+ * Executa a rotina etapas resumo.
+ */
 function EtapasResumo({ etapas }) {
   if (!etapas.length) return null;
 
@@ -51,6 +63,9 @@ function EtapasResumo({ etapas }) {
   );
 }
 
+/**
+ * Executa a rotina fechamento secao.
+ */
 function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, secao, loading }) {
   const totais = {
     total_vendas: somarColuna(linhas, 'total_vendas'),

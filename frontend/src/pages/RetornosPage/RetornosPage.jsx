@@ -9,6 +9,9 @@ import { parseUtcDateTime } from '../../utils/datetime';
 import { formatarNomeServico } from '../../utils/servicos';
 import './RetornosPage.css';
 
+/**
+ * Executa a rotina format brl.
+ */
 const formatBRL = (value) =>
   Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -23,10 +26,16 @@ const RETURN_REASON_GROUPS = [
 
 const FALLBACK_STAGE_LABELS = Object.fromEntries(STAGES.map(stage => [stage.id, stage.name]));
 
+/**
+ * Executa a rotina classify reason.
+ */
 function classifyReason(reason) {
   return RETURN_REASON_GROUPS.find(group => group.match(reason || '')) || RETURN_REASON_GROUPS.at(-1);
 }
 
+/**
+ * Executa a rotina rel time.
+ */
 function relTime(value) {
   if (!value) return 'recentemente';
 
@@ -39,34 +48,58 @@ function relTime(value) {
   return `há ${days} dias`;
 }
 
+/**
+ * Executa a rotina get operator.
+ */
 function getOperator(venda) {
   return venda.operadora?.nome || venda.operadora || 'Sem operadora';
 }
 
+/**
+ * Executa a rotina get plan.
+ */
 function getPlan(venda) {
   return venda.produto_fechado || formatarNomeServico(venda.servico?.nome) || venda.tipoVenda?.nome || 'Plano não informado';
 }
 
+/**
+ * Executa a rotina get seller.
+ */
 function getSeller(venda) {
   return venda.vendedora?.nome || venda.nome_fechou_venda || 'Sem vendedor';
 }
 
+/**
+ * Executa a rotina get client.
+ */
 function getClient(venda) {
   return venda.nome || venda.razao_social || `Venda #${venda.id}`;
 }
 
+/**
+ * Executa a rotina get value.
+ */
 function getValue(venda) {
   return Number(venda.valor_total || 0);
 }
 
+/**
+ * Executa a rotina get return date.
+ */
 function getReturnDate(venda) {
   return venda.retornou_em || venda.updated_at || venda.ultima_atividade_em;
 }
 
+/**
+ * Executa a rotina get destination.
+ */
 function getDestination(venda) {
   return venda.status_anterior_retorno || 'aprovacao';
 }
 
+/**
+ * Executa a rotina parse historico dados.
+ */
 function parseHistoricoDados(dados) {
   if (!dados) return {};
   if (typeof dados === 'string') {
@@ -79,6 +112,9 @@ function parseHistoricoDados(dados) {
   return dados;
 }
 
+/**
+ * Executa a rotina get return observation.
+ */
 function getReturnObservation(venda) {
   const historico = Array.isArray(venda.historico) ? venda.historico : [];
   const registro = historico.find(item => (
@@ -92,6 +128,9 @@ function getReturnObservation(venda) {
   return dados.observacao || registro.observacao || '';
 }
 
+/**
+ * Executa a rotina resolve return modal.
+ */
 function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
@@ -99,6 +138,9 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
   const destination = getDestination(venda);
   const returnObservation = getReturnObservation(venda);
 
+  /**
+   * Executa a rotina handle submit.
+   */
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -184,6 +226,9 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
   );
 }
 
+/**
+ * Executa a rotina retornos page.
+ */
 function RetornosPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [operatorFilter, setOperatorFilter] = useState('todas');
@@ -195,6 +240,9 @@ function RetornosPage() {
   const [selectedReturn, setSelectedReturn] = useState(null);
   const [stageLabels, setStageLabels] = useState(FALLBACK_STAGE_LABELS);
 
+  /**
+   * Executa a rotina carregar retornos.
+   */
   async function carregarRetornos() {
     setLoading(true);
     setError('');
@@ -269,6 +317,9 @@ function RetornosPage() {
     .sort((a, b) => b.count - a.count)[0];
   const taxaRetorno = ((allReturns.length / Math.max(allSales.length, 1)) * 100).toFixed(1);
 
+  /**
+   * Executa a rotina handle resolve return.
+   */
   async function handleResolveReturn(venda, note) {
     const destination = getDestination(venda);
     await atualizarStatusVenda(venda.id, {

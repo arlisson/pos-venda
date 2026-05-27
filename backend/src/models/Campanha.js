@@ -3,14 +3,23 @@ const db = require('../database/connection');
 const PERIODOS_VALIDOS = ['diaria', 'semanal', 'mensal'];
 const CATEGORIAS_VALIDAS = ['registro_cliente', 'chip_novo', 'portabilidade', 'internet'];
 
+/**
+ * Executa a rotina montar tipo.
+ */
 function montarTipo(periodo, categoria) {
   return `${periodo}_${categoria}`;
 }
 
+/**
+ * Executa a rotina is gift.
+ */
 function isGift(campanha) {
   return campanha.is_gift === true || campanha.is_gift === 1 || campanha.is_gift === '1';
 }
 
+/**
+ * Executa a rotina normalizar campanha.
+ */
 function normalizarCampanha(campanha) {
   const periodo = PERIODOS_VALIDOS.includes(campanha.periodo) ? campanha.periodo : 'diaria';
   const categoria = CATEGORIAS_VALIDAS.includes(campanha.categoria) ? campanha.categoria : 'registro_cliente';

@@ -131,12 +131,18 @@ const FUNIL_PRIORIDADES = ['alta', 'media', 'baixa'];
 const PROMESSA_CUMPRIDA_OPCOES = ['pendente', 'sim', 'nao'];
 const CLIENTE_SOLICITOU_RESOLVIDO_OPCOES = ['sim', 'nao'];
 
+/**
+ * Executa a rotina limpar valor.
+ */
 function limparValor(valor) {
   if (valor === undefined) return undefined;
   if (valor === '') return null;
   return valor;
 }
 
+/**
+ * Executa a rotina normalizar ids filtro.
+ */
 function normalizarIdsFiltro(valor) {
   const valores = Array.isArray(valor) ? valor : String(valor || '').split(',');
   return Array.from(new Set(
@@ -146,6 +152,9 @@ function normalizarIdsFiltro(valor) {
   ));
 }
 
+/**
+ * Executa a rotina obter tipo linha por nome tipo venda.
+ */
 function obterTipoLinhaPorNomeTipoVenda(nome) {
   const texto = normalizarTextoBusca(nome);
   if (texto.includes('porta')) return 'portabilidade';
@@ -153,6 +162,9 @@ function obterTipoLinhaPorNomeTipoVenda(nome) {
   return '';
 }
 
+/**
+ * Executa a rotina obter tipo linha filtro tipo venda.
+ */
 async function obterTipoLinhaFiltroTipoVenda(tipoVendaId) {
   const id = Number(tipoVendaId);
   if (!Number.isInteger(id) || id <= 0) return '';
@@ -165,6 +177,9 @@ async function obterTipoLinhaFiltroTipoVenda(tipoVendaId) {
   return obterTipoLinhaPorNomeTipoVenda(tipoVenda?.nome);
 }
 
+/**
+ * Executa a rotina aplicar filtro tipo linha chips.
+ */
 function aplicarFiltroTipoLinhaChips(builder, tipoLinha) {
   const coluna = "REPLACE(COALESCE(valores_unitarios_chips, ''), ' ', '')";
   const tipo = String(tipoLinha || '').trim();
@@ -175,6 +190,9 @@ function aplicarFiltroTipoLinhaChips(builder, tipoLinha) {
     .orWhereRaw(`${coluna} like ?`, [`%"categoria":"${tipo}"%`]);
 }
 
+/**
+ * Executa a rotina aplicar filtro tipo venda.
+ */
 async function aplicarFiltroTipoVenda(query, tipoVendaId) {
   const id = Number(tipoVendaId);
   if (!Number.isInteger(id) || id <= 0) return;
@@ -201,14 +219,23 @@ async function aplicarFiltroTipoVenda(query, tipoVendaId) {
   });
 }
 
+/**
+ * Executa a rotina apenas digitos.
+ */
 function apenasDigitos(valor) {
   return String(valor || '').replace(/\D/g, '');
 }
 
+/**
+ * Executa a rotina sql somente digitos.
+ */
 function sqlSomenteDigitos(coluna) {
   return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${coluna}, '.', ''), '/', ''), '-', ''), '(', ''), ')', ''), ' ', '')`;
 }
 
+/**
+ * Executa a rotina aplicar busca geral vendas.
+ */
 function aplicarBuscaGeralVendas(query, valor) {
   const busca = `%${String(valor || '').trim()}%`;
   const digitos = apenasDigitos(valor);
@@ -281,6 +308,9 @@ function aplicarBuscaGeralVendas(query, valor) {
   });
 }
 
+/**
+ * Executa a rotina aplicar busca campo vendas.
+ */
 async function aplicarBuscaCampoVendas(query, filtros = {}) {
   const campo = String(filtros.busca_campo || '').trim();
   const valor = String(filtros.busca_valor || '').trim();
@@ -364,6 +394,9 @@ async function aplicarBuscaCampoVendas(query, filtros = {}) {
   }
 }
 
+/**
+ * Executa a rotina normalizar data.
+ */
 function normalizarData(valor) {
   if (!valor) return null;
 
@@ -404,7 +437,13 @@ function normalizarData(valor) {
   return `${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
 }
 
+/**
+ * Executa a rotina formatar date time sql.
+ */
 function formatarDateTimeSQL(data = new Date()) {
+  /**
+   * Executa a rotina pad.
+   */
   const pad = (value) => String(value).padStart(2, '0');
 
   return [
@@ -418,10 +457,16 @@ function formatarDateTimeSQL(data = new Date()) {
   ].join(':');
 }
 
+/**
+ * Executa a rotina montar dados historico.
+ */
 function montarDadosHistorico(dados = {}) {
   return JSON.stringify(dados);
 }
 
+/**
+ * Executa a rotina registrar historico venda.
+ */
 async function registrarHistoricoVenda({
   vendaId,
   usuarioId,
@@ -445,6 +490,9 @@ async function registrarHistoricoVenda({
   });
 }
 
+/**
+ * Executa a rotina copiar notas cliente para venda.
+ */
 async function copiarNotasClienteParaVenda({ clienteId, vendaId, createdAt, trx }) {
   if (!clienteId || !vendaId) return 0;
 
@@ -472,6 +520,9 @@ async function copiarNotasClienteParaVenda({ clienteId, vendaId, createdAt, trx 
   return notasCliente.length;
 }
 
+/**
+ * Executa a rotina parse valor monetario.
+ */
 function parseValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
 
@@ -490,10 +541,16 @@ function parseValorMonetario(valor) {
   return Number(texto) || 0;
 }
 
+/**
+ * Executa a rotina normalizar gigas.
+ */
 function normalizarGigas(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 4);
 }
 
+/**
+ * Executa a rotina normalizar tipo linha chip.
+ */
 function normalizarTipoLinhaChip(valor) {
   const texto = String(valor || '')
     .normalize('NFD')
@@ -504,6 +561,9 @@ function normalizarTipoLinhaChip(valor) {
   return texto.includes('porta') ? 'portabilidade' : 'novo';
 }
 
+/**
+ * Executa a rotina normalizar texto busca.
+ */
 function normalizarTextoBusca(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -512,6 +572,9 @@ function normalizarTextoBusca(valor) {
     .trim();
 }
 
+/**
+ * Executa a rotina normalizar itens chips.
+ */
 function normalizarItensChips(valor) {
   if (!valor) return [];
 
@@ -555,6 +618,9 @@ function normalizarItensChips(valor) {
   return [];
 }
 
+/**
+ * Executa a rotina calcular total chips.
+ */
 function calcularTotalChips(itens) {
   const total = itens.reduce((acc, item) => {
     return acc + (Number(item.quantidade || 0) * Number(item.valor_unitario || 0));
@@ -563,10 +629,16 @@ function calcularTotalChips(itens) {
   return Number(total.toFixed(2));
 }
 
+/**
+ * Executa a rotina somar quantidade itens chips.
+ */
 function somarQuantidadeItensChips(itens) {
   return itens.reduce((acc, item) => acc + Number(item.quantidade || 0), 0);
 }
 
+/**
+ * Executa a rotina resumir gigas itens chips.
+ */
 function resumirGigasItensChips(itens) {
   return Array.from(new Set(
     itens
@@ -575,6 +647,9 @@ function resumirGigasItensChips(itens) {
   )).join(', ');
 }
 
+/**
+ * Executa a rotina normalizar ids vendedoras.
+ */
 function normalizarIdsVendedoras(vendedoras) {
   if (!Array.isArray(vendedoras)) return [];
 
@@ -592,6 +667,9 @@ function normalizarIdsVendedoras(vendedoras) {
   ));
 }
 
+/**
+ * Executa a rotina validar vendedoras nos chips.
+ */
 function validarVendedorasNosChips(payload, vendedorasIds = []) {
   if (vendedorasIds.length <= 1) return;
   if (payload.valores_unitarios_chips === undefined) return;
@@ -615,6 +693,9 @@ function validarVendedorasNosChips(payload, vendedorasIds = []) {
   }
 }
 
+/**
+ * Executa a rotina conjuntos iguais.
+ */
 function conjuntosIguais(a = [], b = []) {
   const setA = new Set(a.map(Number));
   const setB = new Set(b.map(Number));
@@ -623,6 +704,9 @@ function conjuntosIguais(a = [], b = []) {
   return Array.from(setA).every(item => setB.has(item));
 }
 
+/**
+ * Executa a rotina validar permissao compartilhar venda.
+ */
 async function validarPermissaoCompartilharVenda({ usuarioId, vendedorasIds = [], vendaId = null }) {
   if (!Array.isArray(vendedorasIds)) return;
 
@@ -663,6 +747,9 @@ async function validarPermissaoCompartilharVenda({ usuarioId, vendedorasIds = []
 const CLIENTE_SOLICITOU_SERVICOS = ['bloqueio', 'cancelamento', 'nenhum_servico'];
 const CLIENTE_SOLICITOU_ACOES = ['bloqueio', 'cancelamento'];
 
+/**
+ * Executa a rotina normalizar cliente solicitou servicos.
+ */
 function normalizarClienteSolicitouServicos(valor) {
   if (!valor) return [];
 
@@ -687,6 +774,9 @@ function normalizarClienteSolicitouServicos(valor) {
     : CLIENTE_SOLICITOU_ACOES.filter(item => servicos.includes(item));
 }
 
+/**
+ * Executa a rotina validar campos obrigatorios cadastro venda.
+ */
 function validarCamposObrigatoriosCadastroVenda(payload, dados) {
   if (!Number.isInteger(payload.cliente_id) || payload.cliente_id <= 0) {
     throw new Error('Selecione um cliente para cadastrar a venda.');
@@ -705,6 +795,9 @@ function validarCamposObrigatoriosCadastroVenda(payload, dados) {
   }
 }
 
+/**
+ * Executa a rotina normalizar numeros lista.
+ */
 function normalizarNumerosLista(valor) {
   if (!valor) return [];
 
@@ -725,6 +818,9 @@ function normalizarNumerosLista(valor) {
     .filter(item => item.replace(/\D/g, '').length > 2);
 }
 
+/**
+ * Executa a rotina normalizar cliente solicitou numeros.
+ */
 function normalizarClienteSolicitouNumeros(valor) {
   if (!valor) return { bloqueio: [], cancelamento: [] };
 
@@ -748,6 +844,9 @@ function normalizarClienteSolicitouNumeros(valor) {
   };
 }
 
+/**
+ * Executa a rotina montar payload.
+ */
 function montarPayload(dados) {
   const payload = {};
 
@@ -875,6 +974,9 @@ function montarPayload(dados) {
   return payload;
 }
 
+/**
+ * Executa a rotina aplicar dados cliente na venda.
+ */
 function aplicarDadosClienteNaVenda(payload, cliente) {
   if (!cliente) {
     return payload;
@@ -928,6 +1030,9 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
   };
 }
 
+/**
+ * Executa a rotina resolver operadora atual cliente.
+ */
 function resolverOperadoraAtualCliente(cliente, operadoraVendaId, valorAtual = null) {
   if (valorAtual) return Number(valorAtual);
 
@@ -942,6 +1047,9 @@ function resolverOperadoraAtualCliente(cliente, operadoraVendaId, valorAtual = n
   return cliente.operadora_atual_id || cliente.operadoraAtual?.id || null;
 }
 
+/**
+ * Executa a rotina normalizar paginacao.
+ */
 function normalizarPaginacao(filtros = {}) {
   const opcoesPorPagina = new Set([20, 50, 100]);
   const page = Math.max(Number.parseInt(filtros.page, 10) || 1, 1);
@@ -950,6 +1058,9 @@ function normalizarPaginacao(filtros = {}) {
   return { page, perPage };
 }
 
+/**
+ * Executa a rotina buscar escopo vendas.
+ */
 async function buscarEscopoVendas(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -966,6 +1077,9 @@ async function buscarEscopoVendas(usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina buscar cliente para payload venda.
+ */
 async function buscarClienteParaPayloadVenda(clienteId, usuarioId, vendaAtual = null) {
   if (!clienteId) return null;
 
@@ -978,6 +1092,9 @@ async function buscarClienteParaPayloadVenda(clienteId, usuarioId, vendaAtual = 
   return clienteService.buscarClientePorId(clienteId, usuarioId);
 }
 
+/**
+ * Executa a rotina buscar permissoes usuario.
+ */
 async function buscarPermissoesUsuario(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -993,6 +1110,9 @@ async function buscarPermissoesUsuario(usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina usuario tem permissao.
+ */
 async function usuarioTemPermissao(usuarioId, permissao) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
@@ -1001,10 +1121,16 @@ async function usuarioTemPermissao(usuarioId, permissao) {
   return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
+/**
+ * Executa a rotina protocolo preenchido.
+ */
 function protocoloPreenchido(valor) {
   return String(valor || '').trim();
 }
 
+/**
+ * Executa a rotina validar protocolo cliente.
+ */
 async function validarProtocoloCliente(payload, usuarioId, vendaAtual = null) {
   const protocoloFoiEnviado = Object.prototype.hasOwnProperty.call(payload, 'protocolo');
   const clienteFoiEnviado = Object.prototype.hasOwnProperty.call(payload, 'cliente_id');
@@ -1031,7 +1157,13 @@ async function validarProtocoloCliente(payload, usuarioId, vendaAtual = null) {
   // Protocolo pertence a venda. Outras vendas do mesmo cliente podem ter protocolos próprios.
 }
 
+/**
+ * Executa a rotina aplicar escopo vendas.
+ */
 function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
+  /**
+   * Executa a rotina campo.
+   */
   const campo = (nome) => alias ? `${alias}.${nome}` : nome;
   const tabelaVendas = alias || 'vendas';
 
@@ -1066,10 +1198,16 @@ function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
   return query;
 }
 
+/**
+ * Executa a rotina data referencia venda sql.
+ */
 function dataReferenciaVendaSQL(alias = 'v') {
   return `COALESCE(NULLIF(NULLIF(${alias}.data_venda, '0000-00-00'), '1899-11-30'), NULLIF(DATE(${alias}.criado_em), '0000-00-00'), DATE(${alias}.created_at))`;
 }
 
+/**
+ * Executa a rotina formatar data iso.
+ */
 function formatarDataISO(data) {
   return [
     data.getFullYear(),
@@ -1078,12 +1216,18 @@ function formatarDataISO(data) {
   ].join('-');
 }
 
+/**
+ * Executa a rotina adicionar dias.
+ */
 function adicionarDias(data, dias) {
   const novaData = new Date(data);
   novaData.setDate(novaData.getDate() + dias);
   return novaData;
 }
 
+/**
+ * Executa a rotina criar data local iso.
+ */
 function criarDataLocalISO(dataISO) {
   const normalizada = normalizarData(dataISO);
   if (!normalizada) return null;
@@ -1092,6 +1236,9 @@ function criarDataLocalISO(dataISO) {
   return new Date(ano, mes - 1, dia);
 }
 
+/**
+ * Executa a rotina adicionar meses data iso.
+ */
 function adicionarMesesDataISO(dataISO, meses) {
   const data = criarDataLocalISO(dataISO);
   if (!data) return null;
@@ -1108,17 +1255,26 @@ function adicionarMesesDataISO(dataISO, meses) {
   return formatarDataISO(destino);
 }
 
+/**
+ * Executa a rotina obter data limite concluida antiga.
+ */
 function obterDataLimiteConcluidaAntiga(referencia = new Date()) {
   const dataReferencia = parseUtcDateTime(referencia) || new Date();
   return adicionarDias(dataReferencia, -DIAS_OCULTAR_CONCLUIDAS_FUNIL);
 }
 
+/**
+ * Executa a rotina obter ultima atividade funil.
+ */
 function obterUltimaAtividadeFunil(venda = {}) {
   return parseUtcDateTime(venda.ultima_atividade_em)
     || parseUtcDateTime(venda.updated_at)
     || parseUtcDateTime(venda.created_at);
 }
 
+/**
+ * Executa a rotina venda deve aparecer no funil.
+ */
 function vendaDeveAparecerNoFunil(venda = {}, etapaFinal = 'concluido', referencia = new Date()) {
   if (venda.status_funil !== etapaFinal) return true;
 
@@ -1128,6 +1284,9 @@ function vendaDeveAparecerNoFunil(venda = {}, etapaFinal = 'concluido', referenc
   return ultimaAtividade > obterDataLimiteConcluidaAntiga(referencia);
 }
 
+/**
+ * Executa a rotina resolver periodo relatorio.
+ */
 function resolverPeriodoRelatorio(filtros = {}) {
   const hoje = new Date();
   const periodo = filtros.periodo || 'mes_atual';
@@ -1170,6 +1329,9 @@ function resolverPeriodoRelatorio(filtros = {}) {
   };
 }
 
+/**
+ * Executa a rotina obter quantidade chips venda.
+ */
 function obterQuantidadeChipsVenda(venda) {
   let totalItens = 0;
 
@@ -1196,6 +1358,9 @@ function obterQuantidadeChipsVenda(venda) {
   return quantidadeLinhas > 0 ? quantidadeLinhas : 1;
 }
 
+/**
+ * Executa a rotina obter resumo vendedora relatorio.
+ */
 function obterResumoVendedoraRelatorio(venda, vendedoraId, usuariosPorId = new Map()) {
   const id = vendedoraId ? Number(vendedoraId) : null;
   const usuario = id ? usuariosPorId.get(id) : null;
@@ -1208,11 +1373,17 @@ function obterResumoVendedoraRelatorio(venda, vendedoraId, usuariosPorId = new M
   };
 }
 
+/**
+ * Executa a rotina montar atribuicoes vendedoras venda.
+ */
 function montarAtribuicoesVendedorasVenda(venda, usuariosPorId = new Map()) {
   const mapa = new Map();
   const itensChips = normalizarItensChips(venda.valores_unitarios_chips);
   const fallbackVendedoraId = venda.vendedora_id ? Number(venda.vendedora_id) : null;
 
+  /**
+   * Executa a rotina adicionar.
+   */
   function adicionar(vendedoraId, valor, chips) {
     const resumo = obterResumoVendedoraRelatorio(venda, vendedoraId, usuariosPorId);
     const chave = resumo.id || 'sem_vendedor';
@@ -1245,12 +1416,18 @@ function montarAtribuicoesVendedorasVenda(venda, usuariosPorId = new Map()) {
   }));
 }
 
+/**
+ * Executa a rotina obter atribuicao vendedora venda.
+ */
 function obterAtribuicaoVendedoraVenda(venda, vendedoraId, usuariosPorId = new Map()) {
   const id = Number(vendedoraId);
   return montarAtribuicoesVendedorasVenda(venda, usuariosPorId)
     .find(item => item.id && Number(item.id) === id) || null;
 }
 
+/**
+ * Executa a rotina filtrar vendas relatorio por vendedora.
+ */
 function filtrarVendasRelatorioPorVendedora(vendas = [], vendedoraId, usuariosPorId = new Map()) {
   if (!vendedoraId) return vendas;
 
@@ -1276,6 +1453,9 @@ function filtrarVendasRelatorioPorVendedora(vendas = [], vendedoraId, usuariosPo
     .filter(Boolean);
 }
 
+/**
+ * Executa a rotina montar dados sincronizacao cliente venda.
+ */
 function montarDadosSincronizacaoClienteVenda(venda, dataConclusao = new Date()) {
   const clienteId = Number(venda?.cliente_id || 0);
   const operadoraVendidaId = Number(venda?.operadora_id || 0);
@@ -1299,6 +1479,9 @@ function montarDadosSincronizacaoClienteVenda(venda, dataConclusao = new Date())
   };
 }
 
+/**
+ * Executa a rotina atualizar resumo legado cliente apos venda.
+ */
 async function atualizarResumoLegadoClienteAposVenda(clienteId, operadoraPreferencialId, trx) {
   const operadoras = await ClienteOperadora.query(trx)
     .where('cliente_id', clienteId)
@@ -1320,6 +1503,9 @@ async function atualizarResumoLegadoClienteAposVenda(clienteId, operadoraPrefere
   });
 }
 
+/**
+ * Executa a rotina sincronizar cliente com venda concluida.
+ */
 async function sincronizarClienteComVendaConcluida(venda, dataConclusao, trx) {
   const dados = montarDadosSincronizacaoClienteVenda(venda, dataConclusao);
 
@@ -1355,6 +1541,9 @@ async function sincronizarClienteComVendaConcluida(venda, dataConclusao, trx) {
   return dados.clienteId;
 }
 
+/**
+ * Executa a rotina sincronizar notificacao fidelidade cliente.
+ */
 async function sincronizarNotificacaoFidelidadeCliente(clienteId) {
   if (!clienteId) return;
 
@@ -1365,10 +1554,16 @@ async function sincronizarNotificacaoFidelidadeCliente(clienteId) {
   }
 }
 
+/**
+ * Executa a rotina somar valor vendas.
+ */
 function somarValorVendas(vendas = []) {
   return Number(vendas.reduce((total, venda) => total + Number(venda.valor_total || 0), 0).toFixed(2));
 }
 
+/**
+ * Executa a rotina montar resumo agrupado.
+ */
 function montarResumoAgrupado(mapa) {
   return Array.from(mapa.values())
     .map(item => ({
@@ -1378,6 +1573,9 @@ function montarResumoAgrupado(mapa) {
     .sort((a, b) => b.valor - a.valor);
 }
 
+/**
+ * Executa a rotina montar resumo fases.
+ */
 function montarResumoFases(vendas = []) {
   const statusEncontrados = Array.from(new Set(
     vendas
@@ -1423,6 +1621,9 @@ function montarResumoFases(vendas = []) {
   }));
 }
 
+/**
+ * Executa a rotina listar etapas funil ordenadas.
+ */
 async function listarEtapasFunilOrdenadas() {
   try {
     const etapas = await FunilEtapa.query()
@@ -1461,6 +1662,9 @@ async function listarEtapasFunilOrdenadas() {
     }));
 }
 
+/**
+ * Executa a rotina obter codigo etapa final.
+ */
 async function obterCodigoEtapaFinal() {
   try {
     const etapa = await FunilEtapa.query()
@@ -1475,6 +1679,9 @@ async function obterCodigoEtapaFinal() {
   }
 }
 
+/**
+ * Executa a rotina solicitar pacote se venda finalizada.
+ */
 async function solicitarPacoteSeVendaFinalizada(venda, usuarioId, etapaFinal = null) {
   const codigoFinal = etapaFinal || await obterCodigoEtapaFinal();
 
@@ -1488,14 +1695,23 @@ async function solicitarPacoteSeVendaFinalizada(venda, usuarioId, etapaFinal = n
     });
 }
 
+/**
+ * Executa a rotina status preenche data ativacao.
+ */
 async function statusPreencheDataAtivacao(status, etapaFinal) {
   return Boolean(status && status === etapaFinal);
 }
 
+/**
+ * Executa a rotina enviar venda criada automaticamente para pos venda.
+ */
 async function enviarVendaCriadaAutomaticamenteParaPosVenda(venda, usuarioId, agora, trx) {
   return enviarVendaParaPosVendaLiberada(venda, usuarioId, agora, trx, { envioAutomatico: true });
 }
 
+/**
+ * Executa a rotina enviar venda para pos venda liberada.
+ */
 async function enviarVendaParaPosVendaLiberada(venda, usuarioId, agora, trx, opcoes = {}) {
   const etapas = await listarEtapasFunilOrdenadas();
   const primeiraEtapa = etapas[0]?.id || 'aprovacao';
@@ -1530,6 +1746,9 @@ async function enviarVendaParaPosVendaLiberada(venda, usuarioId, agora, trx, opc
   return atualizada;
 }
 
+/**
+ * Executa a rotina montar resumo fases dinamico.
+ */
 async function montarResumoFasesDinamico(vendas = []) {
   const etapas = await listarEtapasFunilOrdenadas();
   const statusBase = [...etapas.map(etapa => etapa.id), 'retorno'];
@@ -1581,6 +1800,9 @@ async function montarResumoFasesDinamico(vendas = []) {
   }));
 }
 
+/**
+ * Executa a rotina usuario pode acessar venda.
+ */
 async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
   const escopo = await buscarEscopoVendas(usuarioId);
 
@@ -1621,6 +1843,9 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
   return Boolean(vinculo);
 }
 
+/**
+ * Executa a rotina usuario pode editar venda.
+ */
 async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
   const permissoes = await buscarPermissoesUsuario(usuarioId);
 
@@ -1648,6 +1873,9 @@ async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
   return Boolean(vinculo);
 }
 
+/**
+ * Executa a rotina listar vendas.
+ */
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
@@ -1775,6 +2003,9 @@ async function listarVendas(filtros = {}, usuarioId) {
   return query;
 }
 
+/**
+ * Executa a rotina valor data excel.
+ */
 function valorDataExcel(valor) {
   const data = normalizarData(valor);
   if (!data) return null;
@@ -1785,6 +2016,9 @@ function valorDataExcel(valor) {
   return new Date(Date.UTC(ano, mes - 1, dia));
 }
 
+/**
+ * Executa a rotina nome arquivo seguro.
+ */
 function nomeArquivoSeguro(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -1794,6 +2028,9 @@ function nomeArquivoSeguro(valor) {
     .slice(0, 80) || 'exportacao';
 }
 
+/**
+ * Executa a rotina aplicar estilo exportacao.
+ */
 function aplicarEstiloExportacao(worksheet) {
   worksheet.views = [{ state: 'frozen', ySplit: 1 }];
   worksheet.autoFilter = {
@@ -1823,6 +2060,9 @@ function aplicarEstiloExportacao(worksheet) {
   });
 }
 
+/**
+ * Executa a rotina nomes vendedoras exportacao.
+ */
 function nomesVendedorasExportacao(venda) {
   const nomes = Array.isArray(venda.vendedoras)
     ? venda.vendedoras.map(item => item.nome).filter(Boolean)
@@ -1832,11 +2072,17 @@ function nomesVendedorasExportacao(venda) {
   return venda.vendedora?.nome || '';
 }
 
+/**
+ * Executa a rotina status venda exportacao.
+ */
 function statusVendaExportacao(venda) {
   if (venda.cancelada_em) return 'Cancelada';
   return venda.status_funil || '';
 }
 
+/**
+ * Executa a rotina gerar xlsx vendas.
+ */
 async function gerarXlsxVendas(filtros = {}, usuarioId) {
   const filtrosExportacao = { ...filtros };
   delete filtrosExportacao.page;
@@ -1918,10 +2164,16 @@ async function gerarXlsxVendas(filtros = {}, usuarioId) {
   return { buffer, nome: `vendas-${nomeArquivoSeguro(data)}.xlsx` };
 }
 
+/**
+ * Executa a rotina obter referencias clientes.
+ */
 async function obterReferenciasClientes(usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const etapaFinal = await obterCodigoEtapaFinal();
   const knex = Venda.knex();
+  /**
+   * Executa a rotina montar base.
+   */
   const montarBase = () => {
     const query = Venda.query().whereNull('excluido_em');
     aplicarEscopoVendas(query, usuarioId, escopo);
@@ -1929,6 +2181,9 @@ async function obterReferenciasClientes(usuarioId) {
   };
 
   const porChave = new Map();
+  /**
+   * Executa a rotina adicionar.
+   */
   const adicionar = (chave, linha) => {
     if (!chave) return;
     porChave.set(chave, {
@@ -1972,6 +2227,9 @@ async function obterReferenciasClientes(usuarioId) {
   return Array.from(porChave.values());
 }
 
+/**
+ * Executa a rotina verificar ids vendas ativas.
+ */
 async function verificarIdsVendasAtivas(ids = [], usuarioId) {
   const vendaIds = Array.from(new Set(ids.map(Number).filter(Number.isInteger).filter(id => id > 0)));
 
@@ -1990,6 +2248,9 @@ async function verificarIdsVendasAtivas(ids = [], usuarioId) {
   return linhas.map(linha => Number(linha.id)).filter(Boolean);
 }
 
+/**
+ * Executa a rotina obter contexto dashboard.
+ */
 async function obterContextoDashboard({ usuarioId, vendaIds = [] }) {
   const [clientes, referenciasClientes, vendasAtivasIds, vendasRetorno] = await Promise.all([
     clienteService.listarClientesSelect({ limite: 300 }, usuarioId),
@@ -2006,6 +2267,9 @@ async function obterContextoDashboard({ usuarioId, vendaIds = [] }) {
   };
 }
 
+/**
+ * Executa a rotina listar vendas retorno resumo.
+ */
 async function listarVendasRetornoResumo(usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
@@ -2036,6 +2300,9 @@ async function listarVendasRetornoResumo(usuarioId) {
   return query;
 }
 
+/**
+ * Executa a rotina obter resumo dashboard.
+ */
 async function obterResumoDashboard(usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const dataReferencia = dataReferenciaVendaSQL('v');
@@ -2100,6 +2367,9 @@ async function obterResumoDashboard(usuarioId) {
   };
 }
 
+/**
+ * Executa a rotina construir query relatorio.
+ */
 function construirQueryRelatorio({ dataInicio, dataFimExclusiva, dataReferencia }) {
   const query = Venda.query()
     .alias('v')
@@ -2126,6 +2396,9 @@ function construirQueryRelatorio({ dataInicio, dataFimExclusiva, dataReferencia 
   return query;
 }
 
+/**
+ * Executa a rotina carregar usuarios atribuicoes relatorio.
+ */
 async function carregarUsuariosAtribuicoesRelatorio(vendas = []) {
   const ids = new Set();
 
@@ -2145,6 +2418,9 @@ async function carregarUsuariosAtribuicoesRelatorio(vendas = []) {
   return new Map(usuarios.map(usuario => [Number(usuario.id), usuario]));
 }
 
+/**
+ * Executa a rotina resolver periodo anterior.
+ */
 function resolverPeriodoAnterior(periodo) {
   const inicio = criarDataLocalISO(periodo.dataInicio);
   const fim = criarDataLocalISO(periodo.dataFim);
@@ -2161,6 +2437,9 @@ function resolverPeriodoAnterior(periodo) {
   };
 }
 
+/**
+ * Executa a rotina agregar vendas periodo.
+ */
 function agregarVendasPeriodo(vendas, etapaFinal) {
   const vendasAndamento = vendas.filter(venda => ![etapaFinal, 'retorno'].includes(venda.status_funil));
   const vendasConcluidas = vendas.filter(venda => venda.status_funil === etapaFinal);
@@ -2205,6 +2484,9 @@ function agregarVendasPeriodo(vendas, etapaFinal) {
   };
 }
 
+/**
+ * Executa a rotina montar serie diaria relatorio.
+ */
 function montarSerieDiariaRelatorio(vendas, periodo) {
   const mapa = new Map();
 
@@ -2240,6 +2522,9 @@ function montarSerieDiariaRelatorio(vendas, periodo) {
   return serie;
 }
 
+/**
+ * Executa a rotina montar motivos retorno relatorio.
+ */
 function montarMotivosRetornoRelatorio(vendasRetorno) {
   const mapa = new Map();
 
@@ -2254,6 +2539,9 @@ function montarMotivosRetornoRelatorio(vendasRetorno) {
     .sort((a, b) => b.quantidade - a.quantidade);
 }
 
+/**
+ * Executa a rotina obter relatorios vendas.
+ */
 async function obterRelatoriosVendas(filtros = {}) {
   const periodo = resolverPeriodoRelatorio(filtros);
   const periodoAnterior = resolverPeriodoAnterior(periodo);
@@ -2370,6 +2658,9 @@ async function obterRelatoriosVendas(filtros = {}) {
   };
 }
 
+/**
+ * Executa a rotina salvar vendedoras.
+ */
 async function salvarVendedoras(vendaId, vendedorasIds, trx) {
   await trx('venda_vendedoras').where('venda_id', vendaId).delete();
   if (!vendedorasIds || vendedorasIds.length === 0) return null;
@@ -2382,6 +2673,9 @@ async function salvarVendedoras(vendaId, vendedorasIds, trx) {
   return Number(vendedorasIds[0]);
 }
 
+/**
+ * Executa a rotina buscar venda por id.
+ */
 async function buscarVendaPorId(id, usuarioId) {
   const escopo = usuarioId ? await buscarEscopoVendas(usuarioId) : { podeVerTodas: true };
   const query = Venda.query()
@@ -2401,6 +2695,9 @@ async function buscarVendaPorId(id, usuarioId) {
   return query;
 }
 
+/**
+ * Executa a rotina gerar email template venda.
+ */
 async function gerarEmailTemplateVenda(id, usuarioId) {
   const venda = await buscarVendaPorId(id, usuarioId);
 
@@ -2411,6 +2708,9 @@ async function gerarEmailTemplateVenda(id, usuarioId) {
   return renderEmailVenda(venda);
 }
 
+/**
+ * Executa a rotina criar venda.
+ */
 async function criarVenda(dados, usuarioId) {
   const agora = formatarDateTimeSQL();
   const vendedorasIds = normalizarIdsVendedoras(dados.vendedoras);
@@ -2493,6 +2793,9 @@ async function criarVenda(dados, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina atualizar venda.
+ */
 async function atualizarVenda(id, dados, usuarioId) {
   const permitido = await usuarioPodeEditarVenda(id, usuarioId);
 
@@ -2596,6 +2899,9 @@ async function atualizarVenda(id, dados, usuarioId) {
   return vendaAtualizada;
 }
 
+/**
+ * Executa a rotina validar status funil.
+ */
 async function validarStatusFunil(status) {
   if (status === 'retorno') {
     return true;
@@ -2605,6 +2911,9 @@ async function validarStatusFunil(status) {
   return etapas.some(etapa => etapa.id === status);
 }
 
+/**
+ * Executa a rotina atualizar status venda.
+ */
 async function atualizarStatusVenda(id, dados, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
 
@@ -2848,6 +3157,9 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   return { status: 'ok', venda: vendaAtualizada };
 }
 
+/**
+ * Executa a rotina enviar venda para pos venda.
+ */
 async function enviarVendaParaPosVenda(id, usuarioId) {
   const permitido = await usuarioPodeEditarVenda(id, usuarioId);
 
@@ -2888,6 +3200,9 @@ async function enviarVendaParaPosVenda(id, usuarioId) {
   return { status: 'ok', venda: vendaAtualizada };
 }
 
+/**
+ * Executa a rotina normalizar venda ids.
+ */
 function normalizarVendaIds(ids) {
   return [...new Set([ids]
     .flat()
@@ -2895,6 +3210,9 @@ function normalizarVendaIds(ids) {
     .filter(Boolean))];
 }
 
+/**
+ * Executa a rotina buscar source keys notificacoes venda.
+ */
 async function buscarSourceKeysNotificacoesVenda(vendaIds, trx) {
   const sourceKeys = [];
 
@@ -2924,6 +3242,9 @@ async function buscarSourceKeysNotificacoesVenda(vendaIds, trx) {
   return sourceKeys;
 }
 
+/**
+ * Executa a rotina excluir notificacoes vendas.
+ */
 async function excluirNotificacoesVendas(vendaIdsEntrada, trx) {
   const vendaIds = normalizarVendaIds(vendaIdsEntrada);
   if (vendaIds.length === 0) return 0;
@@ -2966,6 +3287,9 @@ async function excluirNotificacoesVendas(vendaIdsEntrada, trx) {
   return notificacaoIds.length;
 }
 
+/**
+ * Executa a rotina excluir venda.
+ */
 async function excluirVenda(id, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
 
@@ -2994,12 +3318,18 @@ async function excluirVenda(id, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina adicionar um mes.
+ */
 function adicionarUmMes(data = new Date()) {
   const proxima = new Date(data);
   proxima.setMonth(proxima.getMonth() + 1);
   return proxima;
 }
 
+/**
+ * Executa a rotina limpar vendas vencidas da lixeira.
+ */
 async function limparVendasVencidasDaLixeira() {
   return Venda.transaction(async trx => {
     const vendas = await trx('vendas')
@@ -3019,6 +3349,9 @@ async function limparVendasVencidasDaLixeira() {
   });
 }
 
+/**
+ * Executa a rotina listar vendas lixeira.
+ */
 async function listarVendasLixeira(filtros = {}, usuarioId) {
   await limparVendasVencidasDaLixeira();
 
@@ -3054,6 +3387,9 @@ async function listarVendasLixeira(filtros = {}, usuarioId) {
   return query;
 }
 
+/**
+ * Executa a rotina restaurar venda.
+ */
 async function restaurarVenda(id, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId, { incluirLixeira: true });
 
@@ -3078,6 +3414,9 @@ async function restaurarVenda(id, usuarioId) {
   return buscarVendaPorId(id, usuarioId);
 }
 
+/**
+ * Executa a rotina excluir venda definitivo.
+ */
 async function excluirVendaDefinitivo(id, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId, { incluirLixeira: true });
 
@@ -3095,6 +3434,9 @@ async function excluirVendaDefinitivo(id, usuarioId) {
   });
 }
 
+/**
+ * Executa a rotina listar vendedoras.
+ */
 async function listarVendedoras(usuarioId) {
   const podeCompartilhar = usuarioId
     ? (
@@ -3115,11 +3457,17 @@ async function listarVendedoras(usuarioId) {
   return query;
 }
 
+/**
+ * Executa a rotina status eh final.
+ */
 async function statusEhFinal(status) {
   const codigoFinal = await obterCodigoEtapaFinal();
   return status === codigoFinal;
 }
 
+/**
+ * Executa a rotina contar vendas concluidas por cliente.
+ */
 async function contarVendasConcluidasPorCliente() {
   let codigosFinais;
   try {
@@ -3143,6 +3491,9 @@ async function contarVendasConcluidasPorCliente() {
   }, {});
 }
 
+/**
+ * Executa a rotina cancelar venda.
+ */
 async function cancelarVenda(id, { motivo, usuarioId }) {
   const motivoLimpo = String(motivo || '').trim();
 
@@ -3206,6 +3557,9 @@ async function cancelarVenda(id, { motivo, usuarioId }) {
   return { status: 'ok', venda: vendaAtualizada };
 }
 
+/**
+ * Executa a rotina reverter cancelamento venda.
+ */
 async function reverterCancelamentoVenda(id, usuarioId, dados = {}) {
   if (!await usuarioTemPermissao(usuarioId, 'vendas_reverter_cancelamento')) {
     return { status: 'forbidden', message: 'Voce nao tem permissao para reverter o cancelamento.' };

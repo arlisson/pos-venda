@@ -1,5 +1,8 @@
 import React from 'react';
 
+/**
+ * Executa a rotina mk.
+ */
 const mk = (paths, vb = '0 0 24 24') => ({ size = 16, ...rest } = {}) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 

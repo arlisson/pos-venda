@@ -4,6 +4,9 @@ import logo from '../../assets/LogoClaraSemFundo.png';
 import { temPermissao } from '../../services/auth.service';
 import { getCampanhas, getProgresso } from '../../services/campanha.service';
 
+/**
+ * Executa a rotina sidebar.
+ */
 function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMobileOpen = false, onClose }) {
   const [campanhas, setCampanhas] = useState([]);
   const [progresso, setProgresso] = useState({});
@@ -41,11 +44,17 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
     { id: 'leads', label: 'Planilha de Mailing', icon: <I.LayoutList />, permission: 'gerenciar_leads' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
+  /**
+   * Executa a rotina get initials.
+   */
   const getInitials = (name) => {
     if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
   };
 
+  /**
+   * Executa a rotina get campanha key.
+   */
   const getCampanhaKey = (campanha) => (
     campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`
   );

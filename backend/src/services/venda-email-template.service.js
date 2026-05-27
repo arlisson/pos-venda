@@ -5,6 +5,9 @@ function texto(valor) {
   return valor === null || valor === undefined ? '' : String(valor).trim();
 }
 
+/**
+ * Executa a rotina normalizar texto.
+ */
 function normalizarTexto(valor) {
   return texto(valor)
     .normalize('NFD')
@@ -12,21 +15,33 @@ function normalizarTexto(valor) {
     .toLowerCase();
 }
 
+/**
+ * Executa a rotina linha.
+ */
 function linha(label, value) {
   const valor = texto(value);
   return valor ? `${label} : ${valor}` : `${label} :`;
 }
 
+/**
+ * Executa a rotina telefone.
+ */
 function telefone(numero) {
   let valor = texto(numero);
   if (valor.startsWith('+55')) valor = valor.slice(3);
   return valor.replace(/[()\-\s]/g, '');
 }
 
+/**
+ * Executa a rotina cnpj.
+ */
 function cnpj(valor) {
   return texto(valor).replace(/\D/g, '');
 }
 
+/**
+ * Executa a rotina formatar moeda.
+ */
 function formatarMoeda(valor) {
   if (valor === null || valor === undefined || valor === '') return '';
   const numero = parseNumero(valor);
@@ -39,6 +54,9 @@ function formatarMoeda(valor) {
   });
 }
 
+/**
+ * Executa a rotina formatar decimal.
+ */
 function formatarDecimal(valor) {
   const numero = Number(valor);
   if (!Number.isFinite(numero)) return '';
@@ -49,6 +67,9 @@ function formatarDecimal(valor) {
   });
 }
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(valor) {
   const raw = texto(valor);
   if (!raw) return '';
@@ -59,6 +80,9 @@ function formatarData(valor) {
   return raw;
 }
 
+/**
+ * Executa a rotina parse numero.
+ */
 function parseNumero(valor) {
   if (valor === null || valor === undefined || valor === '') return 0;
   if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
@@ -87,6 +111,9 @@ function parseNumero(valor) {
   return Number.isFinite(numero) ? numero : 0;
 }
 
+/**
+ * Executa a rotina parse itens chips.
+ */
 function parseItensChips(valor, gbPadrao = '') {
   if (!valor) return [];
 
@@ -126,11 +153,17 @@ function parseItensChips(valor, gbPadrao = '') {
   return [];
 }
 
+/**
+ * Executa a rotina normalizar tipo linha chip.
+ */
 function normalizarTipoLinhaChip(valor) {
   const tipo = normalizarTexto(valor);
   return tipo.includes('porta') ? 'portabilidade' : 'novo';
 }
 
+/**
+ * Executa a rotina parse portados.
+ */
 function parsePortados(valor) {
   if (!valor) return [];
 
@@ -152,6 +185,9 @@ function parsePortados(valor) {
   return [];
 }
 
+/**
+ * Executa a rotina quantidade linhas.
+ */
 function quantidadeLinhas(venda, itens) {
   const qtdVenda = Number(venda.quantidade_linhas || 0);
   if (qtdVenda > 0) return qtdVenda;
@@ -160,6 +196,9 @@ function quantidadeLinhas(venda, itens) {
   return qtdItens > 0 ? qtdItens : 0;
 }
 
+/**
+ * Executa a rotina preco unitario padrao.
+ */
 function precoUnitarioPadrao(venda, qtd) {
   if (!qtd) return '';
   const total = parseNumero(venda.valor_total);
@@ -168,28 +207,46 @@ function precoUnitarioPadrao(venda, qtd) {
   return formatarDecimal(total / qtd);
 }
 
+/**
+ * Executa a rotina valor total.
+ */
 function valorTotal(venda) {
   return formatarMoeda(venda.valor_total);
 }
 
+/**
+ * Executa a rotina gb com sufixo.
+ */
 function gbComSufixo(valor) {
   const gb = texto(valor);
   if (!gb) return '';
   return /gb$/i.test(gb) ? gb : `${gb}GB`;
 }
 
+/**
+ * Executa a rotina nome cliente.
+ */
 function nomeCliente(venda) {
   return texto(venda.razao_social || venda.cliente?.razao_social || venda.cliente?.nome || venda.nome);
 }
 
+/**
+ * Executa a rotina nome vendedora.
+ */
 function nomeVendedora(venda) {
   return texto(venda.vendedora?.nome);
 }
 
+/**
+ * Executa a rotina endereco receita.
+ */
 function enderecoReceita(venda, campo) {
   return texto(venda[campo]);
 }
 
+/**
+ * Executa a rotina montar contexto.
+ */
 function montarContexto(venda) {
   const itens = parseItensChips(venda.valores_unitarios_chips, venda.gb);
   const portados = parsePortados(venda.numeros_portados);
@@ -211,6 +268,9 @@ function montarContexto(venda) {
   };
 }
 
+/**
+ * Executa a rotina formatar plano claro.
+ */
 function formatarPlanoClaro(venda, ctx) {
   if (ctx.itens.length > 0) {
     return ctx.itens
@@ -232,6 +292,9 @@ function formatarPlanoClaro(venda, ctx) {
     : `CLARO PÓS ${gbTexto}`.trim();
 }
 
+/**
+ * Executa a rotina render claro.
+ */
 function renderClaro(venda) {
   const ctx = montarContexto(venda);
   const plano = `${formatarPlanoClaro(venda, ctx)}${venda.ddd ? `  - DDD ${venda.ddd}` : ''}`;
@@ -265,6 +328,9 @@ function renderClaro(venda) {
   ].join('\n');
 }
 
+/**
+ * Executa a rotina plano vivo.
+ */
 function planoVivo(venda, ctx) {
   if (ctx.itens.length > 0) {
     const gbParts = ctx.itens.map(item => {
@@ -286,6 +352,9 @@ function planoVivo(venda, ctx) {
   return partes.length > 1 ? partes.join(' - ') : '';
 }
 
+/**
+ * Executa a rotina render vivo.
+ */
 function renderVivo(venda) {
   const ctx = montarContexto(venda);
   const linhaNova = ctx.qtdNovas && ctx.precoUnitario ? `${ctx.qtdNovas}x${ctx.precoUnitario}` : 'X';
@@ -316,6 +385,9 @@ function renderVivo(venda) {
   ].join('\n');
 }
 
+/**
+ * Executa a rotina resolver operadora.
+ */
 function resolverOperadora(venda) {
   const nome = texto(venda.operadora?.nome);
   const normalizado = normalizarTexto(nome);
@@ -326,6 +398,9 @@ function resolverOperadora(venda) {
   return null;
 }
 
+/**
+ * Executa a rotina render email venda.
+ */
 function renderEmailVenda(venda) {
   const operadora = resolverOperadora(venda);
 

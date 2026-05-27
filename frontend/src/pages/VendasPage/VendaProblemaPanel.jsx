@@ -10,6 +10,9 @@ import {
   verificarProblemaVenda
 } from '../../services/venda.service';
 
+/**
+ * Executa a rotina formatar data.
+ */
 function formatarData(value) {
   if (!value) return '-';
 
@@ -22,21 +25,33 @@ function formatarData(value) {
   return `${dia}/${mes}/${ano}`;
 }
 
+/**
+ * Executa a rotina get problema status label.
+ */
 function getProblemaStatusLabel(status) {
   if (status === 'resolvido') return 'Aguardando verificação';
   if (status === 'correcao_solicitada') return 'Correção solicitada';
   return 'Problema aberto';
 }
 
+/**
+ * Executa a rotina get problema titulo.
+ */
 function getProblemaTitulo(problema) {
   const abertura = (problema.eventos || []).find(evento => evento.tipo === 'abertura');
   return abertura?.mensagem || `Problema #${problema.id}`;
 }
 
+/**
+ * Executa a rotina get responsaveis.
+ */
 function getResponsaveis(problema) {
   return (problema.destinatarios || []).map(item => item.usuario?.nome).filter(Boolean).join(', ') || '-';
 }
 
+/**
+ * Executa a rotina venda problema card.
+ */
 function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
   const [mensagemResolucao, setMensagemResolucao] = useState('');
   const [mensagemCorrecao, setMensagemCorrecao] = useState('');
@@ -53,6 +68,9 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
   const podeRevisar = (solicitante || ehAdmin) && problema.status === 'resolvido';
   const detalhesId = `problema-${problema.id}-detalhes`;
 
+  /**
+   * Executa a rotina executar.
+   */
   async function executar(acao) {
     setErro('');
     setSalvando(true);
@@ -148,6 +166,9 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
   );
 }
 
+/**
+ * Executa a rotina novo problema form.
+ */
 function NovoProblemaForm({ venda, onSalvo }) {
   const [aberto, setAberto] = useState(false);
   const [motivo, setMotivo] = useState('');
@@ -157,6 +178,9 @@ function NovoProblemaForm({ venda, onSalvo }) {
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
 
+  /**
+   * Executa a rotina abrir.
+   */
   async function abrir() {
     setAberto(true);
     setErro('');
@@ -167,6 +191,9 @@ function NovoProblemaForm({ venda, onSalvo }) {
     }
   }
 
+  /**
+   * Executa a rotina fechar.
+   */
   function fechar() {
     setAberto(false);
     setMotivo('');
@@ -175,10 +202,16 @@ function NovoProblemaForm({ venda, onSalvo }) {
     setErro('');
   }
 
+  /**
+   * Executa a rotina toggle usuario.
+   */
   function toggleUsuario(id) {
     setDestinatarios(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
   }
 
+  /**
+   * Executa a rotina salvar.
+   */
   async function salvar() {
     setErro('');
     setSalvando(true);
@@ -253,12 +286,18 @@ function NovoProblemaForm({ venda, onSalvo }) {
   );
 }
 
+/**
+ * Executa a rotina venda problema panel.
+ */
 function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
   const [problemas, setProblemas] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const podeAdicionarProblema = temPermissao(usuario, 'pos_venda');
 
+  /**
+   * Executa a rotina carregar.
+   */
   async function carregar() {
     if (!venda?.id) return;
 
@@ -291,6 +330,9 @@ function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
     return () => clearTimeout(timer);
   }, [initialProblemaId, problemas.length]);
 
+  /**
+   * Executa a rotina atualizar problema.
+   */
   function atualizarProblema(problemaId, atualizado) {
     setProblemas(prev => {
       if (atualizado?.status === 'verificado') {
@@ -301,6 +343,9 @@ function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
     });
   }
 
+  /**
+   * Executa a rotina adicionar problema.
+   */
   function adicionarProblema(novo) {
     setProblemas(prev => [...prev, novo]);
   }

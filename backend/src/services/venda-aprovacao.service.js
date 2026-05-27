@@ -21,12 +21,21 @@ const TIPO_NOTIFICACAO_APROVACAO = 'venda_aprovacao_pendente';
 const PERMISSAO_VISUALIZAR = 'vendas_aprovacoes_visualizar';
 const PERMISSAO_DECIDIR = 'vendas_aprovacoes_decidir';
 
+/**
+ * Executa a rotina usuario tem permissao.
+ */
 function usuarioTemPermissao(usuario, permissao) {
   if (!usuario || !usuario.ativo) return false;
   return usuarioTemPermissaoLocal(usuario, permissao);
 }
 
+/**
+ * Executa a rotina formatar date time sql.
+ */
 function formatarDateTimeSQL(data = new Date()) {
+  /**
+   * Executa a rotina pad.
+   */
   const pad = valor => String(valor).padStart(2, '0');
 
   return [
@@ -40,6 +49,9 @@ function formatarDateTimeSQL(data = new Date()) {
   ].join(':');
 }
 
+/**
+ * Executa a rotina parse json.
+ */
 function parseJson(valor, fallback = []) {
   if (!valor) return fallback;
   if (Array.isArray(valor)) return valor;
@@ -55,28 +67,46 @@ function parseJson(valor, fallback = []) {
   return valor;
 }
 
+/**
+ * Executa a rotina normalizar motivos.
+ */
 function normalizarMotivos(motivos = []) {
   return Array.from(new Set(motivos)).sort();
 }
 
+/**
+ * Executa a rotina motivos iguais.
+ */
 function motivosIguais(a = [], b = []) {
   return JSON.stringify(normalizarMotivos(a)) === JSON.stringify(normalizarMotivos(b));
 }
 
+/**
+ * Executa a rotina nome venda.
+ */
 function nomeVenda(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
+/**
+ * Executa a rotina descrever motivo.
+ */
 function descreverMotivo(motivo) {
   if (motivo === MOTIVO_VENDA_COMPARTILHADA) return 'venda compartilhada';
   if (motivo === MOTIVO_CLIENTE_COM_VENDA_EXISTENTE) return 'cliente com venda existente';
   return motivo;
 }
 
+/**
+ * Executa a rotina montar mensagem motivos.
+ */
 function montarMensagemMotivos(motivos) {
   return normalizarMotivos(motivos).map(descreverMotivo).join(' e ');
 }
 
+/**
+ * Executa a rotina registrar historico venda.
+ */
 async function registrarHistoricoVenda({ vendaId, usuarioId, acao, observacao, dados = {}, trx }) {
   return VendaHistorico.query(trx).insert({
     venda_id: Number(vendaId),
@@ -88,6 +118,9 @@ async function registrarHistoricoVenda({ vendaId, usuarioId, acao, observacao, d
   });
 }
 
+/**
+ * Executa a rotina obter venda com relacoes.
+ */
 async function obterVendaComRelacoes(vendaId, trx = null) {
   return Venda.query(trx)
     .findById(vendaId)
@@ -98,6 +131,9 @@ async function obterVendaComRelacoes(vendaId, trx = null) {
     .modifyGraph('criador', builder => builder.select('id', 'nome', 'email', 'foto_perfil'));
 }
 
+/**
+ * Executa a rotina avaliar requisitos venda.
+ */
 async function avaliarRequisitosVenda(vendaId, trx = null) {
   const venda = await obterVendaComRelacoes(vendaId, trx);
 
@@ -131,6 +167,9 @@ async function avaliarRequisitosVenda(vendaId, trx = null) {
   return { venda, motivos: normalizarMotivos(motivos) };
 }
 
+/**
+ * Executa a rotina buscar solicitacao atual.
+ */
 async function buscarSolicitacaoAtual(vendaId, trx = null) {
   return VendaAprovacaoSolicitacao.query(trx)
     .where('venda_id', vendaId)
@@ -139,6 +178,9 @@ async function buscarSolicitacaoAtual(vendaId, trx = null) {
     .first();
 }
 
+/**
+ * Executa a rotina obsoletar solicitacoes.
+ */
 async function obsoletarSolicitacoes(vendaId, trx = null) {
   return VendaAprovacaoSolicitacao.query(trx)
     .where('venda_id', vendaId)
@@ -149,6 +191,9 @@ async function obsoletarSolicitacoes(vendaId, trx = null) {
     });
 }
 
+/**
+ * Executa a rotina listar aprovadores.
+ */
 async function listarAprovadores(trx = null) {
   const usuarios = await Usuario.query(trx)
     .withGraphFetched('role')
@@ -158,6 +203,9 @@ async function listarAprovadores(trx = null) {
   return usuarios.filter(usuario => usuarioTemPermissao(usuario, PERMISSAO_DECIDIR));
 }
 
+/**
+ * Executa a rotina criar ou atualizar notificacao pendente.
+ */
 async function criarOuAtualizarNotificacaoPendente(solicitacao, venda, trx = null) {
   const aprovadores = await listarAprovadores(trx);
   const adminsIds = await notificacaoService.listarAdminsAtivos(trx);
@@ -220,12 +268,18 @@ async function criarOuAtualizarNotificacaoPendente(solicitacao, venda, trx = nul
   return notificacao;
 }
 
+/**
+ * Executa a rotina desativar notificacao solicitacao.
+ */
 async function desativarNotificacaoSolicitacao(solicitacaoId, trx = null) {
   return Notificacao.query(trx)
     .where('source_key', `venda_aprovacao:${solicitacaoId}`)
     .patch({ ativa: false, updated_at: new Date() });
 }
 
+/**
+ * Executa a rotina validar envio pos venda.
+ */
 async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
   const { venda, motivos } = await avaliarRequisitosVenda(vendaId, trx);
 
@@ -274,6 +328,9 @@ async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
   return criarSolicitacaoPendente(venda, motivos, usuarioId, trx);
 }
 
+/**
+ * Executa a rotina criar solicitacao pendente.
+ */
 async function criarSolicitacaoPendente(venda, motivos, usuarioId, trx = null) {
   const agora = formatarDateTimeSQL();
   const solicitacao = await VendaAprovacaoSolicitacao.query(trx).insertAndFetch({
@@ -306,6 +363,9 @@ async function criarSolicitacaoPendente(venda, motivos, usuarioId, trx = null) {
   };
 }
 
+/**
+ * Executa a rotina sincronizar aprovacao apos alteracao.
+ */
 async function sincronizarAprovacaoAposAlteracao(vendaId, trx = null) {
   const atual = await buscarSolicitacaoAtual(vendaId, trx);
   if (!atual) return null;
@@ -322,6 +382,9 @@ async function sincronizarAprovacaoAposAlteracao(vendaId, trx = null) {
   return atual.status;
 }
 
+/**
+ * Executa a rotina listar solicitacoes.
+ */
 async function listarSolicitacoes(filtros = {}) {
   const statusPermitidos = [STATUS_PENDENTE, STATUS_APROVADA, STATUS_RECUSADA, STATUS_OBSOLETA];
   const query = VendaAprovacaoSolicitacao.query()
@@ -345,6 +408,9 @@ async function listarSolicitacoes(filtros = {}) {
   }));
 }
 
+/**
+ * Executa a rotina decidir solicitacao.
+ */
 async function decidirSolicitacao(id, dados, usuarioId, decisao) {
   const status = decisao === 'aprovar' ? STATUS_APROVADA : STATUS_RECUSADA;
   const acao = decisao === 'aprovar' ? 'venda.aprovacao_aprovada' : 'venda.aprovacao_recusada';

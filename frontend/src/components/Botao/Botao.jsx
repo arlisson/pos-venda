@@ -1,5 +1,8 @@
 import React from 'react';
 
+/**
+ * Executa a rotina botao.
+ */
 function Botao({
   title,
   type = 'button',

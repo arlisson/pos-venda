@@ -11,6 +11,9 @@ const CAMPOS_SENSIVEIS = [
   'jwt'
 ];
 
+/**
+ * Executa a rotina limitar texto.
+ */
 function limitarTexto(valor, tamanho) {
   if (valor === undefined || valor === null) {
     return null;
@@ -19,6 +22,9 @@ function limitarTexto(valor, tamanho) {
   return String(valor).slice(0, tamanho);
 }
 
+/**
+ * Executa a rotina sanitizar.
+ */
 function sanitizar(valor) {
   if (Array.isArray(valor)) {
     return valor.map(sanitizar);
@@ -41,10 +47,16 @@ function sanitizar(valor) {
   return valor;
 }
 
+/**
+ * Executa a rotina obter usuario id.
+ */
 function obterUsuarioId(req, usuarioId) {
   return usuarioId || req?.usuario?.id || req?.user?.id || null;
 }
 
+/**
+ * Executa a rotina montar registro.
+ */
 function montarRegistro(req, dadosAuditoria) {
   return {
     usuario_id: obterUsuarioId(req, dadosAuditoria.usuario_id),
@@ -59,6 +71,9 @@ function montarRegistro(req, dadosAuditoria) {
   };
 }
 
+/**
+ * Executa a rotina registrar.
+ */
 async function registrar(req, dadosAuditoria) {
   if (!dadosAuditoria?.acao) {
     throw new Error('A ação da auditoria é obrigatória.');
@@ -67,6 +82,9 @@ async function registrar(req, dadosAuditoria) {
   return AuditLog.query().insert(montarRegistro(req, dadosAuditoria));
 }
 
+/**
+ * Executa a rotina registrar sem bloquear.
+ */
 async function registrarSemBloquear(req, dadosAuditoria) {
   try {
     return await registrar(req, dadosAuditoria);
@@ -76,6 +94,9 @@ async function registrarSemBloquear(req, dadosAuditoria) {
   }
 }
 
+/**
+ * Executa a rotina normalizar paginacao.
+ */
 function normalizarPaginacao({ page, per_page } = {}) {
   const opcoesPorPagina = new Set([20, 50, 100]);
   const pagina = Math.max(Number.parseInt(page, 10) || 1, 1);
@@ -84,6 +105,9 @@ function normalizarPaginacao({ page, per_page } = {}) {
   return { page: pagina, perPage };
 }
 
+/**
+ * Executa a rotina aplicar tipo.
+ */
 function aplicarTipo(query, tipo) {
   switch (tipo) {
     case 'acoes':
@@ -103,6 +127,9 @@ function aplicarTipo(query, tipo) {
   }
 }
 
+/**
+ * Executa a rotina listar.
+ */
 async function listar({ busca, entidade, tipo, page, per_page } = {}) {
   const { page: pagina, perPage } = normalizarPaginacao({ page, per_page });
 
@@ -137,6 +164,9 @@ async function listar({ busca, entidade, tipo, page, per_page } = {}) {
   return { data: result.results, total: result.total };
 }
 
+/**
+ * Executa a rotina aplicar status venda.
+ */
 function aplicarStatusVenda(builder, status) {
   if (status === 'lixeira') {
     builder.whereNotNull('v.excluido_em');
@@ -147,6 +177,9 @@ function aplicarStatusVenda(builder, status) {
   }
 }
 
+/**
+ * Executa a rotina montar base vendas agrupado.
+ */
 function montarBaseVendasAgrupado({ status, busca }) {
   const knex = AuditLog.knex();
 
@@ -174,6 +207,9 @@ function montarBaseVendasAgrupado({ status, busca }) {
 }
 
 // Pagina por VENDA (1 grupo = 1 venda com todos os seus eventos), nao por linha de log.
+/**
+ * Executa a rotina listar historico vendas agrupado.
+ */
 async function listarHistoricoVendasAgrupado({ status, busca, page, per_page } = {}) {
   const { page: pagina, perPage } = normalizarPaginacao({ page, per_page });
   const statusNorm = ['ativas', 'canceladas', 'lixeira'].includes(status) ? status : 'ativas';

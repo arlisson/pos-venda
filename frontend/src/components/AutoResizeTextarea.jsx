@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
 
+/**
+ * Executa a rotina auto resize textarea.
+ */
 function AutoResizeTextarea({
   value,
   onChange,
