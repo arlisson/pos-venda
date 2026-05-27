@@ -8,7 +8,7 @@ const Campanha = require('../models/Campanha');
 const knex = require('../database/connection');
 
 /**
- * Executa a rotina validar campanha.
+ * Valida os campos obrigatorios e categorias permitidas de uma campanha.
  */
 function validarCampanha(campanha) {
   if (!campanha.desc || !Number(campanha.target)) {
@@ -31,14 +31,14 @@ function validarCampanha(campanha) {
 }
 
 /**
- * Executa a rotina campanha eh gift.
+ * Indica se a campanha representa uma recompensa resgatavel.
  */
 function campanhaEhGift(campanha) {
   return campanha.is_gift === true || campanha.is_gift === 1 || campanha.is_gift === '1';
 }
 
 /**
- * Executa a rotina to date str.
+ * Converte uma data para o formato YYYY-MM-DD usado nas consultas.
  */
 function toDateStr(d) {
   const year = d.getFullYear();
@@ -48,7 +48,7 @@ function toDateStr(d) {
 }
 
 /**
- * Executa a rotina get ciclo.
+ * Calcula o intervalo de datas do ciclo diario, semanal ou mensal.
  */
 function getCiclo(periodo, baseDate = new Date()) {
   if (periodo === 'semanal') {
@@ -97,7 +97,7 @@ function getCiclo(periodo, baseDate = new Date()) {
 }
 
 /**
- * Executa a rotina normalizar texto.
+ * Remove acentos e padroniza texto para comparacoes internas.
  */
 function normalizarTexto(valor) {
   return String(valor || '')
@@ -108,7 +108,7 @@ function normalizarTexto(valor) {
 }
 
 /**
- * Executa a rotina somar quantidade chips.
+ * Soma a quantidade de chips a partir do JSON detalhado ou do campo legado.
  */
 function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas, fallback = 0) {
   if (valoresUnitariosChips) {
@@ -133,7 +133,7 @@ function somarQuantidadeChips(valoresUnitariosChips, quantidadeLinhas, fallback 
 }
 
 /**
- * Executa a rotina normalizar tipo linha chip.
+ * Normaliza o tipo de linha de chip para novo ou portabilidade.
  */
 function normalizarTipoLinhaChip(valor) {
   const tipo = normalizarTexto(valor);
@@ -141,7 +141,7 @@ function normalizarTipoLinhaChip(valor) {
 }
 
 /**
- * Executa a rotina somar quantidade chips por tipo.
+ * Soma chips de um tipo especifico quando os itens possuem classificacao.
  */
 function somarQuantidadeChipsPorTipo(valoresUnitariosChips, tipoLinha) {
   if (!valoresUnitariosChips) return null;
@@ -167,7 +167,7 @@ function somarQuantidadeChipsPorTipo(valoresUnitariosChips, tipoLinha) {
 }
 
 /**
- * Executa a rotina quantidade categoria venda.
+ * Calcula a quantidade da venda que conta para uma categoria de campanha.
  */
 function quantidadeCategoriaVenda(venda, categoria) {
   const porTipo = categoria === 'chip_novo'
@@ -191,7 +191,7 @@ function quantidadeCategoriaVenda(venda, categoria) {
 }
 
 /**
- * Executa a rotina listar clientes do ciclo.
+ * Lista clientes criados por uma vendedora dentro do ciclo informado.
  */
 async function listarClientesDoCiclo(usuarioId, ciclo) {
   return knex('clientes')
@@ -202,7 +202,7 @@ async function listarClientesDoCiclo(usuarioId, ciclo) {
 }
 
 /**
- * Executa a rotina listar vendas do ciclo.
+ * Lista vendas validas de uma vendedora dentro do ciclo informado.
  */
 async function listarVendasDoCiclo(vendedoraId, ciclo) {
   const dataReferencia = "COALESCE(NULLIF(NULLIF(v.data_venda, '0000-00-00'), '1899-11-30'), NULLIF(DATE(v.criado_em), '0000-00-00'), DATE(v.created_at))";
@@ -225,21 +225,21 @@ async function listarVendasDoCiclo(vendedoraId, ciclo) {
 }
 
 /**
- * Executa a rotina venda pertence operadora.
+ * Indica se a venda pertence a operadora filtrada.
  */
 function vendaPertenceOperadora(venda, operadoraId) {
   return !operadoraId || Number(venda.operadora_id) === Number(operadoraId);
 }
 
 /**
- * Executa a rotina cliente pertence operadora.
+ * Indica se o cliente pertence a operadora filtrada.
  */
 function clientePertenceOperadora(cliente, operadoraId) {
   return !operadoraId || Number(cliente.operadora_atual_id) === Number(operadoraId);
 }
 
 /**
- * Executa a rotina classificar vendas.
+ * Classifica vendas e clientes nos totais usados pelo progresso geral.
  */
 function classificarVendas(rows, clientes = []) {
   const totais = {
@@ -265,7 +265,7 @@ function classificarVendas(rows, clientes = []) {
 }
 
 /**
- * Executa a rotina calcular valor campanha.
+ * Calcula o progresso de uma campanha especifica para vendas e clientes.
  */
 function calcularValorCampanha(campanha, vendas, clientes) {
   const categoria = campanha.categoria || 'registro_cliente';
@@ -307,7 +307,7 @@ function calcularValorCampanha(campanha, vendas, clientes) {
 }
 
 /**
- * Executa a rotina calcular progresso.
+ * Calcula o progresso geral e por campanha de uma vendedora no ciclo.
  */
 async function calcularProgresso(usuarioId, ciclo, campanhas = []) {
   const [clientes, vendas] = await Promise.all([
@@ -329,7 +329,7 @@ async function calcularProgresso(usuarioId, ciclo, campanhas = []) {
 }
 
 /**
- * Executa a rotina agrupar resgates por usuario.
+ * Agrupa campanhas ja resgatadas por usuario para consulta rapida.
  */
 function agruparResgatesPorUsuario(resgates = []) {
   return resgates.reduce((acc, resgate) => {
@@ -345,6 +345,9 @@ function agruparResgatesPorUsuario(resgates = []) {
   }, {});
 }
 
+/**
+ * Controller das rotas de campanhas, progresso de metas e resgates.
+ */
 class CampanhaController {
   async index(req, res) {
     try {

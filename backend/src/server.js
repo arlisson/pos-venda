@@ -12,7 +12,7 @@ server.requestTimeout = 30 * 60 * 1000;
 server.headersTimeout = 31 * 60 * 1000;
 
 /**
- * Executa a rotina limpar arquivos vencidos.
+ * Limpa arquivos vencidos e restaura o estado inicial.
  */
 function limparArquivosVencidos() {
   vendaArquivoService.limparArquivosIndividuaisVencidos()

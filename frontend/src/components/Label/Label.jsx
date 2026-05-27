@@ -1,7 +1,7 @@
 import './Label.css';
 
 /**
- * Executa a rotina label.
+ * Retorna label no formato esperado pelo fluxo.
  */
 function Label({ children }) {
   return <span className="label">{children}</span>;

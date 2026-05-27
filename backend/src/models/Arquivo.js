@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para os arquivos armazenados pelo sistema.
+ */
 class Arquivo extends Model {
   static get tableName() {
     return 'arquivos';

@@ -29,7 +29,7 @@ function auditar(config) {
     let registrado = false;
 
     /**
-     * Executa a rotina registrar se sucesso.
+     * Registra o evento de auditoria apenas para respostas bem-sucedidas.
      */
     function registrarSeSucesso(body) {
       const statusCode = res.statusCode;

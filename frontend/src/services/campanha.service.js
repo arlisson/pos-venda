@@ -4,7 +4,7 @@
 import { apiDelete, apiGet, apiPost, apiPut } from './api';
 
 /**
- * Executa a rotina get campanhas.
+ * Retorna campanhas a partir dos dados informados.
  */
 export const getCampanhas = async () => {
   const data = await apiGet('/campanhas');
@@ -12,7 +12,7 @@ export const getCampanhas = async () => {
 };
 
 /**
- * Executa a rotina update campanhas.
+ * Atualiza campanhas com o estado mais recente.
  */
 export const updateCampanhas = async (campanhas) => {
   const data = await apiPut('/campanhas', { campanhas });
@@ -20,7 +20,7 @@ export const updateCampanhas = async (campanhas) => {
 };
 
 /**
- * Executa a rotina create campanha.
+ * Cria campanha com os dados informados.
  */
 export const createCampanha = async (campanha) => {
   const data = await apiPost('/campanhas', campanha);
@@ -28,14 +28,14 @@ export const createCampanha = async (campanha) => {
 };
 
 /**
- * Executa a rotina delete campanha.
+ * Remove campanha conforme a regra de negocio.
  */
 export const deleteCampanha = async (id) => {
   await apiDelete(`/campanhas/${id}`);
 };
 
 /**
- * Executa a rotina get progresso.
+ * Retorna progresso a partir dos dados informados.
  */
 export const getProgresso = async () => {
   const data = await apiGet('/campanhas/progresso');
@@ -43,7 +43,7 @@ export const getProgresso = async () => {
 };
 
 /**
- * Executa a rotina get progresso usuarios.
+ * Retorna progresso usuarios a partir dos dados informados.
  */
 export const getProgressoUsuarios = async () => {
   const data = await apiGet('/campanhas/progresso/usuarios');
@@ -51,7 +51,7 @@ export const getProgressoUsuarios = async () => {
 };
 
 /**
- * Executa a rotina resgatar campanha.
+ * Processa resgatar campanha conforme as regras do dominio.
  */
 export const resgatarCampanha = async (id) => {
   const data = await apiPost(`/campanhas/${id}/resgatar`, {});

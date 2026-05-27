@@ -45,7 +45,7 @@ import { parseUtcDateTime } from '../../utils/datetime';
 import '../VendasPage/VendasPage.css';
 
 /**
- * Executa a rotina format brl.
+ * Formata brl para exibicao.
  */
 const formatBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -55,7 +55,7 @@ const STAGE_LABELS = {
 };
 
 /**
- * Executa a rotina problema venda modal.
+ * Renderiza problema venda modal.
  */
 function ProblemaVendaModal({ venda, usuario, onClose }) {
   if (!venda) return null;
@@ -83,7 +83,7 @@ function ProblemaVendaModal({ venda, usuario, onClose }) {
 }
 
 /**
- * Executa a rotina email template modal.
+ * Renderiza email template modal.
  */
 function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
   if (!dados) return null;
@@ -119,7 +119,7 @@ function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
 }
 
 /**
- * Executa a rotina normalizar ativo.
+ * Normaliza ativo para uso interno consistente.
  */
 function normalizarAtivo(valor) {
   if (typeof valor === 'string') {
@@ -130,7 +130,7 @@ function normalizarAtivo(valor) {
 }
 
 /**
- * Executa a rotina normalizar etapas funil.
+ * Normaliza etapas funil para uso interno consistente.
  */
 function normalizarEtapasFunil(etapas = [], usarFallback = true) {
   const normalizadas = etapas
@@ -153,7 +153,7 @@ function normalizarEtapasFunil(etapas = [], usarFallback = true) {
 }
 
 /**
- * Executa a rotina montar stage labels.
+ * Monta stage labels a partir dos dados informados.
  */
 function montarStageLabels(stages = []) {
   return {
@@ -169,7 +169,7 @@ const PRIORITIES = {
 };
 
 /**
- * Executa a rotina get priority info.
+ * Retorna priority info a partir dos dados informados.
  */
 function getPriorityInfo(priority) {
   const key = PRIORITIES[priority] ? priority : 'media';
@@ -190,7 +190,7 @@ const STATUS_CANCELADA_FILTRO = '__cancelada';
 const UFS_BRASIL = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
 /**
- * Executa a rotina parse date.
+ * Converte date para o formato interno esperado.
  */
 function parseDate(value) {
   if (!value) return new Date();
@@ -200,21 +200,21 @@ function parseDate(value) {
 }
 
 /**
- * Executa a rotina format date.
+ * Formata date para exibicao.
  */
 function formatDate(d) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 /**
- * Executa a rotina format date time.
+ * Formata date time para exibicao.
  */
 function formatDateTime(d) {
   return `${formatDate(d)} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 /**
- * Executa a rotina time ago.
+ * Processa time ago conforme as regras do dominio.
  */
 function timeAgo(d) {
   const diff = Date.now() - d.getTime();
@@ -228,7 +228,7 @@ function timeAgo(d) {
 }
 
 /**
- * Executa a rotina initials.
+ * Processa initials conforme as regras do dominio.
  */
 function initials(name) {
   return String(name || 'SV')
@@ -241,7 +241,7 @@ function initials(name) {
 }
 
 /**
- * Executa a rotina normalizar busca.
+ * Normaliza busca para uso interno consistente.
  */
 function normalizarBusca(valor) {
   return String(valor || '')
@@ -252,7 +252,7 @@ function normalizarBusca(valor) {
 }
 
 /**
- * Executa a rotina montar texto busca venda.
+ * Monta texto busca venda a partir dos dados informados.
  */
 function montarTextoBuscaVenda(sale) {
   const raw = sale.raw || {};
@@ -301,7 +301,7 @@ function montarTextoBuscaVenda(sale) {
 }
 
 /**
- * Executa a rotina venda corresponde busca.
+ * Verifica se venda corresponde busca atende a condicao esperada.
  */
 function vendaCorrespondeBusca(sale, busca) {
   const termos = normalizarBusca(busca).split(/\s+/).filter(Boolean);
@@ -312,7 +312,7 @@ function vendaCorrespondeBusca(sale, busca) {
 }
 
 /**
- * Executa a rotina normalizar numero filtro.
+ * Normaliza numero filtro para uso interno consistente.
  */
 function normalizarNumeroFiltro(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
@@ -321,7 +321,7 @@ function normalizarNumeroFiltro(valor) {
 }
 
 /**
- * Executa a rotina obter data venda filtro.
+ * Obtem data venda filtro a partir dos dados informados.
  */
 function obterDataVendaFiltro(sale) {
   const raw = sale.raw || {};
@@ -329,7 +329,7 @@ function obterDataVendaFiltro(sale) {
 }
 
 /**
- * Executa a rotina obter vendedoras venda.
+ * Obtem vendedoras venda a partir dos dados informados.
  */
 function obterVendedorasVenda(venda = {}) {
   const vendedoras = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
@@ -340,7 +340,7 @@ function obterVendedorasVenda(venda = {}) {
 }
 
 /**
- * Executa a rotina venda corresponde filtros.
+ * Verifica se venda corresponde filtros atende a condicao esperada.
  */
 function vendaCorrespondeFiltros(sale, filtros) {
   const raw = sale.raw || {};
@@ -370,7 +370,7 @@ function vendaCorrespondeFiltros(sale, filtros) {
 }
 
 /**
- * Executa a rotina get chave cliente venda.
+ * Retorna chave cliente venda a partir dos dados informados.
  */
 function getChaveClienteVenda(venda = {}) {
   if (venda.cliente_id) return `cliente:${venda.cliente_id}`;
@@ -384,7 +384,7 @@ function getChaveClienteVenda(venda = {}) {
 }
 
 /**
- * Executa a rotina contar vendas por cliente.
+ * Conta vendas por cliente conforme os dados informados.
  */
 function contarVendasPorCliente(vendas = []) {
   return vendas.reduce((acc, venda) => {
@@ -396,7 +396,7 @@ function contarVendasPorCliente(vendas = []) {
 }
 
 /**
- * Executa a rotina seller avatar.
+ * Renderiza seller avatar.
  */
 function SellerAvatar({ seller, className = 'mini-avatar' }) {
   return (
@@ -411,28 +411,28 @@ function SellerAvatar({ seller, className = 'mini-avatar' }) {
 }
 
 /**
- * Executa a rotina get client.
+ * Retorna client a partir dos dados informados.
  */
 function getClient(venda) {
   return venda.nome || venda.razao_social || `Venda #${venda.id}`;
 }
 
 /**
- * Executa a rotina get operator.
+ * Retorna operator a partir dos dados informados.
  */
 function getOperator(venda) {
   return venda.operadora?.nome || venda.operadora || 'Sem operadora';
 }
 
 /**
- * Executa a rotina get plan.
+ * Retorna plan a partir dos dados informados.
  */
 function getPlan(venda) {
   return venda.produto_fechado || formatarNomeServico(venda.servico?.nome) || venda.tipoVenda?.nome || 'Plano não informado';
 }
 
 /**
- * Executa a rotina get seller photo.
+ * Retorna seller photo a partir dos dados informados.
  */
 function getSellerPhoto(venda) {
   return venda.vendedora?.foto_perfil
@@ -443,7 +443,7 @@ function getSellerPhoto(venda) {
 }
 
 /**
- * Executa a rotina get seller photo from user.
+ * Retorna seller photo from user a partir dos dados informados.
  */
 function getSellerPhotoFromUser(usuario = {}) {
   return usuario.foto_perfil
@@ -454,7 +454,7 @@ function getSellerPhotoFromUser(usuario = {}) {
 }
 
 /**
- * Executa a rotina get sellers.
+ * Retorna sellers a partir dos dados informados.
  */
 function getSellers(venda = {}) {
   const vendedoras = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
@@ -486,14 +486,14 @@ function getSellers(venda = {}) {
 }
 
 /**
- * Executa a rotina get history author.
+ * Retorna history author a partir dos dados informados.
  */
 function getHistoryAuthor(item) {
   return item.usuario?.nome || (item.usuario_id ? `Usuário #${item.usuario_id}` : 'Sistema');
 }
 
 /**
- * Executa a rotina get history title.
+ * Retorna history title a partir dos dados informados.
  */
 function getHistoryTitle(item, stageLabels = STAGE_LABELS) {
   if (item.acao === 'venda.criada') return 'Venda cadastrada';
@@ -510,14 +510,14 @@ function getHistoryTitle(item, stageLabels = STAGE_LABELS) {
 }
 
 /**
- * Executa a rotina get history label.
+ * Retorna history label a partir dos dados informados.
  */
 function getHistoryLabel(item, stageLabels = STAGE_LABELS) {
   return [getHistoryTitle(item, stageLabels), item.observacao].filter(Boolean).join(' - ');
 }
 
 /**
- * Executa a rotina get history type.
+ * Retorna history type a partir dos dados informados.
  */
 function getHistoryType(item) {
   if (item.acao === 'venda.criada') return 'create';
@@ -526,7 +526,7 @@ function getHistoryType(item) {
 }
 
 /**
- * Executa a rotina map historico venda.
+ * Mapeia historico venda para o formato usado pela aplicacao.
  */
 function mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabels = STAGE_LABELS) {
   const historico = Array.isArray(venda.historico) ? venda.historico : [];
@@ -552,7 +552,7 @@ function mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabe
 }
 
 /**
- * Executa a rotina get etapas puladas.
+ * Retorna etapas puladas a partir dos dados informados.
  */
 function getEtapasPuladas(item, stages) {
   if (item.tipo !== 'move' || !item.statusAnterior || !item.statusNovo) {
@@ -574,7 +574,7 @@ function getEtapasPuladas(item, stages) {
 }
 
 /**
- * Executa a rotina build sale delivery progress.
+ * Processa build sale delivery progress conforme as regras do dominio.
  */
 function buildSaleDeliveryProgress(sale, stages) {
   const etapas = stages.filter(stage => stage.id !== 'retorno');
@@ -624,7 +624,7 @@ function buildSaleDeliveryProgress(sale, stages) {
 }
 
 /**
- * Executa a rotina get delivery connector type.
+ * Retorna delivery connector type a partir dos dados informados.
  */
 function getDeliveryConnectorType(stageA, stageB) {
   if (stageA.status === 'skipped' || stageB.status === 'skipped') return 'skip';
@@ -636,7 +636,7 @@ function getDeliveryConnectorType(stageA, stageB) {
 }
 
 /**
- * Executa a rotina sale event item.
+ * Processa sale event item conforme as regras do dominio.
  */
 function SaleEventItem({ item }) {
   const [aberto, setAberto] = useState(false);
@@ -689,7 +689,7 @@ function SaleEventItem({ item }) {
 }
 
 /**
- * Executa a rotina sale event list.
+ * Renderiza sale event list com os dados informados.
  */
 function SaleEventList({ sale }) {
   const eventos = Array.isArray(sale.historico) ? sale.historico : [];
@@ -721,7 +721,7 @@ function SaleEventList({ sale }) {
 }
 
 /**
- * Executa a rotina sale delivery tracker.
+ * Renderiza sale delivery tracker com os dados informados.
  */
 function SaleDeliveryTracker({ sale, stages, stageLabels }) {
   const progress = buildSaleDeliveryProgress(sale, stages);
@@ -777,7 +777,7 @@ function SaleDeliveryTracker({ sale, stages, stageLabels }) {
 }
 
 /**
- * Executa a rotina map venda to sale.
+ * Mapeia venda to sale para o formato usado pela aplicacao.
  */
 function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
   const sellers = getSellers(venda);
@@ -817,7 +817,7 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
 }
 
 /**
- * Executa a rotina sale modal.
+ * Renderiza sale modal.
  */
 function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFullSale, openingFullSale, podeCancelar, podeReverterCancelamento, onCancelSale, onReverterCancelamento }) {
   const [tab, setTab] = useState('info');
@@ -864,7 +864,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
     || observacao.trim() !== '';
 
   /**
-   * Executa a rotina submit status.
+   * Envia status para processamento.
    */
   async function submitStatus(status, statusObservacao = observacao.trim(), motivoRetorno = '', options = {}) {
     setSaving(true);
@@ -883,14 +883,14 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
   }
 
   /**
-   * Executa a rotina handle atualizar.
+   * Trata o evento de atualizar.
    */
   function handleAtualizar() {
     submitStatus(novaFase);
   }
 
   /**
-   * Executa a rotina handle prioridade click.
+   * Trata o evento de prioridade click.
    */
   function handlePrioridadeClick(prioridade) {
     setNovaPrioridade(prioridade);
@@ -902,14 +902,14 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
   }
 
   /**
-   * Executa a rotina handle confirm retorno.
+   * Trata o evento de confirm retorno.
    */
   function handleConfirmRetorno({ motivo, observacao: observacaoRetorno }) {
     return submitStatus('retorno', observacaoRetorno, motivo, { rethrow: true });
   }
 
   /**
-   * Executa a rotina handle confirm cancelamento.
+   * Trata o evento de confirm cancelamento.
    */
   async function handleConfirmCancelamento({ motivo }) {
     setSaving(true);
@@ -927,7 +927,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
   }
 
   /**
-   * Executa a rotina handle confirm reverter.
+   * Trata o evento de confirm reverter.
    */
   async function handleConfirmReverter({ observacao }) {
     setSaving(true);
@@ -1207,7 +1207,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
 }
 
 /**
- * Executa a rotina return reason modal.
+ * Renderiza return reason modal.
  */
 function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
   const [motivo, setMotivo] = useState('');
@@ -1215,7 +1215,7 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
   const [error, setError] = useState('');
 
   /**
-   * Executa a rotina handle submit.
+   * Trata o evento de submit.
    */
   async function handleSubmit(event) {
     event.preventDefault();
@@ -1300,14 +1300,14 @@ function ReturnReasonModal({ sale, saving, onClose, onConfirm }) {
 }
 
 /**
- * Executa a rotina revert cancelamento modal.
+ * Renderiza revert cancelamento modal.
  */
 function RevertCancelamentoModal({ sale, saving, onClose, onConfirm }) {
   const [observacao, setObservacao] = useState('');
   const [error, setError] = useState('');
 
   /**
-   * Executa a rotina handle submit.
+   * Trata o evento de submit.
    */
   async function handleSubmit(event) {
     event.preventDefault();
@@ -1376,14 +1376,14 @@ function RevertCancelamentoModal({ sale, saving, onClose, onConfirm }) {
 }
 
 /**
- * Executa a rotina cancel reason modal.
+ * Renderiza cancel reason modal.
  */
 function CancelReasonModal({ sale, saving, onClose, onConfirm }) {
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState('');
 
   /**
-   * Executa a rotina handle submit.
+   * Trata o evento de submit.
    */
   async function handleSubmit(event) {
     event.preventDefault();
@@ -1459,7 +1459,7 @@ function CancelReasonModal({ sale, saving, onClose, onConfirm }) {
 }
 
 /**
- * Executa a rotina delete stage modal.
+ * Renderiza delete stage modal.
  */
 function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
   const vendasCount = Number(stage?.vendasCount || 0);
@@ -1509,7 +1509,7 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
 }
 
 /**
- * Executa a rotina sale card.
+ * Renderiza sale card.
  */
 function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp, onProblema, podeOperarPosVenda }) {
   const priorityInfo = getPriorityInfo(sale.priority);
@@ -1622,7 +1622,7 @@ const NOVA_ETAPA = {
 };
 
 /**
- * Executa a rotina sortable column.
+ * Renderiza sortable column com os dados informados.
  */
 function SortableColumn({ id, disabled, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -1642,7 +1642,7 @@ const DADOS_MODAL_VENDA_INICIAIS = {
 };
 
 /**
- * Executa a rotina funil page.
+ * Renderiza funil page.
  */
 function FunilPage() {
   const usuario = getUsuarioLocal();
@@ -1722,7 +1722,7 @@ function FunilPage() {
   }, [dadosModalVenda.vendas, dadosModalVenda.etapasFunil]);
 
   /**
-   * Executa a rotina carregar dados modal venda.
+   * Carrega dados modal venda e atualiza o estado relacionado.
    */
   async function carregarDadosModalVenda({ force = false } = {}) {
     if (dadosModalVenda.loaded && !force) {
@@ -1763,7 +1763,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina abrir venda completa.
+   * Abre venda completa e prepara o estado necessario.
    */
   async function abrirVendaCompleta(sale) {
     if (!podeAbrirVendaCompleta || !sale?.id) return;
@@ -1787,7 +1787,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina fechar venda completa.
+   * Fecha venda completa e limpa o estado relacionado.
    */
   function fecharVendaCompleta() {
     setVendaCompleta(null);
@@ -1795,7 +1795,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina salvar venda completa.
+   * Salva venda completa com os dados informados.
    */
   async function salvarVendaCompleta(dados) {
     if (!vendaCompleta?.id) return;
@@ -1808,7 +1808,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina enviar pos venda completa.
+   * Envia pos venda completa para processamento.
    */
   async function enviarPosVendaCompleta(venda) {
     const resultado = await enviarVendaParaPosVenda(venda.id);
@@ -1825,7 +1825,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina abrir cliente rapido.
+   * Abre cliente rapido e prepara o estado necessario.
    */
   function abrirClienteRapido(clienteInicial = null) {
     return new Promise(resolve => {
@@ -1836,7 +1836,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina fechar cliente rapido.
+   * Fecha cliente rapido e limpa o estado relacionado.
    */
   function fecharClienteRapido(cliente = null) {
     setClienteRapidoAberto(false);
@@ -1846,7 +1846,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina salvar cliente rapido.
+   * Salva cliente rapido com os dados informados.
    */
   async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientes() : [];
@@ -1856,7 +1856,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle baixar xlsx claro.
+   * Trata o evento de baixar xlsx claro.
    */
   async function handleBaixarXlsxClaro(venda) {
     if (!venda?.id) return;
@@ -1872,7 +1872,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina abrir email venda.
+   * Abre email venda e prepara o estado necessario.
    */
   async function abrirEmailVenda(venda) {
     if (!venda?.id) return;
@@ -1889,7 +1889,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina copiar email venda.
+   * Copia email venda para o destino esperado.
    */
   async function copiarEmailVenda() {
     if (!emailTemplate?.texto) return;
@@ -1916,7 +1916,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina abrir mensagem whatsapp.
+   * Renderiza abrir mensagem whatsapp.
    */
   function abrirMensagemWhatsapp(venda) {
     if (!venda?.id) return;
@@ -1929,7 +1929,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina atualizar documentos whatsapp.
+   * Renderiza atualizar documentos whatsapp.
    */
   function atualizarDocumentosWhatsapp(documentosFaltantes) {
     setWhatsappMensagem(prev => {
@@ -1943,7 +1943,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina copiar mensagem whatsapp.
+   * Renderiza copiar mensagem whatsapp.
    */
   async function copiarMensagemWhatsapp() {
     if (!whatsappMensagem?.texto) return;
@@ -1973,7 +1973,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina sincronizar etapas.
+   * Sincroniza etapas com os dados atuais.
    */
   function sincronizarEtapas(etapas, { atualizarAdmin = false, fallbackAdminEtapa = null } = {}) {
     const etapasNormalizadas = normalizarEtapasFunil(etapas, !atualizarAdmin);
@@ -1998,7 +1998,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina carregar etapas admin.
+   * Carrega etapas admin e atualiza o estado relacionado.
    */
   async function carregarEtapasAdmin(fallbackAdminEtapa = null) {
     if (!podeGerenciarEtapas) return;
@@ -2019,7 +2019,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina carregar vendas.
+   * Carrega vendas e atualiza o estado relacionado.
    */
   async function carregarVendas() {
     setLoading(true);
@@ -2065,7 +2065,7 @@ function FunilPage() {
   }, [stageFeedback.message]);
 
   /**
-   * Executa a rotina atualizar etapas apos crud.
+   * Atualiza etapas apos crud com os dados informados.
    */
   async function atualizarEtapasAposCrud(message, fallbackAdminEtapa = null) {
     await carregarEtapasAdmin(fallbackAdminEtapa);
@@ -2073,7 +2073,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle create stage.
+   * Trata o evento de create stage.
    */
   async function handleCreateStage(event) {
     event.preventDefault();
@@ -2101,7 +2101,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle drag end.
+   * Trata o evento de drag end.
    */
   async function handleDragEnd({ active, over }) {
     if (!over || active.id === over.id) return;
@@ -2118,7 +2118,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle save stage name.
+   * Trata o evento de save stage name.
    */
   async function handleSaveStageName(stage) {
     const nome = editStageNames[stage.adminId]?.trim();
@@ -2144,7 +2144,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle toggle stage.
+   * Trata o evento de toggle stage.
    */
   async function handleToggleStage(stage) {
     if (!stage.adminId) return;
@@ -2169,7 +2169,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle delete stage.
+   * Trata o evento de delete stage.
    */
   async function handleDeleteStage(stage) {
     if (!stage.adminId) return;
@@ -2198,7 +2198,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle toggle final stage.
+   * Trata o evento de toggle final stage.
    */
   async function handleToggleFinalStage(stage) {
     if (!stage.adminId) return;
@@ -2222,7 +2222,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle update sale.
+   * Trata o evento de update sale.
    */
   async function handleUpdateSale(saleId, novaFase, novaPrioridade, observacao, motivoRetorno) {
     if (novaFase === 'retorno') {
@@ -2254,7 +2254,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle cancelar venda.
+   * Trata o evento de cancelar venda.
    */
   async function handleCancelarVenda(saleId, motivo) {
     const vendaAtualizada = await cancelarVenda(saleId, motivo);
@@ -2268,7 +2268,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina handle reverter cancelamento venda.
+   * Trata o evento de reverter cancelamento venda.
    */
   async function handleReverterCancelamentoVenda(saleId, observacao) {
     const vendaAtualizada = await reverterCancelamentoVenda(saleId, observacao);
@@ -2282,7 +2282,7 @@ function FunilPage() {
   }
 
   /**
-   * Executa a rotina limpar filtros.
+   * Limpa filtros e restaura o estado inicial.
    */
   function limparFiltros() {
     setVendedoraId('');

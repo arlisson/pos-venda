@@ -10,7 +10,7 @@ import { formatarNomeServico } from '../../utils/servicos';
 import './RetornosPage.css';
 
 /**
- * Executa a rotina format brl.
+ * Formata brl para exibicao.
  */
 const formatBRL = (value) =>
   Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -27,14 +27,14 @@ const RETURN_REASON_GROUPS = [
 const FALLBACK_STAGE_LABELS = Object.fromEntries(STAGES.map(stage => [stage.id, stage.name]));
 
 /**
- * Executa a rotina classify reason.
+ * Processa classify reason conforme as regras do dominio.
  */
 function classifyReason(reason) {
   return RETURN_REASON_GROUPS.find(group => group.match(reason || '')) || RETURN_REASON_GROUPS.at(-1);
 }
 
 /**
- * Executa a rotina rel time.
+ * Processa rel time conforme as regras do dominio.
  */
 function relTime(value) {
   if (!value) return 'recentemente';
@@ -49,56 +49,56 @@ function relTime(value) {
 }
 
 /**
- * Executa a rotina get operator.
+ * Retorna operator a partir dos dados informados.
  */
 function getOperator(venda) {
   return venda.operadora?.nome || venda.operadora || 'Sem operadora';
 }
 
 /**
- * Executa a rotina get plan.
+ * Retorna plan a partir dos dados informados.
  */
 function getPlan(venda) {
   return venda.produto_fechado || formatarNomeServico(venda.servico?.nome) || venda.tipoVenda?.nome || 'Plano não informado';
 }
 
 /**
- * Executa a rotina get seller.
+ * Retorna seller a partir dos dados informados.
  */
 function getSeller(venda) {
   return venda.vendedora?.nome || venda.nome_fechou_venda || 'Sem vendedor';
 }
 
 /**
- * Executa a rotina get client.
+ * Retorna client a partir dos dados informados.
  */
 function getClient(venda) {
   return venda.nome || venda.razao_social || `Venda #${venda.id}`;
 }
 
 /**
- * Executa a rotina get value.
+ * Retorna value a partir dos dados informados.
  */
 function getValue(venda) {
   return Number(venda.valor_total || 0);
 }
 
 /**
- * Executa a rotina get return date.
+ * Retorna return date a partir dos dados informados.
  */
 function getReturnDate(venda) {
   return venda.retornou_em || venda.updated_at || venda.ultima_atividade_em;
 }
 
 /**
- * Executa a rotina get destination.
+ * Retorna destination a partir dos dados informados.
  */
 function getDestination(venda) {
   return venda.status_anterior_retorno || 'aprovacao';
 }
 
 /**
- * Executa a rotina parse historico dados.
+ * Converte historico dados para o formato interno esperado.
  */
 function parseHistoricoDados(dados) {
   if (!dados) return {};
@@ -113,7 +113,7 @@ function parseHistoricoDados(dados) {
 }
 
 /**
- * Executa a rotina get return observation.
+ * Retorna return observation a partir dos dados informados.
  */
 function getReturnObservation(venda) {
   const historico = Array.isArray(venda.historico) ? venda.historico : [];
@@ -129,7 +129,7 @@ function getReturnObservation(venda) {
 }
 
 /**
- * Executa a rotina resolve return modal.
+ * Renderiza resolve return modal.
  */
 function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
   const [note, setNote] = useState('');
@@ -139,7 +139,7 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
   const returnObservation = getReturnObservation(venda);
 
   /**
-   * Executa a rotina handle submit.
+   * Trata o evento de submit.
    */
   async function handleSubmit(event) {
     event.preventDefault();
@@ -227,7 +227,7 @@ function ResolveReturnModal({ venda, stageLabels, onClose, onConfirm }) {
 }
 
 /**
- * Executa a rotina retornos page.
+ * Renderiza retornos page.
  */
 function RetornosPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -241,7 +241,7 @@ function RetornosPage() {
   const [stageLabels, setStageLabels] = useState(FALLBACK_STAGE_LABELS);
 
   /**
-   * Executa a rotina carregar retornos.
+   * Carrega retornos e atualiza o estado relacionado.
    */
   async function carregarRetornos() {
     setLoading(true);
@@ -318,7 +318,7 @@ function RetornosPage() {
   const taxaRetorno = ((allReturns.length / Math.max(allSales.length, 1)) * 100).toFixed(1);
 
   /**
-   * Executa a rotina handle resolve return.
+   * Trata o evento de resolve return.
    */
   async function handleResolveReturn(venda, note) {
     const destination = getDestination(venda);

@@ -57,14 +57,14 @@ const PRIORIDADES_BASE_DUPLA = [
 ];
 
 /**
- * Executa a rotina fmt moeda.
+ * Formata moeda para exibicao.
  */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 /**
- * Executa a rotina valor form.
+ * Retorna valor form no formato esperado pelo fluxo.
  */
 function valorForm(valor) {
   if (valor === null || valor === undefined || valor === '') return '';
@@ -72,7 +72,7 @@ function valorForm(valor) {
 }
 
 /**
- * Executa a rotina mascarar brl.
+ * Processa mascarar brl conforme as regras do dominio.
  */
 function mascararBRL(valor) {
   const digits = String(valor || '').replace(/\D/g, '');
@@ -82,7 +82,7 @@ function mascararBRL(valor) {
 }
 
 /**
- * Executa a rotina moeda para numero.
+ * Processa moeda para numero conforme as regras do dominio.
  */
 function moedaParaNumero(valor) {
   const digits = String(valor || '').replace(/\D/g, '');
@@ -92,14 +92,14 @@ function moedaParaNumero(valor) {
 }
 
 /**
- * Executa a rotina label prioridade base dupla.
+ * Retorna label prioridade base dupla no formato esperado pelo fluxo.
  */
 function labelPrioridadeBaseDupla(valor) {
   return PRIORIDADES_BASE_DUPLA.find(item => item.value === valor)?.label || 'Nossa base';
 }
 
 /**
- * Executa a rotina status pill.
+ * Retorna status pill no formato esperado pelo fluxo.
  */
 function StatusPill({ ativo }) {
   return (
@@ -111,7 +111,7 @@ function StatusPill({ ativo }) {
 }
 
 /**
- * Executa a rotina confirmar exclusao config modal.
+ * Renderiza confirmar exclusao config modal.
  */
 function ConfirmarExclusaoConfigModal({ item, tipo, excluindo, onClose, onConfirm }) {
   if (!item) return null;
@@ -155,7 +155,7 @@ function ConfirmarExclusaoConfigModal({ item, tipo, excluindo, onClose, onConfir
 }
 
 /**
- * Executa a rotina configuracoes page.
+ * Renderiza configuracoes page.
  */
 function ConfiguracoesPage() {
   const usuario = getUsuarioLocal();
@@ -212,7 +212,7 @@ function ConfiguracoesPage() {
   }, [erro]);
 
   /**
-   * Executa a rotina carregar dados.
+   * Carrega dados e atualiza o estado relacionado.
    */
   async function carregarDados() {
     setErro('');
@@ -246,7 +246,7 @@ function ConfiguracoesPage() {
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   /**
-   * Executa a rotina resetar forms.
+   * Executa a acao de resetar forms mantendo o estado da tela consistente.
    */
   function resetarForms() {
     setFormSimples(FORM_SIMPLES);
@@ -256,7 +256,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina mudar aba.
+   * Executa a acao de mudar aba mantendo o estado da tela consistente.
    */
   function mudarAba(id) {
     setAba(id);
@@ -265,7 +265,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina editar item.
+   * Executa a acao de editar item mantendo o estado da tela consistente.
    */
   function editarItem(item) {
     setEditandoId(item.id);
@@ -302,7 +302,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina render form header.
+   * Renderiza render form header.
    */
   function renderFormHeader(tituloAdicionar, tituloEditar, subtitulo) {
     return (
@@ -322,7 +322,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina render form actions.
+   * Renderiza form actions no fluxo da tela.
    */
   function renderFormActions(salvandoLabel = 'Salvar alterações', adicionandoLabel = 'Adicionar') {
     return (
@@ -341,7 +341,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina salvar simples.
+   * Salva simples com os dados informados.
    */
   async function salvarSimples(event) {
     event.preventDefault();
@@ -372,7 +372,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina salvar link.
+   * Salva link com os dados informados.
    */
   async function salvarLink(event) {
     event.preventDefault();
@@ -396,7 +396,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina salvar regra comissao.
+   * Salva regra comissao com os dados informados.
    */
   async function salvarRegraComissao(event) {
     event.preventDefault();
@@ -429,14 +429,14 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina solicitar exclusao.
+   * Executa a acao de solicitar exclusao mantendo o estado da tela consistente.
    */
   function solicitarExclusao(item) {
     setItemParaExcluir(item);
   }
 
   /**
-   * Executa a rotina confirmar exclusao.
+   * Executa a acao de confirmar exclusao mantendo o estado da tela consistente.
    */
   async function confirmarExclusao() {
     if (!itemParaExcluir) return;
@@ -466,7 +466,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina render links.
+   * Renderiza links no fluxo da tela.
    */
   function renderLinks(listaAtual) {
     return (
@@ -540,7 +540,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina render regras comissao.
+   * Renderiza regras comissao no fluxo da tela.
    */
   function renderRegrasComissao(listaAtual) {
     return (
@@ -685,7 +685,7 @@ function ConfiguracoesPage() {
   }
 
   /**
-   * Executa a rotina render simples.
+   * Renderiza simples no fluxo da tela.
    */
   function renderSimples(listaAtual) {
     const labelAtual = abas.find(item => item.id === aba)?.label || 'item';

@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Executa a rotina mk.
+ * Processa mk conforme as regras do dominio.
  */
 const mk = (paths, vb = '0 0 24 24') => ({ size = 16, ...rest } = {}) => (
   <svg 

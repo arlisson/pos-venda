@@ -4,21 +4,21 @@ const PERIODOS_VALIDOS = ['diaria', 'semanal', 'mensal'];
 const CATEGORIAS_VALIDAS = ['registro_cliente', 'chip_novo', 'portabilidade', 'internet'];
 
 /**
- * Executa a rotina montar tipo.
+ * Monta tipo a partir dos dados informados.
  */
 function montarTipo(periodo, categoria) {
   return `${periodo}_${categoria}`;
 }
 
 /**
- * Executa a rotina is gift.
+ * Verifica se gift atende a condicao esperada.
  */
 function isGift(campanha) {
   return campanha.is_gift === true || campanha.is_gift === 1 || campanha.is_gift === '1';
 }
 
 /**
- * Executa a rotina normalizar campanha.
+ * Normaliza campanha para uso interno consistente.
  */
 function normalizarCampanha(campanha) {
   const periodo = PERIODOS_VALIDOS.includes(campanha.periodo) ? campanha.periodo : 'diaria';
@@ -37,6 +37,9 @@ function normalizarCampanha(campanha) {
   };
 }
 
+/**
+ * Modelo de acesso as campanhas e recompensas configuradas.
+ */
 class Campanha {
   static tableName = 'campanhas';
 

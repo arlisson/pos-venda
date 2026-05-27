@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para mensagens internas entre usuarios.
+ */
 class Mensagem extends Model {
   static get tableName() {
     return 'mensagens';

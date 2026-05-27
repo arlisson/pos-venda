@@ -6,7 +6,7 @@ import { buscarPerfil, logout } from '../../services/auth.service';
 import './PerfilPage.css';
 
 /**
- * Executa a rotina perfil page.
+ * Renderiza perfil page.
  */
 function PerfilPage() {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ function PerfilPage() {
 
   useEffect(() => {
     /**
-     * Executa a rotina carregar perfil.
+     * Carrega perfil e atualiza o estado relacionado.
      */
     async function carregarPerfil() {
       try {
@@ -40,7 +40,7 @@ function PerfilPage() {
   }, []);
 
   /**
-   * Executa a rotina get initials.
+   * Retorna initials a partir dos dados informados.
    */
   const getInitials = (name) => {
     if (!name) return '??';

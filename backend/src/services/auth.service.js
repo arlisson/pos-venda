@@ -8,7 +8,7 @@ const Usuario = require('../models/Usuario');
 const { montarMapaPermissoesEfetivas } = require('../utils/permissoes');
 
 /**
- * Executa a rotina validar foto perfil.
+ * Valida foto perfil e retorna o resultado esperado.
  */
 function validarFotoPerfil(fotoPerfil) {
   if (fotoPerfil === null || fotoPerfil === '') {
@@ -35,7 +35,7 @@ function validarFotoPerfil(fotoPerfil) {
 }
 
 /**
- * Executa a rotina montar usuario com permissoes.
+ * Monta usuario com permissoes a partir dos dados informados.
  */
 async function montarUsuarioComPermissoes(usuario) {
   const usuarioJson = usuario.toJSON();
@@ -47,7 +47,7 @@ async function montarUsuarioComPermissoes(usuario) {
 }
 
 /**
- * Executa a rotina atualizar perfil.
+ * Atualiza perfil com os dados informados.
  */
 async function atualizarPerfil(usuarioId, dados) {
   const dadosAtualizacao = {};
@@ -86,7 +86,7 @@ async function atualizarPerfil(usuarioId, dados) {
 }
 
 /**
- * Executa a rotina login.
+ * Processa login conforme as regras do dominio.
  */
 async function login(email, senha) {
   
@@ -130,7 +130,7 @@ async function login(email, senha) {
 }
 
 /**
- * Executa a rotina buscar usuario logado.
+ * Busca usuario logado conforme os parametros informados.
  */
 async function buscarUsuarioLogado(usuarioId) {
   const usuario = await Usuario.query()

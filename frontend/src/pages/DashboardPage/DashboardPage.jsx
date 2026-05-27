@@ -15,12 +15,12 @@ import { formatUtcDateTime, getUtcDateTimeTimestamp, parseUtcDateTime } from '..
 import './DashboardPage.css';
 
 /**
- * Executa a rotina format brl.
+ * Formata brl para exibicao.
  */
 const formatBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 /**
- * Executa a rotina is money goal.
+ * Verifica se money goal atende a condicao esperada.
  */
 const isMoneyGoal = (campanha) => (
   /R\$/i.test(campanha.desc || '') ||
@@ -28,7 +28,7 @@ const isMoneyGoal = (campanha) => (
 );
 
 /**
- * Executa a rotina format goal value.
+ * Formata goal value para exibicao.
  */
 const formatGoalValue = (campanha, value) => (
   isMoneyGoal(campanha) ? formatBRL(value) : value
@@ -55,14 +55,14 @@ const RETORNO_PRE_AVISO_MINUTOS = 15;
 const NOTIFICATION_DRAWER_KEYS = ['retornos', 'fidelidade', 'ligacoes', 'vendas-paradas', 'problemas'];
 
 /**
- * Executa a rotina get campanha key.
+ * Retorna campanha key a partir dos dados informados.
  */
 function getCampanhaKey(campanha) {
   return campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`;
 }
 
 /**
- * Executa a rotina get campanha scope.
+ * Retorna campanha scope a partir dos dados informados.
  */
 function getCampanhaScope(campanha) {
   const periodo = PERIOD_LABELS[campanha.periodo] || 'Diária';
@@ -91,7 +91,7 @@ const TODAY_VIEW_MODES = [
 const TODAY_STATS_COLORS = ['#2563eb', '#16a34a', '#e87900', '#9333ea'];
 
 /**
- * Executa a rotina today donut.
+ * Renderiza today donut com os dados informados.
  */
 function TodayDonut({ items }) {
   const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0);
@@ -134,7 +134,7 @@ function TodayDonut({ items }) {
 }
 
 /**
- * Executa a rotina today overview.
+ * Renderiza today overview com os dados informados.
  */
 function TodayOverview({ items, stats }) {
   const maxValue = Math.max(...items.map(item => Math.max(0, Number(item.value) || 0)), 1);
@@ -215,7 +215,7 @@ function TodayOverview({ items, stats }) {
 }
 
 /**
- * Executa a rotina today stats chart.
+ * Renderiza today stats chart com os dados informados.
  */
 function TodayStatsChart({ items, type }) {
   const total = items.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0);
@@ -317,7 +317,7 @@ function TodayStatsChart({ items, type }) {
 }
 
 /**
- * Executa a rotina reward modal.
+ * Renderiza reward modal.
  */
 function RewardModal({ gift, onClose }) {
   if (!gift) return null;
@@ -353,13 +353,13 @@ function RewardModal({ gift, onClose }) {
 }
 
 /**
- * Executa a rotina contatos marcados modal.
+ * Renderiza contatos marcados modal.
  */
 function ContatosMarcadosModal({ open, notificacoes, onClose, onOpenNotification }) {
   if (!open) return null;
 
   /**
-   * Executa a rotina handle open notification.
+   * Trata o evento de open notification.
    */
   async function handleOpenNotification(notificacao) {
     onClose();
@@ -422,13 +422,13 @@ function ContatosMarcadosModal({ open, notificacoes, onClose, onOpenNotification
 }
 
 /**
- * Executa a rotina problemas modal.
+ * Renderiza problemas modal.
  */
 function ProblemasModal({ open, notificacoes, onClose, onOpenNotification }) {
   if (!open) return null;
 
   /**
-   * Executa a rotina handle open.
+   * Trata o evento de open.
    */
   async function handleOpen(notificacao) {
     onClose();
@@ -493,7 +493,7 @@ function ProblemasModal({ open, notificacoes, onClose, onOpenNotification }) {
 }
 
 /**
- * Executa a rotina get initials.
+ * Retorna initials a partir dos dados informados.
  */
 function getInitials(name) {
   if (!name) return '??';
@@ -507,7 +507,7 @@ function getInitials(name) {
 }
 
 /**
- * Executa a rotina get notification target.
+ * Retorna notification target a partir dos dados informados.
  */
 function getNotificationTarget(notificacao) {
   if (notificacao.tipo === 'cliente_fidelidade') {
@@ -550,7 +550,7 @@ function getNotificationTarget(notificacao) {
 }
 
 /**
- * Executa a rotina get retorno timestamp.
+ * Retorna retorno timestamp a partir dos dados informados.
  */
 function getRetornoTimestamp(notificacao) {
   const valor = notificacao?.dados?.retorno_agendado_para || notificacao?.updated_at;
@@ -558,7 +558,7 @@ function getRetornoTimestamp(notificacao) {
 }
 
 /**
- * Executa a rotina formatar retorno resumo.
+ * Formata retorno resumo para exibicao ou envio.
  */
 function formatarRetornoResumo(notificacao) {
   const valor = notificacao?.dados?.retorno_agendado_para;
@@ -573,7 +573,7 @@ function formatarRetornoResumo(notificacao) {
 }
 
 /**
- * Executa a rotina get retorno minutos para vencer.
+ * Retorna retorno minutos para vencer a partir dos dados informados.
  */
 function getRetornoMinutosParaVencer(notificacao) {
   const data = parseUtcDateTime(notificacao?.dados?.retorno_agendado_para);
@@ -583,7 +583,7 @@ function getRetornoMinutosParaVencer(notificacao) {
 }
 
 /**
- * Executa a rotina retorno deve aparecer no card.
+ * Renderiza retorno deve aparecer no card.
  */
 function retornoDeveAparecerNoCard(notificacao) {
   if (!TIPOS_RETORNO_NOTA.includes(notificacao.tipo)) return false;
@@ -594,7 +594,7 @@ function retornoDeveAparecerNoCard(notificacao) {
 }
 
 /**
- * Executa a rotina formatar prazo relativo.
+ * Formata prazo relativo para exibicao ou envio.
  */
 function formatarPrazoRelativo(valor) {
   if (!valor) return 'Pendente';
@@ -610,7 +610,7 @@ function formatarPrazoRelativo(valor) {
 }
 
 /**
- * Executa a rotina get notificacao titulo.
+ * Retorna notificacao titulo a partir dos dados informados.
  */
 function getNotificacaoTitulo(notificacao) {
   return notificacao?.dados?.cliente_nome
@@ -621,7 +621,7 @@ function getNotificacaoTitulo(notificacao) {
 }
 
 /**
- * Executa a rotina get notificacao descricao.
+ * Retorna notificacao descricao a partir dos dados informados.
  */
 function getNotificacaoDescricao(notificacao) {
   if (!notificacao) return '';
@@ -644,7 +644,7 @@ function getNotificacaoDescricao(notificacao) {
 }
 
 /**
- * Executa a rotina montar tooltip notificacao.
+ * Monta tooltip notificacao a partir dos dados informados.
  */
 function montarTooltipNotificacao(titulo, descricao) {
   return [titulo, descricao]
@@ -655,7 +655,7 @@ function montarTooltipNotificacao(titulo, descricao) {
 }
 
 /**
- * Executa a rotina get notificacao tooltip.
+ * Retorna notificacao tooltip a partir dos dados informados.
  */
 function getNotificacaoTooltip(notificacao) {
   if (!notificacao) return '';
@@ -669,7 +669,7 @@ function getNotificacaoTooltip(notificacao) {
 }
 
 /**
- * Executa a rotina get fidelidade prazo.
+ * Retorna fidelidade prazo a partir dos dados informados.
  */
 function getFidelidadePrazo(notificacao) {
   const dias = Number(notificacao?.dados?.dias_restantes);
@@ -680,7 +680,7 @@ function getFidelidadePrazo(notificacao) {
 }
 
 /**
- * Executa a rotina get retorno prazo.
+ * Retorna retorno prazo a partir dos dados informados.
  */
 function getRetornoPrazo(notificacao) {
   if (notificacao?.tipo === 'nota_retorno_due') return 'Ligação vencida';
@@ -696,7 +696,7 @@ function getRetornoPrazo(notificacao) {
 }
 
 /**
- * Executa a rotina get venda parada prazo.
+ * Retorna venda parada prazo a partir dos dados informados.
  */
 function getVendaParadaPrazo(notificacao) {
   const horas = Number(notificacao?.dados?.horas);
@@ -710,7 +710,7 @@ function getVendaParadaPrazo(notificacao) {
 }
 
 /**
- * Executa a rotina get venda retorno timestamp.
+ * Retorna venda retorno timestamp a partir dos dados informados.
  */
 function getVendaRetornoTimestamp(venda) {
   const valor = venda?.retornou_em || venda?.updated_at || venda?.ultima_atividade_em;
@@ -718,7 +718,7 @@ function getVendaRetornoTimestamp(venda) {
 }
 
 /**
- * Executa a rotina formatar data retorno venda.
+ * Formata data retorno venda para exibicao ou envio.
  */
 function formatarDataRetornoVenda(venda) {
   const timestamp = getVendaRetornoTimestamp(venda);
@@ -733,21 +733,21 @@ function formatarDataRetornoVenda(venda) {
 }
 
 /**
- * Executa a rotina get venda retorno titulo.
+ * Retorna venda retorno titulo a partir dos dados informados.
  */
 function getVendaRetornoTitulo(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
 /**
- * Executa a rotina get venda retorno descricao.
+ * Retorna venda retorno descricao a partir dos dados informados.
  */
 function getVendaRetornoDescricao(venda) {
   return venda?.motivo_retorno || 'Sem motivo informado';
 }
 
 /**
- * Executa a rotina montar mapa referencias.
+ * Monta mapa referencias a partir dos dados informados.
  */
 function montarMapaReferencias(referencias = [], campo = 'total') {
   return referencias.reduce((mapa, item) => {
@@ -757,7 +757,7 @@ function montarMapaReferencias(referencias = [], campo = 'total') {
 }
 
 /**
- * Executa a rotina dashboard page.
+ * Renderiza dashboard page.
  */
 function DashboardPage() {
   const navigate = useNavigate();
@@ -858,7 +858,7 @@ function DashboardPage() {
 
     const mediaQuery = window.matchMedia('(max-width: 760px)');
     /**
-     * Executa a rotina handle change.
+     * Trata o evento de change.
      */
     const handleChange = event => setTeamGoalMobileLayout(event.matches);
 
@@ -936,7 +936,7 @@ function DashboardPage() {
 
     let ativo = true;
     /**
-     * Executa a rotina carregar notificacoes dashboard.
+     * Carrega notificacoes dashboard e atualiza o estado relacionado.
      */
     const carregarNotificacoesDashboard = () => {
       listarNotificacoes({ limit: 24 })
@@ -950,7 +950,7 @@ function DashboardPage() {
     const timer = setInterval(carregarNotificacoesDashboard, 60000);
 
     /**
-     * Executa a rotina handle refresh notifications.
+     * Trata o evento de refresh notifications.
      */
     function handleRefreshNotifications() {
       carregarNotificacoesDashboard();
@@ -966,7 +966,7 @@ function DashboardPage() {
   }, [podeVerNotificacoes]);
 
   /**
-   * Executa a rotina handle read notification.
+   * Trata o evento de read notification.
    */
   async function handleReadNotification(notificacao) {
     if (!notificacao.lida) {
@@ -985,7 +985,7 @@ function DashboardPage() {
   }
 
   /**
-   * Executa a rotina marcar notificacao como lida local.
+   * Marca notificacao como lida local conforme a acao solicitada.
    */
   async function marcarNotificacaoComoLidaLocal(notificacao) {
     if (!notificacao?.id || notificacao.lida) return;
@@ -998,7 +998,7 @@ function DashboardPage() {
   }
 
   /**
-   * Executa a rotina abrir cliente no dashboard.
+   * Abre cliente no dashboard e prepara o estado necessario.
    */
   async function abrirClienteNoDashboard(clienteId, aba = 'cliente') {
     if (!clienteId) return;
@@ -1010,7 +1010,7 @@ function DashboardPage() {
   }
 
   /**
-   * Executa a rotina abrir venda no dashboard.
+   * Abre venda no dashboard e prepara o estado necessario.
    */
   async function abrirVendaNoDashboard(vendaId, aba = 'venda', problemaId = null) {
     if (!vendaId) return;
@@ -1024,7 +1024,7 @@ function DashboardPage() {
   }
 
   /**
-   * Executa a rotina abrir notificacao no dashboard.
+   * Abre notificacao no dashboard e prepara o estado necessario.
    */
   async function abrirNotificacaoNoDashboard(notificacao) {
     await marcarNotificacaoComoLidaLocal(notificacao);
@@ -1047,7 +1047,7 @@ function DashboardPage() {
   }
 
   /**
-   * Executa a rotina salvar cliente dashboard.
+   * Salva cliente dashboard com os dados informados.
    */
   async function salvarClienteDashboard(clienteSalvo) {
     setClienteModal(null);
@@ -1060,7 +1060,7 @@ function DashboardPage() {
   }
 
   /**
-   * Executa a rotina salvar venda dashboard.
+   * Salva venda dashboard com os dados informados.
    */
   async function salvarVendaDashboard(vendaSalva) {
     setVendaModal(null);
@@ -1230,7 +1230,7 @@ function DashboardPage() {
   ];
 
   /**
-   * Executa a rotina toggle notification drawer.
+   * Alterna notification drawer no estado atual.
    */
   function toggleNotificationDrawer(key) {
     setOpenNotificationDrawers(prev => {
@@ -1245,14 +1245,14 @@ function DashboardPage() {
   }
 
   /**
-   * Executa a rotina is team goal drawer open.
+   * Verifica se team goal drawer open atende a condicao esperada.
    */
   function isTeamGoalDrawerOpen(id) {
     return !teamGoalMobileLayout || openTeamGoalDrawers.has(String(id));
   }
 
   /**
-   * Executa a rotina toggle team goal drawer.
+   * Alterna team goal drawer no estado atual.
    */
   function toggleTeamGoalDrawer(id) {
     const key = String(id);
@@ -1282,7 +1282,7 @@ function DashboardPage() {
       : `vence em ${proximaFidelidade?.dados?.dias_restantes} dias`;
 
   /**
-   * Executa a rotina handle open gift.
+   * Trata o evento de open gift.
    */
   const handleOpenGift = async (campanha) => {
     setClaimingId(campanha.id);

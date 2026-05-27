@@ -7,7 +7,7 @@ const OPCOES_POR_PAGINA = [20, 50, 100];
 // Sempre retorna exatamente 7 slots — sem layout shift ao navegar.
 // Slots são números ou as strings fixas 'ellipsis-start' / 'ellipsis-end'.
 /**
- * Executa a rotina gerar paginas.
+ * Gera paginas a partir dos dados informados.
  */
 function gerarPaginas(total, atual) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -22,7 +22,7 @@ function gerarPaginas(total, atual) {
 }
 
 /**
- * Executa a rotina seletor itens por pagina.
+ * Processa seletor itens por pagina conforme as regras do dominio.
  */
 function SeletorItensPorPagina({ id, value, onChange }) {
   const [aberto, setAberto] = useState(false);
@@ -31,7 +31,7 @@ function SeletorItensPorPagina({ id, value, onChange }) {
   const menuRef = useRef(null);
 
   /**
-   * Executa a rotina calcular posicao.
+   * Calcula posicao com base nos valores informados.
    */
   function calcularPosicao() {
     if (!triggerRef.current) return;
@@ -52,7 +52,7 @@ function SeletorItensPorPagina({ id, value, onChange }) {
     if (!aberto) return;
 
     /**
-     * Executa a rotina fechar fora.
+     * Fecha fora e limpa o estado relacionado.
      */
     function fecharFora(event) {
       if (
@@ -75,7 +75,7 @@ function SeletorItensPorPagina({ id, value, onChange }) {
   }, [aberto]);
 
   /**
-   * Executa a rotina selecionar.
+   * Seleciona  e atualiza o estado relacionado.
    */
   function selecionar(n) {
     onChange(n);
@@ -84,7 +84,7 @@ function SeletorItensPorPagina({ id, value, onChange }) {
   }
 
   /**
-   * Executa a rotina handle key down.
+   * Trata o evento de key down.
    */
   function handleKeyDown(event) {
     if (event.key === 'Escape') setAberto(false);
@@ -143,7 +143,7 @@ function SeletorItensPorPagina({ id, value, onChange }) {
 }
 
 /**
- * Executa a rotina paginacao.
+ * Processa paginacao conforme as regras do dominio.
  */
 function Paginacao({ total, paginaAtual, itensPorPagina, onPagina, onItensPorPagina }) {
   const uid = useId();

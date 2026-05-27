@@ -47,7 +47,7 @@ const EMPTY_REPORT = {
 
 // === Helpers ===
 /**
- * Executa a rotina formatar moeda.
+ * Formata moeda para exibicao ou envio.
  */
 function formatarMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', {
@@ -57,7 +57,7 @@ function formatarMoeda(valor) {
 }
 
 /**
- * Executa a rotina obter iniciais.
+ * Obtem iniciais a partir dos dados informados.
  */
 function obterIniciais(nome = '') {
   const iniciais = nome
@@ -72,7 +72,7 @@ function obterIniciais(nome = '') {
 }
 
 /**
- * Executa a rotina nice max.
+ * Processa nice max conforme as regras do dominio.
  */
 function niceMax(v) {
   if (v <= 0) return 10;
@@ -87,7 +87,7 @@ function niceMax(v) {
 }
 
 /**
- * Executa a rotina fmt compact brl.
+ * Formata compact brl para exibicao.
  */
 function fmtCompactBRL(v) {
   if (v >= 1000000) return `R$ ${(v / 1000000).toFixed(1).replace('.', ',')}M`;
@@ -96,7 +96,7 @@ function fmtCompactBRL(v) {
 }
 
 /**
- * Executa a rotina parse isodate.
+ * Converte isodate para o formato interno esperado.
  */
 function parseISODate(iso) {
   if (!iso) return null;
@@ -106,7 +106,7 @@ function parseISODate(iso) {
 }
 
 /**
- * Executa a rotina fmt dia mes.
+ * Formata dia mes para exibicao.
  */
 function fmtDiaMes(iso) {
   const data = parseISODate(iso);
@@ -115,7 +115,7 @@ function fmtDiaMes(iso) {
 }
 
 /**
- * Executa a rotina fmt range.
+ * Formata range para exibicao.
  */
 function fmtRange(inicio, fim) {
   const ini = fmtDiaMes(inicio);
@@ -125,7 +125,7 @@ function fmtRange(inicio, fim) {
 }
 
 /**
- * Executa a rotina delta text.
+ * Processa delta text conforme as regras do dominio.
  */
 function deltaText(curr, prev) {
   if (prev === 0 && curr === 0) return { sign: 0, abs: 0, pct: 0 };
@@ -135,7 +135,7 @@ function deltaText(curr, prev) {
 }
 
 /**
- * Executa a rotina operadora cor.
+ * Retorna operadora cor no formato esperado pelo fluxo.
  */
 function operadoraCor(nome, indice) {
   return OPERATOR_COLORS[nome] || FALLBACK_COLORS[indice % FALLBACK_COLORS.length];
@@ -143,7 +143,7 @@ function operadoraCor(nome, indice) {
 
 // === Sparkline (pequeno, inline) ===
 /**
- * Executa a rotina sparkline.
+ * Processa sparkline conforme as regras do dominio.
  */
 function Sparkline({ values, accent = 'var(--text)', w = 80, h = 24 }) {
   if (!values || values.length < 2) return null;
@@ -167,7 +167,7 @@ function Sparkline({ values, accent = 'var(--text)', w = 80, h = 24 }) {
 
 // === Gráfico de linha com média e destaque de pico ===
 /**
- * Executa a rotina line chart.
+ * Renderiza line chart com os dados informados.
  */
 function LineChart({ data, height = 280, color = '#4f46e5' }) {
   const [hoverIdx, setHoverIdx] = useState(null);
@@ -184,11 +184,11 @@ function LineChart({ data, height = 280, color = '#4f46e5' }) {
   const peakIdx = values.indexOf(maxRaw);
 
   /**
-   * Executa a rotina x s.
+   * Processa x s conforme as regras do dominio.
    */
   const xS = (i) => pad.left + (i / Math.max(data.length - 1, 1)) * innerW;
   /**
-   * Executa a rotina y s.
+   * Processa y s conforme as regras do dominio.
    */
   const yS = (v) => pad.top + (1 - v / maxV) * innerH;
   const pts = data.map((d, i) => [xS(i), yS(d.revenue)]);
@@ -212,7 +212,7 @@ function LineChart({ data, height = 280, color = '#4f46e5' }) {
     : 0;
 
   /**
-   * Executa a rotina handle mouse move.
+   * Trata o evento de mouse move.
    */
   const handleMouseMove = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -392,7 +392,7 @@ function LineChart({ data, height = 280, color = '#4f46e5' }) {
 
 // === Donut ===
 /**
- * Executa a rotina donut.
+ * Renderiza donut com os dados informados.
  */
 function Donut({ slices, size = 170, thickness = 24, center }) {
   const total = slices.reduce((s, x) => s + x.value, 0) || 1;
@@ -447,7 +447,7 @@ function Donut({ slices, size = 170, thickness = 24, center }) {
 
 // === Delta inline ===
 /**
- * Executa a rotina delta.
+ * Processa delta conforme as regras do dominio.
  */
 function Delta({ value, suffix = '%', inverse = false }) {
   const positive = value > 0;
@@ -464,14 +464,14 @@ function Delta({ value, suffix = '%', inverse = false }) {
 }
 
 /**
- * Executa a rotina empty state.
+ * Processa empty state conforme as regras do dominio.
  */
 function EmptyState({ children, style }) {
   return <div className="empty" style={style}>{children}</div>;
 }
 
 /**
- * Executa a rotina relatorios page.
+ * Renderiza relatorios page.
  */
 function RelatoriosPage() {
   const [periodo, setPeriodo] = useState('mes_atual');
@@ -494,7 +494,7 @@ function RelatoriosPage() {
     let ativo = true;
 
     /**
-     * Executa a rotina carregar relatorio.
+     * Carrega relatorio e atualiza o estado relacionado.
      */
     async function carregarRelatorio() {
       setCarregando(true);

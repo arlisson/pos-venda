@@ -8,14 +8,14 @@ import { formatDateValue } from '../../utils/datetime';
 import './Clientes.css';
 
 /**
- * Executa a rotina formatar data.
+ * Formata data para exibicao ou envio.
  */
 function formatarData(value) {
   return formatDateValue(value, undefined, '-');
 }
 
 /**
- * Executa a rotina confirmar exclusao definitiva modal.
+ * Renderiza confirmar exclusao definitiva modal.
  */
 function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, excluindo, onClose, onConfirm, onToggleExcluirVendas }) {
   if (!cliente) return null;
@@ -85,7 +85,7 @@ function ConfirmarExclusaoDefinitivaModal({ cliente, excluirVendasRelacionadas, 
   );
 }
 /**
- * Executa a rotina clientes lixeira page.
+ * Renderiza clientes lixeira page.
  */
 function ClientesLixeiraPage() {
   const navigate = useNavigate();
@@ -116,7 +116,7 @@ function ClientesLixeiraPage() {
   }, [sucesso]);
 
   /**
-   * Executa a rotina carregar clientes.
+   * Carrega clientes e atualiza o estado relacionado.
    */
   async function carregarClientes(proximosFiltros = filtros) {
     setErro('');
@@ -138,7 +138,7 @@ function ClientesLixeiraPage() {
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   /**
-   * Executa a rotina handle buscar.
+   * Trata o evento de buscar.
    */
   async function handleBuscar(event) {
     event.preventDefault();
@@ -146,7 +146,7 @@ function ClientesLixeiraPage() {
   }
 
   /**
-   * Executa a rotina handle restaurar.
+   * Trata o evento de restaurar.
    */
   async function handleRestaurar(cliente) {
     setProcessandoId(cliente.id);
@@ -165,7 +165,7 @@ function ClientesLixeiraPage() {
   }
 
   /**
-   * Executa a rotina confirmar exclusao definitiva.
+   * Executa a acao de confirmar exclusao definitiva mantendo o estado da tela consistente.
    */
   async function confirmarExclusaoDefinitiva() {
     if (!clienteParaExcluir) return;

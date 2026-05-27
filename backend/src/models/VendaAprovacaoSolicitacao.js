@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para solicitacoes de aprovacao de vendas.
+ */
 class VendaAprovacaoSolicitacao extends Model {
   static get tableName() {
     return 'venda_aprovacao_solicitacoes';

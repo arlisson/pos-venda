@@ -16,7 +16,7 @@ import '../Usuarios/Usuarios.css';
 import './CadastroUsuario.css';
 
 /**
- * Executa a rotina cadastro usuario.
+ * Processa cadastro usuario conforme as regras do dominio.
  */
 function CadastroUsuario() {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ function CadastroUsuario() {
 
   useEffect(() => {
     /**
-     * Executa a rotina carregar permissoes.
+     * Carrega permissoes e atualiza o estado relacionado.
      */
     async function carregarPermissoes() {
       if (!podeGerenciarPermissoes) {
@@ -77,7 +77,7 @@ function CadastroUsuario() {
   }, [podeGerenciarPermissoes]);
 
   /**
-   * Executa a rotina copiar permissoes de usuario.
+   * Copia permissoes de usuario para o destino esperado.
    */
   function copiarPermissoesDeUsuario() {
     const usuarioOrigem = usuariosOrigem.find(item => String(item.id) === String(usuarioOrigemId));
@@ -91,7 +91,7 @@ function CadastroUsuario() {
   }
 
   /**
-   * Executa a rotina toggle permissao.
+   * Alterna permissao no estado atual.
    */
   function togglePermissao(chave, opcoes = {}) {
     setPermissoesSelecionadas(prev => {
@@ -107,7 +107,7 @@ function CadastroUsuario() {
   }
 
   /**
-   * Executa a rotina toggle bloco permissoes.
+   * Alterna bloco permissoes no estado atual.
    */
   function toggleBlocoPermissoes(chaves, selecionar) {
     setPermissoesSelecionadas(prev => {
@@ -122,7 +122,7 @@ function CadastroUsuario() {
   const gruposPermissoes = useMemo(() => montarGruposPermissoesCompartilhados(permissoes), [permissoes]);
 
   /**
-   * Executa a rotina handle submit.
+   * Trata o evento de submit.
    */
   async function handleSubmit(event) {
     event.preventDefault();

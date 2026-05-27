@@ -79,7 +79,7 @@ const DEFAULT_STAGE_NAMES_MAP = {
 };
 
 /**
- * Executa a rotina parse dados.
+ * Converte dados para o formato interno esperado.
  */
 function parseDados(dados) {
   if (!dados) return {};
@@ -93,7 +93,7 @@ function parseDados(dados) {
 }
 
 /**
- * Executa a rotina formatar data.
+ * Formata data para exibicao ou envio.
  */
 function formatarData(valor) {
   return formatUtcDateTime(valor, {
@@ -106,21 +106,21 @@ function formatarData(valor) {
 }
 
 /**
- * Executa a rotina formatar acao.
+ * Formata acao para exibicao ou envio.
  */
 function formatarAcao(acao) {
   return ACAO_LABELS[acao] || acao.replaceAll('.', ' ');
 }
 
 /**
- * Executa a rotina is plain object.
+ * Verifica se plain object atende a condicao esperada.
  */
 function isPlainObject(valor) {
   return valor && typeof valor === 'object' && !Array.isArray(valor);
 }
 
 /**
- * Executa a rotina formatar campo.
+ * Formata campo para exibicao ou envio.
  */
 function formatarCampo(campo = '') {
   const labels = {
@@ -156,7 +156,7 @@ function formatarCampo(campo = '') {
 }
 
 /**
- * Executa a rotina formatar valor.
+ * Formata valor para exibicao ou envio.
  */
 function formatarValor(valor, campo = '', stageNamesMap = DEFAULT_STAGE_NAMES_MAP) {
   if (valor === null || valor === undefined || valor === '') return 'Nao informado';
@@ -173,7 +173,7 @@ function formatarValor(valor, campo = '', stageNamesMap = DEFAULT_STAGE_NAMES_MA
 }
 
 /**
- * Executa a rotina extrair motivo cancelamento.
+ * Processa extrair motivo cancelamento conforme as regras do dominio.
  */
 function extrairMotivoCancelamento(log) {
   const dados = parseDados(log?.dados);
@@ -190,7 +190,7 @@ function extrairMotivoCancelamento(log) {
 }
 
 /**
- * Executa a rotina get resumo alteracoes.
+ * Retorna resumo alteracoes a partir dos dados informados.
  */
 function getResumoAlteracoes(alteracoes = {}, stageNamesMap = DEFAULT_STAGE_NAMES_MAP) {
   if (!isPlainObject(alteracoes)) return [];
@@ -221,7 +221,7 @@ function getResumoAlteracoes(alteracoes = {}, stageNamesMap = DEFAULT_STAGE_NAME
 }
 
 /**
- * Executa a rotina get campos visiveis.
+ * Retorna campos visiveis a partir dos dados informados.
  */
 function getCamposVisiveis(objeto = {}, ocultar = []) {
   if (!isPlainObject(objeto)) return [];
@@ -233,7 +233,7 @@ function getCamposVisiveis(objeto = {}, ocultar = []) {
 }
 
 /**
- * Executa a rotina montar mapa referencias.
+ * Monta mapa referencias a partir dos dados informados.
  */
 function montarMapaReferencias(referencias = [], campo) {
   const mapa = new Map();
@@ -244,7 +244,7 @@ function montarMapaReferencias(referencias = [], campo) {
 }
 
 /**
- * Executa a rotina resumo alteracoes.
+ * Retorna resumo alteracoes no formato esperado pelo fluxo.
  */
 function ResumoAlteracoes({ alteracoes, stageNamesMap }) {
   const rows = getResumoAlteracoes(alteracoes, stageNamesMap);
@@ -275,7 +275,7 @@ function ResumoAlteracoes({ alteracoes, stageNamesMap }) {
 }
 
 /**
- * Executa a rotina lista campos.
+ * Processa lista campos conforme as regras do dominio.
  */
 function ListaCampos({ titulo, dados, ocultar = [], stageNamesMap }) {
   const campos = getCamposVisiveis(dados, ocultar);
@@ -298,7 +298,7 @@ function ListaCampos({ titulo, dados, ocultar = [], stageNamesMap }) {
 }
 
 /**
- * Executa a rotina dados operacao.
+ * Processa dados operacao conforme as regras do dominio.
  */
 function DadosOperacao({ dados, stageNamesMap }) {
   if (!dados || Object.keys(dados).length === 0) return null;
@@ -333,7 +333,7 @@ function DadosOperacao({ dados, stageNamesMap }) {
 }
 
 /**
- * Executa a rotina normalizar etapas.
+ * Normaliza etapas para uso interno consistente.
  */
 function normalizarEtapas(etapas = []) {
   return etapas
@@ -348,7 +348,7 @@ function normalizarEtapas(etapas = []) {
 }
 
 /**
- * Executa a rotina montar mapa nomes etapas.
+ * Monta mapa nomes etapas a partir dos dados informados.
  */
 function montarMapaNomesEtapas(etapas = []) {
   return {
@@ -359,7 +359,7 @@ function montarMapaNomesEtapas(etapas = []) {
 }
 
 /**
- * Executa a rotina get movimentacao historico.
+ * Retorna movimentacao historico a partir dos dados informados.
  */
 function getMovimentacaoHistorico(log) {
   const dados = parseDados(log.dados);
@@ -380,7 +380,7 @@ function getMovimentacaoHistorico(log) {
 }
 
 /**
- * Executa a rotina calcular etapas puladas.
+ * Calcula etapas puladas com base nos valores informados.
  */
 function calcularEtapasPuladas(statusAnterior, statusNovo, etapas = []) {
   if (!statusAnterior || !statusNovo || statusAnterior === statusNovo) return [];
@@ -395,7 +395,7 @@ function calcularEtapasPuladas(statusAnterior, statusNovo, etapas = []) {
 }
 
 /**
- * Executa a rotina enriquecer grupo com pulos.
+ * Processa enriquecer grupo com pulos conforme as regras do dominio.
  */
 function enriquecerGrupoComPulos(grupo, etapas = []) {
   const primeiraEtapa = etapas[0]?.id || null;
@@ -422,7 +422,7 @@ function enriquecerGrupoComPulos(grupo, etapas = []) {
 }
 
 /**
- * Executa a rotina montar detalhe.
+ * Monta detalhe a partir dos dados informados.
  */
 function montarDetalhe(log) {
   const dados = parseDados(log.dados);
@@ -444,7 +444,7 @@ function montarDetalhe(log) {
 }
 
 /**
- * Executa a rotina get tipo.
+ * Retorna tipo a partir dos dados informados.
  */
 function getTipo(log) {
   if (log.acao?.includes('falha')) return 'danger';
@@ -457,7 +457,7 @@ function getTipo(log) {
 }
 
 /**
- * Executa a rotina marker icon.
+ * Renderiza marker icon.
  */
 function MarkerIcon({ log, size = 12 }) {
   switch (log.acao) {
@@ -476,7 +476,7 @@ function MarkerIcon({ log, size = 12 }) {
 }
 
 /**
- * Executa a rotina historico item.
+ * Processa historico item conforme as regras do dominio.
  */
 function HistoricoItem({ log, selecionado, compacto, onClick }) {
   const tipo = getTipo(log);
@@ -527,7 +527,7 @@ function HistoricoItem({ log, selecionado, compacto, onClick }) {
 }
 
 /**
- * Executa a rotina extrair nome venda.
+ * Processa extrair nome venda conforme as regras do dominio.
  */
 function extrairNomeVenda(logs, vendaId) {
   for (const log of logs) {
@@ -548,7 +548,7 @@ function extrairNomeVenda(logs, vendaId) {
 }
 
 /**
- * Executa a rotina build stage progression.
+ * Processa build stage progression conforme as regras do dominio.
  */
 function buildStageProgression(logs, etapas = []) {
   const sorted = [...logs].sort((a, b) => getUtcDateTimeTimestamp(a.created_at) - getUtcDateTimeTimestamp(b.created_at));
@@ -629,7 +629,7 @@ function buildStageProgression(logs, etapas = []) {
 }
 
 /**
- * Executa a rotina get connector type.
+ * Retorna connector type a partir dos dados informados.
  */
 function getConnectorType(stageA, stageB) {
   if (stageA.status === 'skipped' || stageB.status === 'skipped') return 'skip';
@@ -641,7 +641,7 @@ function getConnectorType(stageA, stageB) {
 }
 
 /**
- * Executa a rotina funil tracker.
+ * Renderiza funil tracker com os dados informados.
  */
 function FunilTracker({ progression, logSelecionado, onClickLog }) {
   const { stages, hasRetorno } = progression;
@@ -703,7 +703,7 @@ function FunilTracker({ progression, logSelecionado, onClickLog }) {
 }
 
 /**
- * Executa a rotina get grupo venda id.
+ * Retorna grupo venda id a partir dos dados informados.
  */
 function getGrupoVendaId(log) {
   if (log.entidade_id) return String(log.entidade_id);
@@ -713,7 +713,7 @@ function getGrupoVendaId(log) {
 }
 
 /**
- * Executa a rotina agrupar logs venda.
+ * Agrupa logs venda para consumo posterior.
  */
 function agruparLogsVenda(logs = []) {
   const grupos = new Map();
@@ -739,7 +739,7 @@ function agruparLogsVenda(logs = []) {
 }
 
 /**
- * Executa a rotina venda historico grupo.
+ * Processa venda historico grupo conforme as regras do dominio.
  */
 function VendaHistoricoGrupo({ grupo, etapasFunil, stageNamesMap, logSelecionado, onClick, onAbrirVenda, modalCarregando }) {
   const [expandido, setExpandido] = useState(false);
@@ -832,7 +832,7 @@ function VendaHistoricoGrupo({ grupo, etapasFunil, stageNamesMap, logSelecionado
 }
 
 /**
- * Executa a rotina detalhe card.
+ * Renderiza detalhe card.
  */
 function DetalheCard({ log, stageNamesMap = DEFAULT_STAGE_NAMES_MAP, onClose, onAbrirVenda, onAbrirCliente, podeAbrirCliente, modalCarregando }) {
   const dados = parseDados(log.dados);
@@ -954,7 +954,7 @@ function DetalheCard({ log, stageNamesMap = DEFAULT_STAGE_NAMES_MAP, onClose, on
 }
 
 /**
- * Executa a rotina historico page.
+ * Renderiza historico page.
  */
 function HistoricoPage() {
   const navigate = useNavigate();
@@ -1002,7 +1002,7 @@ function HistoricoPage() {
   const stageNamesMap = useMemo(() => montarMapaNomesEtapas(etapasFunil), [etapasFunil]);
 
   /**
-   * Executa a rotina carregar.
+   * Carrega  e atualiza o estado relacionado.
    */
   async function carregar(pagina = paginaAtual, porPagina = itensPorPagina) {
     setCarregando(true);
@@ -1056,7 +1056,7 @@ function HistoricoPage() {
   }, [modoVendasCompacto, logs, etapasFunil]);
 
   /**
-   * Executa a rotina carregar dados venda modal.
+   * Renderiza carregar dados venda modal.
    */
   async function carregarDadosVendaModal() {
     if (dadosVendaModalCarregados) return;
@@ -1087,7 +1087,7 @@ function HistoricoPage() {
   }
 
   /**
-   * Executa a rotina abrir venda.
+   * Abre venda e prepara o estado necessario.
    */
   async function abrirVenda(vendaId) {
     if (!vendaId) return;
@@ -1107,7 +1107,7 @@ function HistoricoPage() {
   }
 
   /**
-   * Executa a rotina abrir cliente.
+   * Abre cliente e prepara o estado necessario.
    */
   async function abrirCliente(clienteId) {
     if (!clienteId || !podeEditarCliente) return;
@@ -1128,7 +1128,7 @@ function HistoricoPage() {
   }
 
   /**
-   * Executa a rotina salvar venda modal.
+   * Renderiza salvar venda modal.
    */
   async function salvarVendaModal(dados) {
     if (!vendaModal?.id) return;
@@ -1147,7 +1147,7 @@ function HistoricoPage() {
   }
 
   /**
-   * Executa a rotina enviar pos venda modal.
+   * Renderiza enviar pos venda modal.
    */
   async function enviarPosVendaModal(venda) {
     if (!venda?.id) return;

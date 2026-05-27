@@ -4,7 +4,7 @@
 import { apiGet, apiPost, apiRequest, apiBlob, apiDelete } from './api';
 
 /**
- * Executa a rotina montar query.
+ * Monta query a partir dos dados informados.
  */
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -20,42 +20,42 @@ function montarQuery(filtros = {}) {
 }
 
 /**
- * Executa a rotina listar contatos.
+ * Lista contatos conforme os filtros e parametros informados.
  */
 export async function listarContatos() {
   return apiGet('/mensagens/contatos');
 }
 
 /**
- * Executa a rotina listar conversas.
+ * Lista conversas conforme os filtros e parametros informados.
  */
 export async function listarConversas() {
   return apiGet('/mensagens/conversas');
 }
 
 /**
- * Executa a rotina listar todas conversas.
+ * Lista todas conversas conforme os filtros e parametros informados.
  */
 export async function listarTodasConversas() {
   return apiGet('/mensagens/admin/conversas');
 }
 
 /**
- * Executa a rotina listar mensagens.
+ * Lista mensagens conforme os filtros e parametros informados.
  */
 export async function listarMensagens(contatoId, filtros = {}) {
   return apiGet(`/mensagens/conversas/${contatoId}${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina listar mensagens conversa interna.
+ * Lista mensagens conversa interna conforme os filtros e parametros informados.
  */
 export async function listarMensagensConversaInterna(conversaKey, filtros = {}) {
   return apiGet(`/mensagens/admin/conversas/${conversaKey}${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina enviar mensagem.
+ * Envia mensagem para processamento.
  */
 export async function enviarMensagem(destinatarioId, conteudo, anexo = null) {
   const corpo = { destinatario_id: destinatarioId, conteudo };
@@ -67,7 +67,7 @@ export async function enviarMensagem(destinatarioId, conteudo, anexo = null) {
 }
 
 /**
- * Executa a rotina upload anexo mensagem.
+ * Processa upload anexo mensagem conforme as regras do dominio.
  */
 export async function uploadAnexoMensagem(file) {
   const formData = new FormData();
@@ -76,35 +76,35 @@ export async function uploadAnexoMensagem(file) {
 }
 
 /**
- * Executa a rotina baixar anexo mensagem.
+ * Baixa anexo mensagem para o usuario.
  */
 export async function baixarAnexoMensagem(mensagemArquivoId) {
   return apiBlob(`/mensagens/anexos/${mensagemArquivoId}`);
 }
 
 /**
- * Executa a rotina baixar anexo mensagem interna.
+ * Baixa anexo mensagem interna para o usuario.
  */
 export async function baixarAnexoMensagemInterna(mensagemArquivoId) {
   return apiBlob(`/mensagens/admin/anexos/${mensagemArquivoId}`);
 }
 
 /**
- * Executa a rotina excluir mensagem.
+ * Exclui mensagem conforme a regra de negocio.
  */
 export async function excluirMensagem(mensagemId) {
   return apiDelete(`/mensagens/${mensagemId}`);
 }
 
 /**
- * Executa a rotina contar mensagens nao lidas.
+ * Conta mensagens nao lidas conforme os dados informados.
  */
 export async function contarMensagensNaoLidas() {
   return apiGet('/mensagens/nao-lidas');
 }
 
 /**
- * Executa a rotina marcar conversa lida.
+ * Marca conversa lida conforme a acao solicitada.
  */
 export async function marcarConversaLida(contatoId) {
   return apiRequest(`/mensagens/conversas/${contatoId}/lida`, {

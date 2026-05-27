@@ -22,14 +22,14 @@ import {
 import './Usuarios.css';
 
 /**
- * Executa a rotina get permissoes iniciais.
+ * Retorna permissoes iniciais a partir dos dados informados.
  */
 function getPermissoesIniciais(usuario, permissoesDisponiveis = []) {
   return getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis);
 }
 
 /**
- * Executa a rotina modal permissoes.
+ * Processa modal permissoes conforme as regras do dominio.
  */
 function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   const [usuario, setUsuario] = useState(null);
@@ -43,7 +43,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 
   useEffect(() => {
     /**
-     * Executa a rotina carregar.
+     * Carrega  e atualiza o estado relacionado.
      */
     async function carregar() {
       try {
@@ -68,7 +68,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   }, [usuarioId]);
 
   /**
-   * Executa a rotina toggle.
+   * Alterna  no estado atual.
    */
   function toggle(chave, opcoes = {}) {
     setAvisoCopia('');
@@ -85,7 +85,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   }
 
   /**
-   * Executa a rotina toggle bloco.
+   * Alterna bloco no estado atual.
    */
   function toggleBloco(chaves, selecionar) {
     setAvisoCopia('');
@@ -99,7 +99,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   }
 
   /**
-   * Executa a rotina copiar permissoes.
+   * Copia permissoes para o destino esperado.
    */
   function copiarPermissoes() {
     const usuarioOrigem = usuarios.find(item => String(item.id) === String(usuarioOrigemId));
@@ -115,7 +115,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   }
 
   /**
-   * Executa a rotina handle save.
+   * Trata o evento de save.
    */
   async function handleSave() {
     setSalvando(true);
@@ -216,7 +216,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 }
 
 /**
- * Executa a rotina usuarios.
+ * Processa usuarios conforme as regras do dominio.
  */
 function Usuarios() {
   const [usuarios, setUsuarios] = useState([]);
@@ -249,7 +249,7 @@ function Usuarios() {
 
   useEffect(() => {
     /**
-     * Executa a rotina carregar usuarios.
+     * Carrega usuarios e atualiza o estado relacionado.
      */
     async function carregarUsuarios() {
       try {
@@ -266,7 +266,7 @@ function Usuarios() {
   }, []);
 
   /**
-   * Executa a rotina handle delete.
+   * Trata o evento de delete.
    */
   async function handleDelete(u) {
     if (deletando === u.id) {
@@ -285,7 +285,7 @@ function Usuarios() {
   }
 
   /**
-   * Executa a rotina handle save permissoes.
+   * Trata o evento de save permissoes.
    */
   async function handleSavePermissoes(id, permissoesSelecionadas) {
     await atualizarUsuario(id, {
@@ -306,7 +306,7 @@ function Usuarios() {
   }
 
   /**
-   * Executa a rotina get initials.
+   * Retorna initials a partir dos dados informados.
    */
   const getInitials = (name) => {
     if (!name) return '??';

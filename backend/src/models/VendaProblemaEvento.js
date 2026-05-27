@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para eventos do fluxo de problemas de venda.
+ */
 class VendaProblemaEvento extends Model {
   static get tableName() {
     return 'venda_problema_eventos';

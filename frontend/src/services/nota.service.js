@@ -4,28 +4,28 @@
 import { apiDelete, apiGet, apiPost, apiPut } from './api';
 
 /**
- * Executa a rotina listar notas entidade.
+ * Lista notas entidade conforme os filtros e parametros informados.
  */
 export async function listarNotasEntidade(tipo, id) {
   return apiGet(`/notas/${tipo}/${id}`);
 }
 
 /**
- * Executa a rotina criar nota entidade.
+ * Cria nota entidade com os dados informados.
  */
 export async function criarNotaEntidade(tipo, id, dados) {
   return apiPost(`/notas/${tipo}/${id}`, dados);
 }
 
 /**
- * Executa a rotina atualizar nota.
+ * Atualiza nota com os dados informados.
  */
 export async function atualizarNota(id, dados) {
   return apiPut(`/notas/${id}`, dados);
 }
 
 /**
- * Executa a rotina excluir nota.
+ * Exclui nota conforme a regra de negocio.
  */
 export async function excluirNota(id) {
   return apiDelete(`/notas/${id}`);

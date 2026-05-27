@@ -132,14 +132,14 @@ const VENDA_VAZIA = {
 };
 
 /**
- * Executa a rotina obter operadoras cliente.
+ * Obtem operadoras cliente a partir dos dados informados.
  */
 function obterOperadorasCliente(cliente) {
   return cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
 }
 
 /**
- * Executa a rotina formatar resumo operadoras cliente.
+ * Formata resumo operadoras cliente para exibicao ou envio.
  */
 function formatarResumoOperadorasCliente(cliente) {
   const operadorasCliente = obterOperadorasCliente(cliente);
@@ -310,7 +310,7 @@ const BUSCA_CAMPO_OPCOES = [
 ];
 
 /**
- * Executa a rotina normalizar status funil filtros.
+ * Normaliza status funil filtros para uso interno consistente.
  */
 function normalizarStatusFunilFiltros(etapas = []) {
   const normalizados = etapas
@@ -330,7 +330,7 @@ function normalizarStatusFunilFiltros(etapas = []) {
 }
 
 /**
- * Executa a rotina to input date.
+ * Converte input date para o formato esperado.
  */
 function toInputDate(value) {
   if (!value) return '';
@@ -347,7 +347,7 @@ function toInputDate(value) {
 }
 
 /**
- * Executa a rotina normalizar data venda input.
+ * Renderiza normalizar data venda input.
  */
 function normalizarDataVendaInput(value) {
   if (!value) return '';
@@ -369,11 +369,11 @@ function normalizarDataVendaInput(value) {
 }
 
 /**
- * Executa a rotina gerar protocolo data hora.
+ * Gera protocolo data hora a partir dos dados informados.
  */
 function gerarProtocoloDataHora(data = new Date()) {
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = value => String(value).padStart(2, '0');
 
@@ -388,7 +388,7 @@ function gerarProtocoloDataHora(data = new Date()) {
 }
 
 /**
- * Executa a rotina formatar data.
+ * Formata data para exibicao ou envio.
  */
 function formatarData(value) {
   if (!value) return '-';
@@ -401,7 +401,7 @@ function formatarData(value) {
 }
 
 /**
- * Executa a rotina formatar data hora registro.
+ * Formata data hora registro para exibicao ou envio.
  */
 function formatarDataHoraRegistro(value) {
   return formatUtcDateTime(value, {
@@ -414,7 +414,7 @@ function formatarDataHoraRegistro(value) {
 }
 
 /**
- * Executa a rotina is data venda valida.
+ * Verifica se data venda valida atende a condicao esperada.
  */
 function isDataVendaValida(value) {
   if (!value) return false;
@@ -434,7 +434,7 @@ function isDataVendaValida(value) {
 }
 
 /**
- * Executa a rotina formatar moeda.
+ * Formata moeda para exibicao ou envio.
  */
 function formatarMoeda(value) {
   if (value === null || value === undefined || value === '') return '-';
@@ -446,7 +446,7 @@ function formatarMoeda(value) {
 }
 
 /**
- * Executa a rotina parse valor input.
+ * Renderiza parse valor input.
  */
 function parseValorInput(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
@@ -456,7 +456,7 @@ function parseValorInput(valor) {
 }
 
 /**
- * Executa a rotina formatar input moeda br.
+ * Formata input moeda br para exibicao ou envio.
  */
 function formatarInputMoedaBR(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
@@ -472,7 +472,7 @@ function formatarInputMoedaBR(valor) {
 }
 
 /**
- * Executa a rotina apenas digitos.
+ * Processa apenas digitos conforme as regras do dominio.
  */
 function apenasDigitos(valor, limite) {
   const digitos = String(valor || '').replace(/\D/g, '');
@@ -480,7 +480,7 @@ function apenasDigitos(valor, limite) {
 }
 
 /**
- * Executa a rotina formatar telefone com ddd.
+ * Formata telefone com ddd para exibicao ou envio.
  */
 function formatarTelefoneComDdd(valor, celular = true) {
   const limite = celular ? 11 : 10;
@@ -503,7 +503,7 @@ function formatarTelefoneComDdd(valor, celular = true) {
 }
 
 /**
- * Executa a rotina formatar cpf.
+ * Formata cpf para exibicao ou envio.
  */
 function formatarCpf(valor) {
   const digitos = apenasDigitos(valor, 11);
@@ -515,7 +515,7 @@ function formatarCpf(valor) {
 }
 
 /**
- * Executa a rotina validar cpf.
+ * Valida cpf e retorna o resultado esperado.
  */
 function validarCpf(valor) {
   const cpf = apenasDigitos(valor, 11);
@@ -525,7 +525,7 @@ function validarCpf(valor) {
   if (/^(\d)\1{10}$/.test(cpf)) return false;
 
   /**
-   * Executa a rotina calcular digito.
+   * Calcula digito com base nos valores informados.
    */
   const calcularDigito = tamanho => {
     let soma = 0;
@@ -542,7 +542,7 @@ function validarCpf(valor) {
 }
 
 /**
- * Executa a rotina obter erro cpf venda.
+ * Obtem erro cpf venda a partir dos dados informados.
  */
 function obterErroCpfVenda(form) {
   if (!validarCpf(form.cpf_representante_legal)) {
@@ -557,7 +557,7 @@ function obterErroCpfVenda(form) {
 }
 
 /**
- * Executa a rotina formatar cnpj.
+ * Formata cnpj para exibicao ou envio.
  */
 function formatarCnpj(valor) {
   const digitos = apenasDigitos(valor, 14);
@@ -570,7 +570,7 @@ function formatarCnpj(valor) {
 }
 
 /**
- * Executa a rotina formatar cep.
+ * Formata cep para exibicao ou envio.
  */
 function formatarCep(valor) {
   const digitos = apenasDigitos(valor, 8);
@@ -580,7 +580,7 @@ function formatarCep(valor) {
 }
 
 /**
- * Executa a rotina formatar dia vencimento.
+ * Formata dia vencimento para exibicao ou envio.
  */
 function formatarDiaVencimento(valor) {
   const digitos = apenasDigitos(valor, 2);
@@ -591,7 +591,7 @@ function formatarDiaVencimento(valor) {
 }
 
 /**
- * Executa a rotina formatar campo venda.
+ * Formata campo venda para exibicao ou envio.
  */
 function formatarCampoVenda(campo, valor) {
   if (campo === 'telefone' || campo === 'telefone_representante_legal' || campo === 'telefone_administrador') return formatarTelefoneComDdd(valor, true);
@@ -608,7 +608,7 @@ function formatarCampoVenda(campo, valor) {
 }
 
 /**
- * Executa a rotina formatar busca por campo.
+ * Formata busca por campo para exibicao ou envio.
  */
 function formatarBuscaPorCampo(campo, valor) {
   if (campo === 'protocolo') return apenasDigitos(valor);
@@ -618,14 +618,14 @@ function formatarBuscaPorCampo(campo, valor) {
 }
 
 /**
- * Executa a rotina get input mode busca.
+ * Retorna input mode busca a partir dos dados informados.
  */
 function getInputModeBusca(campo) {
   return ['protocolo', 'telefone', 'cnpj'].includes(campo) ? 'numeric' : undefined;
 }
 
 /**
- * Executa a rotina get max length busca.
+ * Retorna max length busca a partir dos dados informados.
  */
 function getMaxLengthBusca(campo) {
   if (campo === 'telefone') return 15;
@@ -634,7 +634,7 @@ function getMaxLengthBusca(campo) {
 }
 
 /**
- * Executa a rotina get placeholder busca.
+ * Retorna placeholder busca a partir dos dados informados.
  */
 function getPlaceholderBusca(campo) {
   const placeholders = {
@@ -652,7 +652,7 @@ function getPlaceholderBusca(campo) {
 }
 
 /**
- * Executa a rotina get input mode campo.
+ * Retorna input mode campo a partir dos dados informados.
  */
 function getInputModeCampo(campo) {
   if ([
@@ -666,7 +666,7 @@ function getInputModeCampo(campo) {
 }
 
 /**
- * Executa a rotina get max length campo.
+ * Retorna max length campo a partir dos dados informados.
  */
 function getMaxLengthCampo(campo, maxLength) {
   const limites = {
@@ -691,14 +691,14 @@ function getMaxLengthCampo(campo, maxLength) {
 }
 
 /**
- * Executa a rotina normalizar itens chips input.
+ * Renderiza normalizar itens chips input.
  */
 function normalizarItensChipsInput(itens) {
   return Array.isArray(itens) ? itens : parseItensChips(itens);
 }
 
 /**
- * Executa a rotina normalizar ids vendedoras input.
+ * Renderiza normalizar ids vendedoras input.
  */
 function normalizarIdsVendedorasInput(vendedoras) {
   if (!Array.isArray(vendedoras)) return [];
@@ -718,7 +718,7 @@ function normalizarIdsVendedorasInput(vendedoras) {
 }
 
 /**
- * Executa a rotina obter solicitacao aprovacao atual.
+ * Obtem solicitacao aprovacao atual a partir dos dados informados.
  */
 function obterSolicitacaoAprovacaoAtual(venda) {
   if (!Array.isArray(venda?.aprovacaoSolicitacoes)) return null;
@@ -727,7 +727,7 @@ function obterSolicitacaoAprovacaoAtual(venda) {
 }
 
 /**
- * Executa a rotina calcular total itens chips.
+ * Calcula total itens chips com base nos valores informados.
  */
 function calcularTotalItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => (
@@ -736,7 +736,7 @@ function calcularTotalItensChips(itens = []) {
 }
 
 /**
- * Executa a rotina resumir gigas itens chips.
+ * Resume gigas itens chips para exibicao ou envio.
  */
 function resumirGigasItensChips(itens = []) {
   const valores = normalizarItensChipsInput(itens)
@@ -747,7 +747,7 @@ function resumirGigasItensChips(itens = []) {
 }
 
 /**
- * Executa a rotina normalizar tipo linha chip.
+ * Normaliza tipo linha chip para uso interno consistente.
  */
 function normalizarTipoLinhaChip(valor, fallback = 'novo') {
   const texto = normalizarTextoBusca(valor);
@@ -757,14 +757,14 @@ function normalizarTipoLinhaChip(valor, fallback = 'novo') {
 }
 
 /**
- * Executa a rotina somar quantidade itens chips.
+ * Soma quantidade itens chips considerando os dados informados.
  */
 function somarQuantidadeItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => acc + Number(item.quantidade || 0), 0);
 }
 
 /**
- * Executa a rotina limitar itens chips por quantidade linhas.
+ * Processa limitar itens chips por quantidade linhas conforme as regras do dominio.
  */
 function limitarItensChipsPorQuantidadeLinhas(itens = [], limiteQuantidade = 0) {
   const lista = normalizarItensChipsInput(itens);
@@ -787,7 +787,7 @@ function limitarItensChipsPorQuantidadeLinhas(itens = [], limiteQuantidade = 0) 
 }
 
 /**
- * Executa a rotina somar quantidade portabilidade itens chips.
+ * Soma quantidade portabilidade itens chips considerando os dados informados.
  */
 function somarQuantidadePortabilidadeItensChips(itens = []) {
   return normalizarItensChipsInput(itens).reduce((acc, item) => (
@@ -798,21 +798,21 @@ function somarQuantidadePortabilidadeItensChips(itens = []) {
 }
 
 /**
- * Executa a rotina tem chip portabilidade.
+ * Verifica se chip portabilidade esta presente nos dados informados.
  */
 function temChipPortabilidade(itens = []) {
   return somarQuantidadePortabilidadeItensChips(itens) > 0;
 }
 
 /**
- * Executa a rotina formatar tipo linha chip label.
+ * Formata tipo linha chip label para exibicao ou envio.
  */
 function formatarTipoLinhaChipLabel(tipo) {
   return normalizarTipoLinhaChip(tipo) === 'portabilidade' ? 'Portabilidade' : 'Novo';
 }
 
 /**
- * Executa a rotina resumir tipos linha itens chips.
+ * Resume tipos linha itens chips para exibicao ou envio.
  */
 function resumirTiposLinhaItensChips(itens = []) {
   const tipos = normalizarItensChipsInput(itens)
@@ -823,7 +823,7 @@ function resumirTiposLinhaItensChips(itens = []) {
 }
 
 /**
- * Executa a rotina obter tipo venda tabela.
+ * Obtem tipo venda tabela a partir dos dados informados.
  */
 function obterTipoVendaTabela(venda = {}) {
   return venda.tipoVenda?.nome
@@ -833,7 +833,7 @@ function obterTipoVendaTabela(venda = {}) {
 }
 
 /**
- * Executa a rotina obter categoria produto whatsapp.
+ * Renderiza obter categoria produto whatsapp.
  */
 function obterCategoriaProdutoWhatsapp(venda = {}) {
   const texto = normalizarTextoBusca([
@@ -850,7 +850,7 @@ function obterCategoriaProdutoWhatsapp(venda = {}) {
 }
 
 /**
- * Executa a rotina obter vendedoras mensagem.
+ * Obtem vendedoras mensagem a partir dos dados informados.
  */
 function obterVendedorasMensagem(venda = {}) {
   const nomes = Array.isArray(venda.vendedoras) && venda.vendedoras.length > 0
@@ -861,7 +861,7 @@ function obterVendedorasMensagem(venda = {}) {
 }
 
 /**
- * Executa a rotina obter resumo chips mensagem.
+ * Obtem resumo chips mensagem a partir dos dados informados.
  */
 function obterResumoChipsMensagem(venda = {}) {
   const itens = normalizarItensChipsInput(venda.valores_unitarios_chips)
@@ -889,7 +889,7 @@ function obterResumoChipsMensagem(venda = {}) {
 }
 
 /**
- * Executa a rotina obter documentos faltantes mensagem.
+ * Obtem documentos faltantes mensagem a partir dos dados informados.
  */
 function obterDocumentosFaltantesMensagem(venda = {}) {
   const faltantes = [];
@@ -920,7 +920,7 @@ function obterDocumentosFaltantesMensagem(venda = {}) {
 }
 
 /**
- * Executa a rotina montar mensagem whatsapp venda.
+ * Monta mensagem whatsapp venda a partir dos dados informados.
  */
 function montarMensagemWhatsappVenda(venda = {}) {
   return [
@@ -950,7 +950,7 @@ const DOCUMENTOS_FALTANTES_WHATSAPP = [
 ];
 
 /**
- * Executa a rotina obter documentos faltantes padrao.
+ * Obtem documentos faltantes padrao a partir dos dados informados.
  */
 export function obterDocumentosFaltantesPadrao(venda = {}) {
   const texto = obterDocumentosFaltantesMensagem(venda);
@@ -959,7 +959,7 @@ export function obterDocumentosFaltantesPadrao(venda = {}) {
 }
 
 /**
- * Executa a rotina formatar resumo venda whatsapp.
+ * Renderiza formatar resumo venda whatsapp.
  */
 function formatarResumoVendaWhatsapp(venda = {}) {
   const itens = normalizarItensChipsInput(venda.valores_unitarios_chips)
@@ -984,7 +984,7 @@ function formatarResumoVendaWhatsapp(venda = {}) {
 }
 
 /**
- * Executa a rotina montar checklist whatsapp venda.
+ * Monta checklist whatsapp venda a partir dos dados informados.
  */
 export function montarChecklistWhatsappVenda(venda = {}, documentosFaltantes = obterDocumentosFaltantesPadrao(venda)) {
   const produto = obterCategoriaProdutoWhatsapp(venda);
@@ -1005,7 +1005,7 @@ export function montarChecklistWhatsappVenda(venda = {}, documentosFaltantes = o
 }
 
 /**
- * Executa a rotina montar mapa referencias.
+ * Monta mapa referencias a partir dos dados informados.
  */
 function montarMapaReferencias(referencias = [], campo = 'total') {
   return referencias.reduce((mapa, item) => {
@@ -1015,7 +1015,7 @@ function montarMapaReferencias(referencias = [], campo = 'total') {
 }
 
 /**
- * Executa a rotina parse itens chips.
+ * Converte itens chips para o formato interno esperado.
  */
 function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
   if (!valor) return [{ ...ITEM_CHIP_VAZIO }];
@@ -1062,7 +1062,7 @@ function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
 }
 
 /**
- * Executa a rotina normalizar texto busca.
+ * Normaliza texto busca para uso interno consistente.
  */
 function normalizarTextoBusca(valor) {
   return String(valor || '')
@@ -1073,14 +1073,14 @@ function normalizarTextoBusca(valor) {
 }
 
 /**
- * Executa a rotina is tipo portabilidade.
+ * Verifica se tipo portabilidade atende a condicao esperada.
  */
 function isTipoPortabilidade(tipoVenda) {
   return normalizarTextoBusca(tipoVenda?.nome).includes('portabilidade');
 }
 
 /**
- * Executa a rotina parse numeros portados.
+ * Converte numeros portados para o formato interno esperado.
  */
 function parseNumerosPortados(valor) {
   if (!valor) return [NUMERO_PORTADO_VAZIO];
@@ -1110,7 +1110,7 @@ function parseNumerosPortados(valor) {
 }
 
 /**
- * Executa a rotina montar numeros portados.
+ * Monta numeros portados a partir dos dados informados.
  */
 function montarNumerosPortados(valor) {
   return (Array.isArray(valor) ? valor : parseNumerosPortados(valor))
@@ -1123,7 +1123,7 @@ const parseNumerosAtivados = parseNumerosPortados;
 const montarNumerosAtivados = montarNumerosPortados;
 
 /**
- * Executa a rotina parse cliente solicitou servicos.
+ * Converte cliente solicitou servicos para o formato interno esperado.
  */
 function parseClienteSolicitouServicos(valor) {
   if (!valor) return [];
@@ -1150,7 +1150,7 @@ function parseClienteSolicitouServicos(valor) {
 }
 
 /**
- * Executa a rotina parse cliente solicitou numeros.
+ * Converte cliente solicitou numeros para o formato interno esperado.
  */
 function parseClienteSolicitouNumeros(valor) {
   const vazio = { bloqueio: [], cancelamento: [] };
@@ -1173,7 +1173,7 @@ function parseClienteSolicitouNumeros(valor) {
 }
 
 /**
- * Executa a rotina montar cliente solicitou numeros.
+ * Monta cliente solicitou numeros a partir dos dados informados.
  */
 function montarClienteSolicitouNumeros(numeros = {}) {
   return {
@@ -1187,7 +1187,7 @@ function montarClienteSolicitouNumeros(numeros = {}) {
 }
 
 /**
- * Executa a rotina ajustar quantidade numeros solicitados.
+ * Processa ajustar quantidade numeros solicitados conforme as regras do dominio.
  */
 function ajustarQuantidadeNumerosSolicitados(value, quantidade) {
   const total = Math.max(Number(quantidade || 0), 0);
@@ -1197,7 +1197,7 @@ function ajustarQuantidadeNumerosSolicitados(value, quantidade) {
 }
 
 /**
- * Executa a rotina normalizar venda.
+ * Normaliza venda para uso interno consistente.
  */
 function normalizarVenda(venda) {
   // Montar array de vendedoras a partir da relação (junction) ou do campo legado
@@ -1231,7 +1231,7 @@ function normalizarVenda(venda) {
 }
 
 /**
- * Executa a rotina itens chips input.
+ * Renderiza itens chips input.
  */
 function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 0 }) {
   const itens = Array.isArray(value) && value.length > 0 ? value : [{ ...ITEM_CHIP_VAZIO }];
@@ -1242,7 +1242,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   const limiteAtingido = limite > 0 && quantidadeTotal >= limite;
 
   /**
-   * Executa a rotina atualizar item.
+   * Atualiza item com os dados informados.
    */
   function atualizarItem(index, campo, novoValor) {
     let valor = novoValor;
@@ -1263,7 +1263,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   }
 
   /**
-   * Executa a rotina adicionar item.
+   * Adiciona item ao conjunto atual.
    */
   function adicionarItem() {
     if (limiteAtingido) return;
@@ -1271,7 +1271,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   }
 
   /**
-   * Executa a rotina remover item.
+   * Remove item da colecao ou estado atual.
    */
   function removerItem(index) {
     const proximos = itens.filter((_, itemIndex) => itemIndex !== index);
@@ -1358,7 +1358,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
 }
 
 /**
- * Executa a rotina vendedoras select.
+ * Renderiza vendedoras select.
  */
 export function VendedorasSelect({ value = [], options = [], onChange }) {
   const [dropdownAberto, setDropdownAberto] = useState(false);
@@ -1376,7 +1376,7 @@ export function VendedorasSelect({ value = [], options = [], onChange }) {
 
   useEffect(() => {
     /**
-     * Executa a rotina handle click fora.
+     * Trata o evento de click fora.
      */
     function handleClickFora(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -1393,7 +1393,7 @@ export function VendedorasSelect({ value = [], options = [], onChange }) {
   }, [dropdownAberto]);
 
   /**
-   * Executa a rotina adicionar.
+   * Adiciona  ao conjunto atual.
    */
   function adicionar(vendedora) {
     onChange([...value, String(vendedora.id)]);
@@ -1402,14 +1402,14 @@ export function VendedorasSelect({ value = [], options = [], onChange }) {
   }
 
   /**
-   * Executa a rotina remover.
+   * Remove  da colecao ou estado atual.
    */
   function remover(id) {
     onChange(value.filter(v => v !== String(id)));
   }
 
   /**
-   * Executa a rotina alternar dropdown.
+   * Alterna dropdown no estado atual.
    */
   function alternarDropdown() {
     if (dropdownAberto) setBuscaVendedora('');
@@ -1468,7 +1468,7 @@ export function VendedorasSelect({ value = [], options = [], onChange }) {
 }
 
 /**
- * Executa a rotina montar prefixo ddd.
+ * Monta prefixo ddd a partir dos dados informados.
  */
 function montarPrefixoDdd(ddd) {
   const digitos = apenasDigitos(ddd, 2);
@@ -1476,14 +1476,14 @@ function montarPrefixoDdd(ddd) {
 }
 
 /**
- * Executa a rotina numero linha tem apenas ddd ou vazio.
+ * Verifica se numero linha tem apenas ddd ou vazio atende a condicao esperada.
  */
 function numeroLinhaTemApenasDddOuVazio(valor) {
   return apenasDigitos(valor).length <= 2;
 }
 
 /**
- * Executa a rotina ajustar quantidade numeros portados.
+ * Processa ajustar quantidade numeros portados conforme as regras do dominio.
  */
 function ajustarQuantidadeNumerosPortados(value, quantidade, dddPadrao = '') {
   const total = Math.max(Number(quantidade || 0), 0);
@@ -1500,7 +1500,7 @@ function ajustarQuantidadeNumerosPortados(value, quantidade, dddPadrao = '') {
 }
 
 /**
- * Executa a rotina numeros linha input.
+ * Renderiza numeros linha input.
  */
 function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao = '', labelAdicionar = 'Adicionar número' }) {
   const numeros = Array.isArray(value) && value.length > 0 ? value : [NUMERO_PORTADO_VAZIO];
@@ -1509,7 +1509,7 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao 
   const numeroVazio = montarPrefixoDdd(dddPadrao) || NUMERO_PORTADO_VAZIO;
 
   /**
-   * Executa a rotina atualizar numero.
+   * Atualiza numero com os dados informados.
    */
   function atualizarNumero(index, novoValor) {
     onChange(numeros.map((numero, numeroIndex) => (
@@ -1518,7 +1518,7 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao 
   }
 
   /**
-   * Executa a rotina adicionar numero.
+   * Adiciona numero ao conjunto atual.
    */
   function adicionarNumero() {
     if (limiteAtingido) return;
@@ -1526,7 +1526,7 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao 
   }
 
   /**
-   * Executa a rotina remover numero.
+   * Remove numero da colecao ou estado atual.
    */
   function removerNumero(index) {
     const proximos = numeros.filter((_, numeroIndex) => numeroIndex !== index);
@@ -1562,21 +1562,21 @@ function NumerosLinhaInput({ value, onChange, quantidadeEsperada = 0, dddPadrao 
 }
 
 /**
- * Executa a rotina numeros portados input.
+ * Renderiza numeros portados input.
  */
 function NumerosPortadosInput(props) {
   return <NumerosLinhaInput {...props} labelAdicionar="Adicionar número" />;
 }
 
 /**
- * Executa a rotina numeros ativados input.
+ * Renderiza numeros ativados input.
  */
 function NumerosAtivadosInput(props) {
   return <NumerosLinhaInput {...props} labelAdicionar="Adicionar número ativado" />;
 }
 
 /**
- * Executa a rotina cliente solicitou input.
+ * Renderiza cliente solicitou input.
  */
 function ClienteSolicitouInput({ form, onToggle, onOpenQuantidades }) {
   const servicos = parseClienteSolicitouServicos(form.cliente_solicitou_servicos);
@@ -1621,7 +1621,7 @@ function ClienteSolicitouInput({ form, onToggle, onOpenQuantidades }) {
 }
 
 /**
- * Executa a rotina cliente solicitou quantidade modal.
+ * Renderiza cliente solicitou quantidade modal.
  */
 function ClienteSolicitouQuantidadeModal({ servicos, quantidades, onChange, onClose, onConfirm }) {
   const bloqueioSelecionado = servicos.includes('bloqueio');
@@ -1670,13 +1670,13 @@ function ClienteSolicitouQuantidadeModal({ servicos, quantidades, onChange, onCl
 }
 
 /**
- * Executa a rotina cliente solicitou numeros modal.
+ * Renderiza cliente solicitou numeros modal.
  */
 function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange, onClose, onConfirm }) {
   const selecionados = CLIENTE_SOLICITOU_ACOES.filter(acao => servicos.includes(acao));
 
   /**
-   * Executa a rotina atualizar numero.
+   * Atualiza numero com os dados informados.
    */
   function atualizarNumero(tipo, index, valor) {
     onChange({
@@ -1736,7 +1736,7 @@ function ClienteSolicitouNumerosModal({ servicos, quantidades, numeros, onChange
 }
 
 /**
- * Executa a rotina responsaveis recebimento input.
+ * Renderiza responsaveis recebimento input.
  */
 function ResponsaveisRecebimentoInput({ form, onChange }) {
   const slots = [
@@ -1751,7 +1751,7 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
   const visiveis = slots.slice(0, linhasVisiveis);
 
   /**
-   * Executa a rotina remover linha.
+   * Remove linha da colecao ou estado atual.
    */
   function removerLinha(index) {
     const slot = slots[index];
@@ -1797,7 +1797,7 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
 }
 
 /**
- * Executa a rotina cliente venda select.
+ * Renderiza cliente venda select.
  */
 function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, onCreateClient }) {
   const wrapperRef = useRef(null);
@@ -1824,7 +1824,7 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
 
   useEffect(() => {
     /**
-     * Executa a rotina handle click fora.
+     * Trata o evento de click fora.
      */
     function handleClickFora(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -1837,7 +1837,7 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
   }, []);
 
   /**
-   * Executa a rotina selecionar cliente.
+   * Seleciona cliente e atualiza o estado relacionado.
    */
   function selecionarCliente(cliente) {
     onChange(String(cliente.id));
@@ -1846,7 +1846,7 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
   }
 
   /**
-   * Executa a rotina limpar cliente.
+   * Limpa cliente e restaura o estado inicial.
    */
   function limparCliente() {
     onChange('');
@@ -1856,7 +1856,7 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
   }
 
   /**
-   * Executa a rotina handle key down.
+   * Trata o evento de key down.
    */
   function handleKeyDown(event) {
     if (event.key === 'ArrowDown') {
@@ -2009,7 +2009,7 @@ function ClienteVendaSelect({ value, clientes, vendasRegistradas = 0, onChange, 
 }
 
 /**
- * Executa a rotina formatar tamanho arquivo.
+ * Formata tamanho arquivo para exibicao ou envio.
  */
 function formatarTamanhoArquivo(bytes) {
   const tamanho = Number(bytes || 0);
@@ -2026,7 +2026,7 @@ function formatarTamanhoArquivo(bytes) {
 }
 
 /**
- * Executa a rotina label status pacote.
+ * Retorna label status pacote no formato esperado pelo fluxo.
  */
 function labelStatusPacote(status) {
   const labels = {
@@ -2042,7 +2042,7 @@ function labelStatusPacote(status) {
 }
 
 /**
- * Executa a rotina get icon status pacote.
+ * Retorna icon status pacote a partir dos dados informados.
  */
 function getIconStatusPacote(status) {
   if (status === 'pronto') return <I.Check size={12} />;
@@ -2051,7 +2051,7 @@ function getIconStatusPacote(status) {
 }
 
 /**
- * Executa a rotina arquivos venda tab.
+ * Renderiza arquivos venda tab.
  */
 function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) {
   const inputRef = useRef(null);
@@ -2065,7 +2065,7 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) 
   const [mensagem, setMensagem] = useState('');
 
   /**
-   * Executa a rotina carregar.
+   * Carrega  e atualiza o estado relacionado.
    */
   async function carregar() {
     if (!venda?.id) return;
@@ -2108,7 +2108,7 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) 
   }, [pacote?.status, venda?.id, podeVisualizar]);
 
   /**
-   * Executa a rotina handle upload.
+   * Trata o evento de upload.
    */
   async function handleUpload(event) {
     const files = Array.from(event.target.files || []);
@@ -2148,7 +2148,7 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) 
   }
 
   /**
-   * Executa a rotina handle excluir.
+   * Trata o evento de excluir.
    */
   async function handleExcluir(arquivo) {
     if (!window.confirm(`Excluir o arquivo "${arquivo.nome_original}" desta venda?`)) return;
@@ -2164,7 +2164,7 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) 
   }
 
   /**
-   * Executa a rotina handle gerar pacote.
+   * Trata o evento de gerar pacote.
    */
   async function handleGerarPacote() {
     setErro('');
@@ -2344,7 +2344,7 @@ function ArquivosVendaTab({ venda, podeEditar, podeVisualizar, podeAdicionar }) 
 }
 
 /**
- * Executa a rotina marcar problema modal.
+ * Renderiza marcar problema modal.
  */
 function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
   const [motivo, setMotivo] = useState('');
@@ -2354,7 +2354,7 @@ function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
   const [salvando, setSalvando] = useState(false);
 
   /**
-   * Executa a rotina salvar.
+   * Salva  com os dados informados.
    */
   async function salvar() {
     setErro('');
@@ -2374,7 +2374,7 @@ function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
   }
 
   /**
-   * Executa a rotina toggle usuario.
+   * Alterna usuario no estado atual.
    */
   function toggleUsuario(id) {
     setDestinatarios(prev => (
@@ -2436,7 +2436,7 @@ function MarcarProblemaModal({ venda, usuarios, onClose, onSave }) {
 }
 
 /**
- * Executa a rotina confirmar lixeira modal.
+ * Renderiza confirmar lixeira modal.
  */
 function ConfirmarLixeiraModal({ venda, deletando, onClose, onConfirm }) {
   if (!venda) return null;
@@ -2478,7 +2478,7 @@ function ConfirmarLixeiraModal({ venda, deletando, onClose, onConfirm }) {
 }
 
 /**
- * Executa a rotina email template modal.
+ * Renderiza email template modal.
  */
 function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
   if (!dados) return null;
@@ -2514,7 +2514,7 @@ function EmailTemplateModal({ dados, copiando, onClose, onCopy }) {
 }
 
 /**
- * Executa a rotina whatsapp mensagem modal.
+ * Renderiza whatsapp mensagem modal.
  */
 export function WhatsappMensagemModal({ dados, copiando, onClose, onChange, onDocsChange, onCopy }) {
   if (!dados) return null;
@@ -2523,7 +2523,7 @@ export function WhatsappMensagemModal({ dados, copiando, onClose, onChange, onDo
   const semDocumentoFaltante = documentosSelecionados.length === 0;
 
   /**
-   * Executa a rotina alternar documento.
+   * Alterna documento no estado atual.
    */
   function alternarDocumento(documento) {
     if (documentosSelecionados.includes(documento)) {
@@ -2592,7 +2592,7 @@ export function WhatsappMensagemModal({ dados, copiando, onClose, onChange, onDo
 }
 
 /**
- * Executa a rotina vendas page.
+ * Renderiza vendas page.
  */
 function VendasPage() {
   const navigate = useNavigate();
@@ -2729,7 +2729,7 @@ function VendasPage() {
   }, [erro]);
 
   /**
-   * Executa a rotina carregar dados estaticos.
+   * Carrega dados estaticos e atualiza o estado relacionado.
    */
   async function carregarDadosEstaticos() {
     try {
@@ -2759,7 +2759,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina carregar vendas.
+   * Carrega vendas e atualiza o estado relacionado.
    */
   async function carregarVendas(proximosFiltros = filtros, pagina = paginaAtual, porPagina = itensPorPagina) {
     setErro('');
@@ -2789,7 +2789,7 @@ function VendasPage() {
 
   useEffect(() => {
     /**
-     * Executa a rotina handle vendas atualizadas.
+     * Trata o evento de vendas atualizadas.
      */
     function handleVendasAtualizadas() {
       carregarVendas();
@@ -2800,7 +2800,7 @@ function VendasPage() {
   }, []);
 
   /**
-   * Executa a rotina abrir cliente rapido.
+   * Abre cliente rapido e prepara o estado necessario.
    */
   function abrirClienteRapido(clienteInicial = null) {
     return new Promise(resolve => {
@@ -2811,7 +2811,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina fechar cliente rapido.
+   * Fecha cliente rapido e limpa o estado relacionado.
    */
   function fecharClienteRapido(cliente = null) {
     setClienteRapidoAberto(false);
@@ -2822,7 +2822,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina salvar cliente rapido.
+   * Salva cliente rapido com os dados informados.
    */
   async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientesSelect() : [];
@@ -2836,7 +2836,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina abrir nova venda.
+   * Abre nova venda e prepara o estado necessario.
    */
   function abrirNovaVenda(initialValues = null) {
     setModalVenda(null);
@@ -2849,7 +2849,7 @@ function VendasPage() {
 
   useEffect(() => {
     /**
-     * Executa a rotina handle nova venda.
+     * Trata o evento de nova venda.
      */
     function handleNovaVenda() {
       if (podeCriarVenda) {
@@ -2894,7 +2894,7 @@ function VendasPage() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   /**
-   * Executa a rotina limpar rota modal venda.
+   * Limpa rota modal venda e restaura o estado inicial.
    */
   function limparRotaModalVenda() {
     if (searchParams.has('venda_id') || searchParams.has('aba') || searchParams.has('problema_id')) {
@@ -2903,7 +2903,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina abrir visualizacao.
+   * Abre visualizacao e prepara o estado necessario.
    */
   function abrirVisualizacao(venda) {
     setModalVenda(venda);
@@ -2915,7 +2915,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina salvar venda.
+   * Salva venda com os dados informados.
    */
   async function salvarVenda(dados, notasPendentes = [], arquivosPendentes = []) {
     setErro('');
@@ -2963,7 +2963,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina enviar pos venda.
+   * Envia pos venda para processamento.
    */
   async function enviarPosVenda(venda) {
     setErro('');
@@ -2984,7 +2984,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina confirmar remocao venda.
+   * Executa a acao de confirmar remocao venda mantendo o estado da tela consistente.
    */
   async function confirmarRemocaoVenda() {
     if (!vendaParaLixeira) return;
@@ -3004,7 +3004,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina handle baixar xlsx claro.
+   * Trata o evento de baixar xlsx claro.
    */
   async function handleBaixarXlsxClaro(venda) {
     setErro('');
@@ -3020,7 +3020,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina exportar vendas.
+   * Exporta vendas no formato esperado.
    */
   async function exportarVendas() {
     setErro('');
@@ -3037,7 +3037,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina abrir email venda.
+   * Abre email venda e prepara o estado necessario.
    */
   async function abrirEmailVenda(venda) {
     setErro('');
@@ -3055,7 +3055,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina copiar email venda.
+   * Copia email venda para o destino esperado.
    */
   async function copiarEmailVenda() {
     if (!emailTemplate?.texto) return;
@@ -3085,7 +3085,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina abrir mensagem whatsapp.
+   * Renderiza abrir mensagem whatsapp.
    */
   function abrirMensagemWhatsapp(venda) {
     setErro('');
@@ -3099,7 +3099,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina atualizar documentos whatsapp.
+   * Renderiza atualizar documentos whatsapp.
    */
   function atualizarDocumentosWhatsapp(documentosFaltantes) {
     setWhatsappMensagem(prev => {
@@ -3114,7 +3114,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina copiar mensagem whatsapp.
+   * Renderiza copiar mensagem whatsapp.
    */
   async function copiarMensagemWhatsapp() {
     if (!whatsappMensagem?.texto) return;
@@ -3144,7 +3144,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina limpar filtros.
+   * Limpa filtros e restaura o estado inicial.
    */
   function limparFiltros() {
     setBuscaCampo('geral');
@@ -3164,7 +3164,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina alterar busca campo.
+   * Executa a acao de alterar busca campo mantendo o estado da tela consistente.
    */
   function alterarBuscaCampo(campo) {
     setBuscaCampo(campo || 'geral');
@@ -3172,7 +3172,7 @@ function VendasPage() {
   }
 
   /**
-   * Executa a rotina alterar busca valor.
+   * Executa a acao de alterar busca valor mantendo o estado da tela consistente.
    */
   function alterarBuscaValor(valor) {
     setBusca(formatarBuscaPorCampo(buscaCampo, valor));

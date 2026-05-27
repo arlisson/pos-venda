@@ -7,7 +7,7 @@
 const mensagemService = require('../services/mensagem.service');
 
 /**
- * Executa a rotina contatos.
+ * Processa contatos conforme as regras do dominio.
  */
 async function contatos(req, res) {
   try {
@@ -20,7 +20,7 @@ async function contatos(req, res) {
 }
 
 /**
- * Executa a rotina conversas.
+ * Processa conversas conforme as regras do dominio.
  */
 async function conversas(req, res) {
   try {
@@ -33,7 +33,7 @@ async function conversas(req, res) {
 }
 
 /**
- * Executa a rotina todas conversas.
+ * Processa todas conversas conforme as regras do dominio.
  */
 async function todasConversas(req, res) {
   try {
@@ -46,7 +46,7 @@ async function todasConversas(req, res) {
 }
 
 /**
- * Executa a rotina mensagens.
+ * Processa mensagens conforme as regras do dominio.
  */
 async function mensagens(req, res) {
   try {
@@ -62,7 +62,7 @@ async function mensagens(req, res) {
 }
 
 /**
- * Executa a rotina mensagens conversa interna.
+ * Processa mensagens conversa interna conforme as regras do dominio.
  */
 async function mensagensConversaInterna(req, res) {
   try {
@@ -78,7 +78,7 @@ async function mensagensConversaInterna(req, res) {
 }
 
 /**
- * Executa a rotina enviar.
+ * Envia  para processamento.
  */
 async function enviar(req, res) {
   try {
@@ -97,7 +97,7 @@ async function enviar(req, res) {
 }
 
 /**
- * Executa a rotina upload anexo.
+ * Processa upload anexo conforme as regras do dominio.
  */
 async function uploadAnexo(req, res) {
   try {
@@ -110,7 +110,7 @@ async function uploadAnexo(req, res) {
 }
 
 /**
- * Executa a rotina baixar anexo.
+ * Baixa anexo para o usuario.
  */
 async function baixarAnexo(req, res) {
   try {
@@ -144,7 +144,7 @@ async function baixarAnexo(req, res) {
 }
 
 /**
- * Executa a rotina baixar anexo interno.
+ * Baixa anexo interno para o usuario.
  */
 async function baixarAnexoInterno(req, res) {
   try {
@@ -178,7 +178,7 @@ async function baixarAnexoInterno(req, res) {
 }
 
 /**
- * Executa a rotina nao lidas.
+ * Processa nao lidas conforme as regras do dominio.
  */
 async function naoLidas(req, res) {
   try {
@@ -191,7 +191,7 @@ async function naoLidas(req, res) {
 }
 
 /**
- * Executa a rotina marcar lida.
+ * Marca lida conforme a acao solicitada.
  */
 async function marcarLida(req, res) {
   try {
@@ -204,7 +204,7 @@ async function marcarLida(req, res) {
 }
 
 /**
- * Executa a rotina excluir.
+ * Exclui  conforme a regra de negocio.
  */
 async function excluir(req, res) {
   try {

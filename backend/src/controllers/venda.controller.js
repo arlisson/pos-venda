@@ -10,7 +10,7 @@ const { gerarXlsxClaro } = require('../services/venda-xlsx-claro.service');
 const { _internals } = require('../services/venda-email-template.service');
 
 /**
- * Executa a rotina index.
+ * Processa index conforme as regras do dominio.
  */
 async function index(req, res) {
   try {
@@ -27,7 +27,7 @@ async function index(req, res) {
 }
 
 /**
- * Executa a rotina referencias clientes.
+ * Processa referencias clientes conforme as regras do dominio.
  */
 async function referenciasClientes(req, res) {
   try {
@@ -43,7 +43,7 @@ async function referenciasClientes(req, res) {
 }
 
 /**
- * Executa a rotina resumo.
+ * Retorna resumo no formato esperado pelo fluxo.
  */
 async function resumo(req, res) {
   try {
@@ -60,7 +60,7 @@ async function resumo(req, res) {
 }
 
 /**
- * Executa a rotina relatorios.
+ * Processa relatorios conforme as regras do dominio.
  */
 async function relatorios(req, res) {
   try {
@@ -77,7 +77,7 @@ async function relatorios(req, res) {
 }
 
 /**
- * Executa a rotina exportar.
+ * Exporta  no formato esperado.
  */
 async function exportar(req, res) {
   try {
@@ -96,7 +96,7 @@ async function exportar(req, res) {
 }
 
 /**
- * Executa a rotina show.
+ * Processa show conforme as regras do dominio.
  */
 async function show(req, res) {
   try {
@@ -119,7 +119,7 @@ async function show(req, res) {
 }
 
 /**
- * Executa a rotina email template.
+ * Retorna email template no formato esperado pelo fluxo.
  */
 async function emailTemplate(req, res) {
   try {
@@ -142,7 +142,7 @@ async function emailTemplate(req, res) {
 }
 
 /**
- * Executa a rotina store.
+ * Processa store conforme as regras do dominio.
  */
 async function store(req, res) {
   try {
@@ -160,7 +160,7 @@ async function store(req, res) {
 }
 
 /**
- * Executa a rotina preview importacao empresas.
+ * Processa preview importacao empresas conforme as regras do dominio.
  */
 async function previewImportacaoEmpresas(req, res) {
   try {
@@ -175,7 +175,7 @@ async function previewImportacaoEmpresas(req, res) {
 }
 
 /**
- * Executa a rotina importar empresas.
+ * Importa empresas a partir dos dados recebidos.
  */
 async function importarEmpresas(req, res) {
   try {
@@ -190,7 +190,7 @@ async function importarEmpresas(req, res) {
 }
 
 /**
- * Executa a rotina update.
+ * Processa update conforme as regras do dominio.
  */
 async function update(req, res) {
   try {
@@ -215,7 +215,7 @@ async function update(req, res) {
 }
 
 /**
- * Executa a rotina update status.
+ * Atualiza status com o estado mais recente.
  */
 async function updateStatus(req, res) {
   try {
@@ -252,7 +252,7 @@ async function updateStatus(req, res) {
 }
 
 /**
- * Executa a rotina enviar pos venda.
+ * Envia pos venda para processamento.
  */
 async function enviarPosVenda(req, res) {
   try {
@@ -293,7 +293,7 @@ async function enviarPosVenda(req, res) {
 }
 
 /**
- * Executa a rotina destroy.
+ * Processa destroy conforme as regras do dominio.
  */
 async function destroy(req, res) {
   try {
@@ -316,7 +316,7 @@ async function destroy(req, res) {
 }
 
 /**
- * Executa a rotina lixeira.
+ * Processa lixeira conforme as regras do dominio.
  */
 async function lixeira(req, res) {
   try {
@@ -333,7 +333,7 @@ async function lixeira(req, res) {
 }
 
 /**
- * Executa a rotina restore.
+ * Processa restore conforme as regras do dominio.
  */
 async function restore(req, res) {
   try {
@@ -356,7 +356,7 @@ async function restore(req, res) {
 }
 
 /**
- * Executa a rotina destroy definitivo.
+ * Processa destroy definitivo conforme as regras do dominio.
  */
 async function destroyDefinitivo(req, res) {
   try {
@@ -379,7 +379,7 @@ async function destroyDefinitivo(req, res) {
 }
 
 /**
- * Executa a rotina vendedoras.
+ * Retorna vendedoras no formato esperado pelo fluxo.
  */
 async function vendedoras(req, res) {
   try {
@@ -396,7 +396,7 @@ async function vendedoras(req, res) {
 }
 
 /**
- * Executa a rotina xlsx claro.
+ * Processa xlsx claro conforme as regras do dominio.
  */
 async function xlsxClaro(req, res) {
   try {
@@ -424,7 +424,7 @@ async function xlsxClaro(req, res) {
 }
 
 /**
- * Executa a rotina cancelar.
+ * Processa cancelar conforme as regras do dominio.
  */
 async function cancelar(req, res) {
   try {
@@ -454,7 +454,7 @@ async function cancelar(req, res) {
 }
 
 /**
- * Executa a rotina reverter cancelamento.
+ * Processa reverter cancelamento conforme as regras do dominio.
  */
 async function reverterCancelamento(req, res) {
   try {
@@ -508,7 +508,7 @@ module.exports = {
 };
 
 /**
- * Executa a rotina contagem por cliente.
+ * Processa contagem por cliente conforme as regras do dominio.
  */
 async function contagemPorCliente(req, res) {
   try {

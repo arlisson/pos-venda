@@ -15,7 +15,7 @@ const LGRAY  = 'F2F2F2';
 const GRAY   = 'BFBFBF';
 
 /**
- * Executa a rotina logo path.
+ * Retorna logo path no formato esperado pelo fluxo.
  */
 const LOGO_PATH = (() => {
   const png = path.join(__dirname, '../assets/claro-logo.png');
@@ -24,14 +24,14 @@ const LOGO_PATH = (() => {
 })();
 
 /**
- * Executa a rotina txt.
+ * Converte o valor para texto seguro.
  */
 function txt(v) {
   return v === null || v === undefined ? '' : String(v).trim();
 }
 
 /**
- * Executa a rotina fone.
+ * Normaliza telefone para exibicao ou envio.
  */
 function fone(numero) {
   let v = txt(numero);
@@ -40,21 +40,21 @@ function fone(numero) {
 }
 
 /**
- * Executa a rotina cnpj.
+ * Normaliza CNPJ para exibicao ou envio.
  */
 function cnpj(v) {
   return txt(v).replace(/\D/g, '');
 }
 
 /**
- * Executa a rotina fill.
+ * Aplica fill na planilha gerada.
  */
 function fill(hex) {
   return { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + hex } };
 }
 
 /**
- * Executa a rotina border.
+ * Aplica border na planilha gerada.
  */
 function border() {
   const s = { style: 'thin' };
@@ -62,7 +62,7 @@ function border() {
 }
 
 /**
- * Executa a rotina font.
+ * Aplica font na planilha gerada.
  */
 function font(opts = {}) {
   return {
@@ -75,14 +75,14 @@ function font(opts = {}) {
 }
 
 /**
- * Executa a rotina align.
+ * Aplica align na planilha gerada.
  */
 function align(h = 'left', wrap = false) {
   return { horizontal: h, vertical: 'middle', wrapText: wrap };
 }
 
 /**
- * Executa a rotina w.
+ * Aplica w na planilha gerada.
  */
 function w(ws, row, col, value = '', opts = {}) {
   const cell = ws.getCell(row, col);
@@ -96,14 +96,14 @@ function w(ws, row, col, value = '', opts = {}) {
 }
 
 /**
- * Executa a rotina merge.
+ * Aplica merge na planilha gerada.
  */
 function merge(ws, r1, c1, r2, c2) {
   ws.mergeCells(r1, c1, r2, c2);
 }
 
 /**
- * Executa a rotina campo duplo.
+ * Retorna campo duplo no formato esperado pelo fluxo.
  */
 function campoDuplo(ws, row, lbl1, val1, lbl2, val2, optsVal1 = {}, optsVal2 = {}) {
   ws.getRow(row).height = 16;
@@ -116,7 +116,7 @@ function campoDuplo(ws, row, lbl1, val1, lbl2, val2, optsVal1 = {}, optsVal2 = {
 }
 
 /**
- * Executa a rotina campo simples.
+ * Retorna campo simples no formato esperado pelo fluxo.
  */
 function campoSimples(ws, row, lbl, val) {
   ws.getRow(row).height = 16;
@@ -126,7 +126,7 @@ function campoSimples(ws, row, lbl, val) {
 }
 
 /**
- * Executa a rotina expandir precos.
+ * Expande precos em linhas ou colunas detalhadas.
  */
 function expandirPrecos(valoresUnitariosChips, valorTotal, qtd) {
   const itens = parseItensChips(valoresUnitariosChips);
@@ -149,7 +149,7 @@ function expandirPrecos(valoresUnitariosChips, valorTotal, qtd) {
 }
 
 /**
- * Executa a rotina gb com sufixo.
+ * Retorna gb com sufixo no formato esperado pelo fluxo.
  */
 function gbComSufixo(valor) {
   const gb = txt(valor).replace(/\D/g, '');
@@ -157,7 +157,7 @@ function gbComSufixo(valor) {
 }
 
 /**
- * Executa a rotina plano claro.
+ * Retorna plano claro no formato esperado pelo fluxo.
  */
 function planoClaro(gb, produto) {
   const gbTexto = gbComSufixo(gb);
@@ -165,7 +165,7 @@ function planoClaro(gb, produto) {
 }
 
 /**
- * Executa a rotina expandir planos.
+ * Expande planos em linhas ou colunas detalhadas.
  */
 function expandirPlanos(valoresUnitariosChips, gbPadrao, produto, qtd) {
   const itens = parseItensChips(valoresUnitariosChips, gbPadrao);
@@ -184,7 +184,7 @@ function expandirPlanos(valoresUnitariosChips, gbPadrao, produto, qtd) {
 }
 
 /**
- * Executa a rotina expandir linhas chips.
+ * Expande linhas chips em linhas ou colunas detalhadas.
  */
 function expandirLinhasChips(valoresUnitariosChips, gbPadrao, produto, valorTotal, qtd) {
   const itens = parseItensChips(valoresUnitariosChips, gbPadrao);
@@ -211,7 +211,7 @@ function expandirLinhasChips(valoresUnitariosChips, gbPadrao, produto, valorTota
 }
 
 /**
- * Executa a rotina montar endereco.
+ * Monta endereco a partir dos dados informados.
  */
 function montarEndereco(venda) {
   const partes = [
@@ -226,7 +226,7 @@ function montarEndereco(venda) {
 }
 
 /**
- * Executa a rotina operadora portabilidade.
+ * Retorna operadora portabilidade no formato esperado pelo fluxo.
  */
 function operadoraPortabilidade(venda) {
   return txt(
@@ -237,7 +237,7 @@ function operadoraPortabilidade(venda) {
 }
 
 /**
- * Executa a rotina gerar xlsx claro.
+ * Gera xlsx claro a partir dos dados informados.
  */
 async function gerarXlsxClaro(venda) {
   const portados     = parsePortados(venda.numeros_portados);

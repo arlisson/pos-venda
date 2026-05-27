@@ -44,7 +44,7 @@ const routeConfigs = [
 ];
 
 /**
- * Executa a rotina get route config.
+ * Retorna route config a partir dos dados informados.
  */
 function getRouteConfig(pathname) {
   return (
@@ -55,7 +55,7 @@ function getRouteConfig(pathname) {
 }
 
 /**
- * Executa a rotina montar mapa referencias.
+ * Monta mapa referencias a partir dos dados informados.
  */
 function montarMapaReferencias(referencias = [], campo = 'total') {
   return referencias.reduce((mapa, item) => {
@@ -65,7 +65,7 @@ function montarMapaReferencias(referencias = [], campo = 'total') {
 }
 
 /**
- * Executa a rotina layout privado.
+ * Processa layout privado conforme as regras do dominio.
  */
 function LayoutPrivado({ children }) {
   const navigate = useNavigate();
@@ -111,7 +111,7 @@ function LayoutPrivado({ children }) {
   }, []);
 
   /**
-   * Executa a rotina handle logout.
+   * Trata o evento de logout.
    */
   function handleLogout() {
     setMobileMenuOpen(false);
@@ -120,7 +120,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina handle set page.
+   * Renderiza handle set page.
    */
   const handleSetPage = (id) => {
     const routeMap = {
@@ -165,7 +165,7 @@ function LayoutPrivado({ children }) {
 
   useEffect(() => {
     /**
-     * Executa a rotina handle key down.
+     * Trata o evento de key down.
      */
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
@@ -183,7 +183,7 @@ function LayoutPrivado({ children }) {
   }, [mobileMenuOpen]);
 
   /**
-   * Executa a rotina carregar dados nova venda.
+   * Carrega dados nova venda e atualiza o estado relacionado.
    */
   async function carregarDadosNovaVenda() {
     const [referenciasClientesData, clientesData, vendedorasData, operadorasData, tiposVendaData, servicosData] = await Promise.all([
@@ -204,7 +204,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina handle new sale.
+   * Trata o evento de new sale.
    */
   async function handleNewSale() {
     if (!podeCriarVenda || carregandoNovaVenda) return;
@@ -224,7 +224,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina salvar nova venda.
+   * Salva nova venda com os dados informados.
    */
   async function salvarNovaVenda(dados, notasPendentes = [], arquivosPendentes = []) {
     setErroNovaVenda('');
@@ -253,7 +253,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina abrir cliente rapido.
+   * Abre cliente rapido e prepara o estado necessario.
    */
   function abrirClienteRapido() {
     return new Promise(resolve => {
@@ -263,7 +263,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina fechar cliente rapido.
+   * Fecha cliente rapido e limpa o estado relacionado.
    */
   function fecharClienteRapido(cliente = null) {
     setClienteRapidoAberto(false);
@@ -274,7 +274,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina salvar cliente rapido.
+   * Salva cliente rapido com os dados informados.
    */
   async function salvarClienteRapido(clienteCriado) {
     const clientesAtualizados = podeListarClientes ? await listarClientesSelect() : [];
@@ -299,7 +299,7 @@ function LayoutPrivado({ children }) {
     let ativo = true;
 
     /**
-     * Executa a rotina carregar.
+     * Carrega  e atualiza o estado relacionado.
      */
     async function carregar() {
       try {
@@ -329,7 +329,7 @@ function LayoutPrivado({ children }) {
     let ativo = true;
 
     /**
-     * Executa a rotina carregar.
+     * Carrega  e atualiza o estado relacionado.
      */
     async function carregar() {
       try {
@@ -352,7 +352,7 @@ function LayoutPrivado({ children }) {
   }, [podeUsarChat]);
 
   /**
-   * Executa a rotina carregar alertas urgentes.
+   * Carrega alertas urgentes e atualiza o estado relacionado.
    */
   async function carregarAlertasUrgentes() {
     try {
@@ -373,7 +373,7 @@ function LayoutPrivado({ children }) {
   }, [usuario?.id]);
 
   /**
-   * Executa a rotina ocultar alerta urgente.
+   * Executa a acao de ocultar alerta urgente mantendo o estado da tela consistente.
    */
   function ocultarAlertaUrgente(notificacao) {
     const chave = notificacao.destinatario_id || notificacao.id;
@@ -381,7 +381,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina confirmar popup notificacao.
+   * Executa a acao de confirmar popup notificacao mantendo o estado da tela consistente.
    */
   function confirmarPopupNotificacao(notificacao) {
     marcarPopupNotificacaoVisto(notificacao.id)
@@ -392,7 +392,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina fechar alerta urgente.
+   * Fecha alerta urgente e limpa o estado relacionado.
    */
   function fecharAlertaUrgente(notificacao) {
     ocultarAlertaUrgente(notificacao);
@@ -400,7 +400,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina tom alerta.
+   * Retorna tom alerta no formato esperado pelo fluxo.
    */
   function tomAlerta(notificacao) {
     switch (notificacao.tipo) {
@@ -423,7 +423,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina get dados alerta.
+   * Retorna dados alerta a partir dos dados informados.
    */
   function getDadosAlerta(notificacao) {
     if (!notificacao?.dados) return {};
@@ -438,7 +438,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina montar rota alerta.
+   * Monta rota alerta a partir dos dados informados.
    */
   function montarRotaAlerta(notificacao) {
     const dados = getDadosAlerta(notificacao);
@@ -475,7 +475,7 @@ function LayoutPrivado({ children }) {
   }
 
   /**
-   * Executa a rotina abrir venda alerta.
+   * Abre venda alerta e prepara o estado necessario.
    */
   function abrirVendaAlerta(notificacao) {
     const rota = montarRotaAlerta(notificacao);

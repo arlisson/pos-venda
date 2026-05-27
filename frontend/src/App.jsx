@@ -2,7 +2,7 @@ import React from 'react';
 import AppRoutes from './routes/AppRoutes';
 
 /**
- * Executa a rotina app.
+ * Renderiza app.
  */
 function App() {
   return <AppRoutes />;

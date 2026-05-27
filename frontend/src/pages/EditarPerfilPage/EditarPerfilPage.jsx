@@ -6,7 +6,7 @@ import { atualizarPerfil, buscarPerfil } from '../../services/auth.service';
 import './EditarPerfilPage.css';
 
 /**
- * Executa a rotina get initials.
+ * Retorna initials a partir dos dados informados.
  */
 const getInitials = (name) => {
   if (!name) return '??';
@@ -14,7 +14,7 @@ const getInitials = (name) => {
 };
 
 /**
- * Executa a rotina medir senha.
+ * Processa medir senha conforme as regras do dominio.
  */
 function medirSenha(senha) {
   if (!senha) return { nivel: 0, label: 'Opcional' };
@@ -31,7 +31,7 @@ function medirSenha(senha) {
 }
 
 /**
- * Executa a rotina editar perfil page.
+ * Renderiza editar perfil page.
  */
 function EditarPerfilPage() {
   const navigate = useNavigate();
@@ -59,7 +59,7 @@ function EditarPerfilPage() {
 
   useEffect(() => {
     /**
-     * Executa a rotina carregar.
+     * Carrega  e atualiza o estado relacionado.
      */
     async function carregar() {
       try {
@@ -84,7 +84,7 @@ function EditarPerfilPage() {
   const temAlteracoes = (isAdmin && nomeAlterado) || senha.trim() !== '' || fotoAlterada;
 
   /**
-   * Executa a rotina handle foto change.
+   * Trata o evento de foto change.
    */
   function handleFotoChange(event) {
     const arquivo = event.target.files?.[0];
@@ -110,7 +110,7 @@ function EditarPerfilPage() {
   }
 
   /**
-   * Executa a rotina handle submit.
+   * Trata o evento de submit.
    */
   async function handleSubmit(event) {
     event.preventDefault();

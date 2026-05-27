@@ -6,7 +6,7 @@ const bcrypt = require('bcrypt');
 
 
 /**
- * Executa a rotina listar usuarios.
+ * Lista usuarios conforme os filtros e parametros informados.
  */
 async function listarUsuarios() {
   return Usuario.query()
@@ -15,7 +15,7 @@ async function listarUsuarios() {
 }
 
 /**
- * Executa a rotina buscar usuario por id.
+ * Busca usuario por id conforme os parametros informados.
  */
 async function buscarUsuarioPorId(id) {
   return Usuario.query()
@@ -24,7 +24,7 @@ async function buscarUsuarioPorId(id) {
 }
 
 /**
- * Executa a rotina criar usuario.
+ * Cria usuario com os dados informados.
  */
 async function criarUsuario(dados) {
   const senhaHash = await bcrypt.hash(dados.senha, 10);
@@ -40,7 +40,7 @@ async function criarUsuario(dados) {
 }
 
 /**
- * Executa a rotina atualizar usuario.
+ * Atualiza usuario com os dados informados.
  */
 async function atualizarUsuario(id, dados) {
   const dadosAtualizacao = {};
@@ -73,7 +73,7 @@ async function atualizarUsuario(id, dados) {
 }
 
 /**
- * Executa a rotina excluir usuario.
+ * Exclui usuario conforme a regra de negocio.
  */
 async function excluirUsuario(id) {
   return Usuario.query().deleteById(id);

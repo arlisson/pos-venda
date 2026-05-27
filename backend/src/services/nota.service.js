@@ -9,7 +9,7 @@ const notificacaoService = require('./notificacao.service');
 const TIPOS_VALIDOS = ['cliente', 'venda'];
 
 /**
- * Executa a rotina validar tipo.
+ * Valida tipo e retorna o resultado esperado.
  */
 function validarTipo(tipo) {
   if (!TIPOS_VALIDOS.includes(tipo)) {
@@ -18,11 +18,11 @@ function validarTipo(tipo) {
 }
 
 /**
- * Executa a rotina formatar date time sql.
+ * Formata date time sql para exibicao ou envio.
  */
 function formatarDateTimeSQL(data = new Date()) {
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = (value) => String(value).padStart(2, '0');
 
@@ -38,7 +38,7 @@ function formatarDateTimeSQL(data = new Date()) {
 }
 
 /**
- * Executa a rotina parse data hora retorno.
+ * Converte data hora retorno para o formato interno esperado.
  */
 function parseDataHoraRetorno(valor) {
   if (!valor) return null;
@@ -53,7 +53,7 @@ function parseDataHoraRetorno(valor) {
 }
 
 /**
- * Executa a rotina formatar nota.
+ * Formata nota para exibicao ou envio.
  */
 function formatarNota(nota) {
   if (!nota) return null;
@@ -72,7 +72,7 @@ function formatarNota(nota) {
 }
 
 /**
- * Executa a rotina usuario pode acessar entidade.
+ * Verifica se usuario pode acessar entidade atende a condicao esperada.
  */
 async function usuarioPodeAcessarEntidade(tipo, entidadeId, usuarioId) {
   validarTipo(tipo);
@@ -86,7 +86,7 @@ async function usuarioPodeAcessarEntidade(tipo, entidadeId, usuarioId) {
 }
 
 /**
- * Executa a rotina montar payload.
+ * Monta payload a partir dos dados informados.
  */
 function montarPayload(dados = {}) {
   const titulo = String(dados.titulo || '').trim().slice(0, 160);
@@ -108,7 +108,7 @@ function montarPayload(dados = {}) {
 }
 
 /**
- * Executa a rotina listar notas.
+ * Lista notas conforme os filtros e parametros informados.
  */
 async function listarNotas(tipo, entidadeId, usuarioId) {
   validarTipo(tipo);
@@ -129,7 +129,7 @@ async function listarNotas(tipo, entidadeId, usuarioId) {
 }
 
 /**
- * Executa a rotina criar nota.
+ * Cria nota com os dados informados.
  */
 async function criarNota(tipo, entidadeId, usuarioId, dados) {
   validarTipo(tipo);
@@ -153,7 +153,7 @@ async function criarNota(tipo, entidadeId, usuarioId, dados) {
 }
 
 /**
- * Executa a rotina atualizar nota.
+ * Atualiza nota com os dados informados.
  */
 async function atualizarNota(notaId, usuarioId, dados) {
   const nota = await db('entidade_notas')
@@ -181,7 +181,7 @@ async function atualizarNota(notaId, usuarioId, dados) {
 }
 
 /**
- * Executa a rotina excluir nota.
+ * Exclui nota conforme a regra de negocio.
  */
 async function excluirNota(notaId, usuarioId) {
   const total = await db('entidade_notas')

@@ -37,14 +37,14 @@ const TRANSIENT_DB_ERRORS = [
 ];
 
 /**
- * Executa a rotina sleep.
+ * Aguarda o intervalo informado antes de continuar.
  */
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
- * Executa a rotina is transient db error.
+ * Verifica se transient db error atende a condicao esperada.
  */
 function isTransientDbError(error) {
   const texto = [
@@ -58,7 +58,7 @@ function isTransientDbError(error) {
 }
 
 /**
- * Executa a rotina log processamento.
+ * Processa log processamento conforme as regras do dominio.
  */
 function logProcessamento(planilhaId, etapa, dados = {}) {
   const partes = [`[lead-planilhas] planilha_id=${planilhaId}`, `etapa=${etapa}`];
@@ -82,7 +82,7 @@ function logProcessamento(planilhaId, etapa, dados = {}) {
 }
 
 /**
- * Executa a rotina remover arquivo importacao.
+ * Remove arquivo importacao da colecao ou estado atual.
  */
 async function removerArquivoImportacao(planilhaId, arquivoPath, contexto) {
   if (!arquivoPath) return true;
@@ -104,7 +104,7 @@ async function removerArquivoImportacao(planilhaId, arquivoPath, contexto) {
 }
 
 /**
- * Executa a rotina with db retry.
+ * Executa a operacao de banco com tentativas em erros transitorios.
  */
 async function withDbRetry(planilhaId, etapa, fn, opcoes = {}) {
   const tentativas = opcoes.tentativas ?? DB_RETRY_ATTEMPTS;
@@ -133,7 +133,7 @@ async function withDbRetry(planilhaId, etapa, fn, opcoes = {}) {
 }
 
 /**
- * Executa a rotina inserir lead linhas.
+ * Processa inserir lead linhas conforme as regras do dominio.
  */
 async function inserirLeadLinhas(planilhaId, linhas, etapa) {
   if (!linhas.length) return;
@@ -146,7 +146,7 @@ async function inserirLeadLinhas(planilhaId, linhas, etapa) {
   let loteBytes = 0;
 
   /**
-   * Executa a rotina flush.
+   * Envia o lote acumulado e reinicia o buffer.
    */
   async function flush() {
     if (lote.length === 0) return;
@@ -181,7 +181,7 @@ async function inserirLeadLinhas(planilhaId, linhas, etapa) {
 }
 
 /**
- * Executa a rotina escape load infile value.
+ * Escapa escape load infile value para evitar quebra de formato.
  */
 function escapeLoadInfileValue(valor) {
   return String(valor)
@@ -192,7 +192,7 @@ function escapeLoadInfileValue(valor) {
 }
 
 /**
- * Executa a rotina inserir via load infile.
+ * Processa inserir via load infile conforme as regras do dominio.
  */
 async function inserirViaLoadInfile(planilhaId, linhas, etapa) {
   const tmpDir = os.tmpdir();
@@ -236,7 +236,7 @@ async function inserirViaLoadInfile(planilhaId, linhas, etapa) {
 }
 
 /**
- * Executa a rotina criar http error.
+ * Cria http error com os dados informados.
  */
 function criarHttpError(statusCode, message) {
   const error = new Error(message);
@@ -245,11 +245,11 @@ function criarHttpError(statusCode, message) {
 }
 
 /**
- * Executa a rotina formatar date time sql.
+ * Formata date time sql para exibicao ou envio.
  */
 function formatarDateTimeSQL(data = new Date()) {
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = value => String(value).padStart(2, '0');
 
@@ -265,7 +265,7 @@ function formatarDateTimeSQL(data = new Date()) {
 }
 
 /**
- * Executa a rotina parse data hora retorno.
+ * Converte data hora retorno para o formato interno esperado.
  */
 function parseDataHoraRetorno(valor) {
   if (!valor) return null;
@@ -280,7 +280,7 @@ function parseDataHoraRetorno(valor) {
 }
 
 /**
- * Executa a rotina adicionar dias.
+ * Adiciona dias ao conjunto atual.
  */
 function adicionarDias(data, dias) {
   const resultado = new Date(data);
@@ -289,7 +289,7 @@ function adicionarDias(data, dias) {
 }
 
 /**
- * Executa a rotina aplicar busca futuros clientes.
+ * Aplica busca futuros clientes sobre a consulta ou conjunto informado.
  */
 function aplicarBuscaFuturosClientes(query, busca) {
   const termo = String(busca || '').trim().toLowerCase();
@@ -303,7 +303,7 @@ function aplicarBuscaFuturosClientes(query, busca) {
 }
 
 /**
- * Executa a rotina parse json.
+ * Converte json para o formato interno esperado.
  */
 function parseJson(valor, fallback) {
   if (valor === null || valor === undefined) return fallback;
@@ -317,7 +317,7 @@ function parseJson(valor, fallback) {
 }
 
 /**
- * Executa a rotina formatar planilha.
+ * Formata planilha para exibicao ou envio.
  */
 function formatarPlanilha(planilha) {
   const json = typeof planilha?.toJSON === 'function' ? planilha.toJSON() : planilha;
@@ -337,7 +337,7 @@ function formatarPlanilha(planilha) {
 const PROCESSAMENTO_TRAVADO_MS = Number(process.env.LEAD_IMPORT_STALE_MS || 5 * 60 * 1000);
 
 /**
- * Executa a rotina reconciliar planilha processando.
+ * Reconcilia planilha processando com o estado persistido.
  */
 async function reconciliarPlanilhaProcessando(planilha) {
   const json = typeof planilha?.toJSON === 'function' ? planilha.toJSON() : planilha;
@@ -378,7 +378,7 @@ async function reconciliarPlanilhaProcessando(planilha) {
 }
 
 /**
- * Executa a rotina formatar envio.
+ * Formata envio para exibicao ou envio.
  */
 function formatarEnvio(envio) {
   const json = typeof envio?.toJSON === 'function' ? envio.toJSON() : envio;
@@ -395,7 +395,7 @@ function formatarEnvio(envio) {
 }
 
 /**
- * Executa a rotina formatar linha.
+ * Formata linha para exibicao ou envio.
  */
 function formatarLinha(linha) {
   const json = typeof linha?.toJSON === 'function' ? linha.toJSON() : linha;
@@ -410,7 +410,7 @@ function formatarLinha(linha) {
 }
 
 /**
- * Executa a rotina listar planilhas.
+ * Lista planilhas conforme os filtros e parametros informados.
  */
 async function listarPlanilhas() {
   const planilhas = await LeadPlanilha.query()
@@ -428,7 +428,7 @@ async function listarPlanilhas() {
 }
 
 /**
- * Executa a rotina buscar status.
+ * Busca status conforme os parametros informados.
  */
 async function buscarStatus(planilhaId) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
@@ -436,7 +436,7 @@ async function buscarStatus(planilhaId) {
 }
 
 /**
- * Executa a rotina criar planilha.
+ * Cria planilha com os dados informados.
  */
 async function criarPlanilha(dados, usuarioId) {
   const colunas = Array.isArray(dados.colunas) ? dados.colunas : [];
@@ -467,7 +467,7 @@ async function criarPlanilha(dados, usuarioId) {
 }
 
 /**
- * Executa a rotina salvar linhas lote.
+ * Salva linhas lote com os dados informados.
  */
 async function salvarLinhasLote(planilhaId, linhas = []) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
@@ -504,7 +504,7 @@ async function salvarLinhasLote(planilhaId, linhas = []) {
 }
 
 /**
- * Executa a rotina finalizar planilha.
+ * Executa a acao de finalizar planilha mantendo o estado da tela consistente.
  */
 async function finalizarPlanilha(planilhaId, dados = {}) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
@@ -532,7 +532,7 @@ async function finalizarPlanilha(planilhaId, dados = {}) {
 }
 
 /**
- * Executa a rotina marcar erro planilha.
+ * Marca erro planilha conforme a acao solicitada.
  */
 async function marcarErroPlanilha(planilhaId, mensagem) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
@@ -549,7 +549,7 @@ async function marcarErroPlanilha(planilhaId, mensagem) {
 }
 
 /**
- * Executa a rotina atualizar schema.
+ * Atualiza schema com os dados informados.
  */
 async function atualizarSchema(planilhaId, schemaColunas) {
   const planilha = await LeadPlanilha.query().patchAndFetchById(planilhaId, {
@@ -561,7 +561,7 @@ async function atualizarSchema(planilhaId, schemaColunas) {
 }
 
 /**
- * Executa a rotina excluir planilha.
+ * Exclui planilha conforme a regra de negocio.
  */
 async function excluirPlanilha(planilhaId) {
   let planilha = await LeadPlanilha.query().findById(planilhaId);
@@ -608,7 +608,7 @@ async function excluirPlanilha(planilhaId) {
 }
 
 /**
- * Executa a rotina ids from query.
+ * Extrai ids numericos da query recebida.
  */
 function idsFromQuery(valor) {
   if (!valor) return [];
@@ -620,7 +620,7 @@ function idsFromQuery(valor) {
 }
 
 /**
- * Executa a rotina get json value expr.
+ * Retorna json value expr a partir dos dados informados.
  */
 function getJsonValueExpr(coluna) {
   const pathSeguro = String(coluna || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -628,14 +628,14 @@ function getJsonValueExpr(coluna) {
 }
 
 /**
- * Executa a rotina get coluna nome.
+ * Retorna coluna nome a partir dos dados informados.
  */
 function getColunaNome(coluna) {
   return coluna?.nome || coluna?.label || coluna;
 }
 
 /**
- * Executa a rotina criar coluna atualizada.
+ * Cria coluna atualizada com os dados informados.
  */
 function criarColunaAtualizada(coluna) {
   if (typeof coluna === 'string') return `${coluna}${UPDATED_COLUMN_SUFFIX}`;
@@ -658,7 +658,7 @@ function criarColunaAtualizada(coluna) {
 }
 
 /**
- * Executa a rotina coluna atualizada existe.
+ * Retorna coluna atualizada existe no formato esperado pelo fluxo.
  */
 function colunaAtualizadaExiste(coluna, chavesAtualizadas) {
   if (!coluna || String(getColunaNome(coluna)).endsWith(UPDATED_COLUMN_SUFFIX)) return false;
@@ -671,7 +671,7 @@ function colunaAtualizadaExiste(coluna, chavesAtualizadas) {
 }
 
 /**
- * Executa a rotina coletar chaves atualizadas.
+ * Processa coletar chaves atualizadas conforme as regras do dominio.
  */
 async function coletarChavesAtualizadas(query) {
   const chaves = new Set();
@@ -699,7 +699,7 @@ async function coletarChavesAtualizadas(query) {
 }
 
 /**
- * Executa a rotina expandir colunas exportacao.
+ * Expande colunas exportacao em linhas ou colunas detalhadas.
  */
 async function expandirColunasExportacao(colunas, query) {
   const chavesAtualizadas = await coletarChavesAtualizadas(query);
@@ -726,7 +726,7 @@ async function expandirColunasExportacao(colunas, query) {
 }
 
 /**
- * Executa a rotina aplicar filtros query.
+ * Aplica filtros query sobre a consulta ou conjunto informado.
  */
 function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
   const planilhaIds = idsFromQuery(filtros.planilha_ids);
@@ -768,7 +768,7 @@ function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
 }
 
 /**
- * Executa a rotina listar linhas.
+ * Lista linhas conforme os filtros e parametros informados.
  */
 async function listarLinhas(filtros = {}, opcoes = {}) {
   const page = Math.max(1, Number(filtros.page || 1));
@@ -804,7 +804,7 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
 }
 
 /**
- * Executa a rotina atualizar campo linha recebida.
+ * Atualiza campo linha recebida com os dados informados.
  */
 async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
@@ -845,7 +845,7 @@ async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}) {
 }
 
 /**
- * Executa a rotina listar envios do usuario.
+ * Lista envios do usuario conforme os filtros e parametros informados.
  */
 async function listarEnviosDoUsuario(usuarioId) {
   const envios = await LeadEnvio.query()
@@ -864,7 +864,7 @@ async function listarEnviosDoUsuario(usuarioId) {
 }
 
 /**
- * Executa a rotina listar todos envios.
+ * Lista todos envios conforme os filtros e parametros informados.
  */
 async function listarTodosEnvios() {
   const envios = await LeadEnvio.query()
@@ -877,7 +877,7 @@ async function listarTodosEnvios() {
 }
 
 /**
- * Executa a rotina montar alocacoes.
+ * Monta alocacoes a partir dos dados informados.
  */
 function montarAlocacoes(usuarioIds, quantidadeTotal, alocacaoManual = {}) {
   const base = Math.floor(quantidadeTotal / usuarioIds.length);
@@ -908,7 +908,7 @@ function montarAlocacoes(usuarioIds, quantidadeTotal, alocacaoManual = {}) {
 }
 
 /**
- * Executa a rotina buscar ids por criterios.
+ * Busca ids por criterios conforme os parametros informados.
  */
 async function buscarIdsPorCriterios(dados, quantidadeTotal) {
   if (Array.isArray(dados.linha_ids) && dados.linha_ids.length > 0) {
@@ -931,7 +931,7 @@ async function buscarIdsPorCriterios(dados, quantidadeTotal) {
 }
 
 /**
- * Executa a rotina dividir leads.
+ * Processa dividir leads conforme as regras do dominio.
  */
 async function dividirLeads(dados, usuarioId) {
   const usuarioIds = Array.isArray(dados.usuario_ids)
@@ -1015,7 +1015,7 @@ async function dividirLeads(dados, usuarioId) {
 }
 
 /**
- * Executa a rotina processar removido ini.
+ * Processa processar removido ini conforme as regras do dominio.
  */
 async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes) {
   let colunas = null;
@@ -1029,7 +1029,7 @@ async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes)
   const amostra = [];
 
   /**
-   * Executa a rotina atualizar progresso por bytes.
+   * Atualiza progresso por bytes com os dados informados.
    */
   async function atualizarProgressoPorBytes() {
     if (tamanhoBytes <= 0) return;
@@ -1044,7 +1044,7 @@ async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes)
   }
 
   /**
-   * Executa a rotina flush.
+   * Envia o lote acumulado e reinicia o buffer.
    */
   async function flush() {
     if (lote.length === 0) return;
@@ -1168,7 +1168,7 @@ async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes)
 }
 
 /**
- * Executa a rotina iniciar upload.
+ * Executa a acao de iniciar upload mantendo o estado da tela consistente.
  */
 function iniciarUpload(req, usuarioId) {
   ensureImportDir();
@@ -1259,7 +1259,7 @@ function iniciarUpload(req, usuarioId) {
 }
 
 /**
- * Executa a rotina csv escape.
+ * Escapa csv escape para evitar quebra de formato.
  */
 function csvEscape(valor) {
   const texto = String(valor ?? '');
@@ -1267,7 +1267,7 @@ function csvEscape(valor) {
 }
 
 /**
- * Executa a rotina exportar csv.
+ * Exporta csv no formato esperado.
  */
 async function exportarCsv(filtros, res, opcoes = {}) {
   const colunasOriginais = Array.isArray(filtros.colunas) ? filtros.colunas : [];
@@ -1304,7 +1304,7 @@ async function exportarCsv(filtros, res, opcoes = {}) {
 }
 
 /**
- * Executa a rotina marcar como futuro cliente.
+ * Marca como futuro cliente conforme a acao solicitada.
  */
 async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
@@ -1336,7 +1336,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
 }
 
 /**
- * Executa a rotina listar futuros clientes.
+ * Lista futuros clientes conforme os filtros e parametros informados.
  */
 async function listarFuturosClientes(filtros = {}, usuarioId) {
   await limparFuturosClientesVencidosDaLixeira(usuarioId);
@@ -1368,7 +1368,7 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
 }
 
 /**
- * Executa a rotina limpar futuros clientes vencidos da lixeira.
+ * Limpa futuros clientes vencidos da lixeira e restaura o estado inicial.
  */
 async function limparFuturosClientesVencidosDaLixeira(usuarioId = null) {
   const query = db('lead_linhas')
@@ -1394,7 +1394,7 @@ async function limparFuturosClientesVencidosDaLixeira(usuarioId = null) {
 }
 
 /**
- * Executa a rotina listar futuros clientes lixeira.
+ * Lista futuros clientes lixeira conforme os filtros e parametros informados.
  */
 async function listarFuturosClientesLixeira(filtros = {}, usuarioId) {
   await limparFuturosClientesVencidosDaLixeira(usuarioId);
@@ -1427,7 +1427,7 @@ async function listarFuturosClientesLixeira(filtros = {}, usuarioId) {
 }
 
 /**
- * Executa a rotina enviar futuro cliente para lixeira.
+ * Envia futuro cliente para lixeira para processamento.
  */
 async function enviarFuturoClienteParaLixeira(linhaId, usuarioId) {
   const agora = new Date();
@@ -1446,7 +1446,7 @@ async function enviarFuturoClienteParaLixeira(linhaId, usuarioId) {
 }
 
 /**
- * Executa a rotina restaurar futuro cliente.
+ * Restaura futuro cliente quando a regra de negocio permite.
  */
 async function restaurarFuturoCliente(linhaId, usuarioId) {
   const atualizados = await db('lead_linhas')
@@ -1471,7 +1471,7 @@ async function restaurarFuturoCliente(linhaId, usuarioId) {
 }
 
 /**
- * Executa a rotina excluir futuro cliente definitivo.
+ * Exclui futuro cliente definitivo conforme a regra de negocio.
  */
 async function excluirFuturoClienteDefinitivo(linhaId, usuarioId) {
   return db('lead_linhas')

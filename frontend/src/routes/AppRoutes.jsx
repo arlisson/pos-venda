@@ -28,7 +28,7 @@ import '../pages/HistoricoPage/HistoricoPage.css';
 import { getUsuarioLocal, temPermissao } from '../services/auth.service';
 
 /**
- * Executa a rotina private route.
+ * Processa private route conforme as regras do dominio.
  */
 function PrivateRoute({ children, permission }) {
   const token = localStorage.getItem('token');
@@ -48,7 +48,7 @@ function PrivateRoute({ children, permission }) {
 import AdminCampanhasPage from '../pages/AdminCampanhasPage/AdminCampanhasPage';
 
 /**
- * Executa a rotina app routes.
+ * Processa app routes conforme as regras do dominio.
  */
 function AppRoutes() {
   return (

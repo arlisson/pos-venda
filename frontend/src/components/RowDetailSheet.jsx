@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import * as I from './Icons';
 
 /**
- * Executa a rotina row detail sheet field.
+ * Processa row detail sheet field conforme as regras do dominio.
  */
 export function RowDetailSheetField({ label, children }) {
   if (children === null || children === undefined || children === '' || children === false) {
@@ -17,7 +17,7 @@ export function RowDetailSheetField({ label, children }) {
 }
 
 /**
- * Executa a rotina row detail sheet.
+ * Renderiza row detail sheet.
  */
 function RowDetailSheet({ open, onClose, title, subtitle, footer, children }) {
   useEffect(() => {
@@ -26,7 +26,7 @@ function RowDetailSheet({ open, onClose, title, subtitle, footer, children }) {
     document.body.style.overflow = 'hidden';
 
     /**
-     * Executa a rotina handle key.
+     * Trata o evento de key.
      */
     function handleKey(event) {
       if (event.key === 'Escape') {

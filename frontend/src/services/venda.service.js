@@ -6,7 +6,7 @@ import { apiBlob, apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 /**
- * Executa a rotina montar query.
+ * Monta query a partir dos dados informados.
  */
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -22,14 +22,14 @@ function montarQuery(filtros = {}) {
 }
 
 /**
- * Executa a rotina listar vendas.
+ * Lista vendas conforme os filtros e parametros informados.
  */
 export async function listarVendas(filtros) {
   return apiGet(`/vendas${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina exportar vendas excel.
+ * Exporta vendas excel no formato esperado.
  */
 export async function exportarVendasExcel(filtros = {}) {
   const blob = await apiBlob(`/vendas/exportar${montarQuery(filtros)}`);
@@ -38,56 +38,56 @@ export async function exportarVendasExcel(filtros = {}) {
 }
 
 /**
- * Executa a rotina contar vendas concluidas por cliente.
+ * Conta vendas concluidas por cliente conforme os dados informados.
  */
 export async function contarVendasConcluidasPorCliente() {
   return apiGet('/vendas/contagem-por-cliente');
 }
 
 /**
- * Executa a rotina obter referencias clientes vendas.
+ * Obtem referencias clientes vendas a partir dos dados informados.
  */
 export async function obterReferenciasClientesVendas() {
   return apiGet('/vendas/referencias-clientes');
 }
 
 /**
- * Executa a rotina listar vendas lixeira.
+ * Lista vendas lixeira conforme os filtros e parametros informados.
  */
 export async function listarVendasLixeira(filtros) {
   return apiGet(`/vendas/lixeira${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina obter resumo vendas.
+ * Obtem resumo vendas a partir dos dados informados.
  */
 export async function obterResumoVendas() {
   return apiGet('/vendas/resumo');
 }
 
 /**
- * Executa a rotina obter relatorios vendas.
+ * Obtem relatorios vendas a partir dos dados informados.
  */
 export async function obterRelatoriosVendas(filtros) {
   return apiGet(`/vendas/relatorios${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina buscar venda por id.
+ * Busca venda por id conforme os parametros informados.
  */
 export async function buscarVendaPorId(id) {
   return apiGet(`/vendas/${id}`);
 }
 
 /**
- * Executa a rotina gerar email venda.
+ * Gera email venda a partir dos dados informados.
  */
 export async function gerarEmailVenda(id) {
   return apiPost(`/vendas/${id}/email-template`, {});
 }
 
 /**
- * Executa a rotina baixar xlsx claro.
+ * Baixa xlsx claro para o usuario.
  */
 export async function baixarXlsxClaro(id, nomeCliente) {
   const blob = await apiBlob(`/vendas/${id}/xlsx-claro`);
@@ -102,7 +102,7 @@ export async function baixarXlsxClaro(id, nomeCliente) {
 }
 
 /**
- * Executa a rotina baixar blob.
+ * Baixa blob para o usuario.
  */
 function baixarBlob(blob, nomeArquivo) {
   const url = URL.createObjectURL(blob);
@@ -116,14 +116,14 @@ function baixarBlob(blob, nomeArquivo) {
 }
 
 /**
- * Executa a rotina listar arquivos venda.
+ * Lista arquivos venda conforme os filtros e parametros informados.
  */
 export async function listarArquivosVenda(id) {
   return apiGet(`/vendas/${id}/arquivos`);
 }
 
 /**
- * Executa a rotina upload arquivo venda.
+ * Processa upload arquivo venda conforme as regras do dominio.
  */
 export function uploadArquivoVenda(id, file, dados = {}, onProgress) {
   return new Promise((resolve, reject) => {
@@ -168,28 +168,28 @@ export function uploadArquivoVenda(id, file, dados = {}, onProgress) {
 }
 
 /**
- * Executa a rotina excluir arquivo venda.
+ * Exclui arquivo venda conforme a regra de negocio.
  */
 export async function excluirArquivoVenda(vendaId, arquivoVendaId) {
   return apiDelete(`/vendas/${vendaId}/arquivos/${arquivoVendaId}`);
 }
 
 /**
- * Executa a rotina obter pacote arquivos venda.
+ * Obtem pacote arquivos venda a partir dos dados informados.
  */
 export async function obterPacoteArquivosVenda(vendaId) {
   return apiGet(`/vendas/${vendaId}/arquivos/pacote`);
 }
 
 /**
- * Executa a rotina gerar pacote arquivos venda.
+ * Gera pacote arquivos venda a partir dos dados informados.
  */
 export async function gerarPacoteArquivosVenda(vendaId) {
   return apiPost(`/vendas/${vendaId}/arquivos/pacote`, {});
 }
 
 /**
- * Executa a rotina baixar arquivo venda.
+ * Baixa arquivo venda para o usuario.
  */
 export async function baixarArquivoVenda(vendaId, arquivoVendaId, nomeArquivo) {
   const blob = await apiBlob(`/vendas/${vendaId}/arquivos/${arquivoVendaId}/download`);
@@ -197,14 +197,14 @@ export async function baixarArquivoVenda(vendaId, arquivoVendaId, nomeArquivo) {
 }
 
 /**
- * Executa a rotina url visualizar arquivo venda.
+ * Processa url visualizar arquivo venda conforme as regras do dominio.
  */
 export function urlVisualizarArquivoVenda(vendaId, arquivoVendaId) {
   return `${API_URL}/vendas/${vendaId}/arquivos/${arquivoVendaId}/view`;
 }
 
 /**
- * Executa a rotina visualizar arquivo venda.
+ * Processa visualizar arquivo venda conforme as regras do dominio.
  */
 export async function visualizarArquivoVenda(vendaId, arquivoVendaId) {
   const blob = await apiBlob(`/vendas/${vendaId}/arquivos/${arquivoVendaId}/view`);
@@ -214,7 +214,7 @@ export async function visualizarArquivoVenda(vendaId, arquivoVendaId) {
 }
 
 /**
- * Executa a rotina baixar pacote arquivos venda.
+ * Baixa pacote arquivos venda para o usuario.
  */
 export async function baixarPacoteArquivosVenda(vendaId) {
   const blob = await apiBlob(`/vendas/${vendaId}/arquivos/pacote/download`);
@@ -222,14 +222,14 @@ export async function baixarPacoteArquivosVenda(vendaId) {
 }
 
 /**
- * Executa a rotina criar venda.
+ * Cria venda com os dados informados.
  */
 export async function criarVenda(dados) {
   return apiPost('/vendas', dados);
 }
 
 /**
- * Executa a rotina montar form data importacao.
+ * Monta form data importacao a partir dos dados informados.
  */
 function montarFormDataImportacao(arquivo, mapeamento) {
   const formData = new FormData();
@@ -241,7 +241,7 @@ function montarFormDataImportacao(arquivo, mapeamento) {
 }
 
 /**
- * Executa a rotina preview importacao vendas empresas.
+ * Processa preview importacao vendas empresas conforme as regras do dominio.
  */
 export async function previewImportacaoVendasEmpresas(arquivo, mapeamento) {
   return apiRequest('/vendas/importar-empresas/preview', {
@@ -251,7 +251,7 @@ export async function previewImportacaoVendasEmpresas(arquivo, mapeamento) {
 }
 
 /**
- * Executa a rotina importar vendas empresas.
+ * Importa vendas empresas a partir dos dados recebidos.
  */
 export async function importarVendasEmpresas(arquivo, mapeamento) {
   return apiRequest('/vendas/importar-empresas', {
@@ -261,42 +261,42 @@ export async function importarVendasEmpresas(arquivo, mapeamento) {
 }
 
 /**
- * Executa a rotina atualizar venda.
+ * Atualiza venda com os dados informados.
  */
 export async function atualizarVenda(id, dados) {
   return apiPut(`/vendas/${id}`, dados);
 }
 
 /**
- * Executa a rotina enviar venda para pos venda.
+ * Envia venda para pos venda para processamento.
  */
 export async function enviarVendaParaPosVenda(id) {
   return apiPost(`/vendas/${id}/enviar-pos-venda`, {});
 }
 
 /**
- * Executa a rotina listar aprovacoes venda.
+ * Lista aprovacoes venda conforme os filtros e parametros informados.
  */
 export async function listarAprovacoesVenda(filtros) {
   return apiGet(`/vendas/aprovacoes${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina aprovar solicitacao venda.
+ * Processa aprovar solicitacao venda conforme as regras do dominio.
  */
 export async function aprovarSolicitacaoVenda(id, dados = {}) {
   return apiPost(`/vendas/aprovacoes/${id}/aprovar`, dados);
 }
 
 /**
- * Executa a rotina recusar solicitacao venda.
+ * Processa recusar solicitacao venda conforme as regras do dominio.
  */
 export async function recusarSolicitacaoVenda(id, dados = {}) {
   return apiPost(`/vendas/aprovacoes/${id}/recusar`, dados);
 }
 
 /**
- * Executa a rotina atualizar status venda.
+ * Atualiza status venda com os dados informados.
  */
 export async function atualizarStatusVenda(id, dados) {
   return apiRequest(`/vendas/${id}/status`, {
@@ -306,91 +306,91 @@ export async function atualizarStatusVenda(id, dados) {
 }
 
 /**
- * Executa a rotina cancelar venda.
+ * Processa cancelar venda conforme as regras do dominio.
  */
 export async function cancelarVenda(id, motivo) {
   return apiPost(`/vendas/${id}/cancelar`, { motivo });
 }
 
 /**
- * Executa a rotina reverter cancelamento venda.
+ * Processa reverter cancelamento venda conforme as regras do dominio.
  */
 export async function reverterCancelamentoVenda(id, observacao) {
   return apiPost(`/vendas/${id}/reverter-cancelamento`, { observacao });
 }
 
 /**
- * Executa a rotina deletar venda.
+ * Remove venda conforme a regra de negocio.
  */
 export async function deletarVenda(id) {
   return apiDelete(`/vendas/${id}`);
 }
 
 /**
- * Executa a rotina buscar problema ativo venda.
+ * Busca problema ativo venda conforme os parametros informados.
  */
 export async function buscarProblemaAtivoVenda(id) {
   return apiGet(`/vendas/${id}/problemas/ativo`);
 }
 
 /**
- * Executa a rotina listar problemas venda.
+ * Lista problemas venda conforme os filtros e parametros informados.
  */
 export async function listarProblemasVenda(id) {
   return apiGet(`/vendas/${id}/problemas`);
 }
 
 /**
- * Executa a rotina listar destinatarios problema venda.
+ * Lista destinatarios problema venda conforme os filtros e parametros informados.
  */
 export async function listarDestinatariosProblemaVenda() {
   return apiGet('/vendas/problemas/destinatarios');
 }
 
 /**
- * Executa a rotina marcar problema venda.
+ * Marca problema venda conforme a acao solicitada.
  */
 export async function marcarProblemaVenda(id, dados) {
   return apiPost(`/vendas/${id}/problemas`, dados);
 }
 
 /**
- * Executa a rotina resolver problema venda.
+ * Resolve problema venda a partir do contexto atual.
  */
 export async function resolverProblemaVenda(problemaId, dados) {
   return apiPost(`/vendas/problemas/${problemaId}/resolver`, dados);
 }
 
 /**
- * Executa a rotina solicitar correcao problema venda.
+ * Executa a acao de solicitar correcao problema venda mantendo o estado da tela consistente.
  */
 export async function solicitarCorrecaoProblemaVenda(problemaId, dados) {
   return apiPost(`/vendas/problemas/${problemaId}/correcao`, dados);
 }
 
 /**
- * Executa a rotina verificar problema venda.
+ * Processa verificar problema venda conforme as regras do dominio.
  */
 export async function verificarProblemaVenda(problemaId) {
   return apiPost(`/vendas/problemas/${problemaId}/verificar`, {});
 }
 
 /**
- * Executa a rotina restaurar venda.
+ * Restaura venda quando a regra de negocio permite.
  */
 export async function restaurarVenda(id) {
   return apiPost(`/vendas/${id}/restaurar`, {});
 }
 
 /**
- * Executa a rotina deletar venda definitivo.
+ * Remove venda definitivo conforme a regra de negocio.
  */
 export async function deletarVendaDefinitivo(id) {
   return apiDelete(`/vendas/${id}/definitivo`);
 }
 
 /**
- * Executa a rotina listar vendedoras.
+ * Lista vendedoras conforme os filtros e parametros informados.
  */
 export async function listarVendedoras() {
   return apiGet('/vendas/vendedoras');

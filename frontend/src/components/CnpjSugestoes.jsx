@@ -1,14 +1,14 @@
 import { formatDateValue } from '../utils/datetime';
 
 /**
- * Executa a rotina formatar data.
+ * Formata a data de atualizacao retornada pela fonte de CNPJ.
  */
 function formatarData(valor) {
   return formatDateValue(valor, undefined, 'sem data da fonte');
 }
 
 /**
- * Executa a rotina get confianca label.
+ * Normaliza o nivel de confianca para as classes visuais esperadas.
  */
 function getConfiancaLabel(valor) {
   if (valor === 'alta') return 'alta';
@@ -17,7 +17,7 @@ function getConfiancaLabel(valor) {
 }
 
 /**
- * Executa a rotina formatar mensagem resumo cnpj.
+ * Monta o resumo textual das fontes usadas na consulta de CNPJ.
  */
 export function formatarMensagemResumoCnpj(dados) {
   if (!dados) return '';
@@ -35,6 +35,9 @@ export function formatarMensagemResumoCnpj(dados) {
   return `Sugestoes encontradas em ${origem}.${dataMaisRecente}${alertas}${cache}`;
 }
 
+/**
+ * Exibe sugestoes de dados vindas da consulta de CNPJ para aceite ou recusa.
+ */
 export default function CnpjSugestoes({ dados, sugestoes, labels = {}, onAceitar, onRecusar }) {
   const campos = Object.entries(sugestoes || {}).filter(([, valor]) => String(valor || '').trim());
   if (!dados || campos.length === 0) return null;

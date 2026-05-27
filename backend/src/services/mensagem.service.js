@@ -14,7 +14,7 @@ const ANEXO_TAMANHO_MAX_MB = Number(process.env.CHAT_ANEXO_MAX_MB || 50);
 const ANEXO_TAMANHO_MAX_BYTES = ANEXO_TAMANHO_MAX_MB * 1024 * 1024;
 
 /**
- * Executa a rotina erro http.
+ * Cria um erro HTTP com status e mensagem padronizados.
  */
 function erroHttp(mensagem, statusCode) {
   const erro = new Error(mensagem);
@@ -25,12 +25,12 @@ function erroHttp(mensagem, statusCode) {
 // Objection serializa um Date como ISO ("...T...Z") que o MySQL grava como
 // "0000-00-00". Passamos um texto UTC "YYYY-MM-DD HH:MM:SS" para gravar correto.
 /**
- * Executa a rotina agora utc.
+ * Retorna o instante atual formatado em UTC.
  */
 function agoraUtc() {
   const data = new Date();
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = valor => String(valor).padStart(2, '0');
   return `${data.getUTCFullYear()}-${pad(data.getUTCMonth() + 1)}-${pad(data.getUTCDate())} `
@@ -40,7 +40,7 @@ function agoraUtc() {
 const PERMISSAO_CHAT = 'chat_usar';
 
 /**
- * Executa a rotina tem permissao chat.
+ * Verifica se permissao chat esta presente nos dados informados.
  */
 function temPermissaoChat(usuario) {
   if (!usuario || !usuario.estaAtivo?.()) return false;
@@ -48,7 +48,7 @@ function temPermissaoChat(usuario) {
 }
 
 /**
- * Executa a rotina formatar contato.
+ * Formata contato para exibicao ou envio.
  */
 function formatarContato(usuario) {
   if (!usuario) return null;
@@ -62,7 +62,7 @@ function formatarContato(usuario) {
 }
 
 /**
- * Executa a rotina formatar anexo.
+ * Formata anexo para exibicao ou envio.
  */
 function formatarAnexo(anexo) {
   if (!anexo) return null;
@@ -75,7 +75,7 @@ function formatarAnexo(anexo) {
 }
 
 /**
- * Executa a rotina formatar mensagem.
+ * Formata mensagem para exibicao ou envio.
  */
 function formatarMensagem(mensagem) {
   const excluida = Boolean(mensagem.excluido_em);
@@ -95,7 +95,7 @@ function formatarMensagem(mensagem) {
 }
 
 /**
- * Executa a rotina montar chave conversa.
+ * Monta chave conversa a partir dos dados informados.
  */
 function montarChaveConversa(usuarioAId, usuarioBId) {
   const ids = [Number(usuarioAId), Number(usuarioBId)].sort((a, b) => a - b);
@@ -103,7 +103,7 @@ function montarChaveConversa(usuarioAId, usuarioBId) {
 }
 
 /**
- * Executa a rotina parse chave conversa.
+ * Converte chave conversa para o formato interno esperado.
  */
 function parseChaveConversa(conversaKey) {
   const partes = String(conversaKey || '').split('-').map(Number);
@@ -115,7 +115,7 @@ function parseChaveConversa(conversaKey) {
 }
 
 /**
- * Executa a rotina listar contatos.
+ * Lista contatos conforme os filtros e parametros informados.
  */
 async function listarContatos(usuarioId) {
   const usuarios = await Usuario.query()
@@ -129,7 +129,7 @@ async function listarContatos(usuarioId) {
 }
 
 /**
- * Executa a rotina contar nao lidas.
+ * Conta nao lidas conforme os dados informados.
  */
 async function contarNaoLidas(usuarioId) {
   const me = Number(usuarioId);
@@ -154,7 +154,7 @@ async function contarNaoLidas(usuarioId) {
 }
 
 /**
- * Executa a rotina listar conversas.
+ * Lista conversas conforme os filtros e parametros informados.
  */
 async function listarConversas(usuarioId) {
   const me = Number(usuarioId);
@@ -215,7 +215,7 @@ async function listarConversas(usuarioId) {
 }
 
 /**
- * Executa a rotina listar todas conversas.
+ * Lista todas conversas conforme os filtros e parametros informados.
  */
 async function listarTodasConversas() {
   const linhas = await db('mensagens')
@@ -264,7 +264,7 @@ async function listarTodasConversas() {
 }
 
 /**
- * Executa a rotina marcar conversa lida.
+ * Marca conversa lida conforme a acao solicitada.
  */
 async function marcarConversaLida(usuarioId, contatoId) {
   const me = Number(usuarioId);
@@ -280,7 +280,7 @@ async function marcarConversaLida(usuarioId, contatoId) {
 }
 
 /**
- * Executa a rotina listar mensagens.
+ * Lista mensagens conforme os filtros e parametros informados.
  */
 async function listarMensagens(usuarioId, contatoId, { desde, limit = 50 } = {}) {
   const me = Number(usuarioId);
@@ -316,7 +316,7 @@ async function listarMensagens(usuarioId, contatoId, { desde, limit = 50 } = {})
 }
 
 /**
- * Executa a rotina listar mensagens conversa interna.
+ * Lista mensagens conversa interna conforme os filtros e parametros informados.
  */
 async function listarMensagensConversaInterna(conversaKey, { desde, limit = 50 } = {}) {
   const [usuarioAId, usuarioBId] = parseChaveConversa(conversaKey);
@@ -344,7 +344,7 @@ async function listarMensagensConversaInterna(conversaKey, { desde, limit = 50 }
 }
 
 /**
- * Executa a rotina enviar mensagem.
+ * Envia mensagem para processamento.
  */
 async function enviarMensagem(remetenteId, destinatarioId, conteudo, arquivoId = null, nomeArquivo = null) {
   const remetente = Number(remetenteId);
@@ -420,7 +420,7 @@ async function enviarMensagem(remetenteId, destinatarioId, conteudo, arquivoId =
 // Devolve o registro de `arquivos` (com nome_original_upload anexado em memória
 // para que enviarMensagem possa preservá-lo ao criar o vínculo).
 /**
- * Executa a rotina upload anexo.
+ * Processa upload anexo conforme as regras do dominio.
  */
 async function uploadAnexo(req, usuarioId) {
   let upload;
@@ -450,7 +450,7 @@ async function uploadAnexo(req, usuarioId) {
 }
 
 /**
- * Executa a rotina excluir mensagem.
+ * Exclui mensagem conforme a regra de negocio.
  */
 async function excluirMensagem(usuarioId, mensagemId) {
   const me = Number(usuarioId);
@@ -487,7 +487,7 @@ async function excluirMensagem(usuarioId, mensagemId) {
 }
 
 /**
- * Executa a rotina preparar download anexo.
+ * Prepara o download de anexo.
  */
 async function prepararDownloadAnexo(usuarioId, mensagemArquivoId, { permitirQualquerConversa = false } = {}) {
   const me = Number(usuarioId);

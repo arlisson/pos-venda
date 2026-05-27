@@ -4,7 +4,7 @@ import { temPermissao } from '../../services/auth.service';
 import './Navbar.css';
 
 /**
- * Executa a rotina navbar.
+ * Renderiza navbar.
  */
 function Navbar({ usuario, onLogout }) {
   const temPermissaoCrudUsuarios = temPermissao(usuario, 'crud_usuarios');

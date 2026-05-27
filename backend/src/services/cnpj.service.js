@@ -21,6 +21,9 @@ const CAMPOS_CRITICOS = [
 const LIMITE_CONFIANCA_ALTA_DIAS = 90;
 const LIMITE_CONFIANCA_MEDIA_DIAS = 180;
 
+/**
+ * Erro de dominio usado para falhas conhecidas na consulta de CNPJ.
+ */
 class CnpjConsultaError extends Error {
   constructor(message, code = 'erro') {
     super(message);
@@ -30,27 +33,27 @@ class CnpjConsultaError extends Error {
 }
 
 /**
- * Executa a rotina sanitizar cnpj.
+ * Sanitiza cnpj removendo caracteres nao esperados.
  */
 function sanitizarCnpj(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 14);
 }
 
 /**
- * Executa a rotina is cnpj repetido.
+ * Verifica se cnpj repetido atende a condicao esperada.
  */
 function isCnpjRepetido(cnpj) {
   return /^(\d)\1{13}$/.test(cnpj);
 }
 
 /**
- * Executa a rotina validar digitos cnpj.
+ * Valida digitos cnpj e retorna o resultado esperado.
  */
 function validarDigitosCnpj(cnpj) {
   if (!/^\d{14}$/.test(cnpj) || isCnpjRepetido(cnpj)) return false;
 
   /**
-   * Executa a rotina calcular digito.
+   * Calcula digito com base nos valores informados.
    */
   const calcularDigito = (base) => {
     const pesos = base === 12
@@ -65,7 +68,7 @@ function validarDigitosCnpj(cnpj) {
 }
 
 /**
- * Executa a rotina validar cnpj.
+ * Valida cnpj e retorna o resultado esperado.
  */
 function validarCnpj(valor) {
   const cnpj = sanitizarCnpj(valor);
@@ -82,7 +85,7 @@ function validarCnpj(valor) {
 }
 
 /**
- * Executa a rotina parse json seguro.
+ * Converte json seguro para o formato interno esperado.
  */
 function parseJsonSeguro(valor, fallback) {
   if (!valor) return fallback;
@@ -96,11 +99,11 @@ function parseJsonSeguro(valor, fallback) {
 }
 
 /**
- * Executa a rotina formatar date time sql.
+ * Formata date time sql para exibicao ou envio.
  */
 function formatarDateTimeSQL(data = new Date()) {
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = (value) => String(value).padStart(2, '0');
 
@@ -116,7 +119,7 @@ function formatarDateTimeSQL(data = new Date()) {
 }
 
 /**
- * Executa a rotina adicionar dias.
+ * Adiciona dias ao conjunto atual.
  */
 function adicionarDias(data, dias) {
   const proxima = new Date(data);
@@ -125,28 +128,28 @@ function adicionarDias(data, dias) {
 }
 
 /**
- * Executa a rotina normalizar telefone.
+ * Normaliza telefone para uso interno consistente.
  */
 function normalizarTelefone(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 11);
 }
 
 /**
- * Executa a rotina primeiro valor.
+ * Processa primeiro valor conforme as regras do dominio.
  */
 function primeiroValor(...valores) {
   return valores.find(valor => String(valor || '').trim()) || '';
 }
 
 /**
- * Executa a rotina normalizar texto.
+ * Normaliza texto para uso interno consistente.
  */
 function normalizarTexto(valor) {
   return String(valor || '').trim();
 }
 
 /**
- * Executa a rotina criar payload vazio.
+ * Cria payload vazio com os dados informados.
  */
 function criarPayloadVazio() {
   return {
@@ -167,7 +170,7 @@ function criarPayloadVazio() {
 }
 
 /**
- * Executa a rotina contar campos preenchidos.
+ * Conta campos preenchidos conforme os dados informados.
  */
 function contarCamposPreenchidos(payload) {
   return Object.entries(payload)
@@ -176,7 +179,7 @@ function contarCamposPreenchidos(payload) {
 }
 
 /**
- * Executa a rotina normalizar brasil api.
+ * Normaliza brasil api para uso interno consistente.
  */
 function normalizarBrasilApi(data) {
   return {
@@ -198,7 +201,7 @@ function normalizarBrasilApi(data) {
 }
 
 /**
- * Executa a rotina normalizar cnpja.
+ * Normaliza cnpja para uso interno consistente.
  */
 function normalizarCnpja(data) {
   const telefone = Array.isArray(data.phones) ? data.phones[0] : null;
@@ -227,7 +230,7 @@ function normalizarCnpja(data) {
 }
 
 /**
- * Executa a rotina normalizar cnpjws.
+ * Normaliza cnpjws para uso interno consistente.
  */
 function normalizarCnpjws(data) {
   const estabelecimento = data.estabelecimento || {};
@@ -259,7 +262,7 @@ function normalizarCnpjws(data) {
 }
 
 /**
- * Executa a rotina get axios error code.
+ * Retorna axios error code a partir dos dados informados.
  */
 function getAxiosErrorCode(error) {
   const status = error.response?.status;
@@ -270,7 +273,7 @@ function getAxiosErrorCode(error) {
 }
 
 /**
- * Executa a rotina consultar fonte.
+ * Consulta fonte na fonte configurada.
  */
 async function consultarFonte(fonte, url, normalizar) {
   try {
@@ -300,7 +303,7 @@ async function consultarFonte(fonte, url, normalizar) {
 }
 
 /**
- * Executa a rotina resumir payload bruto.
+ * Resume payload bruto para exibicao ou envio.
  */
 function resumirPayloadBruto(fonte, data) {
   if (fonte === 'BrasilAPI') {
@@ -342,7 +345,7 @@ function resumirPayloadBruto(fonte, data) {
 }
 
 /**
- * Executa a rotina data para iso.
+ * Retorna data para iso no formato esperado pelo fluxo.
  */
 function dataParaIso(valor) {
   if (!valor) return null;
@@ -352,7 +355,7 @@ function dataParaIso(valor) {
 }
 
 /**
- * Executa a rotina dias desde.
+ * Processa dias desde conforme as regras do dominio.
  */
 function diasDesde(valor, referencia = new Date()) {
   const iso = dataParaIso(valor);
@@ -361,7 +364,7 @@ function diasDesde(valor, referencia = new Date()) {
 }
 
 /**
- * Executa a rotina normalizar para comparacao.
+ * Normaliza para comparacao para uso interno consistente.
  */
 function normalizarParaComparacao(valor) {
   return String(valor || '')
@@ -373,7 +376,7 @@ function normalizarParaComparacao(valor) {
 }
 
 /**
- * Executa a rotina calcular confianca.
+ * Calcula confianca com base nos valores informados.
  */
 function calcularConfianca(atualizadoEm, divergente, referencia = new Date()) {
   if (divergente) return 'baixa';
@@ -386,7 +389,7 @@ function calcularConfianca(atualizadoEm, divergente, referencia = new Date()) {
 }
 
 /**
- * Executa a rotina combinar resultados.
+ * Processa combinar resultados conforme as regras do dominio.
  */
 function combinarResultados(resultados) {
   const combinado = criarPayloadVazio();
@@ -478,7 +481,7 @@ function combinarResultados(resultados) {
 }
 
 /**
- * Executa a rotina buscar cache.
+ * Busca cache conforme os parametros informados.
  */
 async function buscarCache(cnpj) {
   const agora = formatarDateTimeSQL();
@@ -493,7 +496,7 @@ async function buscarCache(cnpj) {
 }
 
 /**
- * Executa a rotina montar payload cache.
+ * Monta payload cache a partir dos dados informados.
  */
 function montarPayloadCache(registro) {
   const payload = parseJsonSeguro(registro.payload_normalizado, {});
@@ -527,7 +530,7 @@ function montarPayloadCache(registro) {
 }
 
 /**
- * Executa a rotina salvar cache.
+ * Salva cache com os dados informados.
  */
 async function salvarCache(cnpj, payload, resultados) {
   const agora = new Date();
@@ -556,7 +559,7 @@ async function salvarCache(cnpj, payload, resultados) {
 }
 
 /**
- * Executa a rotina consultar cnpj.
+ * Consulta cnpj na fonte configurada.
  */
 async function consultarCnpj(valor) {
   const cnpj = validarCnpj(valor);

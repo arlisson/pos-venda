@@ -20,7 +20,7 @@ import './FuturosClientesPage.css';
 // ─── Helpers de colunas de lead ──────────────────────────────────────────────
 
 /**
- * Executa a rotina normalizar texto lead.
+ * Normaliza texto lead para uso interno consistente.
  */
 function normalizarTextoLead(valor) {
   return String(valor || '')
@@ -31,7 +31,7 @@ function normalizarTextoLead(valor) {
 }
 
 /**
- * Executa a rotina get valor lead recebido.
+ * Retorna valor lead recebido a partir dos dados informados.
  */
 function getValorLeadRecebido(linha, coluna) {
   if (!coluna) return '';
@@ -46,7 +46,7 @@ function getValorLeadRecebido(linha, coluna) {
 }
 
 /**
- * Executa a rotina get nome coluna lead recebido.
+ * Retorna nome coluna lead recebido a partir dos dados informados.
  */
 function getNomeColunaLeadRecebido(linha, coluna) {
   if (!coluna) return '';
@@ -57,7 +57,7 @@ function getNomeColunaLeadRecebido(linha, coluna) {
 }
 
 /**
- * Executa a rotina get label coluna lead recebido.
+ * Retorna label coluna lead recebido a partir dos dados informados.
  */
 function getLabelColunaLeadRecebido(coluna) {
   if (typeof coluna === 'string') return coluna;
@@ -65,7 +65,7 @@ function getLabelColunaLeadRecebido(coluna) {
 }
 
 /**
- * Executa a rotina get coluna key lead recebido.
+ * Retorna coluna key lead recebido a partir dos dados informados.
  */
 function getColunaKeyLeadRecebido(coluna) {
   if (typeof coluna === 'string') return coluna;
@@ -73,7 +73,7 @@ function getColunaKeyLeadRecebido(coluna) {
 }
 
 /**
- * Executa a rotina criar coluna atualizada lead recebido.
+ * Cria coluna atualizada lead recebido com os dados informados.
  */
 function criarColunaAtualizadaLeadRecebido(coluna) {
   const key = getColunaKeyLeadRecebido(coluna);
@@ -94,7 +94,7 @@ function criarColunaAtualizadaLeadRecebido(coluna) {
 }
 
 /**
- * Executa a rotina linha tem coluna atualizada.
+ * Verifica se linha tem coluna atualizada atende a condicao esperada.
  */
 function linhaTemColunaAtualizada(linhas, coluna) {
   return linhas.some(linha => {
@@ -104,7 +104,7 @@ function linhaTemColunaAtualizada(linhas, coluna) {
 }
 
 /**
- * Executa a rotina get valor lead por nome.
+ * Retorna valor lead por nome a partir dos dados informados.
  */
 function getValorLeadPorNome(linha, nomeColuna) {
   if (!nomeColuna) return '';
@@ -114,7 +114,7 @@ function getValorLeadPorNome(linha, nomeColuna) {
 }
 
 /**
- * Executa a rotina get colunas mapeaveis lead.
+ * Retorna colunas mapeaveis lead a partir dos dados informados.
  */
 function getColunasMapeaveisLead(linha, colunas) {
   const opcoes = new Map();
@@ -144,7 +144,7 @@ function getColunasMapeaveisLead(linha, colunas) {
 }
 
 /**
- * Executa a rotina sugerir coluna venda.
+ * Processa sugerir coluna venda conforme as regras do dominio.
  */
 function sugerirColunaVenda(campo, opcoes) {
   const aliases = [campo.label, campo.name, ...(campo.aliases || [])].map(normalizarTextoLead);
@@ -166,7 +166,7 @@ const CAMPOS_VENDA_LEAD = [
 ];
 
 /**
- * Executa a rotina montar cliente preenchido.
+ * Monta cliente preenchido a partir dos dados informados.
  */
 function montarClientePreenchido(vendaPreenchida) {
   if (!vendaPreenchida) return null;
@@ -183,7 +183,7 @@ function montarClientePreenchido(vendaPreenchida) {
 }
 
 /**
- * Executa a rotina montar venda preenchida do lead.
+ * Monta venda preenchida do lead a partir dos dados informados.
  */
 function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
   const payload = usuario?.id ? { vendedora_id: String(usuario.id) } : {};
@@ -200,7 +200,7 @@ function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
 }
 
 /**
- * Executa a rotina formatar data hora.
+ * Formata data hora para exibicao ou envio.
  */
 function formatarDataHora(valor) {
   return formatUtcDateTime(valor, {
@@ -210,28 +210,28 @@ function formatarDataHora(valor) {
 }
 
 /**
- * Executa a rotina formatar data.
+ * Formata data para exibicao ou envio.
  */
 function formatarData(valor) {
   return formatDateValue(valor, undefined, '-');
 }
 
 /**
- * Executa a rotina is futuro cliente na lixeira.
+ * Verifica se futuro cliente na lixeira atende a condicao esperada.
  */
 function isFuturoClienteNaLixeira(linha) {
   return Boolean(linha?.futuro_cliente && linha?.futuro_cliente_excluido_em);
 }
 
 /**
- * Executa a rotina is futuro cliente ativo.
+ * Verifica se futuro cliente ativo atende a condicao esperada.
  */
 function isFuturoClienteAtivo(linha) {
   return Boolean(linha?.futuro_cliente && !linha?.futuro_cliente_excluido_em);
 }
 
 /**
- * Executa a rotina render lead status.
+ * Renderiza lead status no fluxo da tela.
  */
 function renderLeadStatus(linha) {
   if (isFuturoClienteNaLixeira(linha)) {
@@ -260,14 +260,14 @@ function renderLeadStatus(linha) {
 }
 
 /**
- * Executa a rotina formatar para datetime local.
+ * Formata para datetime local para exibicao ou envio.
  */
 function formatarParaDatetimeLocal(valor) {
   return toLocalDateTimeInputFromUtc(valor);
 }
 
 /**
- * Executa a rotina datetime retorno para iso.
+ * Retorna datetime retorno para iso no formato esperado pelo fluxo.
  */
 function datetimeRetornoParaIso(valor) {
   if (!valor) return null;
@@ -279,7 +279,7 @@ function datetimeRetornoParaIso(valor) {
 // ─── Modal: registrar venda ───────────────────────────────────────────────────
 
 /**
- * Executa a rotina registrar venda lead modal.
+ * Renderiza registrar venda lead modal.
  */
 function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }) {
   const opcoesColunas = useMemo(() => getColunasMapeaveisLead(linha, colunas), [linha, colunas]);
@@ -291,14 +291,14 @@ function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }
   ));
 
   /**
-   * Executa a rotina atualizar mapeamento.
+   * Atualiza mapeamento com os dados informados.
    */
   function atualizarMapeamento(campo, valor) {
     setMapeamento(prev => ({ ...prev, [campo]: valor }));
   }
 
   /**
-   * Executa a rotina submit.
+   * Envia o formulario para processamento.
    */
   function submit(event) {
     event.preventDefault();
@@ -360,7 +360,7 @@ function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }
 // ─── Modal: atualizar campo ───────────────────────────────────────────────────
 
 /**
- * Executa a rotina lead atualizacao modal.
+ * Renderiza lead atualizacao modal.
  */
 function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
   const [valor, setValor] = useState(dados?.valorAtualizado || '');
@@ -368,7 +368,7 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
   if (!dados) return null;
 
   /**
-   * Executa a rotina submit.
+   * Envia o formulario para processamento.
    */
   function submit(event) {
     event.preventDefault();
@@ -423,7 +423,7 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
 // ─── Modal: adicionar lead (popup intermediário) ──────────────────────────────
 
 /**
- * Executa a rotina adicionar lead modal.
+ * Renderiza adicionar lead modal.
  */
 function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda, onFuturoClienteSalvo }) {
   const [etapa, setEtapa] = useState('opcoes'); // 'opcoes' | 'venda' | 'futuro'
@@ -443,7 +443,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   }, [linha]);
 
   /**
-   * Executa a rotina salvar futuro cliente.
+   * Salva futuro cliente com os dados informados.
    */
   async function salvarFuturoCliente(event) {
     event.preventDefault();
@@ -563,7 +563,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 // ─── Aba: leads recebidos ─────────────────────────────────────────────────────
 
 /**
- * Executa a rotina leads recebidos view.
+ * Renderiza leads recebidos view com os dados informados.
  */
 function LeadsRecebidosView() {
   const navigate = useNavigate();
@@ -654,7 +654,7 @@ function LeadsRecebidosView() {
   const totalFuturosClientesAtivos = linhas.filter(isFuturoClienteAtivo).length;
 
   /**
-   * Executa a rotina toggle envio.
+   * Alterna envio no estado atual.
    */
   function toggleEnvio(id) {
     setSelecionados(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -662,7 +662,7 @@ function LeadsRecebidosView() {
   }
 
   /**
-   * Executa a rotina abrir atualizacao.
+   * Abre atualizacao e prepara o estado necessario.
    */
   function abrirAtualizacao(linha, coluna) {
     const nomeColuna = getNomeColunaLeadRecebido(linha, coluna);
@@ -679,7 +679,7 @@ function LeadsRecebidosView() {
   }
 
   /**
-   * Executa a rotina salvar atualizacao.
+   * Salva atualizacao com os dados informados.
    */
   async function salvarAtualizacao(valor) {
     if (!modalAtualizacao || !valor.trim()) {
@@ -711,7 +711,7 @@ function LeadsRecebidosView() {
   }
 
   /**
-   * Executa a rotina continuar registro venda.
+   * Executa a acao de continuar registro venda mantendo o estado da tela consistente.
    */
   function continuarRegistroVenda(vendaPreenchida) {
     navigate('/vendas?nova=1', {
@@ -727,7 +727,7 @@ function LeadsRecebidosView() {
   }
 
   /**
-   * Executa a rotina handle futuro cliente salvo.
+   * Trata o evento de futuro cliente salvo.
    */
   function handleFuturoClienteSalvo(linhaAtualizada) {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
@@ -895,7 +895,7 @@ function LeadsRecebidosView() {
 // ─── Modal: detalhe do futuro cliente ────────────────────────────────────────
 
 /**
- * Executa a rotina futuro cliente detalhe modal.
+ * Renderiza futuro cliente detalhe modal.
  */
 function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVenda }) {
   const [etapa, setEtapa] = useState('ver'); // 'ver' | 'venda'
@@ -917,7 +917,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   }, [linha]);
 
   /**
-   * Executa a rotina salvar.
+   * Salva  com os dados informados.
    */
   async function salvar(event) {
     event.preventDefault();
@@ -1024,7 +1024,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
 // ─── Aba: futuros clientes ────────────────────────────────────────────────────
 
 /**
- * Executa a rotina confirmar futuro cliente lixeira modal.
+ * Renderiza confirmar futuro cliente lixeira modal.
  */
 function ConfirmarFuturoClienteLixeiraModal({ linha, tipo, processando, onClose, onConfirm }) {
   if (!linha || !tipo) return null;
@@ -1072,7 +1072,7 @@ function ConfirmarFuturoClienteLixeiraModal({ linha, tipo, processando, onClose,
 }
 
 /**
- * Executa a rotina futuros clientes main view.
+ * Renderiza futuros clientes main view com os dados informados.
  */
 function FuturosClientesMainView() {
   const navigate = useNavigate();
@@ -1136,7 +1136,7 @@ function FuturosClientesMainView() {
   const totalColunasTabela = colunasDados.length + 4 + (modoLixeira ? 2 : 0) + (podeGerenciar ? 1 : 0);
 
   /**
-   * Executa a rotina handle atualizado.
+   * Trata o evento de atualizado.
    */
   function handleAtualizado(linhaAtualizada) {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
@@ -1144,7 +1144,7 @@ function FuturosClientesMainView() {
   }
 
   /**
-   * Executa a rotina alternar modo lixeira.
+   * Alterna modo lixeira no estado atual.
    */
   function alternarModoLixeira(proximoModo) {
     setModoLixeira(proximoModo);
@@ -1155,7 +1155,7 @@ function FuturosClientesMainView() {
   }
 
   /**
-   * Executa a rotina confirmar mover para lixeira.
+   * Executa a acao de confirmar mover para lixeira mantendo o estado da tela consistente.
    */
   async function confirmarMoverParaLixeira() {
     const linha = confirmacaoLixeira?.linha;
@@ -1179,7 +1179,7 @@ function FuturosClientesMainView() {
   }
 
   /**
-   * Executa a rotina handle restaurar.
+   * Trata o evento de restaurar.
    */
   async function handleRestaurar(linha) {
     setProcessandoId(linha.id);
@@ -1199,7 +1199,7 @@ function FuturosClientesMainView() {
   }
 
   /**
-   * Executa a rotina confirmar exclusao definitiva.
+   * Executa a acao de confirmar exclusao definitiva mantendo o estado da tela consistente.
    */
   async function confirmarExclusaoDefinitiva() {
     const linha = confirmacaoLixeira?.linha;
@@ -1223,7 +1223,7 @@ function FuturosClientesMainView() {
   }
 
   /**
-   * Executa a rotina handle registrar venda.
+   * Trata o evento de registrar venda.
    */
   function handleRegistrarVenda(vendaPreenchida) {
     navigate('/vendas?nova=1', {
@@ -1451,7 +1451,7 @@ function FuturosClientesMainView() {
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 /**
- * Executa a rotina futuros clientes page.
+ * Renderiza futuros clientes page.
  */
 function FuturosClientesPage() {
   const [abaAtiva, setAbaAtiva] = useState('futuros');

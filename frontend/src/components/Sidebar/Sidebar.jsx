@@ -5,7 +5,7 @@ import { temPermissao } from '../../services/auth.service';
 import { getCampanhas, getProgresso } from '../../services/campanha.service';
 
 /**
- * Executa a rotina sidebar.
+ * Renderiza sidebar.
  */
 function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMobileOpen = false, onClose }) {
   const [campanhas, setCampanhas] = useState([]);
@@ -45,7 +45,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   /**
-   * Executa a rotina get initials.
+   * Retorna initials a partir dos dados informados.
    */
   const getInitials = (name) => {
     if (!name) return '??';
@@ -53,7 +53,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
   };
 
   /**
-   * Executa a rotina get campanha key.
+   * Retorna campanha key a partir dos dados informados.
    */
   const getCampanhaKey = (campanha) => (
     campanha.tipo || `${campanha.periodo || 'diaria'}_${campanha.categoria || 'registro_cliente'}`

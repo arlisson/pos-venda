@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para problemas apontados em vendas.
+ */
 class VendaProblema extends Model {
   static get tableName() {
     return 'venda_problemas';

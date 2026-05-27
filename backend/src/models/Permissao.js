@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para permissoes do sistema.
+ */
 class Permissao extends Model {
   static get tableName() {
     return 'permissoes'; // Nome da tabela no banco de dados

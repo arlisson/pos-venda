@@ -21,7 +21,7 @@ const ANEXO_TIPOS_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png', 'i
 const ANEXO_TAMANHO_MAX_MB = 50;
 
 /**
- * Executa a rotina formatar tamanho.
+ * Formata bytes em KB ou MB para exibir anexos.
  */
 function formatarTamanho(bytes) {
   if (!bytes) return '';
@@ -34,7 +34,7 @@ const INTERVALO_THREAD = 3500;
 const INTERVALO_CONVERSAS = 10000;
 
 /**
- * Executa a rotina get initials.
+ * Retorna as iniciais usadas no avatar de contatos sem foto.
  */
 function getInitials(nome) {
   if (!nome) return '??';
@@ -47,14 +47,14 @@ function getInitials(nome) {
 }
 
 /**
- * Executa a rotina formatar hora.
+ * Formata o horario exibido em cada bolha da conversa.
  */
 function formatarHora(valor) {
   return formatUtcDateTime(valor, { hour: '2-digit', minute: '2-digit' });
 }
 
 /**
- * Executa a rotina formatar data lista.
+ * Formata a data compacta exibida na lista de conversas.
  */
 function formatarDataLista(valor) {
   if (!valor) return '';
@@ -63,7 +63,7 @@ function formatarDataLista(valor) {
 
 // Considera iguais se mesmos ids e mesmos status (recebida/lida) — evita re-render à toa.
 /**
- * Executa a rotina mesma lista.
+ * Compara listas de mensagens pelos campos que afetam a renderizacao.
  */
 function mesmaLista(a, b) {
   if (a.length !== b.length) return false;
@@ -82,7 +82,7 @@ function mesmaLista(a, b) {
 // autenticada e cria um object URL para o <img>. Para PDFs/outros, mostra um
 // mini-card com botão de download.
 /**
- * Executa a rotina anexo bolha.
+ * Renderiza um anexo dentro da bolha, com preview para imagens.
  */
 function AnexoBolha({ anexo, baixarAnexo = baixarAnexoMensagem }) {
   const [objectUrl, setObjectUrl] = useState(null);
@@ -107,7 +107,7 @@ function AnexoBolha({ anexo, baixarAnexo = baixarAnexoMensagem }) {
   }, [anexo, ehImagem, baixarAnexo]);
 
   /**
-   * Executa a rotina baixar.
+   * Baixa o anexo da mensagem e dispara o download no navegador.
    */
   async function baixar() {
     if (baixando) return;
@@ -150,7 +150,7 @@ function AnexoBolha({ anexo, baixarAnexo = baixarAnexoMensagem }) {
 }
 
 /**
- * Executa a rotina avatar.
+ * Renderiza avatar com foto do usuario ou iniciais do nome.
  */
 function Avatar({ contato }) {
   if (contato?.foto_perfil) {
@@ -165,7 +165,7 @@ function Avatar({ contato }) {
 }
 
 /**
- * Executa a rotina mensagens page.
+ * Renderiza a pagina de conversas internas.
  */
 function MensagensPage() {
   const usuarioLocal = useMemo(() => getUsuarioLocal(), []);
@@ -269,7 +269,7 @@ function MensagensPage() {
     const contatoId = contatoSelecionado.id;
 
     /**
-     * Executa a rotina carregar.
+     * Carrega a conversa aberta e atualiza a lista de mensagens.
      */
     async function carregar(forcarRolagem) {
       try {
@@ -311,7 +311,7 @@ function MensagensPage() {
   }, [mensagens, pendentes]);
 
   /**
-   * Executa a rotina selecionar contato.
+   * Seleciona um contato e reinicia o estado da conversa atual.
    */
   function selecionarContato(contato, modoOrigem = 'minhas') {
     setErro('');
@@ -329,7 +329,7 @@ function MensagensPage() {
   }
 
   /**
-   * Executa a rotina selecionar conversa interna.
+   * Seleciona uma conversa interna para visualizacao administrativa.
    */
   function selecionarConversaInterna(conversa) {
     const participantes = conversa.participantes || [];
@@ -345,14 +345,14 @@ function MensagensPage() {
   }
 
   /**
-   * Executa a rotina abrir selecao arquivo.
+   * Abre o seletor de arquivos para anexar uma mensagem.
    */
   function abrirSelecaoArquivo() {
     if (inputAnexoRef.current) inputAnexoRef.current.click();
   }
 
   /**
-   * Executa a rotina handle arquivo selecionado.
+   * Valida e envia o arquivo selecionado para anexo da mensagem.
    */
   async function handleArquivoSelecionado(evento) {
     const file = evento.target.files?.[0];
@@ -385,14 +385,14 @@ function MensagensPage() {
   }
 
   /**
-   * Executa a rotina remover anexo pendente.
+   * Remove o anexo pendente antes do envio da mensagem.
    */
   function removerAnexoPendente() {
     setAnexoPendente(null);
   }
 
   /**
-   * Executa a rotina handle excluir mensagem.
+   * Exclui uma mensagem com atualizacao otimista da conversa.
    */
   async function handleExcluirMensagem(mensagem) {
     if (!window.confirm('Excluir esta mensagem? Esta ação não pode ser desfeita.')) return;
@@ -421,7 +421,7 @@ function MensagensPage() {
   }
 
   /**
-   * Executa a rotina handle enviar.
+   * Envia texto e anexo pendente para a conversa selecionada.
    */
   async function handleEnviar(evento) {
     evento.preventDefault();
@@ -469,7 +469,7 @@ function MensagensPage() {
   }
 
   /**
-   * Executa a rotina handle tecla input.
+   * Envia a mensagem ao pressionar Enter sem Shift.
    */
   function handleTeclaInput(evento) {
     if (evento.key === 'Enter' && !evento.shiftKey) {

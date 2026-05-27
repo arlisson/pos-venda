@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para os registros de auditoria do sistema.
+ */
 class AuditLog extends Model {
   static get tableName() {
     return 'audit_logs';

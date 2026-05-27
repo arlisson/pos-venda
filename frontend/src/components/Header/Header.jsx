@@ -16,14 +16,14 @@ const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPOS_RETORNO_VENDA = ['venda_retorno_registrado'];
 
 /**
- * Executa a rotina format date.
+ * Formata date para exibicao.
  */
 function formatDate(value) {
   return formatDateValue(value, { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 /**
- * Executa a rotina tom notificacao.
+ * Retorna tom notificacao no formato esperado pelo fluxo.
  */
 function tomNotificacao(notification) {
   switch (notification.tipo) {
@@ -46,7 +46,7 @@ function tomNotificacao(notification) {
 }
 
 /**
- * Executa a rotina get notification target.
+ * Retorna notification target a partir dos dados informados.
  */
 function getNotificationTarget(notification) {
   if (notification.tipo === 'cliente_fidelidade') {
@@ -89,7 +89,7 @@ function getNotificationTarget(notification) {
 }
 
 /**
- * Executa a rotina get notification tooltip.
+ * Retorna notification tooltip a partir dos dados informados.
  */
 function getNotificationTooltip(notification) {
   const titulo = String(notification?.titulo || '').trim();
@@ -105,7 +105,7 @@ function getNotificationTooltip(notification) {
 }
 
 /**
- * Executa a rotina header.
+ * Renderiza header.
  */
 function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen = false }) {
   const navigate = useNavigate();
@@ -120,7 +120,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
 
   useEffect(() => {
     /**
-     * Executa a rotina carregar links.
+     * Carrega links e atualiza o estado relacionado.
      */
     async function carregarLinks() {
       try {
@@ -150,7 +150,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
 
   useEffect(() => {
     /**
-     * Executa a rotina handle click outside.
+     * Trata o evento de click outside.
      */
     function handleClickOutside(event) {
       if (linksMenuRef.current && !linksMenuRef.current.contains(event.target)) {
@@ -167,7 +167,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
   }, []);
 
   /**
-   * Executa a rotina carregar notificacoes.
+   * Carrega notificacoes e atualiza o estado relacionado.
    */
   async function carregarNotificacoes() {
     try {
@@ -196,7 +196,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
     if (!podeVerNotificacoes) return undefined;
 
     /**
-     * Executa a rotina handle refresh notifications.
+     * Trata o evento de refresh notifications.
      */
     function handleRefreshNotifications() {
       carregarNotificacoes();
@@ -207,7 +207,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
   }, [podeVerNotificacoes]);
 
   /**
-   * Executa a rotina handle open notifications.
+   * Trata o evento de open notifications.
    */
   async function handleOpenNotifications() {
     setNotificationsOpen(open => !open);
@@ -218,7 +218,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
   }
 
   /**
-   * Executa a rotina handle mark read.
+   * Trata o evento de mark read.
    */
   async function handleMarkRead(notification) {
     const target = getNotificationTarget(notification);
@@ -238,7 +238,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
   }
 
   /**
-   * Executa a rotina handle mark all read.
+   * Trata o evento de mark all read.
    */
   async function handleMarkAllRead() {
     await marcarTodasNotificacoesLidas();

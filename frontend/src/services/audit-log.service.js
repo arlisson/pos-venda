@@ -4,7 +4,7 @@
 import { apiGet } from './api';
 
 /**
- * Executa a rotina montar query.
+ * Monta query a partir dos dados informados.
  */
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -20,14 +20,14 @@ function montarQuery(filtros = {}) {
 }
 
 /**
- * Executa a rotina listar audit logs.
+ * Lista audit logs conforme os filtros e parametros informados.
  */
 export async function listarAuditLogs({ busca = '', entidade = '', tipo = '', page, per_page } = {}) {
   return apiGet(`/audit-logs${montarQuery({ busca, entidade, tipo, page, per_page })}`);
 }
 
 /**
- * Executa a rotina listar historico vendas agrupado.
+ * Lista historico vendas agrupado conforme os filtros e parametros informados.
  */
 export async function listarHistoricoVendasAgrupado({ status = '', busca = '', page, per_page } = {}) {
   return apiGet(`/audit-logs/vendas-agrupado${montarQuery({ status, busca, page, per_page })}`);

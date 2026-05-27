@@ -4,14 +4,14 @@
 const Role = require('../models/Role');
 
 /**
- * Executa a rotina listar roles.
+ * Lista roles conforme os filtros e parametros informados.
  */
 async function listarRoles() {
   return Role.query().orderBy('nome', 'asc');
 }
 
 /**
- * Executa a rotina buscar role por id.
+ * Busca role por id conforme os parametros informados.
  */
 async function buscarRolePorId(id) {
   return Role.query().findById(id);

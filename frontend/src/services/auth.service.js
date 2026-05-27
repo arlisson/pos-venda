@@ -4,7 +4,7 @@
 import { apiGet, apiPost, apiPut } from './api';
 
 /**
- * Executa a rotina login.
+ * Processa login conforme as regras do dominio.
  */
 export async function login(email, senha) {
   const data = await apiPost('/auth/login', {
@@ -19,14 +19,14 @@ export async function login(email, senha) {
 }
 
 /**
- * Executa a rotina buscar perfil.
+ * Busca perfil conforme os parametros informados.
  */
 export async function buscarPerfil() {
   return apiGet('/auth/me');
 }
 
 /**
- * Executa a rotina get usuario local.
+ * Retorna usuario local a partir dos dados informados.
  */
 export function getUsuarioLocal() {
   const usuario = localStorage.getItem('usuario');
@@ -39,7 +39,7 @@ export function getUsuarioLocal() {
 }
 
 /**
- * Executa a rotina normalizar permissoes.
+ * Normaliza permissoes para uso interno consistente.
  */
 function normalizarPermissoes(permissoes) {
   if (!permissoes) {
@@ -65,7 +65,7 @@ function normalizarPermissoes(permissoes) {
 }
 
 /**
- * Executa a rotina tem permissao.
+ * Verifica se permissao esta presente nos dados informados.
  */
 export function temPermissao(usuario, permissao) {
   if (!permissao) {
@@ -88,7 +88,7 @@ export function temPermissao(usuario, permissao) {
 }
 
 /**
- * Executa a rotina atualizar perfil.
+ * Atualiza perfil com os dados informados.
  */
 export async function atualizarPerfil(dados) {
   const usuario = await apiPut('/auth/me', dados);
@@ -99,7 +99,7 @@ export async function atualizarPerfil(dados) {
 }
 
 /**
- * Executa a rotina logout.
+ * Processa logout conforme as regras do dominio.
  */
 export function logout() {
   localStorage.removeItem('token');

@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para papeis de usuario.
+ */
 class Role extends Model {
   static get tableName() {
     return 'roles';

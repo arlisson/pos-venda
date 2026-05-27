@@ -39,7 +39,7 @@ export function normalizarNomeServicoParaFiltro(nome) {
 }
 
 /**
- * Executa a rotina escolher servico canonico.
+ * Processa escolher servico canonico conforme as regras do dominio.
  */
 function escolherServicoCanonico(servicos = []) {
   return servicos.find(servico => String(servico?.nome || '').trim() === 'Telefonia m\u00f3vel')

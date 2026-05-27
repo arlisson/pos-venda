@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para o vinculo historico entre clientes e operadoras.
+ */
 class ClienteOperadora extends Model {
   static get tableName() {
     return 'cliente_operadoras';

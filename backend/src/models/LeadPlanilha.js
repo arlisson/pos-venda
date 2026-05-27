@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para planilhas de leads importadas.
+ */
 class LeadPlanilha extends Model {
   static get tableName() {
     return 'lead_planilhas';

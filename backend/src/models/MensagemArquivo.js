@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para anexos vinculados a mensagens internas.
+ */
 class MensagemArquivo extends Model {
   static get tableName() {
     return 'mensagem_arquivos';

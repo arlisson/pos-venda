@@ -10,7 +10,7 @@ const { auditar } = require('../middlewares/audit.middleware');
 const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 
 /**
- * Executa a rotina obter movimentacao status.
+ * Obtem movimentacao status a partir dos dados informados.
  */
 function obterMovimentacaoStatus(venda) {
   const historico = Array.isArray(venda?.historico) ? venda.historico : [];

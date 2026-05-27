@@ -38,7 +38,7 @@ const MOTIVO_LABEL = {
 };
 
 /**
- * Executa a rotina formatar data.
+ * Formata data para exibicao ou envio.
  */
 function formatarData(valor) {
   return formatUtcDateTime(valor, {
@@ -51,14 +51,14 @@ function formatarData(valor) {
 }
 
 /**
- * Executa a rotina nome venda.
+ * Retorna nome venda no formato esperado pelo fluxo.
  */
 function nomeVenda(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
 /**
- * Executa a rotina nomes vendedoras.
+ * Retorna nomes vendedoras no formato esperado pelo fluxo.
  */
 function nomesVendedoras(venda) {
   const nomes = Array.isArray(venda?.vendedoras) && venda.vendedoras.length > 0
@@ -69,7 +69,7 @@ function nomesVendedoras(venda) {
 }
 
 /**
- * Executa a rotina vendas aprovacoes page.
+ * Renderiza vendas aprovacoes page.
  */
 function VendasAprovacoesPage() {
   const [searchParams] = useSearchParams();
@@ -99,7 +99,7 @@ function VendasAprovacoesPage() {
   const solicitacaoFoco = searchParams.get('solicitacao_id');
 
   /**
-   * Executa a rotina carregar.
+   * Carrega  e atualiza o estado relacionado.
    */
   async function carregar() {
     setCarregando(true);
@@ -117,7 +117,7 @@ function VendasAprovacoesPage() {
   }
 
   /**
-   * Executa a rotina carregar auxiliares.
+   * Carrega auxiliares e atualiza o estado relacionado.
    */
   async function carregarAuxiliares() {
     try {
@@ -170,7 +170,7 @@ function VendasAprovacoesPage() {
   }, [solicitacoes, solicitacaoFoco]);
 
   /**
-   * Executa a rotina aprovar.
+   * Processa aprovar conforme as regras do dominio.
    */
   async function aprovar(solicitacao) {
     setSalvandoId(solicitacao.id);
@@ -189,7 +189,7 @@ function VendasAprovacoesPage() {
   }
 
   /**
-   * Executa a rotina recusar.
+   * Processa recusar conforme as regras do dominio.
    */
   async function recusar(solicitacao) {
     setSalvandoId(solicitacao.id);
@@ -210,7 +210,7 @@ function VendasAprovacoesPage() {
   }
 
   /**
-   * Executa a rotina abrir venda.
+   * Abre venda e prepara o estado necessario.
    */
   async function abrirVenda(solicitacao) {
     setErro('');
@@ -229,7 +229,7 @@ function VendasAprovacoesPage() {
   }
 
   /**
-   * Executa a rotina salvar venda modal.
+   * Renderiza salvar venda modal.
    */
   async function salvarVendaModal(dados) {
     if (!vendaModal?.id) return;
@@ -243,7 +243,7 @@ function VendasAprovacoesPage() {
   }
 
   /**
-   * Executa a rotina enviar pos venda modal.
+   * Renderiza enviar pos venda modal.
    */
   async function enviarPosVendaModal(venda) {
     const resultado = await enviarVendaParaPosVenda(venda.id);
@@ -258,7 +258,7 @@ function VendasAprovacoesPage() {
   }
 
   /**
-   * Executa a rotina aprovar eenviar pos venda modal.
+   * Renderiza aprovar eenviar pos venda modal.
    */
   async function aprovarEEnviarPosVendaModal(venda) {
     if (solicitacaoModal?.id) {

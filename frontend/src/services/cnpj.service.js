@@ -4,14 +4,14 @@
 import { apiGet } from './api';
 
 /**
- * Executa a rotina sanitizar cpf.
+ * Sanitiza cpf removendo caracteres nao esperados.
  */
 export function sanitizarCpf(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 11);
 }
 
 /**
- * Executa a rotina formatar cpf.
+ * Formata cpf para exibicao ou envio.
  */
 export function formatarCpf(valor) {
   const d = sanitizarCpf(valor);
@@ -22,12 +22,12 @@ export function formatarCpf(valor) {
 }
 
 /**
- * Executa a rotina validar digitos cpf.
+ * Valida digitos cpf e retorna o resultado esperado.
  */
 export function validarDigitosCpf(cpf) {
   if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
   /**
-   * Executa a rotina calc.
+   * Calcula o digito ou valor auxiliar usado na validacao.
    */
   const calc = (n) => {
     const soma = Array.from({ length: n }, (_, i) => Number(cpf[i]) * (n + 1 - i)).reduce((a, b) => a + b, 0);
@@ -46,27 +46,27 @@ export class CnpjConsultaError extends Error {
 }
 
 /**
- * Executa a rotina sanitizar cnpj.
+ * Sanitiza cnpj removendo caracteres nao esperados.
  */
 export function sanitizarCnpj(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 14);
 }
 
 /**
- * Executa a rotina is cnpj repetido.
+ * Verifica se cnpj repetido atende a condicao esperada.
  */
 export function isCnpjRepetido(cnpj) {
   return /^(\d)\1{13}$/.test(cnpj);
 }
 
 /**
- * Executa a rotina validar digitos cnpj.
+ * Valida digitos cnpj e retorna o resultado esperado.
  */
 export function validarDigitosCnpj(cnpj) {
   if (!/^\d{14}$/.test(cnpj) || isCnpjRepetido(cnpj)) return false;
 
   /**
-   * Executa a rotina calcular digito.
+   * Calcula digito com base nos valores informados.
    */
   const calcularDigito = (base) => {
     const pesos = base === 12
@@ -81,7 +81,7 @@ export function validarDigitosCnpj(cnpj) {
 }
 
 /**
- * Executa a rotina validar cnpj para consulta.
+ * Valida cnpj para consulta e retorna o resultado esperado.
  */
 export function validarCnpjParaConsulta(valor) {
   const cnpj = sanitizarCnpj(valor);
@@ -98,7 +98,7 @@ export function validarCnpjParaConsulta(valor) {
 }
 
 /**
- * Executa a rotina consultar cnpj.
+ * Consulta cnpj na fonte configurada.
  */
 export async function consultarCnpj(valor) {
   const cnpj = validarCnpjParaConsulta(valor);

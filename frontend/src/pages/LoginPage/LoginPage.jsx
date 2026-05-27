@@ -5,7 +5,7 @@ import { login } from '../../services/auth.service';
 import logo from '../../assets/LogoClaraSemFundo.png';
 
 /**
- * Executa a rotina login page.
+ * Renderiza login page.
  */
 function LoginPage() {
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ function LoginPage() {
   const [carregando, setCarregando] = useState(false);
 
   /**
-   * Executa a rotina handle submit.
+   * Trata o evento de submit.
    */
   async function handleSubmit(event) {
     event.preventDefault();

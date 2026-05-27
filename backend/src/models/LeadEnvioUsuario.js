@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para a associacao entre envios de leads e usuarios.
+ */
 class LeadEnvioUsuario extends Model {
   static get tableName() {
     return 'lead_envio_usuarios';

@@ -19,7 +19,7 @@ const CATEGORIA_POR_SERVICO = {
 };
 
 /**
- * Executa a rotina normalizar servico nome.
+ * Normaliza servico nome para uso interno consistente.
  */
 function normalizarServicoNome(nome) {
   return String(nome || '')
@@ -30,7 +30,7 @@ function normalizarServicoNome(nome) {
 }
 
 /**
- * Executa a rotina categoria servico.
+ * Retorna categoria servico no formato esperado pelo fluxo.
  */
 function categoriaServico(servicoNome) {
   if (!servicoNome) return null;
@@ -38,14 +38,14 @@ function categoriaServico(servicoNome) {
 }
 
 /**
- * Executa a rotina categoria painel.
+ * Retorna categoria painel no formato esperado pelo fluxo.
  */
 function categoriaPainel(servicoNome) {
   return categoriaServico(servicoNome) || 'outros';
 }
 
 /**
- * Executa a rotina label categoria painel.
+ * Retorna label categoria painel no formato esperado pelo fluxo.
  */
 function labelCategoriaPainel(categoria) {
   return ({
@@ -57,7 +57,7 @@ function labelCategoriaPainel(categoria) {
 }
 
 /**
- * Executa a rotina tipo venda normalizado.
+ * Retorna tipo venda normalizado no formato esperado pelo fluxo.
  */
 function tipoVendaNormalizado(tipoVendaNome) {
   if (!tipoVendaNome) return null;
@@ -68,7 +68,7 @@ function tipoVendaNormalizado(tipoVendaNome) {
 }
 
 /**
- * Executa a rotina normalizar data.
+ * Normaliza data para uso interno consistente.
  */
 function normalizarData(valor) {
   if (!valor) return null;
@@ -77,21 +77,21 @@ function normalizarData(valor) {
 }
 
 /**
- * Executa a rotina data venda referencia sql.
+ * Retorna data venda referencia sql no formato esperado pelo fluxo.
  */
 function dataVendaReferenciaSQL(alias = 'v') {
   return `COALESCE(NULLIF(NULLIF(${alias}.data_venda, '0000-00-00'), '1899-11-30'), DATE(${alias}.created_at))`;
 }
 
 /**
- * Executa a rotina data ativacao referencia sql.
+ * Retorna data ativacao referencia sql no formato esperado pelo fluxo.
  */
 function dataAtivacaoReferenciaSQL(alias = 'v') {
   return `COALESCE(NULLIF(NULLIF(${alias}.data_ativacao, '0000-00-00'), '1899-11-30'), ${dataVendaReferenciaSQL(alias)})`;
 }
 
 /**
- * Executa a rotina parse chips.
+ * Converte chips para o formato interno esperado.
  */
 function parseChips(rawChips) {
   if (!rawChips) return [];
@@ -121,7 +121,7 @@ function parseChips(rawChips) {
 }
 
 /**
- * Executa a rotina parse numeros linha.
+ * Converte numeros linha para o formato interno esperado.
  */
 function parseNumerosLinha(valor) {
   if (!valor) return [];
@@ -145,7 +145,7 @@ function parseNumerosLinha(valor) {
 }
 
 /**
- * Executa a rotina extrair numeros gigas.
+ * Processa extrair numeros gigas conforme as regras do dominio.
  */
 function extrairNumerosGigas(valor) {
   const texto = String(valor || '');
@@ -157,7 +157,7 @@ function extrairNumerosGigas(valor) {
 }
 
 /**
- * Executa a rotina formatar gigas.
+ * Formata gigas para exibicao ou envio.
  */
 function formatarGigas(numero) {
   const valor = Number(numero || 0);
@@ -171,7 +171,7 @@ function formatarGigas(numero) {
 }
 
 /**
- * Executa a rotina gigas unitarios.
+ * Processa gigas unitarios conforme as regras do dominio.
  */
 function gigasUnitarios(gbPrincipal, quantidade, gbFallback = '') {
   const totalChips = Math.max(Number(quantidade || 0), 0);
@@ -201,7 +201,7 @@ function gigasUnitarios(gbPrincipal, quantidade, gbFallback = '') {
 }
 
 /**
- * Executa a rotina carregar regras comissao ativas.
+ * Carrega regras comissao ativas e atualiza o estado relacionado.
  */
 async function carregarRegrasComissaoAtivas() {
   return RegraComissao.query()
@@ -217,7 +217,7 @@ async function carregarRegrasComissaoAtivas() {
 }
 
 /**
- * Executa a rotina obter codigo etapa final.
+ * Obtem codigo etapa final a partir dos dados informados.
  */
 async function obterCodigoEtapaFinal() {
   try {
@@ -234,7 +234,7 @@ async function obterCodigoEtapaFinal() {
 }
 
 /**
- * Executa a rotina listar etapas painel.
+ * Lista etapas painel conforme os filtros e parametros informados.
  */
 async function listarEtapasPainel() {
   try {
@@ -265,7 +265,7 @@ async function listarEtapasPainel() {
 }
 
 /**
- * Executa a rotina nome etapa.
+ * Retorna nome etapa no formato esperado pelo fluxo.
  */
 function nomeEtapa(etapas, codigo) {
   if (codigo === CODIGO_RETORNO_HISTORICO) return 'Já retornou';
@@ -274,28 +274,28 @@ function nomeEtapa(etapas, codigo) {
 }
 
 /**
- * Executa a rotina venda teve retorno.
+ * Processa venda teve retorno conforme as regras do dominio.
  */
 function vendaTeveRetorno(venda = {}) {
   return Boolean(venda.retornou_em || venda.motivo_retorno || venda.status_anterior_retorno);
 }
 
 /**
- * Executa a rotina venda teve retorno corrigido.
+ * Processa venda teve retorno corrigido conforme as regras do dominio.
  */
 function vendaTeveRetornoCorrigido(venda = {}) {
   return venda.status_funil !== 'retorno' && vendaTeveRetorno(venda);
 }
 
 /**
- * Executa a rotina valor texto.
+ * Converte o valor para texto seguro.
  */
 function valorTexto(valor) {
   return valor === null || valor === undefined ? '' : String(valor).trim();
 }
 
 /**
- * Executa a rotina data para excel.
+ * Retorna data para excel no formato esperado pelo fluxo.
  */
 function dataParaExcel(valor) {
   const data = normalizarData(valor);
@@ -305,7 +305,7 @@ function dataParaExcel(valor) {
 }
 
 /**
- * Executa a rotina nome arquivo seguro.
+ * Retorna nome arquivo seguro no formato esperado pelo fluxo.
  */
 function nomeArquivoSeguro(valor) {
   return String(valor || '')
@@ -318,7 +318,7 @@ function nomeArquivoSeguro(valor) {
 }
 
 /**
- * Executa a rotina normalizar vendedoras venda.
+ * Normaliza vendedoras venda para uso interno consistente.
  */
 function normalizarVendedorasVenda(venda = {}) {
   const vinculadas = Array.isArray(venda.vendedoras) ? venda.vendedoras : [];
@@ -342,7 +342,7 @@ function normalizarVendedorasVenda(venda = {}) {
 }
 
 /**
- * Executa a rotina vendedoras comissao linha.
+ * Retorna vendedoras comissao linha no formato esperado pelo fluxo.
  */
 function vendedorasComissaoLinha(linha) {
   if (linha.vendedora?.id) {
@@ -355,7 +355,7 @@ function vendedorasComissaoLinha(linha) {
 }
 
 /**
- * Executa a rotina anexar vendedoras vendas.
+ * Processa anexar vendedoras vendas conforme as regras do dominio.
  */
 async function anexarVendedorasVendas(vendas = []) {
   const ids = vendas.map(venda => Number(venda.id)).filter(Boolean);
@@ -391,7 +391,7 @@ async function anexarVendedorasVendas(vendas = []) {
 }
 
 /**
- * Executa a rotina encontrar regra comissao.
+ * Processa encontrar regra comissao conforme as regras do dominio.
  */
 function encontrarRegraComissao(regras, valorUnitario, operadoraId) {
   const valor = Number(valorUnitario || 0);
@@ -409,7 +409,7 @@ function encontrarRegraComissao(regras, valorUnitario, operadoraId) {
 }
 
 /**
- * Executa a rotina montar regra comissao resumo.
+ * Monta regra comissao resumo a partir dos dados informados.
  */
 function montarRegraComissaoResumo(regra) {
   if (!regra) return null;
@@ -428,7 +428,7 @@ function montarRegraComissaoResumo(regra) {
 }
 
 /**
- * Executa a rotina quantidade chips venda.
+ * Retorna quantidade chips venda no formato esperado pelo fluxo.
  */
 function quantidadeChipsVenda(venda) {
   const chips = parseChips(venda.valores_unitarios_chips);
@@ -440,7 +440,7 @@ function quantidadeChipsVenda(venda) {
 }
 
 /**
- * Executa a rotina quantidade chips por tipo.
+ * Retorna quantidade chips por tipo no formato esperado pelo fluxo.
  */
 function quantidadeChipsPorTipo(venda, tipo) {
   const chips = parseChips(venda.valores_unitarios_chips);
@@ -456,7 +456,7 @@ function quantidadeChipsPorTipo(venda, tipo) {
 }
 
 /**
- * Executa a rotina carregar vendas no periodo.
+ * Carrega vendas no periodo e atualiza o estado relacionado.
  */
 async function carregarVendasNoPeriodo(filtros, criterioData = 'registro', opcoes = {}) {
   const inicio = normalizarData(filtros.data_inicio);
@@ -594,7 +594,7 @@ async function carregarVendasNoPeriodo(filtros, criterioData = 'registro', opcoe
 }
 
 /**
- * Executa a rotina carregar venda fechamento por id.
+ * Carrega venda fechamento por id e atualiza o estado relacionado.
  */
 async function carregarVendaFechamentoPorId(id) {
   const venda = await Venda.query()
@@ -712,7 +712,7 @@ async function carregarVendaFechamentoPorId(id) {
 }
 
 /**
- * Executa a rotina classificar secao.
+ * Classifica secao conforme as regras do dominio.
  */
 function classificarSecao(statusFunil, statusFinal = STATUS_FINAL_FALLBACK) {
   if (statusFunil === statusFinal) return 'ativas';
@@ -721,7 +721,7 @@ function classificarSecao(statusFunil, statusFinal = STATUS_FINAL_FALLBACK) {
 }
 
 /**
- * Executa a rotina montar etapas zeradas.
+ * Monta etapas zeradas a partir dos dados informados.
  */
 function montarEtapasZeradas(etapasBase = [], statusFinal = STATUS_FINAL_FALLBACK) {
   return etapasBase.map(etapa => ({
@@ -735,7 +735,7 @@ function montarEtapasZeradas(etapasBase = [], statusFinal = STATUS_FINAL_FALLBAC
 }
 
 /**
- * Executa a rotina nova linha operadora.
+ * Processa nova linha operadora conforme as regras do dominio.
  */
 function novaLinhaOperadora(operadoraId, operadoraNome, etapasBase = [], statusFinal = STATUS_FINAL_FALLBACK) {
   return {
@@ -755,7 +755,7 @@ function novaLinhaOperadora(operadoraId, operadoraNome, etapasBase = [], statusF
 }
 
 /**
- * Executa a rotina somar etapa linha.
+ * Soma etapa linha considerando os dados informados.
  */
 function somarEtapaLinha(linha, venda, chips, etapasBase = [], statusFinal = STATUS_FINAL_FALLBACK) {
   const codigo = venda.status_funil || etapasBase[0]?.codigo || 'sem_etapa';
@@ -778,7 +778,7 @@ function somarEtapaLinha(linha, venda, chips, etapasBase = [], statusFinal = STA
 }
 
 /**
- * Executa a rotina somar retorno historico linha.
+ * Soma retorno historico linha considerando os dados informados.
  */
 function somarRetornoHistoricoLinha(linha, venda, chips) {
   if (!vendaTeveRetornoCorrigido(venda)) return;
@@ -802,7 +802,7 @@ function somarRetornoHistoricoLinha(linha, venda, chips) {
 }
 
 /**
- * Executa a rotina agregar por operadora.
+ * Agrega por operadora para compor os totais.
  */
 function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapasBase = []) {
   const total = new Map();
@@ -812,7 +812,7 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
   vendas.forEach(venda => {
     const chave = venda.operadora_id ?? 'sem_operadora';
     /**
-     * Executa a rotina inicializa.
+     * Processa inicializa conforme as regras do dominio.
      */
     const inicializa = (mapa) => {
       if (!mapa.has(chave)) {
@@ -829,7 +829,7 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
     const ehContrato = venda.status_funil === statusFinal;
 
     /**
-     * Executa a rotina aplicar.
+     * Aplica  sobre a consulta ou conjunto informado.
      */
     const aplicar = (linha) => {
       linha.total_vendas += 1;
@@ -858,7 +858,7 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
   });
 
   /**
-   * Executa a rotina finalizar.
+   * Processa finalizar conforme as regras do dominio.
    */
   const finalizar = (mapa) => Array.from(mapa.values())
     .map(linha => ({
@@ -876,7 +876,7 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
 }
 
 /**
- * Executa a rotina criar linha painel.
+ * Cria linha painel com os dados informados.
  */
 function criarLinhaPainel(categoria) {
   return {
@@ -898,7 +898,7 @@ function criarLinhaPainel(categoria) {
 }
 
 /**
- * Executa a rotina montar painel gerencial.
+ * Monta painel gerencial a partir dos dados informados.
  */
 async function montarPainelGerencial(vendas, statusFinal = STATUS_FINAL_FALLBACK) {
   const regrasComissao = await carregarRegrasComissaoAtivas();
@@ -1009,7 +1009,7 @@ async function montarPainelGerencial(vendas, statusFinal = STATUS_FINAL_FALLBACK
 }
 
 /**
- * Executa a rotina obter resumo.
+ * Obtem resumo a partir dos dados informados.
  */
 async function obterResumo(filtros = {}) {
   const { vendas: vendasRegistro, statusFinal } = await carregarVendasNoPeriodo(filtros, 'registro', { incluirRetornos: true });
@@ -1035,7 +1035,7 @@ async function obterResumo(filtros = {}) {
 }
 
 /**
- * Executa a rotina filtrar por secao.
+ * Filtra por secao conforme os criterios informados.
  */
 function filtrarPorSecao(vendas, secao, statusFinal = STATUS_FINAL_FALLBACK) {
   if (secao === 'tratando') {
@@ -1048,7 +1048,7 @@ function filtrarPorSecao(vendas, secao, statusFinal = STATUS_FINAL_FALLBACK) {
 }
 
 /**
- * Executa a rotina montar venda resumo.
+ * Monta venda resumo a partir dos dados informados.
  */
 function montarVendaResumo(venda, statusFinal = STATUS_FINAL_FALLBACK) {
   const categoria = categoriaServico(venda.servico_nome);
@@ -1099,7 +1099,7 @@ function montarVendaResumo(venda, statusFinal = STATUS_FINAL_FALLBACK) {
 }
 
 /**
- * Executa a rotina obter detalhes.
+ * Obtem detalhes a partir dos dados informados.
  */
 async function obterDetalhes(filtros = {}) {
   const criterioData = filtros.secao === 'ativas' ? 'ativacao' : 'registro';
@@ -1122,7 +1122,7 @@ async function obterDetalhes(filtros = {}) {
 }
 
 /**
- * Executa a rotina obter detalhes chips.
+ * Obtem detalhes chips a partir dos dados informados.
  */
 async function obterDetalhesChips(filtros = {}) {
   const criterioData = filtros.secao === 'ativas' ? 'ativacao' : 'registro';
@@ -1139,13 +1139,13 @@ async function obterDetalhesChips(filtros = {}) {
 }
 
 /**
- * Executa a rotina montar linhas chips.
+ * Monta linhas chips a partir dos dados informados.
  */
 function montarLinhasChips(vendas, regrasComissao = []) {
   const linhas = [];
 
   /**
-   * Executa a rotina montar linha com regra.
+   * Monta linha com regra a partir dos dados informados.
    */
   function montarLinhaComRegra(venda, chip) {
     const linha = montarLinhaChip(venda, chip);
@@ -1251,7 +1251,7 @@ function montarLinhasChips(vendas, regrasComissao = []) {
 }
 
 /**
- * Executa a rotina montar resposta linhas chips.
+ * Monta resposta linhas chips a partir dos dados informados.
  */
 function montarRespostaLinhasChips(linhasOrdenadas) {
   const totaisVendedora = new Map();
@@ -1299,7 +1299,7 @@ function montarRespostaLinhasChips(linhasOrdenadas) {
 }
 
 /**
- * Executa a rotina montar linha chip.
+ * Monta linha chip a partir dos dados informados.
  */
 function montarLinhaChip(venda, chip) {
   const operadoraVendaId = venda.operadora_id ? Number(venda.operadora_id) : null;
@@ -1427,7 +1427,7 @@ function montarLinhaChip(venda, chip) {
 }
 
 /**
- * Executa a rotina obter dossie venda.
+ * Obtem dossie venda a partir dos dados informados.
  */
 async function obterDossieVenda(id, filtros = {}, usuarioId) {
   const venda = await vendaService.buscarVendaPorId(id, usuarioId);
@@ -1465,7 +1465,7 @@ async function obterDossieVenda(id, filtros = {}, usuarioId) {
 }
 
 /**
- * Executa a rotina montar linha exportacao venda.
+ * Monta linha exportacao venda a partir dos dados informados.
  */
 function montarLinhaExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FINAL_FALLBACK, grupo = null) {
   const quantidade = grupo ? grupo.quantidade : quantidadeChipsVenda(venda);
@@ -1516,7 +1516,7 @@ function montarLinhaExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FIN
 }
 
 /**
- * Executa a rotina montar linhas exportacao venda.
+ * Monta linhas exportacao venda a partir dos dados informados.
  */
 function montarLinhasExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FINAL_FALLBACK) {
   const chips = parseChips(venda.valores_unitarios_chips);
@@ -1556,7 +1556,7 @@ function montarLinhasExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FI
 }
 
 /**
- * Executa a rotina aplicar estilo cabecalho.
+ * Aplica estilo cabecalho sobre a consulta ou conjunto informado.
  */
 function aplicarEstiloCabecalho(worksheet) {
   const header = worksheet.getRow(1);
@@ -1579,7 +1579,7 @@ function aplicarEstiloCabecalho(worksheet) {
 }
 
 /**
- * Executa a rotina aplicar estilo planilha.
+ * Aplica estilo planilha sobre a consulta ou conjunto informado.
  */
 function aplicarEstiloPlanilha(worksheet) {
   worksheet.views = [{ state: 'frozen', ySplit: 1 }];
@@ -1604,7 +1604,7 @@ function aplicarEstiloPlanilha(worksheet) {
 }
 
 /**
- * Executa a rotina gerar xlsx vendas periodo.
+ * Gera xlsx vendas periodo a partir dos dados informados.
  */
 async function gerarXlsxVendasPeriodo(filtros = {}) {
   const { vendas, statusFinal } = await carregarVendasNoPeriodo(filtros, 'registro', { incluirRetornos: true });

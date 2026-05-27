@@ -4,7 +4,7 @@ const ROW_MAX_BYTES = 300000;
 const SAMPLE_SIZE = 200;
 
 /**
- * Executa a rotina detect encoding.
+ * Detecta encoding a partir do conteudo recebido.
  */
 function detectEncoding(bytes) {
   if (bytes.length >= 2) {
@@ -28,7 +28,7 @@ function detectEncoding(bytes) {
 }
 
 /**
- * Executa a rotina create decoder.
+ * Cria decoder com os dados informados.
  */
 function createDecoder(encoding) {
   try {
@@ -39,7 +39,7 @@ function createDecoder(encoding) {
 }
 
 /**
- * Executa a rotina parse csv line.
+ * Converte csv line para o formato interno esperado.
  */
 function parseCsvLine(line, delimiter) {
   const values = [];
@@ -68,7 +68,7 @@ function parseCsvLine(line, delimiter) {
 }
 
 /**
- * Executa a rotina detect delimiter.
+ * Detecta delimiter a partir do conteudo recebido.
  */
 function detectDelimiter(line) {
   return [';', ',', '\t'].reduce((best, delimiter) => (
@@ -77,7 +77,7 @@ function detectDelimiter(line) {
 }
 
 /**
- * Executa a rotina normalize duplicate columns.
+ * Normaliza duplicate columns para uso interno.
  */
 function normalizeDuplicateColumns(columns) {
   const counters = {};
@@ -90,7 +90,7 @@ function normalizeDuplicateColumns(columns) {
 }
 
 /**
- * Executa a rotina parse number.
+ * Converte number para o formato interno esperado.
  */
 function parseNumber(value) {
   const text = String(value || '').trim();
@@ -114,7 +114,7 @@ function parseNumber(value) {
 }
 
 /**
- * Executa a rotina parse date.
+ * Converte date para o formato interno esperado.
  */
 function parseDate(value) {
   const text = String(value || '').trim();
@@ -129,7 +129,7 @@ function parseDate(value) {
 }
 
 /**
- * Executa a rotina infer schema.
+ * Infere schema a partir da amostra.
  */
 function inferSchema(columns, sample) {
   return columns.reduce((acc, column) => {
@@ -143,7 +143,7 @@ function inferSchema(columns, sample) {
 }
 
 /**
- * Executa a rotina post progress.
+ * Publica progress para acompanhar o processamento.
  */
 function postProgress(parsedBytes, totalBytes, parsedRows) {
   const progress = totalBytes > 0 ? Math.min(99, Math.floor((parsedBytes / totalBytes) * 100)) : 0;
@@ -171,7 +171,7 @@ self.onmessage = async (event) => {
     const sample = [];
 
     /**
-     * Executa a rotina flush batch.
+     * Envia o lote acumulado e reinicia o buffer.
      */
     function flushBatch() {
       if (batch.length === 0) return;
@@ -188,7 +188,7 @@ self.onmessage = async (event) => {
     }
 
     /**
-     * Executa a rotina add line.
+     * Adiciona line ao lote atual.
      */
     function addLine(line) {
       if (!line.trim()) return;

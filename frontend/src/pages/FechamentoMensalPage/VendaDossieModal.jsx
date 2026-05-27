@@ -21,14 +21,14 @@ const ABAS_BASE = [
 ];
 
 /**
- * Executa a rotina fmt moeda.
+ * Formata moeda para exibicao.
  */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 /**
- * Executa a rotina fmt data.
+ * Formata data para exibicao.
  */
 function fmtData(valor) {
   if (!valor) return '-';
@@ -39,7 +39,7 @@ function fmtData(valor) {
 }
 
 /**
- * Executa a rotina fmt data hora.
+ * Formata data hora para exibicao.
  */
 function fmtDataHora(valor) {
   return formatUtcDateTime(valor, {
@@ -52,14 +52,14 @@ function fmtDataHora(valor) {
 }
 
 /**
- * Executa a rotina valor.
+ * Retorna valor no formato esperado pelo fluxo.
  */
 function valor(valor) {
   return valor || '-';
 }
 
 /**
- * Executa a rotina valor boolean.
+ * Retorna valor boolean no formato esperado pelo fluxo.
  */
 function valorBoolean(valor) {
   if (valor === true) return 'Sim';
@@ -68,7 +68,7 @@ function valorBoolean(valor) {
 }
 
 /**
- * Executa a rotina fmt etapa funil.
+ * Formata etapa funil para exibicao.
  */
 function fmtEtapaFunil(codigo) {
   const etapas = {
@@ -85,7 +85,7 @@ function fmtEtapaFunil(codigo) {
 }
 
 /**
- * Executa a rotina fmt prioridade funil.
+ * Formata prioridade funil para exibicao.
  */
 function fmtPrioridadeFunil(valorPrioridade) {
   const prioridades = {
@@ -98,7 +98,7 @@ function fmtPrioridadeFunil(valorPrioridade) {
 }
 
 /**
- * Executa a rotina fmt repasse.
+ * Formata repasse para exibicao.
  */
 function fmtRepasse(linha) {
   if (linha.cliente_base_propria && linha.cliente_base_operadora) return 'Nossa base + base da operadora';
@@ -108,7 +108,7 @@ function fmtRepasse(linha) {
 }
 
 /**
- * Executa a rotina juntar valores.
+ * Processa juntar valores conforme as regras do dominio.
  */
 function juntarValores(valores, separador = ', ') {
   const texto = (valores || [])
@@ -120,7 +120,7 @@ function juntarValores(valores, separador = ', ') {
 }
 
 /**
- * Executa a rotina formatar horario aceite.
+ * Formata horario aceite para exibicao ou envio.
  */
 function formatarHorarioAceite(venda) {
   const partes = [];
@@ -132,7 +132,7 @@ function formatarHorarioAceite(venda) {
 }
 
 /**
- * Executa a rotina nomes vendedoras.
+ * Retorna nomes vendedoras no formato esperado pelo fluxo.
  */
 function nomesVendedoras(venda) {
   const nomes = (venda.vendedoras || []).map(item => item.nome).filter(Boolean);
@@ -140,7 +140,7 @@ function nomesVendedoras(venda) {
 }
 
 /**
- * Executa a rotina formatar endereco.
+ * Formata endereco para exibicao ou envio.
  */
 function formatarEndereco(venda) {
   return juntarValores([
@@ -155,7 +155,7 @@ function formatarEndereco(venda) {
 }
 
 /**
- * Executa a rotina formatar endereco real.
+ * Formata endereco real para exibicao ou envio.
  */
 function formatarEnderecoReal(venda) {
   return juntarValores([
@@ -170,7 +170,7 @@ function formatarEnderecoReal(venda) {
 }
 
 /**
- * Executa a rotina formatar lista.
+ * Formata lista para exibicao ou envio.
  */
 function formatarLista(valorCampo) {
   if (!valorCampo) return '-';
@@ -184,7 +184,7 @@ function formatarLista(valorCampo) {
 }
 
 /**
- * Executa a rotina info grid.
+ * Renderiza info grid com os dados informados.
  */
 function InfoGrid({ itens }) {
   return (
@@ -216,7 +216,7 @@ function InfoGrid({ itens }) {
 }
 
 /**
- * Executa a rotina resumo tab.
+ * Renderiza resumo tab.
  */
 function ResumoTab({ dossie }) {
   const venda = dossie.venda || {};
@@ -303,7 +303,7 @@ function ResumoTab({ dossie }) {
 }
 
 /**
- * Executa a rotina linhas tab.
+ * Renderiza linhas tab.
  */
 function LinhasTab({ dossie }) {
   const linhas = dossie.linhas || [];
@@ -349,7 +349,7 @@ function LinhasTab({ dossie }) {
 }
 
 /**
- * Executa a rotina cliente tab.
+ * Renderiza cliente tab.
  */
 function ClienteTab({ dossie }) {
   const venda = dossie.venda || {};
@@ -376,7 +376,7 @@ function ClienteTab({ dossie }) {
 }
 
 /**
- * Executa a rotina operacional tab.
+ * Renderiza operacional tab.
  */
 function OperacionalTab({ dossie }) {
   const venda = dossie.venda || {};
@@ -417,7 +417,7 @@ function OperacionalTab({ dossie }) {
 }
 
 /**
- * Executa a rotina documentos tab.
+ * Renderiza documentos tab.
  */
 function DocumentosTab({ vendaId }) {
   const [dados, setDados] = useState({ arquivos: [], pacote: null });
@@ -483,7 +483,7 @@ function DocumentosTab({ vendaId }) {
 }
 
 /**
- * Executa a rotina venda dossie modal.
+ * Renderiza venda dossie modal.
  */
 function VendaDossieModal({ vendaId, periodo, onClose }) {
   const [dossie, setDossie] = useState(null);

@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Executa a rotina botao.
+ * Renderiza botao.
  */
 function Botao({
   title,

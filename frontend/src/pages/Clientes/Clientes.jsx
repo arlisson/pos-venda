@@ -308,7 +308,7 @@ function formatarResumoOperadoras(cliente) {
 }
 
 /**
- * Executa a rotina formatar data hora nota.
+ * Formata data hora nota para exibicao ou envio.
  */
 function formatarDataHoraNota(valor) {
   return formatUtcDateTime(valor, {
@@ -321,14 +321,14 @@ function formatarDataHoraNota(valor) {
 }
 
 /**
- * Executa a rotina formatar data hora registro.
+ * Formata data hora registro para exibicao ou envio.
  */
 function formatarDataHoraRegistro(valor) {
   return formatarDataHoraNota(valor) || '-';
 }
 
 /**
- * Executa a rotina inicio do dia.
+ * Retorna inicio do dia no formato esperado pelo fluxo.
  */
 function inicioDoDia(data) {
   const dia = new Date(data);
@@ -337,7 +337,7 @@ function inicioDoDia(data) {
 }
 
 /**
- * Executa a rotina diferenca dias calendario.
+ * Processa diferenca dias calendario conforme as regras do dominio.
  */
 function diferencaDiasCalendario(dataReferencia) {
   const data = parseUtcDateTime(dataReferencia);
@@ -349,7 +349,7 @@ function diferencaDiasCalendario(dataReferencia) {
 }
 
 /**
- * Executa a rotina get retorno nota status.
+ * Retorna retorno nota status a partir dos dados informados.
  */
 function getRetornoNotaStatus(cliente) {
   const resumo = cliente.notas_resumo || {};
@@ -393,7 +393,7 @@ function getRetornoNotaStatus(cliente) {
 }
 
 /**
- * Executa a rotina confirmar lixeira modal.
+ * Renderiza confirmar lixeira modal.
  */
 function ConfirmarLixeiraModal({ cliente, excluindo, onClose, onConfirm }) {
   if (!cliente) return null;
@@ -435,7 +435,7 @@ function ConfirmarLixeiraModal({ cliente, excluindo, onClose, onConfirm }) {
 }
 
 /**
- * Executa a rotina confirmar limpeza base modal.
+ * Renderiza confirmar limpeza base modal.
  */
 function ConfirmarLimpezaBaseModal({ aberto, limpando, onClose, onConfirm }) {
   if (!aberto) return null;
@@ -490,7 +490,7 @@ const CAMPOS_IMPORTACAO_BASE = [
 ];
 
 /**
- * Executa a rotina importar base anterior modal.
+ * Renderiza importar base anterior modal.
  */
 function ImportarBaseAnteriorModal({ onClose, onImported }) {
   const [arquivo, setArquivo] = useState(null);
@@ -504,7 +504,7 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
   const podeImportar = Boolean(arquivo && preview && mapeamento.cnpj && !carregando);
 
   /**
-   * Executa a rotina carregar preview.
+   * Carrega preview e atualiza o estado relacionado.
    */
   async function carregarPreview(file) {
     setArquivo(file || null);
@@ -528,7 +528,7 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
   }
 
   /**
-   * Executa a rotina executar importacao.
+   * Processa executar importacao conforme as regras do dominio.
    */
   async function executarImportacao(event) {
     event.preventDefault();
@@ -550,7 +550,7 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
   }
 
   /**
-   * Executa a rotina atualizar mapeamento.
+   * Atualiza mapeamento com os dados informados.
    */
   function atualizarMapeamento(campo, coluna) {
     setMapeamento(prev => ({ ...prev, [campo]: coluna }));
@@ -660,7 +660,7 @@ function ImportarBaseAnteriorModal({ onClose, onImported }) {
 }
 
 /**
- * Executa a rotina lista avisos importacao.
+ * Processa lista avisos importacao conforme as regras do dominio.
  */
 function ListaAvisosImportacao({ titulo, itens }) {
   if (!itens?.length) return null;
@@ -673,7 +673,7 @@ function ListaAvisosImportacao({ titulo, itens }) {
 }
 
 /**
- * Executa a rotina importar vendas empresas modal.
+ * Renderiza importar vendas empresas modal.
  */
 function ImportarVendasEmpresasModal({ onClose, onImported }) {
   const [arquivo, setArquivo] = useState(null);
@@ -693,7 +693,7 @@ function ImportarVendasEmpresasModal({ onClose, onImported }) {
   const amostras = preview?.amostras || [];
 
   /**
-   * Executa a rotina carregar preview.
+   * Carrega preview e atualiza o estado relacionado.
    */
   async function carregarPreview(file) {
     setArquivo(file || null);
@@ -717,7 +717,7 @@ function ImportarVendasEmpresasModal({ onClose, onImported }) {
   }
 
   /**
-   * Executa a rotina atualizar mapeamento.
+   * Atualiza mapeamento com os dados informados.
    */
   async function atualizarMapeamento(campo, coluna) {
     const proximo = { ...mapeamento, [campo]: coluna };
@@ -739,7 +739,7 @@ function ImportarVendasEmpresasModal({ onClose, onImported }) {
   }
 
   /**
-   * Executa a rotina executar importacao.
+   * Processa executar importacao conforme as regras do dominio.
    */
   async function executarImportacao(event) {
     event.preventDefault();
@@ -1012,7 +1012,7 @@ function Clientes() {
   }, [erro]);
 
   /**
-   * Executa a rotina carregar dados estaticos.
+   * Carrega dados estaticos e atualiza o estado relacionado.
    */
   async function carregarDadosEstaticos() {
     try {
@@ -1028,7 +1028,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina carregar clientes.
+   * Carrega clientes e atualiza o estado relacionado.
    */
   async function carregarClientes(proximosFiltros = filtros, pagina = paginaAtual, porPagina = itensPorPagina) {
     setErro('');
@@ -1054,7 +1054,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina carregar dados venda modal.
+   * Renderiza carregar dados venda modal.
    */
   async function carregarDadosVendaModal() {
     if (dadosVendaModalCarregados) return;
@@ -1117,7 +1117,7 @@ function Clientes() {
 
   useEffect(() => {
     /**
-     * Executa a rotina handle notas atualizar.
+     * Trata o evento de notas atualizar.
      */
     function handleNotasAtualizar({ detail }) {
       const { clienteId, notas } = detail;
@@ -1159,7 +1159,7 @@ function Clientes() {
   }, [vendasConcluidasContagem]);
 
   /**
-   * Executa a rotina handle buscar.
+   * Trata o evento de buscar.
    */
   async function handleBuscar(event) {
     event.preventDefault();
@@ -1167,7 +1167,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina exportar clientes.
+   * Exporta clientes no formato esperado.
    */
   async function exportarClientes() {
     setErro('');
@@ -1184,7 +1184,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina limpar filtros.
+   * Limpa filtros e restaura o estado inicial.
    */
   function limparFiltros() {
     setBuscaCampo('geral');
@@ -1200,7 +1200,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina alterar busca campo.
+   * Executa a acao de alterar busca campo mantendo o estado da tela consistente.
    */
   function alterarBuscaCampo(campo) {
     setBuscaCampo(campo || 'geral');
@@ -1208,14 +1208,14 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina alterar busca valor.
+   * Executa a acao de alterar busca valor mantendo o estado da tela consistente.
    */
   function alterarBuscaValor(valor) {
     setBusca(formatarBuscaClientesPorCampo(buscaCampo, valor));
   }
 
   /**
-   * Executa a rotina abrir novo cliente.
+   * Abre novo cliente e prepara o estado necessario.
    */
   function abrirNovoCliente() {
     setClienteModal(null);
@@ -1225,7 +1225,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina abrir edicao cliente.
+   * Abre edicao cliente e prepara o estado necessario.
    */
   function abrirEdicaoCliente(cliente) {
     if (!podeEditar) return;
@@ -1236,7 +1236,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina abrir notas cliente.
+   * Abre notas cliente e prepara o estado necessario.
    */
   function abrirNotasCliente(cliente) {
     setClienteModal(cliente);
@@ -1246,7 +1246,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina salvar cliente.
+   * Salva cliente com os dados informados.
    */
   async function salvarCliente() {
     setErro('');
@@ -1263,7 +1263,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina abrir venda do cliente.
+   * Abre venda do cliente e prepara o estado necessario.
    */
   async function abrirVendaDoCliente(vendaResumo) {
     if (!vendaResumo?.id || carregandoVendaModal) return;
@@ -1287,7 +1287,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina salvar venda modal.
+   * Renderiza salvar venda modal.
    */
   async function salvarVendaModal(dados) {
     if (!vendaModal?.id) return;
@@ -1312,7 +1312,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina enviar pos venda modal.
+   * Renderiza enviar pos venda modal.
    */
   async function enviarPosVendaModal(venda) {
     if (!venda?.id) return;
@@ -1335,7 +1335,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina finalizar importacao base anterior.
+   * Executa a acao de finalizar importacao base anterior mantendo o estado da tela consistente.
    */
   async function finalizarImportacaoBaseAnterior(resultado) {
     setImportModalAberto(false);
@@ -1344,7 +1344,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina finalizar importacao vendas empresas.
+   * Executa a acao de finalizar importacao vendas empresas mantendo o estado da tela consistente.
    */
   async function finalizarImportacaoVendasEmpresas(resultado) {
     setImportModalAberto(false);
@@ -1356,7 +1356,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina confirmar exclusao cliente.
+   * Executa a acao de confirmar exclusao cliente mantendo o estado da tela consistente.
    */
   async function confirmarExclusaoCliente() {
     if (!clienteParaLixeira) return;
@@ -1375,7 +1375,7 @@ function Clientes() {
   }
 
   /**
-   * Executa a rotina confirmar limpeza base anterior.
+   * Executa a acao de confirmar limpeza base anterior mantendo o estado da tela consistente.
    */
   async function confirmarLimpezaBaseAnterior() {
     setLimpandoBase(true);

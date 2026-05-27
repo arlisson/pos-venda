@@ -7,7 +7,7 @@
 const leadPlanilhaService = require('../services/lead-planilha.service');
 
 /**
- * Executa a rotina index.
+ * Processa index conforme as regras do dominio.
  */
 async function index(req, res) {
   try {
@@ -19,7 +19,7 @@ async function index(req, res) {
 }
 
 /**
- * Executa a rotina store.
+ * Processa store conforme as regras do dominio.
  */
 async function store(req, res) {
   try {
@@ -32,7 +32,7 @@ async function store(req, res) {
 }
 
 /**
- * Executa a rotina upload.
+ * Processa upload conforme as regras do dominio.
  */
 async function upload(req, res) {
   try {
@@ -45,7 +45,7 @@ async function upload(req, res) {
 }
 
 /**
- * Executa a rotina status.
+ * Retorna status no formato esperado pelo fluxo.
  */
 async function status(req, res) {
   try {
@@ -63,7 +63,7 @@ async function status(req, res) {
 }
 
 /**
- * Executa a rotina store linhas.
+ * Processa store linhas conforme as regras do dominio.
  */
 async function storeLinhas(req, res) {
   try {
@@ -76,7 +76,7 @@ async function storeLinhas(req, res) {
 }
 
 /**
- * Executa a rotina finalizar.
+ * Processa finalizar conforme as regras do dominio.
  */
 async function finalizar(req, res) {
   try {
@@ -90,7 +90,7 @@ async function finalizar(req, res) {
 }
 
 /**
- * Executa a rotina erro.
+ * Cria um erro HTTP com status e mensagem padronizados.
  */
 async function erro(req, res) {
   try {
@@ -104,7 +104,7 @@ async function erro(req, res) {
 }
 
 /**
- * Executa a rotina update schema.
+ * Atualiza schema com o estado mais recente.
  */
 async function updateSchema(req, res) {
   try {
@@ -122,7 +122,7 @@ async function updateSchema(req, res) {
 }
 
 /**
- * Executa a rotina destroy.
+ * Processa destroy conforme as regras do dominio.
  */
 async function destroy(req, res) {
   try {
@@ -138,7 +138,7 @@ async function destroy(req, res) {
 }
 
 /**
- * Executa a rotina linhas.
+ * Retorna linhas no formato esperado pelo fluxo.
  */
 async function linhas(req, res) {
   try {
@@ -150,7 +150,7 @@ async function linhas(req, res) {
 }
 
 /**
- * Executa a rotina exportar.
+ * Exporta  no formato esperado.
  */
 async function exportar(req, res) {
   try {
@@ -165,7 +165,7 @@ async function exportar(req, res) {
 }
 
 /**
- * Executa a rotina dividir.
+ * Processa dividir conforme as regras do dominio.
  */
 async function dividir(req, res) {
   try {
@@ -177,7 +177,7 @@ async function dividir(req, res) {
 }
 
 /**
- * Executa a rotina envios.
+ * Processa envios conforme as regras do dominio.
  */
 async function envios(req, res) {
   try {
@@ -189,7 +189,7 @@ async function envios(req, res) {
 }
 
 /**
- * Executa a rotina meus envios.
+ * Processa meus envios conforme as regras do dominio.
  */
 async function meusEnvios(req, res) {
   try {
@@ -201,7 +201,7 @@ async function meusEnvios(req, res) {
 }
 
 /**
- * Executa a rotina minhas linhas.
+ * Processa minhas linhas conforme as regras do dominio.
  */
 async function minhasLinhas(req, res) {
   try {
@@ -213,7 +213,7 @@ async function minhasLinhas(req, res) {
 }
 
 /**
- * Executa a rotina atualizar meu campo.
+ * Atualiza meu campo com os dados informados.
  */
 async function atualizarMeuCampo(req, res) {
   try {
@@ -226,7 +226,7 @@ async function atualizarMeuCampo(req, res) {
 }
 
 /**
- * Executa a rotina exportar minhas.
+ * Exporta minhas no formato esperado.
  */
 async function exportarMinhas(req, res) {
   try {
@@ -241,7 +241,7 @@ async function exportarMinhas(req, res) {
 }
 
 /**
- * Executa a rotina marcar futuro cliente.
+ * Marca futuro cliente conforme a acao solicitada.
  */
 async function marcarFuturoCliente(req, res) {
   try {
@@ -254,7 +254,7 @@ async function marcarFuturoCliente(req, res) {
 }
 
 /**
- * Executa a rotina listar futuros clientes.
+ * Lista futuros clientes conforme os filtros e parametros informados.
  */
 async function listarFuturosClientes(req, res) {
   try {
@@ -266,7 +266,7 @@ async function listarFuturosClientes(req, res) {
 }
 
 /**
- * Executa a rotina listar futuros clientes lixeira.
+ * Lista futuros clientes lixeira conforme os filtros e parametros informados.
  */
 async function listarFuturosClientesLixeira(req, res) {
   try {
@@ -278,7 +278,7 @@ async function listarFuturosClientesLixeira(req, res) {
 }
 
 /**
- * Executa a rotina excluir futuro cliente.
+ * Exclui futuro cliente conforme a regra de negocio.
  */
 async function excluirFuturoCliente(req, res) {
   try {
@@ -297,7 +297,7 @@ async function excluirFuturoCliente(req, res) {
 }
 
 /**
- * Executa a rotina restaurar futuro cliente.
+ * Restaura futuro cliente quando a regra de negocio permite.
  */
 async function restaurarFuturoCliente(req, res) {
   try {
@@ -316,7 +316,7 @@ async function restaurarFuturoCliente(req, res) {
 }
 
 /**
- * Executa a rotina excluir futuro cliente definitivo.
+ * Exclui futuro cliente definitivo conforme a regra de negocio.
  */
 async function excluirFuturoClienteDefinitivo(req, res) {
   try {

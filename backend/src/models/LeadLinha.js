@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para linhas importadas em planilhas de leads.
+ */
 class LeadLinha extends Model {
   static get tableName() {
     return 'lead_linhas';

@@ -22,11 +22,11 @@ const EXTENSOES_POR_MIME = {
 };
 
 /**
- * Executa a rotina formatar date time sql.
+ * Formata date time sql para exibicao ou envio.
  */
 function formatarDateTimeSQL(data = new Date()) {
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = valor => String(valor).padStart(2, '0');
 
@@ -42,28 +42,28 @@ function formatarDateTimeSQL(data = new Date()) {
 }
 
 /**
- * Executa a rotina garantir diretorio.
+ * Garante diretorio antes de continuar o fluxo.
  */
 async function garantirDiretorio(dir) {
   await fs.promises.mkdir(dir, { recursive: true });
 }
 
 /**
- * Executa a rotina caminho relativo ativo.
+ * Processa caminho relativo ativo conforme as regras do dominio.
  */
 function caminhoRelativoAtivo(hash, extensao) {
   return path.join('ativos', hash.slice(0, 2), hash.slice(2, 4), `${hash}${extensao || ''}`);
 }
 
 /**
- * Executa a rotina caminho absoluto.
+ * Processa caminho absoluto conforme as regras do dominio.
  */
 function caminhoAbsoluto(relativo) {
   return path.resolve(STORAGE_DIR, relativo);
 }
 
 /**
- * Executa a rotina normalizar nome arquivo.
+ * Normaliza nome arquivo para uso interno consistente.
  */
 function normalizarNomeArquivo(nome) {
   const base = path.basename(String(nome || 'arquivo'));
@@ -75,7 +75,7 @@ function normalizarNomeArquivo(nome) {
 }
 
 /**
- * Executa a rotina extensao por arquivo.
+ * Processa extensao por arquivo conforme as regras do dominio.
  */
 function extensaoPorArquivo(nome, mimeType) {
   const ext = path.extname(String(nome || '')).toLowerCase().slice(0, 20);
@@ -85,7 +85,7 @@ function extensaoPorArquivo(nome, mimeType) {
 // Lê 1 arquivo do multipart e grava num temp + calcula hash em streaming.
 // Retorna { tempPath, nomeOriginal, mimeType, extensao, tamanhoBytes, hashSha256, campos }.
 /**
- * Executa a rotina receber upload.
+ * Processa receber upload conforme as regras do dominio.
  */
 async function receberUpload(req, { allowedTypes, maxFileBytes }) {
   await garantirDiretorio(path.join(STORAGE_DIR, 'tmp'));
@@ -178,7 +178,7 @@ async function receberUpload(req, { allowedTypes, maxFileBytes }) {
 // Dedup por hash: se já existir um Arquivo válido com o mesmo hash, reusa.
 // Caso contrário, move o tmp para ativos/aa/bb/<hash>.<ext> e cria/atualiza a linha.
 /**
- * Executa a rotina materializar arquivo.
+ * Processa materializar arquivo conforme as regras do dominio.
  */
 async function materializarArquivo(upload, usuarioId) {
   const existente = await Arquivo.query()
@@ -228,7 +228,7 @@ async function materializarArquivo(upload, usuarioId) {
 // `venda_arquivos` ou `mensagem_arquivos`. Roda em batch limitado pra não
 // segurar o event loop em bases grandes.
 /**
- * Executa a rotina limpar arquivos orfaos.
+ * Limpa arquivos orfaos e restaura o estado inicial.
  */
 async function limparArquivosOrfaos({ idadeMinimaHoras = 24, limite = 500 } = {}) {
   const Arquivo = require('../models/Arquivo');
@@ -269,7 +269,7 @@ async function limparArquivosOrfaos({ idadeMinimaHoras = 24, limite = 500 } = {}
 }
 
 /**
- * Executa a rotina abrir stream arquivo.
+ * Abre stream arquivo e prepara o estado necessario.
  */
 async function abrirStreamArquivo(arquivo) {
   if (!arquivo) {

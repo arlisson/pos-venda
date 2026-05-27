@@ -7,7 +7,7 @@
 const configService = require('../services/config.service');
 
 /**
- * Executa a rotina operadoras.
+ * Retorna operadoras no formato esperado pelo fluxo.
  */
 async function operadoras(req, res) {
   try {
@@ -24,7 +24,7 @@ async function operadoras(req, res) {
 }
 
 /**
- * Executa a rotina links externos.
+ * Processa links externos conforme as regras do dominio.
  */
 async function linksExternos(req, res) {
   try {
@@ -41,7 +41,7 @@ async function linksExternos(req, res) {
 }
 
 /**
- * Executa a rotina tipos produto.
+ * Retorna tipos produto no formato esperado pelo fluxo.
  */
 async function tiposProduto(req, res) {
   try {
@@ -58,7 +58,7 @@ async function tiposProduto(req, res) {
 }
 
 /**
- * Executa a rotina tipos venda.
+ * Retorna tipos venda no formato esperado pelo fluxo.
  */
 async function tiposVenda(req, res) {
   try {
@@ -71,7 +71,7 @@ async function tiposVenda(req, res) {
 }
 
 /**
- * Executa a rotina servicos.
+ * Processa servicos conforme as regras do dominio.
  */
 async function servicos(req, res) {
   try {
@@ -84,7 +84,7 @@ async function servicos(req, res) {
 }
 
 /**
- * Executa a rotina funil etapas.
+ * Processa funil etapas conforme as regras do dominio.
  */
 async function funilEtapas(req, res) {
   try {
@@ -97,7 +97,7 @@ async function funilEtapas(req, res) {
 }
 
 /**
- * Executa a rotina regras comissao.
+ * Retorna regras comissao no formato esperado pelo fluxo.
  */
 async function regrasComissao(req, res) {
   try {
@@ -110,7 +110,7 @@ async function regrasComissao(req, res) {
 }
 
 /**
- * Executa a rotina admin operadoras.
+ * Processa admin operadoras conforme as regras do dominio.
  */
 async function adminOperadoras(req, res) {
   try {
@@ -123,7 +123,7 @@ async function adminOperadoras(req, res) {
 }
 
 /**
- * Executa a rotina admin tipos produto.
+ * Processa admin tipos produto conforme as regras do dominio.
  */
 async function adminTiposProduto(req, res) {
   try {
@@ -136,7 +136,7 @@ async function adminTiposProduto(req, res) {
 }
 
 /**
- * Executa a rotina criar tipo produto.
+ * Cria tipo produto com os dados informados.
  */
 async function criarTipoProduto(req, res) {
   try {
@@ -149,7 +149,7 @@ async function criarTipoProduto(req, res) {
 }
 
 /**
- * Executa a rotina atualizar tipo produto.
+ * Atualiza tipo produto com os dados informados.
  */
 async function atualizarTipoProduto(req, res) {
   try {
@@ -167,7 +167,7 @@ async function atualizarTipoProduto(req, res) {
 }
 
 /**
- * Executa a rotina excluir tipo produto.
+ * Exclui tipo produto conforme a regra de negocio.
  */
 async function excluirTipoProduto(req, res) {
   try {
@@ -185,7 +185,7 @@ async function excluirTipoProduto(req, res) {
 }
 
 /**
- * Executa a rotina admin tipos venda.
+ * Processa admin tipos venda conforme as regras do dominio.
  */
 async function adminTiposVenda(req, res) {
   try {
@@ -198,7 +198,7 @@ async function adminTiposVenda(req, res) {
 }
 
 /**
- * Executa a rotina criar tipo venda.
+ * Cria tipo venda com os dados informados.
  */
 async function criarTipoVenda(req, res) {
   try {
@@ -211,7 +211,7 @@ async function criarTipoVenda(req, res) {
 }
 
 /**
- * Executa a rotina atualizar tipo venda.
+ * Atualiza tipo venda com os dados informados.
  */
 async function atualizarTipoVenda(req, res) {
   try {
@@ -229,7 +229,7 @@ async function atualizarTipoVenda(req, res) {
 }
 
 /**
- * Executa a rotina excluir tipo venda.
+ * Exclui tipo venda conforme a regra de negocio.
  */
 async function excluirTipoVenda(req, res) {
   try {
@@ -247,7 +247,7 @@ async function excluirTipoVenda(req, res) {
 }
 
 /**
- * Executa a rotina admin servicos.
+ * Processa admin servicos conforme as regras do dominio.
  */
 async function adminServicos(req, res) {
   try {
@@ -260,7 +260,7 @@ async function adminServicos(req, res) {
 }
 
 /**
- * Executa a rotina criar servico.
+ * Cria servico com os dados informados.
  */
 async function criarServico(req, res) {
   try {
@@ -273,7 +273,7 @@ async function criarServico(req, res) {
 }
 
 /**
- * Executa a rotina atualizar servico.
+ * Atualiza servico com os dados informados.
  */
 async function atualizarServico(req, res) {
   try {
@@ -291,7 +291,7 @@ async function atualizarServico(req, res) {
 }
 
 /**
- * Executa a rotina excluir servico.
+ * Exclui servico conforme a regra de negocio.
  */
 async function excluirServico(req, res) {
   try {
@@ -309,7 +309,7 @@ async function excluirServico(req, res) {
 }
 
 /**
- * Executa a rotina admin funil etapas.
+ * Processa admin funil etapas conforme as regras do dominio.
  */
 async function adminFunilEtapas(req, res) {
   try {
@@ -322,7 +322,7 @@ async function adminFunilEtapas(req, res) {
 }
 
 /**
- * Executa a rotina admin regras comissao.
+ * Processa admin regras comissao conforme as regras do dominio.
  */
 async function adminRegrasComissao(req, res) {
   try {
@@ -335,7 +335,7 @@ async function adminRegrasComissao(req, res) {
 }
 
 /**
- * Executa a rotina criar regra comissao.
+ * Cria regra comissao com os dados informados.
  */
 async function criarRegraComissao(req, res) {
   try {
@@ -348,7 +348,7 @@ async function criarRegraComissao(req, res) {
 }
 
 /**
- * Executa a rotina atualizar regra comissao.
+ * Atualiza regra comissao com os dados informados.
  */
 async function atualizarRegraComissao(req, res) {
   try {
@@ -366,7 +366,7 @@ async function atualizarRegraComissao(req, res) {
 }
 
 /**
- * Executa a rotina excluir regra comissao.
+ * Exclui regra comissao conforme a regra de negocio.
  */
 async function excluirRegraComissao(req, res) {
   try {
@@ -384,7 +384,7 @@ async function excluirRegraComissao(req, res) {
 }
 
 /**
- * Executa a rotina criar funil etapa.
+ * Cria funil etapa com os dados informados.
  */
 async function criarFunilEtapa(req, res) {
   try {
@@ -397,7 +397,7 @@ async function criarFunilEtapa(req, res) {
 }
 
 /**
- * Executa a rotina atualizar funil etapa.
+ * Atualiza funil etapa com os dados informados.
  */
 async function atualizarFunilEtapa(req, res) {
   try {
@@ -415,7 +415,7 @@ async function atualizarFunilEtapa(req, res) {
 }
 
 /**
- * Executa a rotina reordenar funil etapas.
+ * Processa reordenar funil etapas conforme as regras do dominio.
  */
 async function reordenarFunilEtapas(req, res) {
   try {
@@ -428,7 +428,7 @@ async function reordenarFunilEtapas(req, res) {
 }
 
 /**
- * Executa a rotina excluir funil etapa.
+ * Exclui funil etapa conforme a regra de negocio.
  */
 async function excluirFunilEtapa(req, res) {
   try {
@@ -446,7 +446,7 @@ async function excluirFunilEtapa(req, res) {
 }
 
 /**
- * Executa a rotina criar operadora.
+ * Cria operadora com os dados informados.
  */
 async function criarOperadora(req, res) {
   try {
@@ -459,7 +459,7 @@ async function criarOperadora(req, res) {
 }
 
 /**
- * Executa a rotina atualizar operadora.
+ * Atualiza operadora com os dados informados.
  */
 async function atualizarOperadora(req, res) {
   try {
@@ -477,7 +477,7 @@ async function atualizarOperadora(req, res) {
 }
 
 /**
- * Executa a rotina excluir operadora.
+ * Exclui operadora conforme a regra de negocio.
  */
 async function excluirOperadora(req, res) {
   try {
@@ -495,7 +495,7 @@ async function excluirOperadora(req, res) {
 }
 
 /**
- * Executa a rotina admin links externos.
+ * Processa admin links externos conforme as regras do dominio.
  */
 async function adminLinksExternos(req, res) {
   try {
@@ -508,7 +508,7 @@ async function adminLinksExternos(req, res) {
 }
 
 /**
- * Executa a rotina criar link externo.
+ * Cria link externo com os dados informados.
  */
 async function criarLinkExterno(req, res) {
   try {
@@ -521,7 +521,7 @@ async function criarLinkExterno(req, res) {
 }
 
 /**
- * Executa a rotina atualizar link externo.
+ * Atualiza link externo com os dados informados.
  */
 async function atualizarLinkExterno(req, res) {
   try {
@@ -539,7 +539,7 @@ async function atualizarLinkExterno(req, res) {
 }
 
 /**
- * Executa a rotina excluir link externo.
+ * Exclui link externo conforme a regra de negocio.
  */
 async function excluirLinkExterno(req, res) {
   try {

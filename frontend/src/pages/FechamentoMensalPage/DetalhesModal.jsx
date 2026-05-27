@@ -3,14 +3,14 @@ import * as I from '../../components/Icons';
 import { getDetalhes } from '../../services/fechamento.service';
 
 /**
- * Executa a rotina fmt moeda.
+ * Formata moeda para exibicao.
  */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 /**
- * Executa a rotina fmt data.
+ * Formata data para exibicao.
  */
 function fmtData(valor) {
   if (!valor) return '—';
@@ -21,14 +21,14 @@ function fmtData(valor) {
 }
 
 /**
- * Executa a rotina venda teve retorno.
+ * Processa venda teve retorno conforme as regras do dominio.
  */
 function vendaTeveRetorno(venda = {}) {
   return venda.status_funil !== 'retorno' && Boolean(venda.retornou_em || venda.motivo_retorno || venda.status_anterior_retorno);
 }
 
 /**
- * Executa a rotina fmt retorno badge.
+ * Formata retorno badge para exibicao.
  */
 function fmtRetornoBadge(venda = {}) {
   if (venda.retornou_em) return `Já retornou em ${fmtData(venda.retornou_em)}`;
@@ -46,7 +46,7 @@ const STATUS_LABEL = {
 };
 
 /**
- * Executa a rotina detalhes modal.
+ * Renderiza detalhes modal.
  */
 function DetalhesModal({ secao, periodo, onClose }) {
   const [dados, setDados] = useState([]);

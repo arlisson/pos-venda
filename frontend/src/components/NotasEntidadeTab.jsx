@@ -12,7 +12,7 @@ import { formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../utils/datetim
 const NOTA_VAZIA = { titulo: '', conteudo: '', retorno_agendado_para: null };
 
 /**
- * Executa a rotina formatar data nota.
+ * Formata data nota para exibicao ou envio.
  */
 function formatarDataNota(valor) {
   return formatUtcDateTime(valor, {
@@ -25,14 +25,14 @@ function formatarDataNota(valor) {
 }
 
 /**
- * Executa a rotina formatar data input.
+ * Renderiza formatar data input.
  */
 function formatarDataInput(valor) {
   return toLocalDateTimeInputFromUtc(valor);
 }
 
 /**
- * Executa a rotina montar draft nota.
+ * Monta draft nota a partir dos dados informados.
  */
 function montarDraftNota(nota = NOTA_VAZIA) {
   return {
@@ -43,7 +43,7 @@ function montarDraftNota(nota = NOTA_VAZIA) {
 }
 
 /**
- * Executa a rotina nota editor.
+ * Processa nota editor conforme as regras do dominio.
  */
 function NotaEditor({ value, salvando, onChange, onCancel, onSave, saveLabel = 'Salvar' }) {
   const podeSalvar = String(value.titulo || '').trim() || String(value.conteudo || '').trim();
@@ -108,7 +108,7 @@ function NotaEditor({ value, salvando, onChange, onCancel, onSave, saveLabel = '
 }
 
 /**
- * Executa a rotina notas entidade tab.
+ * Renderiza notas entidade tab.
  */
 function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasChange = () => {} }) {
   const [notas, setNotas] = useState([]);
@@ -123,7 +123,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   const labelEntidade = useMemo(() => tipo === 'cliente' ? 'cliente' : 'venda', [tipo]);
 
   /**
-   * Executa a rotina carregar notas.
+   * Carrega notas e atualiza o estado relacionado.
    */
   async function carregarNotas() {
     if (!entidadeId) return;
@@ -146,7 +146,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   }, [tipo, entidadeId]);
 
   /**
-   * Executa a rotina iniciar nova nota.
+   * Executa a acao de iniciar nova nota mantendo o estado da tela consistente.
    */
   function iniciarNovaNota() {
     setCriando(true);
@@ -155,7 +155,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   }
 
   /**
-   * Executa a rotina iniciar edicao.
+   * Executa a acao de iniciar edicao mantendo o estado da tela consistente.
    */
   function iniciarEdicao(nota) {
     setEditandoId(nota.id);
@@ -164,7 +164,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   }
 
   /**
-   * Executa a rotina adicionar pendente.
+   * Adiciona pendente ao conjunto atual.
    */
   function adicionarPendente() {
     onPendingNotasChange([...pendingNotas, { ...draftNova }]);
@@ -173,14 +173,14 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   }
 
   /**
-   * Executa a rotina remover pendente.
+   * Remove pendente da colecao ou estado atual.
    */
   function removerPendente(idx) {
     onPendingNotasChange(pendingNotas.filter((_, i) => i !== idx));
   }
 
   /**
-   * Executa a rotina notificar atualizar.
+   * Processa notificar atualizar conforme as regras do dominio.
    */
   function notificarAtualizar(notasAtualizadas) {
     window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
@@ -192,7 +192,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   }
 
   /**
-   * Executa a rotina salvar nova nota.
+   * Salva nova nota com os dados informados.
    */
   async function salvarNovaNota() {
     setSalvando(true);
@@ -213,7 +213,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   }
 
   /**
-   * Executa a rotina salvar edicao.
+   * Salva edicao com os dados informados.
    */
   async function salvarEdicao() {
     if (!editandoId) return;
@@ -236,7 +236,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   }
 
   /**
-   * Executa a rotina remover nota.
+   * Remove nota da colecao ou estado atual.
    */
   async function removerNota(nota) {
     const confirmado = window.confirm('Excluir esta nota?');
@@ -258,7 +258,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   }
 
   /**
-   * Executa a rotina remover retorno.
+   * Remove retorno da colecao ou estado atual.
    */
   async function removerRetorno(nota) {
     setSalvando(true);

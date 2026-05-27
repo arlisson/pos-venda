@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para o historico de alteracoes de vendas.
+ */
 class VendaHistorico extends Model {
   static get tableName() {
     return 'venda_historicos';

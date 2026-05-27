@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para arquivos anexados a vendas.
+ */
 class VendaArquivo extends Model {
   static get tableName() {
     return 'venda_arquivos';

@@ -22,7 +22,7 @@ const PERMISSAO_VISUALIZAR = 'vendas_aprovacoes_visualizar';
 const PERMISSAO_DECIDIR = 'vendas_aprovacoes_decidir';
 
 /**
- * Executa a rotina usuario tem permissao.
+ * Verifica se usuario tem permissao atende a condicao esperada.
  */
 function usuarioTemPermissao(usuario, permissao) {
   if (!usuario || !usuario.ativo) return false;
@@ -30,11 +30,11 @@ function usuarioTemPermissao(usuario, permissao) {
 }
 
 /**
- * Executa a rotina formatar date time sql.
+ * Formata date time sql para exibicao ou envio.
  */
 function formatarDateTimeSQL(data = new Date()) {
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = valor => String(valor).padStart(2, '0');
 
@@ -50,7 +50,7 @@ function formatarDateTimeSQL(data = new Date()) {
 }
 
 /**
- * Executa a rotina parse json.
+ * Converte json para o formato interno esperado.
  */
 function parseJson(valor, fallback = []) {
   if (!valor) return fallback;
@@ -68,28 +68,28 @@ function parseJson(valor, fallback = []) {
 }
 
 /**
- * Executa a rotina normalizar motivos.
+ * Normaliza motivos para uso interno consistente.
  */
 function normalizarMotivos(motivos = []) {
   return Array.from(new Set(motivos)).sort();
 }
 
 /**
- * Executa a rotina motivos iguais.
+ * Verifica se motivos iguais atende a condicao esperada.
  */
 function motivosIguais(a = [], b = []) {
   return JSON.stringify(normalizarMotivos(a)) === JSON.stringify(normalizarMotivos(b));
 }
 
 /**
- * Executa a rotina nome venda.
+ * Retorna nome venda no formato esperado pelo fluxo.
  */
 function nomeVenda(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
 /**
- * Executa a rotina descrever motivo.
+ * Processa descrever motivo conforme as regras do dominio.
  */
 function descreverMotivo(motivo) {
   if (motivo === MOTIVO_VENDA_COMPARTILHADA) return 'venda compartilhada';
@@ -98,14 +98,14 @@ function descreverMotivo(motivo) {
 }
 
 /**
- * Executa a rotina montar mensagem motivos.
+ * Monta mensagem motivos a partir dos dados informados.
  */
 function montarMensagemMotivos(motivos) {
   return normalizarMotivos(motivos).map(descreverMotivo).join(' e ');
 }
 
 /**
- * Executa a rotina registrar historico venda.
+ * Registra historico venda no historico ou log.
  */
 async function registrarHistoricoVenda({ vendaId, usuarioId, acao, observacao, dados = {}, trx }) {
   return VendaHistorico.query(trx).insert({
@@ -119,7 +119,7 @@ async function registrarHistoricoVenda({ vendaId, usuarioId, acao, observacao, d
 }
 
 /**
- * Executa a rotina obter venda com relacoes.
+ * Obtem venda com relacoes a partir dos dados informados.
  */
 async function obterVendaComRelacoes(vendaId, trx = null) {
   return Venda.query(trx)
@@ -132,7 +132,7 @@ async function obterVendaComRelacoes(vendaId, trx = null) {
 }
 
 /**
- * Executa a rotina avaliar requisitos venda.
+ * Processa avaliar requisitos venda conforme as regras do dominio.
  */
 async function avaliarRequisitosVenda(vendaId, trx = null) {
   const venda = await obterVendaComRelacoes(vendaId, trx);
@@ -168,7 +168,7 @@ async function avaliarRequisitosVenda(vendaId, trx = null) {
 }
 
 /**
- * Executa a rotina buscar solicitacao atual.
+ * Busca solicitacao atual conforme os parametros informados.
  */
 async function buscarSolicitacaoAtual(vendaId, trx = null) {
   return VendaAprovacaoSolicitacao.query(trx)
@@ -179,7 +179,7 @@ async function buscarSolicitacaoAtual(vendaId, trx = null) {
 }
 
 /**
- * Executa a rotina obsoletar solicitacoes.
+ * Processa obsoletar solicitacoes conforme as regras do dominio.
  */
 async function obsoletarSolicitacoes(vendaId, trx = null) {
   return VendaAprovacaoSolicitacao.query(trx)
@@ -192,7 +192,7 @@ async function obsoletarSolicitacoes(vendaId, trx = null) {
 }
 
 /**
- * Executa a rotina listar aprovadores.
+ * Lista aprovadores conforme os filtros e parametros informados.
  */
 async function listarAprovadores(trx = null) {
   const usuarios = await Usuario.query(trx)
@@ -204,7 +204,7 @@ async function listarAprovadores(trx = null) {
 }
 
 /**
- * Executa a rotina criar ou atualizar notificacao pendente.
+ * Cria ou atualizar notificacao pendente com os dados informados.
  */
 async function criarOuAtualizarNotificacaoPendente(solicitacao, venda, trx = null) {
   const aprovadores = await listarAprovadores(trx);
@@ -269,7 +269,7 @@ async function criarOuAtualizarNotificacaoPendente(solicitacao, venda, trx = nul
 }
 
 /**
- * Executa a rotina desativar notificacao solicitacao.
+ * Desativa notificacao solicitacao quando nao e mais necessaria.
  */
 async function desativarNotificacaoSolicitacao(solicitacaoId, trx = null) {
   return Notificacao.query(trx)
@@ -278,7 +278,7 @@ async function desativarNotificacaoSolicitacao(solicitacaoId, trx = null) {
 }
 
 /**
- * Executa a rotina validar envio pos venda.
+ * Valida envio pos venda e retorna o resultado esperado.
  */
 async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
   const { venda, motivos } = await avaliarRequisitosVenda(vendaId, trx);
@@ -329,7 +329,7 @@ async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
 }
 
 /**
- * Executa a rotina criar solicitacao pendente.
+ * Cria solicitacao pendente com os dados informados.
  */
 async function criarSolicitacaoPendente(venda, motivos, usuarioId, trx = null) {
   const agora = formatarDateTimeSQL();
@@ -364,7 +364,7 @@ async function criarSolicitacaoPendente(venda, motivos, usuarioId, trx = null) {
 }
 
 /**
- * Executa a rotina sincronizar aprovacao apos alteracao.
+ * Sincroniza aprovacao apos alteracao com os dados atuais.
  */
 async function sincronizarAprovacaoAposAlteracao(vendaId, trx = null) {
   const atual = await buscarSolicitacaoAtual(vendaId, trx);
@@ -383,7 +383,7 @@ async function sincronizarAprovacaoAposAlteracao(vendaId, trx = null) {
 }
 
 /**
- * Executa a rotina listar solicitacoes.
+ * Lista solicitacoes conforme os filtros e parametros informados.
  */
 async function listarSolicitacoes(filtros = {}) {
   const statusPermitidos = [STATUS_PENDENTE, STATUS_APROVADA, STATUS_RECUSADA, STATUS_OBSOLETA];
@@ -409,7 +409,7 @@ async function listarSolicitacoes(filtros = {}) {
 }
 
 /**
- * Executa a rotina decidir solicitacao.
+ * Processa decidir solicitacao conforme as regras do dominio.
  */
 async function decidirSolicitacao(id, dados, usuarioId, decisao) {
   const status = decisao === 'aprovar' ? STATUS_APROVADA : STATUS_RECUSADA;

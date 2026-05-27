@@ -132,7 +132,7 @@ const PROMESSA_CUMPRIDA_OPCOES = ['pendente', 'sim', 'nao'];
 const CLIENTE_SOLICITOU_RESOLVIDO_OPCOES = ['sim', 'nao'];
 
 /**
- * Executa a rotina limpar valor.
+ * Limpa valor e restaura o estado inicial.
  */
 function limparValor(valor) {
   if (valor === undefined) return undefined;
@@ -141,7 +141,7 @@ function limparValor(valor) {
 }
 
 /**
- * Executa a rotina normalizar ids filtro.
+ * Normaliza ids filtro para uso interno consistente.
  */
 function normalizarIdsFiltro(valor) {
   const valores = Array.isArray(valor) ? valor : String(valor || '').split(',');
@@ -153,7 +153,7 @@ function normalizarIdsFiltro(valor) {
 }
 
 /**
- * Executa a rotina obter tipo linha por nome tipo venda.
+ * Obtem tipo linha por nome tipo venda a partir dos dados informados.
  */
 function obterTipoLinhaPorNomeTipoVenda(nome) {
   const texto = normalizarTextoBusca(nome);
@@ -163,7 +163,7 @@ function obterTipoLinhaPorNomeTipoVenda(nome) {
 }
 
 /**
- * Executa a rotina obter tipo linha filtro tipo venda.
+ * Obtem tipo linha filtro tipo venda a partir dos dados informados.
  */
 async function obterTipoLinhaFiltroTipoVenda(tipoVendaId) {
   const id = Number(tipoVendaId);
@@ -178,7 +178,7 @@ async function obterTipoLinhaFiltroTipoVenda(tipoVendaId) {
 }
 
 /**
- * Executa a rotina aplicar filtro tipo linha chips.
+ * Aplica filtro tipo linha chips sobre a consulta ou conjunto informado.
  */
 function aplicarFiltroTipoLinhaChips(builder, tipoLinha) {
   const coluna = "REPLACE(COALESCE(valores_unitarios_chips, ''), ' ', '')";
@@ -191,7 +191,7 @@ function aplicarFiltroTipoLinhaChips(builder, tipoLinha) {
 }
 
 /**
- * Executa a rotina aplicar filtro tipo venda.
+ * Aplica filtro tipo venda sobre a consulta ou conjunto informado.
  */
 async function aplicarFiltroTipoVenda(query, tipoVendaId) {
   const id = Number(tipoVendaId);
@@ -220,21 +220,21 @@ async function aplicarFiltroTipoVenda(query, tipoVendaId) {
 }
 
 /**
- * Executa a rotina apenas digitos.
+ * Processa apenas digitos conforme as regras do dominio.
  */
 function apenasDigitos(valor) {
   return String(valor || '').replace(/\D/g, '');
 }
 
 /**
- * Executa a rotina sql somente digitos.
+ * Processa sql somente digitos conforme as regras do dominio.
  */
 function sqlSomenteDigitos(coluna) {
   return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${coluna}, '.', ''), '/', ''), '-', ''), '(', ''), ')', ''), ' ', '')`;
 }
 
 /**
- * Executa a rotina aplicar busca geral vendas.
+ * Aplica busca geral vendas sobre a consulta ou conjunto informado.
  */
 function aplicarBuscaGeralVendas(query, valor) {
   const busca = `%${String(valor || '').trim()}%`;
@@ -309,7 +309,7 @@ function aplicarBuscaGeralVendas(query, valor) {
 }
 
 /**
- * Executa a rotina aplicar busca campo vendas.
+ * Aplica busca campo vendas sobre a consulta ou conjunto informado.
  */
 async function aplicarBuscaCampoVendas(query, filtros = {}) {
   const campo = String(filtros.busca_campo || '').trim();
@@ -395,7 +395,7 @@ async function aplicarBuscaCampoVendas(query, filtros = {}) {
 }
 
 /**
- * Executa a rotina normalizar data.
+ * Normaliza data para uso interno consistente.
  */
 function normalizarData(valor) {
   if (!valor) return null;
@@ -438,11 +438,11 @@ function normalizarData(valor) {
 }
 
 /**
- * Executa a rotina formatar date time sql.
+ * Formata date time sql para exibicao ou envio.
  */
 function formatarDateTimeSQL(data = new Date()) {
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = (value) => String(value).padStart(2, '0');
 
@@ -458,14 +458,14 @@ function formatarDateTimeSQL(data = new Date()) {
 }
 
 /**
- * Executa a rotina montar dados historico.
+ * Monta dados historico a partir dos dados informados.
  */
 function montarDadosHistorico(dados = {}) {
   return JSON.stringify(dados);
 }
 
 /**
- * Executa a rotina registrar historico venda.
+ * Registra historico venda no historico ou log.
  */
 async function registrarHistoricoVenda({
   vendaId,
@@ -491,7 +491,7 @@ async function registrarHistoricoVenda({
 }
 
 /**
- * Executa a rotina copiar notas cliente para venda.
+ * Copia notas cliente para venda para o destino esperado.
  */
 async function copiarNotasClienteParaVenda({ clienteId, vendaId, createdAt, trx }) {
   if (!clienteId || !vendaId) return 0;
@@ -521,7 +521,7 @@ async function copiarNotasClienteParaVenda({ clienteId, vendaId, createdAt, trx 
 }
 
 /**
- * Executa a rotina parse valor monetario.
+ * Converte valor monetario para o formato interno esperado.
  */
 function parseValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
@@ -542,14 +542,14 @@ function parseValorMonetario(valor) {
 }
 
 /**
- * Executa a rotina normalizar gigas.
+ * Normaliza gigas para uso interno consistente.
  */
 function normalizarGigas(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 4);
 }
 
 /**
- * Executa a rotina normalizar tipo linha chip.
+ * Normaliza tipo linha chip para uso interno consistente.
  */
 function normalizarTipoLinhaChip(valor) {
   const texto = String(valor || '')
@@ -562,7 +562,7 @@ function normalizarTipoLinhaChip(valor) {
 }
 
 /**
- * Executa a rotina normalizar texto busca.
+ * Normaliza texto busca para uso interno consistente.
  */
 function normalizarTextoBusca(valor) {
   return String(valor || '')
@@ -573,7 +573,7 @@ function normalizarTextoBusca(valor) {
 }
 
 /**
- * Executa a rotina normalizar itens chips.
+ * Normaliza itens chips para uso interno consistente.
  */
 function normalizarItensChips(valor) {
   if (!valor) return [];
@@ -619,7 +619,7 @@ function normalizarItensChips(valor) {
 }
 
 /**
- * Executa a rotina calcular total chips.
+ * Calcula total chips com base nos valores informados.
  */
 function calcularTotalChips(itens) {
   const total = itens.reduce((acc, item) => {
@@ -630,14 +630,14 @@ function calcularTotalChips(itens) {
 }
 
 /**
- * Executa a rotina somar quantidade itens chips.
+ * Soma quantidade itens chips considerando os dados informados.
  */
 function somarQuantidadeItensChips(itens) {
   return itens.reduce((acc, item) => acc + Number(item.quantidade || 0), 0);
 }
 
 /**
- * Executa a rotina resumir gigas itens chips.
+ * Resume gigas itens chips para exibicao ou envio.
  */
 function resumirGigasItensChips(itens) {
   return Array.from(new Set(
@@ -648,7 +648,7 @@ function resumirGigasItensChips(itens) {
 }
 
 /**
- * Executa a rotina normalizar ids vendedoras.
+ * Normaliza ids vendedoras para uso interno consistente.
  */
 function normalizarIdsVendedoras(vendedoras) {
   if (!Array.isArray(vendedoras)) return [];
@@ -668,7 +668,7 @@ function normalizarIdsVendedoras(vendedoras) {
 }
 
 /**
- * Executa a rotina validar vendedoras nos chips.
+ * Valida vendedoras nos chips e retorna o resultado esperado.
  */
 function validarVendedorasNosChips(payload, vendedorasIds = []) {
   if (vendedorasIds.length <= 1) return;
@@ -694,7 +694,7 @@ function validarVendedorasNosChips(payload, vendedorasIds = []) {
 }
 
 /**
- * Executa a rotina conjuntos iguais.
+ * Verifica se conjuntos iguais atende a condicao esperada.
  */
 function conjuntosIguais(a = [], b = []) {
   const setA = new Set(a.map(Number));
@@ -705,7 +705,7 @@ function conjuntosIguais(a = [], b = []) {
 }
 
 /**
- * Executa a rotina validar permissao compartilhar venda.
+ * Valida permissao compartilhar venda e retorna o resultado esperado.
  */
 async function validarPermissaoCompartilharVenda({ usuarioId, vendedorasIds = [], vendaId = null }) {
   if (!Array.isArray(vendedorasIds)) return;
@@ -748,7 +748,7 @@ const CLIENTE_SOLICITOU_SERVICOS = ['bloqueio', 'cancelamento', 'nenhum_servico'
 const CLIENTE_SOLICITOU_ACOES = ['bloqueio', 'cancelamento'];
 
 /**
- * Executa a rotina normalizar cliente solicitou servicos.
+ * Normaliza cliente solicitou servicos para uso interno consistente.
  */
 function normalizarClienteSolicitouServicos(valor) {
   if (!valor) return [];
@@ -775,7 +775,7 @@ function normalizarClienteSolicitouServicos(valor) {
 }
 
 /**
- * Executa a rotina validar campos obrigatorios cadastro venda.
+ * Valida campos obrigatorios cadastro venda e retorna o resultado esperado.
  */
 function validarCamposObrigatoriosCadastroVenda(payload, dados) {
   if (!Number.isInteger(payload.cliente_id) || payload.cliente_id <= 0) {
@@ -796,7 +796,7 @@ function validarCamposObrigatoriosCadastroVenda(payload, dados) {
 }
 
 /**
- * Executa a rotina normalizar numeros lista.
+ * Normaliza numeros lista para uso interno consistente.
  */
 function normalizarNumerosLista(valor) {
   if (!valor) return [];
@@ -819,7 +819,7 @@ function normalizarNumerosLista(valor) {
 }
 
 /**
- * Executa a rotina normalizar cliente solicitou numeros.
+ * Normaliza cliente solicitou numeros para uso interno consistente.
  */
 function normalizarClienteSolicitouNumeros(valor) {
   if (!valor) return { bloqueio: [], cancelamento: [] };
@@ -845,7 +845,7 @@ function normalizarClienteSolicitouNumeros(valor) {
 }
 
 /**
- * Executa a rotina montar payload.
+ * Monta payload a partir dos dados informados.
  */
 function montarPayload(dados) {
   const payload = {};
@@ -975,7 +975,7 @@ function montarPayload(dados) {
 }
 
 /**
- * Executa a rotina aplicar dados cliente na venda.
+ * Aplica dados cliente na venda sobre a consulta ou conjunto informado.
  */
 function aplicarDadosClienteNaVenda(payload, cliente) {
   if (!cliente) {
@@ -1031,7 +1031,7 @@ function aplicarDadosClienteNaVenda(payload, cliente) {
 }
 
 /**
- * Executa a rotina resolver operadora atual cliente.
+ * Resolve operadora atual cliente a partir do contexto atual.
  */
 function resolverOperadoraAtualCliente(cliente, operadoraVendaId, valorAtual = null) {
   if (valorAtual) return Number(valorAtual);
@@ -1048,7 +1048,7 @@ function resolverOperadoraAtualCliente(cliente, operadoraVendaId, valorAtual = n
 }
 
 /**
- * Executa a rotina normalizar paginacao.
+ * Normaliza paginacao para uso interno consistente.
  */
 function normalizarPaginacao(filtros = {}) {
   const opcoesPorPagina = new Set([20, 50, 100]);
@@ -1059,7 +1059,7 @@ function normalizarPaginacao(filtros = {}) {
 }
 
 /**
- * Executa a rotina buscar escopo vendas.
+ * Busca escopo vendas conforme os parametros informados.
  */
 async function buscarEscopoVendas(usuarioId) {
   const usuario = await Usuario.query()
@@ -1078,7 +1078,7 @@ async function buscarEscopoVendas(usuarioId) {
 }
 
 /**
- * Executa a rotina buscar cliente para payload venda.
+ * Busca cliente para payload venda conforme os parametros informados.
  */
 async function buscarClienteParaPayloadVenda(clienteId, usuarioId, vendaAtual = null) {
   if (!clienteId) return null;
@@ -1093,7 +1093,7 @@ async function buscarClienteParaPayloadVenda(clienteId, usuarioId, vendaAtual = 
 }
 
 /**
- * Executa a rotina buscar permissoes usuario.
+ * Busca permissoes usuario conforme os parametros informados.
  */
 async function buscarPermissoesUsuario(usuarioId) {
   const usuario = await Usuario.query()
@@ -1111,7 +1111,7 @@ async function buscarPermissoesUsuario(usuarioId) {
 }
 
 /**
- * Executa a rotina usuario tem permissao.
+ * Verifica se usuario tem permissao atende a condicao esperada.
  */
 async function usuarioTemPermissao(usuarioId, permissao) {
   const usuario = await Usuario.query()
@@ -1122,14 +1122,14 @@ async function usuarioTemPermissao(usuarioId, permissao) {
 }
 
 /**
- * Executa a rotina protocolo preenchido.
+ * Verifica se protocolo preenchido atende a condicao esperada.
  */
 function protocoloPreenchido(valor) {
   return String(valor || '').trim();
 }
 
 /**
- * Executa a rotina validar protocolo cliente.
+ * Valida protocolo cliente e retorna o resultado esperado.
  */
 async function validarProtocoloCliente(payload, usuarioId, vendaAtual = null) {
   const protocoloFoiEnviado = Object.prototype.hasOwnProperty.call(payload, 'protocolo');
@@ -1158,11 +1158,11 @@ async function validarProtocoloCliente(payload, usuarioId, vendaAtual = null) {
 }
 
 /**
- * Executa a rotina aplicar escopo vendas.
+ * Aplica escopo vendas sobre a consulta ou conjunto informado.
  */
 function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
   /**
-   * Executa a rotina campo.
+   * Retorna campo no formato esperado pelo fluxo.
    */
   const campo = (nome) => alias ? `${alias}.${nome}` : nome;
   const tabelaVendas = alias || 'vendas';
@@ -1199,14 +1199,14 @@ function aplicarEscopoVendas(query, usuarioId, escopo, alias = '') {
 }
 
 /**
- * Executa a rotina data referencia venda sql.
+ * Retorna data referencia venda sql no formato esperado pelo fluxo.
  */
 function dataReferenciaVendaSQL(alias = 'v') {
   return `COALESCE(NULLIF(NULLIF(${alias}.data_venda, '0000-00-00'), '1899-11-30'), NULLIF(DATE(${alias}.criado_em), '0000-00-00'), DATE(${alias}.created_at))`;
 }
 
 /**
- * Executa a rotina formatar data iso.
+ * Formata data iso para exibicao ou envio.
  */
 function formatarDataISO(data) {
   return [
@@ -1217,7 +1217,7 @@ function formatarDataISO(data) {
 }
 
 /**
- * Executa a rotina adicionar dias.
+ * Adiciona dias ao conjunto atual.
  */
 function adicionarDias(data, dias) {
   const novaData = new Date(data);
@@ -1226,7 +1226,7 @@ function adicionarDias(data, dias) {
 }
 
 /**
- * Executa a rotina criar data local iso.
+ * Cria data local iso com os dados informados.
  */
 function criarDataLocalISO(dataISO) {
   const normalizada = normalizarData(dataISO);
@@ -1237,7 +1237,7 @@ function criarDataLocalISO(dataISO) {
 }
 
 /**
- * Executa a rotina adicionar meses data iso.
+ * Adiciona meses data iso ao conjunto atual.
  */
 function adicionarMesesDataISO(dataISO, meses) {
   const data = criarDataLocalISO(dataISO);
@@ -1256,7 +1256,7 @@ function adicionarMesesDataISO(dataISO, meses) {
 }
 
 /**
- * Executa a rotina obter data limite concluida antiga.
+ * Obtem data limite concluida antiga a partir dos dados informados.
  */
 function obterDataLimiteConcluidaAntiga(referencia = new Date()) {
   const dataReferencia = parseUtcDateTime(referencia) || new Date();
@@ -1264,7 +1264,7 @@ function obterDataLimiteConcluidaAntiga(referencia = new Date()) {
 }
 
 /**
- * Executa a rotina obter ultima atividade funil.
+ * Obtem ultima atividade funil a partir dos dados informados.
  */
 function obterUltimaAtividadeFunil(venda = {}) {
   return parseUtcDateTime(venda.ultima_atividade_em)
@@ -1273,7 +1273,7 @@ function obterUltimaAtividadeFunil(venda = {}) {
 }
 
 /**
- * Executa a rotina venda deve aparecer no funil.
+ * Verifica se venda deve aparecer no funil atende a condicao esperada.
  */
 function vendaDeveAparecerNoFunil(venda = {}, etapaFinal = 'concluido', referencia = new Date()) {
   if (venda.status_funil !== etapaFinal) return true;
@@ -1285,7 +1285,7 @@ function vendaDeveAparecerNoFunil(venda = {}, etapaFinal = 'concluido', referenc
 }
 
 /**
- * Executa a rotina resolver periodo relatorio.
+ * Resolve periodo relatorio a partir do contexto atual.
  */
 function resolverPeriodoRelatorio(filtros = {}) {
   const hoje = new Date();
@@ -1330,7 +1330,7 @@ function resolverPeriodoRelatorio(filtros = {}) {
 }
 
 /**
- * Executa a rotina obter quantidade chips venda.
+ * Obtem quantidade chips venda a partir dos dados informados.
  */
 function obterQuantidadeChipsVenda(venda) {
   let totalItens = 0;
@@ -1359,7 +1359,7 @@ function obterQuantidadeChipsVenda(venda) {
 }
 
 /**
- * Executa a rotina obter resumo vendedora relatorio.
+ * Obtem resumo vendedora relatorio a partir dos dados informados.
  */
 function obterResumoVendedoraRelatorio(venda, vendedoraId, usuariosPorId = new Map()) {
   const id = vendedoraId ? Number(vendedoraId) : null;
@@ -1374,7 +1374,7 @@ function obterResumoVendedoraRelatorio(venda, vendedoraId, usuariosPorId = new M
 }
 
 /**
- * Executa a rotina montar atribuicoes vendedoras venda.
+ * Monta atribuicoes vendedoras venda a partir dos dados informados.
  */
 function montarAtribuicoesVendedorasVenda(venda, usuariosPorId = new Map()) {
   const mapa = new Map();
@@ -1382,7 +1382,7 @@ function montarAtribuicoesVendedorasVenda(venda, usuariosPorId = new Map()) {
   const fallbackVendedoraId = venda.vendedora_id ? Number(venda.vendedora_id) : null;
 
   /**
-   * Executa a rotina adicionar.
+   * Adiciona  ao conjunto atual.
    */
   function adicionar(vendedoraId, valor, chips) {
     const resumo = obterResumoVendedoraRelatorio(venda, vendedoraId, usuariosPorId);
@@ -1417,7 +1417,7 @@ function montarAtribuicoesVendedorasVenda(venda, usuariosPorId = new Map()) {
 }
 
 /**
- * Executa a rotina obter atribuicao vendedora venda.
+ * Obtem atribuicao vendedora venda a partir dos dados informados.
  */
 function obterAtribuicaoVendedoraVenda(venda, vendedoraId, usuariosPorId = new Map()) {
   const id = Number(vendedoraId);
@@ -1426,7 +1426,7 @@ function obterAtribuicaoVendedoraVenda(venda, vendedoraId, usuariosPorId = new M
 }
 
 /**
- * Executa a rotina filtrar vendas relatorio por vendedora.
+ * Filtra vendas relatorio por vendedora conforme os criterios informados.
  */
 function filtrarVendasRelatorioPorVendedora(vendas = [], vendedoraId, usuariosPorId = new Map()) {
   if (!vendedoraId) return vendas;
@@ -1454,7 +1454,7 @@ function filtrarVendasRelatorioPorVendedora(vendas = [], vendedoraId, usuariosPo
 }
 
 /**
- * Executa a rotina montar dados sincronizacao cliente venda.
+ * Monta dados sincronizacao cliente venda a partir dos dados informados.
  */
 function montarDadosSincronizacaoClienteVenda(venda, dataConclusao = new Date()) {
   const clienteId = Number(venda?.cliente_id || 0);
@@ -1480,7 +1480,7 @@ function montarDadosSincronizacaoClienteVenda(venda, dataConclusao = new Date())
 }
 
 /**
- * Executa a rotina atualizar resumo legado cliente apos venda.
+ * Atualiza resumo legado cliente apos venda com os dados informados.
  */
 async function atualizarResumoLegadoClienteAposVenda(clienteId, operadoraPreferencialId, trx) {
   const operadoras = await ClienteOperadora.query(trx)
@@ -1504,7 +1504,7 @@ async function atualizarResumoLegadoClienteAposVenda(clienteId, operadoraPrefere
 }
 
 /**
- * Executa a rotina sincronizar cliente com venda concluida.
+ * Sincroniza cliente com venda concluida com os dados atuais.
  */
 async function sincronizarClienteComVendaConcluida(venda, dataConclusao, trx) {
   const dados = montarDadosSincronizacaoClienteVenda(venda, dataConclusao);
@@ -1542,7 +1542,7 @@ async function sincronizarClienteComVendaConcluida(venda, dataConclusao, trx) {
 }
 
 /**
- * Executa a rotina sincronizar notificacao fidelidade cliente.
+ * Sincroniza notificacao fidelidade cliente com os dados atuais.
  */
 async function sincronizarNotificacaoFidelidadeCliente(clienteId) {
   if (!clienteId) return;
@@ -1555,14 +1555,14 @@ async function sincronizarNotificacaoFidelidadeCliente(clienteId) {
 }
 
 /**
- * Executa a rotina somar valor vendas.
+ * Soma valor vendas considerando os dados informados.
  */
 function somarValorVendas(vendas = []) {
   return Number(vendas.reduce((total, venda) => total + Number(venda.valor_total || 0), 0).toFixed(2));
 }
 
 /**
- * Executa a rotina montar resumo agrupado.
+ * Monta resumo agrupado a partir dos dados informados.
  */
 function montarResumoAgrupado(mapa) {
   return Array.from(mapa.values())
@@ -1574,7 +1574,7 @@ function montarResumoAgrupado(mapa) {
 }
 
 /**
- * Executa a rotina montar resumo fases.
+ * Monta resumo fases a partir dos dados informados.
  */
 function montarResumoFases(vendas = []) {
   const statusEncontrados = Array.from(new Set(
@@ -1622,7 +1622,7 @@ function montarResumoFases(vendas = []) {
 }
 
 /**
- * Executa a rotina listar etapas funil ordenadas.
+ * Lista etapas funil ordenadas conforme os filtros e parametros informados.
  */
 async function listarEtapasFunilOrdenadas() {
   try {
@@ -1663,7 +1663,7 @@ async function listarEtapasFunilOrdenadas() {
 }
 
 /**
- * Executa a rotina obter codigo etapa final.
+ * Obtem codigo etapa final a partir dos dados informados.
  */
 async function obterCodigoEtapaFinal() {
   try {
@@ -1680,7 +1680,7 @@ async function obterCodigoEtapaFinal() {
 }
 
 /**
- * Executa a rotina solicitar pacote se venda finalizada.
+ * Executa a acao de solicitar pacote se venda finalizada mantendo o estado da tela consistente.
  */
 async function solicitarPacoteSeVendaFinalizada(venda, usuarioId, etapaFinal = null) {
   const codigoFinal = etapaFinal || await obterCodigoEtapaFinal();
@@ -1696,21 +1696,21 @@ async function solicitarPacoteSeVendaFinalizada(venda, usuarioId, etapaFinal = n
 }
 
 /**
- * Executa a rotina status preenche data ativacao.
+ * Retorna status preenche data ativacao no formato esperado pelo fluxo.
  */
 async function statusPreencheDataAtivacao(status, etapaFinal) {
   return Boolean(status && status === etapaFinal);
 }
 
 /**
- * Executa a rotina enviar venda criada automaticamente para pos venda.
+ * Envia venda criada automaticamente para pos venda para processamento.
  */
 async function enviarVendaCriadaAutomaticamenteParaPosVenda(venda, usuarioId, agora, trx) {
   return enviarVendaParaPosVendaLiberada(venda, usuarioId, agora, trx, { envioAutomatico: true });
 }
 
 /**
- * Executa a rotina enviar venda para pos venda liberada.
+ * Envia venda para pos venda liberada para processamento.
  */
 async function enviarVendaParaPosVendaLiberada(venda, usuarioId, agora, trx, opcoes = {}) {
   const etapas = await listarEtapasFunilOrdenadas();
@@ -1747,7 +1747,7 @@ async function enviarVendaParaPosVendaLiberada(venda, usuarioId, agora, trx, opc
 }
 
 /**
- * Executa a rotina montar resumo fases dinamico.
+ * Monta resumo fases dinamico a partir dos dados informados.
  */
 async function montarResumoFasesDinamico(vendas = []) {
   const etapas = await listarEtapasFunilOrdenadas();
@@ -1801,7 +1801,7 @@ async function montarResumoFasesDinamico(vendas = []) {
 }
 
 /**
- * Executa a rotina usuario pode acessar venda.
+ * Verifica se usuario pode acessar venda atende a condicao esperada.
  */
 async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
   const escopo = await buscarEscopoVendas(usuarioId);
@@ -1844,7 +1844,7 @@ async function usuarioPodeAcessarVenda(id, usuarioId, opcoes = {}) {
 }
 
 /**
- * Executa a rotina usuario pode editar venda.
+ * Verifica se usuario pode editar venda atende a condicao esperada.
  */
 async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
   const permissoes = await buscarPermissoesUsuario(usuarioId);
@@ -1874,7 +1874,7 @@ async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
 }
 
 /**
- * Executa a rotina listar vendas.
+ * Lista vendas conforme os filtros e parametros informados.
  */
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
@@ -2004,7 +2004,7 @@ async function listarVendas(filtros = {}, usuarioId) {
 }
 
 /**
- * Executa a rotina valor data excel.
+ * Retorna valor data excel no formato esperado pelo fluxo.
  */
 function valorDataExcel(valor) {
   const data = normalizarData(valor);
@@ -2017,7 +2017,7 @@ function valorDataExcel(valor) {
 }
 
 /**
- * Executa a rotina nome arquivo seguro.
+ * Retorna nome arquivo seguro no formato esperado pelo fluxo.
  */
 function nomeArquivoSeguro(valor) {
   return String(valor || '')
@@ -2029,7 +2029,7 @@ function nomeArquivoSeguro(valor) {
 }
 
 /**
- * Executa a rotina aplicar estilo exportacao.
+ * Aplica estilo exportacao sobre a consulta ou conjunto informado.
  */
 function aplicarEstiloExportacao(worksheet) {
   worksheet.views = [{ state: 'frozen', ySplit: 1 }];
@@ -2061,7 +2061,7 @@ function aplicarEstiloExportacao(worksheet) {
 }
 
 /**
- * Executa a rotina nomes vendedoras exportacao.
+ * Retorna nomes vendedoras exportacao no formato esperado pelo fluxo.
  */
 function nomesVendedorasExportacao(venda) {
   const nomes = Array.isArray(venda.vendedoras)
@@ -2073,7 +2073,7 @@ function nomesVendedorasExportacao(venda) {
 }
 
 /**
- * Executa a rotina status venda exportacao.
+ * Retorna status venda exportacao no formato esperado pelo fluxo.
  */
 function statusVendaExportacao(venda) {
   if (venda.cancelada_em) return 'Cancelada';
@@ -2081,7 +2081,7 @@ function statusVendaExportacao(venda) {
 }
 
 /**
- * Executa a rotina gerar xlsx vendas.
+ * Gera xlsx vendas a partir dos dados informados.
  */
 async function gerarXlsxVendas(filtros = {}, usuarioId) {
   const filtrosExportacao = { ...filtros };
@@ -2165,14 +2165,14 @@ async function gerarXlsxVendas(filtros = {}, usuarioId) {
 }
 
 /**
- * Executa a rotina obter referencias clientes.
+ * Obtem referencias clientes a partir dos dados informados.
  */
 async function obterReferenciasClientes(usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const etapaFinal = await obterCodigoEtapaFinal();
   const knex = Venda.knex();
   /**
-   * Executa a rotina montar base.
+   * Monta base a partir dos dados informados.
    */
   const montarBase = () => {
     const query = Venda.query().whereNull('excluido_em');
@@ -2182,7 +2182,7 @@ async function obterReferenciasClientes(usuarioId) {
 
   const porChave = new Map();
   /**
-   * Executa a rotina adicionar.
+   * Adiciona  ao conjunto atual.
    */
   const adicionar = (chave, linha) => {
     if (!chave) return;
@@ -2228,7 +2228,7 @@ async function obterReferenciasClientes(usuarioId) {
 }
 
 /**
- * Executa a rotina verificar ids vendas ativas.
+ * Processa verificar ids vendas ativas conforme as regras do dominio.
  */
 async function verificarIdsVendasAtivas(ids = [], usuarioId) {
   const vendaIds = Array.from(new Set(ids.map(Number).filter(Number.isInteger).filter(id => id > 0)));
@@ -2249,7 +2249,7 @@ async function verificarIdsVendasAtivas(ids = [], usuarioId) {
 }
 
 /**
- * Executa a rotina obter contexto dashboard.
+ * Obtem contexto dashboard a partir dos dados informados.
  */
 async function obterContextoDashboard({ usuarioId, vendaIds = [] }) {
   const [clientes, referenciasClientes, vendasAtivasIds, vendasRetorno] = await Promise.all([
@@ -2268,7 +2268,7 @@ async function obterContextoDashboard({ usuarioId, vendaIds = [] }) {
 }
 
 /**
- * Executa a rotina listar vendas retorno resumo.
+ * Lista vendas retorno resumo conforme os filtros e parametros informados.
  */
 async function listarVendasRetornoResumo(usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
@@ -2301,7 +2301,7 @@ async function listarVendasRetornoResumo(usuarioId) {
 }
 
 /**
- * Executa a rotina obter resumo dashboard.
+ * Obtem resumo dashboard a partir dos dados informados.
  */
 async function obterResumoDashboard(usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
@@ -2368,7 +2368,7 @@ async function obterResumoDashboard(usuarioId) {
 }
 
 /**
- * Executa a rotina construir query relatorio.
+ * Constroi query relatorio com os filtros informados.
  */
 function construirQueryRelatorio({ dataInicio, dataFimExclusiva, dataReferencia }) {
   const query = Venda.query()
@@ -2397,7 +2397,7 @@ function construirQueryRelatorio({ dataInicio, dataFimExclusiva, dataReferencia 
 }
 
 /**
- * Executa a rotina carregar usuarios atribuicoes relatorio.
+ * Carrega usuarios atribuicoes relatorio e atualiza o estado relacionado.
  */
 async function carregarUsuariosAtribuicoesRelatorio(vendas = []) {
   const ids = new Set();
@@ -2419,7 +2419,7 @@ async function carregarUsuariosAtribuicoesRelatorio(vendas = []) {
 }
 
 /**
- * Executa a rotina resolver periodo anterior.
+ * Resolve periodo anterior a partir do contexto atual.
  */
 function resolverPeriodoAnterior(periodo) {
   const inicio = criarDataLocalISO(periodo.dataInicio);
@@ -2438,7 +2438,7 @@ function resolverPeriodoAnterior(periodo) {
 }
 
 /**
- * Executa a rotina agregar vendas periodo.
+ * Agrega vendas periodo para compor os totais.
  */
 function agregarVendasPeriodo(vendas, etapaFinal) {
   const vendasAndamento = vendas.filter(venda => ![etapaFinal, 'retorno'].includes(venda.status_funil));
@@ -2485,7 +2485,7 @@ function agregarVendasPeriodo(vendas, etapaFinal) {
 }
 
 /**
- * Executa a rotina montar serie diaria relatorio.
+ * Monta serie diaria relatorio a partir dos dados informados.
  */
 function montarSerieDiariaRelatorio(vendas, periodo) {
   const mapa = new Map();
@@ -2523,7 +2523,7 @@ function montarSerieDiariaRelatorio(vendas, periodo) {
 }
 
 /**
- * Executa a rotina montar motivos retorno relatorio.
+ * Monta motivos retorno relatorio a partir dos dados informados.
  */
 function montarMotivosRetornoRelatorio(vendasRetorno) {
   const mapa = new Map();
@@ -2540,7 +2540,7 @@ function montarMotivosRetornoRelatorio(vendasRetorno) {
 }
 
 /**
- * Executa a rotina obter relatorios vendas.
+ * Obtem relatorios vendas a partir dos dados informados.
  */
 async function obterRelatoriosVendas(filtros = {}) {
   const periodo = resolverPeriodoRelatorio(filtros);
@@ -2659,7 +2659,7 @@ async function obterRelatoriosVendas(filtros = {}) {
 }
 
 /**
- * Executa a rotina salvar vendedoras.
+ * Salva vendedoras com os dados informados.
  */
 async function salvarVendedoras(vendaId, vendedorasIds, trx) {
   await trx('venda_vendedoras').where('venda_id', vendaId).delete();
@@ -2674,7 +2674,7 @@ async function salvarVendedoras(vendaId, vendedorasIds, trx) {
 }
 
 /**
- * Executa a rotina buscar venda por id.
+ * Busca venda por id conforme os parametros informados.
  */
 async function buscarVendaPorId(id, usuarioId) {
   const escopo = usuarioId ? await buscarEscopoVendas(usuarioId) : { podeVerTodas: true };
@@ -2696,7 +2696,7 @@ async function buscarVendaPorId(id, usuarioId) {
 }
 
 /**
- * Executa a rotina gerar email template venda.
+ * Gera email template venda a partir dos dados informados.
  */
 async function gerarEmailTemplateVenda(id, usuarioId) {
   const venda = await buscarVendaPorId(id, usuarioId);
@@ -2709,7 +2709,7 @@ async function gerarEmailTemplateVenda(id, usuarioId) {
 }
 
 /**
- * Executa a rotina criar venda.
+ * Cria venda com os dados informados.
  */
 async function criarVenda(dados, usuarioId) {
   const agora = formatarDateTimeSQL();
@@ -2794,7 +2794,7 @@ async function criarVenda(dados, usuarioId) {
 }
 
 /**
- * Executa a rotina atualizar venda.
+ * Atualiza venda com os dados informados.
  */
 async function atualizarVenda(id, dados, usuarioId) {
   const permitido = await usuarioPodeEditarVenda(id, usuarioId);
@@ -2900,7 +2900,7 @@ async function atualizarVenda(id, dados, usuarioId) {
 }
 
 /**
- * Executa a rotina validar status funil.
+ * Valida status funil e retorna o resultado esperado.
  */
 async function validarStatusFunil(status) {
   if (status === 'retorno') {
@@ -2912,7 +2912,7 @@ async function validarStatusFunil(status) {
 }
 
 /**
- * Executa a rotina atualizar status venda.
+ * Atualiza status venda com os dados informados.
  */
 async function atualizarStatusVenda(id, dados, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
@@ -3158,7 +3158,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 }
 
 /**
- * Executa a rotina enviar venda para pos venda.
+ * Envia venda para pos venda para processamento.
  */
 async function enviarVendaParaPosVenda(id, usuarioId) {
   const permitido = await usuarioPodeEditarVenda(id, usuarioId);
@@ -3201,7 +3201,7 @@ async function enviarVendaParaPosVenda(id, usuarioId) {
 }
 
 /**
- * Executa a rotina normalizar venda ids.
+ * Normaliza venda ids para uso interno consistente.
  */
 function normalizarVendaIds(ids) {
   return [...new Set([ids]
@@ -3211,7 +3211,7 @@ function normalizarVendaIds(ids) {
 }
 
 /**
- * Executa a rotina buscar source keys notificacoes venda.
+ * Busca source keys notificacoes venda conforme os parametros informados.
  */
 async function buscarSourceKeysNotificacoesVenda(vendaIds, trx) {
   const sourceKeys = [];
@@ -3243,7 +3243,7 @@ async function buscarSourceKeysNotificacoesVenda(vendaIds, trx) {
 }
 
 /**
- * Executa a rotina excluir notificacoes vendas.
+ * Exclui notificacoes vendas conforme a regra de negocio.
  */
 async function excluirNotificacoesVendas(vendaIdsEntrada, trx) {
   const vendaIds = normalizarVendaIds(vendaIdsEntrada);
@@ -3288,7 +3288,7 @@ async function excluirNotificacoesVendas(vendaIdsEntrada, trx) {
 }
 
 /**
- * Executa a rotina excluir venda.
+ * Exclui venda conforme a regra de negocio.
  */
 async function excluirVenda(id, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId);
@@ -3319,7 +3319,7 @@ async function excluirVenda(id, usuarioId) {
 }
 
 /**
- * Executa a rotina adicionar um mes.
+ * Adiciona um mes ao conjunto atual.
  */
 function adicionarUmMes(data = new Date()) {
   const proxima = new Date(data);
@@ -3328,7 +3328,7 @@ function adicionarUmMes(data = new Date()) {
 }
 
 /**
- * Executa a rotina limpar vendas vencidas da lixeira.
+ * Limpa vendas vencidas da lixeira e restaura o estado inicial.
  */
 async function limparVendasVencidasDaLixeira() {
   return Venda.transaction(async trx => {
@@ -3350,7 +3350,7 @@ async function limparVendasVencidasDaLixeira() {
 }
 
 /**
- * Executa a rotina listar vendas lixeira.
+ * Lista vendas lixeira conforme os filtros e parametros informados.
  */
 async function listarVendasLixeira(filtros = {}, usuarioId) {
   await limparVendasVencidasDaLixeira();
@@ -3388,7 +3388,7 @@ async function listarVendasLixeira(filtros = {}, usuarioId) {
 }
 
 /**
- * Executa a rotina restaurar venda.
+ * Restaura venda quando a regra de negocio permite.
  */
 async function restaurarVenda(id, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId, { incluirLixeira: true });
@@ -3415,7 +3415,7 @@ async function restaurarVenda(id, usuarioId) {
 }
 
 /**
- * Executa a rotina excluir venda definitivo.
+ * Exclui venda definitivo conforme a regra de negocio.
  */
 async function excluirVendaDefinitivo(id, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(id, usuarioId, { incluirLixeira: true });
@@ -3435,7 +3435,7 @@ async function excluirVendaDefinitivo(id, usuarioId) {
 }
 
 /**
- * Executa a rotina listar vendedoras.
+ * Lista vendedoras conforme os filtros e parametros informados.
  */
 async function listarVendedoras(usuarioId) {
   const podeCompartilhar = usuarioId
@@ -3458,7 +3458,7 @@ async function listarVendedoras(usuarioId) {
 }
 
 /**
- * Executa a rotina status eh final.
+ * Verifica se status eh final atende a condicao esperada.
  */
 async function statusEhFinal(status) {
   const codigoFinal = await obterCodigoEtapaFinal();
@@ -3466,7 +3466,7 @@ async function statusEhFinal(status) {
 }
 
 /**
- * Executa a rotina contar vendas concluidas por cliente.
+ * Conta vendas concluidas por cliente conforme os dados informados.
  */
 async function contarVendasConcluidasPorCliente() {
   let codigosFinais;
@@ -3492,7 +3492,7 @@ async function contarVendasConcluidasPorCliente() {
 }
 
 /**
- * Executa a rotina cancelar venda.
+ * Processa cancelar venda conforme as regras do dominio.
  */
 async function cancelarVenda(id, { motivo, usuarioId }) {
   const motivoLimpo = String(motivo || '').trim();
@@ -3558,7 +3558,7 @@ async function cancelarVenda(id, { motivo, usuarioId }) {
 }
 
 /**
- * Executa a rotina reverter cancelamento venda.
+ * Processa reverter cancelamento venda conforme as regras do dominio.
  */
 async function reverterCancelamentoVenda(id, usuarioId, dados = {}) {
   if (!await usuarioTemPermissao(usuarioId, 'vendas_reverter_cancelamento')) {

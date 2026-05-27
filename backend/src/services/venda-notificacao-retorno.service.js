@@ -10,21 +10,21 @@ const notificacaoService = require('./notificacao.service');
 const TIPO_NOTIFICACAO = 'venda_retorno_registrado';
 
 /**
- * Executa a rotina source key venda.
+ * Retorna source key venda no formato esperado pelo fluxo.
  */
 function sourceKeyVenda(vendaId) {
   return `venda_retorno:${vendaId}`;
 }
 
 /**
- * Executa a rotina nome venda.
+ * Retorna nome venda no formato esperado pelo fluxo.
  */
 function nomeVenda(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
 /**
- * Executa a rotina listar destinatarios venda.
+ * Lista destinatarios venda conforme os filtros e parametros informados.
  */
 async function listarDestinatariosVenda(vendaId, trx = null) {
   const knex = Venda.knex();
@@ -45,7 +45,7 @@ async function listarDestinatariosVenda(vendaId, trx = null) {
 }
 
 /**
- * Executa a rotina criar ou atualizar notificacao retorno.
+ * Cria ou atualizar notificacao retorno com os dados informados.
  */
 async function criarOuAtualizarNotificacaoRetorno({ venda, statusAnterior, motivo, usuarioId, trx = null }) {
   if (!venda?.id) return null;
@@ -132,7 +132,7 @@ async function criarOuAtualizarNotificacaoRetorno({ venda, statusAnterior, motiv
 }
 
 /**
- * Executa a rotina desativar notificacao retorno.
+ * Desativa notificacao retorno quando nao e mais necessaria.
  */
 async function desativarNotificacaoRetorno(vendaId, trx = null) {
   return Notificacao.query(trx)

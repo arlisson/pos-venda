@@ -14,14 +14,14 @@ const DEFAULT_DATE_TIME_OPTIONS = {
 };
 
 /**
- * Executa a rotina is valid date.
+ * Verifica se valid date atende a condicao esperada.
  */
 function isValidDate(date) {
   return date instanceof Date && !Number.isNaN(date.getTime());
 }
 
 /**
- * Executa a rotina parse date only.
+ * Converte date only para o formato interno esperado.
  */
 function parseDateOnly(value) {
   const text = String(value || '').trim();
@@ -138,7 +138,7 @@ export function toLocalDateTimeInputFromUtc(value) {
   if (!date) return '';
 
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = part => String(part).padStart(2, '0');
   return [

@@ -81,7 +81,7 @@ const CAMPOS_MAPEAMENTO = [
 ];
 
 /**
- * Executa a rotina criar http error.
+ * Cria http error com os dados informados.
  */
 function criarHttpError(statusCode, message) {
   const error = new Error(message);
@@ -90,7 +90,7 @@ function criarHttpError(statusCode, message) {
 }
 
 /**
- * Executa a rotina normalizar texto.
+ * Normaliza texto para uso interno consistente.
  */
 function normalizarTexto(valor) {
   return String(valor || '')
@@ -101,7 +101,7 @@ function normalizarTexto(valor) {
 }
 
 /**
- * Executa a rotina texto celula.
+ * Retorna texto celula no formato esperado pelo fluxo.
  */
 function textoCelula(valor) {
   if (valor === null || valor === undefined) return '';
@@ -116,14 +116,14 @@ function textoCelula(valor) {
 }
 
 /**
- * Executa a rotina sanitizar cnpj.
+ * Sanitiza cnpj removendo caracteres nao esperados.
  */
 function sanitizarCnpj(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 14);
 }
 
 /**
- * Executa a rotina formatar cnpj.
+ * Formata cnpj para exibicao ou envio.
  */
 function formatarCnpj(valor) {
   const digitos = sanitizarCnpj(valor);
@@ -132,7 +132,7 @@ function formatarCnpj(valor) {
 }
 
 /**
- * Executa a rotina separar telefone.
+ * Processa separar telefone conforme as regras do dominio.
  */
 function separarTelefone(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
@@ -149,7 +149,7 @@ function separarTelefone(valor) {
 }
 
 /**
- * Executa a rotina parse valor monetario.
+ * Converte valor monetario para o formato interno esperado.
  */
 function parseValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
@@ -169,7 +169,7 @@ function parseValorMonetario(valor) {
 }
 
 /**
- * Executa a rotina parse inteiro.
+ * Converte inteiro para o formato interno esperado.
  */
 function parseInteiro(valor) {
   if (valor === undefined || valor === null || valor === '') return 0;
@@ -178,7 +178,7 @@ function parseInteiro(valor) {
 }
 
 /**
- * Executa a rotina normalizar data.
+ * Normaliza data para uso interno consistente.
  */
 function normalizarData(valor) {
   if (!valor) return null;
@@ -219,11 +219,11 @@ function normalizarData(valor) {
 }
 
 /**
- * Executa a rotina formatar date time sql.
+ * Formata date time sql para exibicao ou envio.
  */
 function formatarDateTimeSQL(data = new Date()) {
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = value => String(value).padStart(2, '0');
 
@@ -239,7 +239,7 @@ function formatarDateTimeSQL(data = new Date()) {
 }
 
 /**
- * Executa a rotina ler arquivo multipart.
+ * Processa ler arquivo multipart conforme as regras do dominio.
  */
 function lerArquivoMultipart(req) {
   return new Promise((resolve, reject) => {
@@ -287,7 +287,7 @@ function lerArquivoMultipart(req) {
 }
 
 /**
- * Executa a rotina ler worksheet.
+ * Renderiza ler worksheet.
  */
 async function lerWorksheet(buffer) {
   const workbook = new ExcelJS.Workbook();
@@ -302,7 +302,7 @@ async function lerWorksheet(buffer) {
 }
 
 /**
- * Executa a rotina obter cabecalhos.
+ * Obtem cabecalhos a partir dos dados informados.
  */
 function obterCabecalhos(worksheet) {
   const headerRow = worksheet.getRow(1);
@@ -323,7 +323,7 @@ function obterCabecalhos(worksheet) {
 }
 
 /**
- * Executa a rotina parse mapeamento.
+ * Converte mapeamento para o formato interno esperado.
  */
 function parseMapeamento(valor) {
   if (!valor) return {};
@@ -336,13 +336,13 @@ function parseMapeamento(valor) {
 }
 
 /**
- * Executa a rotina sugerir mapeamento.
+ * Processa sugerir mapeamento conforme as regras do dominio.
  */
 function sugerirMapeamento(colunas) {
   const porTexto = new Map(colunas.map(coluna => [normalizarTexto(coluna.nome), coluna.nome]));
 
   /**
-   * Executa a rotina achar.
+   * Processa achar conforme as regras do dominio.
    */
   function achar(...termos) {
     const termosNorm = termos.map(normalizarTexto);
@@ -388,7 +388,7 @@ function sugerirMapeamento(colunas) {
 }
 
 /**
- * Executa a rotina resolver mapeamento.
+ * Resolve mapeamento a partir do contexto atual.
  */
 function resolverMapeamento(worksheet, mapeamento = {}) {
   const colunas = obterCabecalhos(worksheet);
@@ -409,14 +409,14 @@ function resolverMapeamento(worksheet, mapeamento = {}) {
 }
 
 /**
- * Executa a rotina montar header map.
+ * Monta header map a partir dos dados informados.
  */
 function montarHeaderMap(worksheet) {
   return new Map(obterCabecalhos(worksheet).map(coluna => [normalizarTexto(coluna.nome), coluna.index]));
 }
 
 /**
- * Executa a rotina valor linha.
+ * Retorna valor linha no formato esperado pelo fluxo.
  */
 function valorLinha(row, headerMap, coluna) {
   const index = headerMap.get(normalizarTexto(coluna));
@@ -425,7 +425,7 @@ function valorLinha(row, headerMap, coluna) {
 }
 
 /**
- * Executa a rotina obter data linha.
+ * Obtem data linha a partir dos dados informados.
  */
 function obterDataLinha(row, headerMap, coluna) {
   const index = headerMap.get(normalizarTexto(coluna));
@@ -435,21 +435,21 @@ function obterDataLinha(row, headerMap, coluna) {
 }
 
 /**
- * Executa a rotina escolher texto.
+ * Processa escolher texto conforme as regras do dominio.
  */
 function escolherTexto(...valores) {
   return valores.find(valor => String(valor || '').trim()) || '';
 }
 
 /**
- * Executa a rotina map por nome.
+ * Mapeia por nome para o formato usado pela aplicacao.
  */
 function mapPorNome(linhas) {
   return new Map(linhas.map(item => [normalizarTexto(item.nome), item]));
 }
 
 /**
- * Executa a rotina montar referencias.
+ * Monta referencias a partir dos dados informados.
  */
 async function montarReferencias(trx = null) {
   const [usuarios, operadoras, tiposVenda, servicos, tiposProduto] = await Promise.all([
@@ -470,7 +470,7 @@ async function montarReferencias(trx = null) {
 }
 
 /**
- * Executa a rotina garantir tipos produto.
+ * Garante tipos produto antes de continuar o fluxo.
  */
 async function garantirTiposProduto(produtos, referencias, trx) {
   const nomes = Array.from(new Set(
@@ -512,7 +512,7 @@ async function garantirTiposProduto(produtos, referencias, trx) {
 }
 
 /**
- * Executa a rotina resolver tipo linha.
+ * Resolve tipo linha a partir do contexto atual.
  */
 function resolverTipoLinha({ novo, portabilidade }) {
   const qtdPortabilidade = parseInteiro(portabilidade);
@@ -521,7 +521,7 @@ function resolverTipoLinha({ novo, portabilidade }) {
 }
 
 /**
- * Executa a rotina resolver tipo venda id.
+ * Resolve tipo venda id a partir do contexto atual.
  */
 function resolverTipoVendaId(grupo, tiposPorNome) {
   const temPortabilidade = grupo.itensChips.some(item => item.tipo_linha === 'portabilidade');
@@ -531,7 +531,7 @@ function resolverTipoVendaId(grupo, tiposPorNome) {
 }
 
 /**
- * Executa a rotina resolver servico id.
+ * Resolve servico id a partir do contexto atual.
  */
 function resolverServicoId(produto, servicosPorNome) {
   const texto = normalizarTexto(produto);
@@ -552,7 +552,7 @@ function resolverServicoId(produto, servicosPorNome) {
 }
 
 /**
- * Executa a rotina resolver status funil.
+ * Resolve status funil a partir do contexto atual.
  */
 function resolverStatusFunil(status) {
   const texto = normalizarTexto(status);
@@ -578,7 +578,7 @@ function resolverStatusFunil(status) {
 }
 
 /**
- * Executa a rotina montar cliente solicitou.
+ * Monta cliente solicitou a partir dos dados informados.
  */
 function montarClienteSolicitou(linha) {
   const texto = normalizarTexto(linha.promessa);
@@ -606,7 +606,7 @@ function montarClienteSolicitou(linha) {
 }
 
 /**
- * Executa a rotina montar observacoes.
+ * Monta observacoes a partir dos dados informados.
  */
 function montarObservacoes(grupo) {
   const partes = [];
@@ -626,7 +626,7 @@ function montarObservacoes(grupo) {
 }
 
 /**
- * Executa a rotina criar chave importacao.
+ * Cria chave importacao com os dados informados.
  */
 function criarChaveImportacao(grupo) {
   const base = {
@@ -648,14 +648,14 @@ function criarChaveImportacao(grupo) {
 }
 
 /**
- * Executa a rotina linha vazia.
+ * Verifica se linha vazia atende a condicao esperada.
  */
 function linhaVazia(linha) {
   return !linha.cnpjDigitos && !linha.razaoSocial && !linha.consultor && !linha.produto;
 }
 
 /**
- * Executa a rotina ler linhas planilha.
+ * Processa ler linhas planilha conforme as regras do dominio.
  */
 function lerLinhasPlanilha(worksheet, mapeamento = null) {
   const headerMap = montarHeaderMap(worksheet);
@@ -716,7 +716,7 @@ function lerLinhasPlanilha(worksheet, mapeamento = null) {
 }
 
 /**
- * Executa a rotina agrupar linhas.
+ * Agrupa linhas para consumo posterior.
  */
 function agruparLinhas(linhas, referencias) {
   const grupos = new Map();
@@ -855,7 +855,7 @@ function agruparLinhas(linhas, referencias) {
 }
 
 /**
- * Executa a rotina montar amostras.
+ * Monta amostras a partir dos dados informados.
  */
 function montarAmostras(grupos, limite = 5) {
   return grupos.slice(0, limite).map(grupo => ({
@@ -872,7 +872,7 @@ function montarAmostras(grupos, limite = 5) {
 }
 
 /**
- * Executa a rotina montar preview.
+ * Monta preview a partir dos dados informados.
  */
 async function montarPreview(arquivo) {
   const worksheet = await lerWorksheet(arquivo.buffer);
@@ -910,7 +910,7 @@ async function montarPreview(arquivo) {
 }
 
 /**
- * Executa a rotina montar payload cliente.
+ * Monta payload cliente a partir dos dados informados.
  */
 function montarPayloadCliente(dados, existente = null) {
   const telefone = separarTelefone(dados.whatsapp);
@@ -954,7 +954,7 @@ function montarPayloadCliente(dados, existente = null) {
 }
 
 /**
- * Executa a rotina sincronizar operadoras cliente importado.
+ * Sincroniza operadoras cliente importado com os dados atuais.
  */
 async function sincronizarOperadorasClienteImportado(clienteId, operadoras, trx) {
   if (!Array.isArray(operadoras) || operadoras.length === 0) return;
@@ -981,7 +981,7 @@ async function sincronizarOperadorasClienteImportado(clienteId, operadoras, trx)
 }
 
 /**
- * Executa a rotina sincronizar clientes.
+ * Sincroniza clientes com os dados atuais.
  */
 async function sincronizarClientes(clientes, usuarioId, trx) {
   const existentes = await Cliente.query(trx).whereNotNull('cnpj_digitos');
@@ -1023,7 +1023,7 @@ async function sincronizarClientes(clientes, usuarioId, trx) {
 }
 
 /**
- * Executa a rotina montar payload venda.
+ * Monta payload venda a partir dos dados informados.
  */
 function montarPayloadVenda(grupo, referencias, cliente, usuarioId, arquivo) {
   const status = resolverStatusFunil(grupo.status);
@@ -1078,7 +1078,7 @@ function montarPayloadVenda(grupo, referencias, cliente, usuarioId, arquivo) {
 }
 
 /**
- * Executa a rotina salvar vendedoras.
+ * Salva vendedoras com os dados informados.
  */
 async function salvarVendedoras(vendaId, vendedorasIds, trx) {
   const ids = Array.from(new Set(vendedorasIds.map(Number).filter(Boolean)));
@@ -1093,7 +1093,7 @@ async function salvarVendedoras(vendaId, vendedorasIds, trx) {
 }
 
 /**
- * Executa a rotina registrar historico importacao.
+ * Registra historico importacao no historico ou log.
  */
 async function registrarHistoricoImportacao(vendaId, usuarioId, grupo, trx) {
   await VendaHistorico.query(trx).insert({
@@ -1113,7 +1113,7 @@ async function registrarHistoricoImportacao(vendaId, usuarioId, grupo, trx) {
 }
 
 /**
- * Executa a rotina importar.
+ * Importa  a partir dos dados recebidos.
  */
 async function importar(req, usuarioId) {
   const arquivo = await lerArquivoMultipart(req);
@@ -1176,7 +1176,7 @@ async function importar(req, usuarioId) {
 }
 
 /**
- * Executa a rotina preview.
+ * Renderiza preview com os dados informados.
  */
 async function preview(req) {
   const arquivo = await lerArquivoMultipart(req);

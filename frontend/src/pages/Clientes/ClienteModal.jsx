@@ -41,7 +41,7 @@ const CNPJ_LABELS_CLIENTE = Object.fromEntries(
 );
 
 /**
- * Executa a rotina normalizar data input.
+ * Renderiza normalizar data input.
  */
 function normalizarDataInput(valor) {
   if (!valor) return '';
@@ -51,7 +51,7 @@ function normalizarDataInput(valor) {
 }
 
 /**
- * Executa a rotina apenas digitos.
+ * Processa apenas digitos conforme as regras do dominio.
  */
 function apenasDigitos(valor, limite) {
   const digitos = String(valor || '').replace(/\D/g, '');
@@ -59,7 +59,7 @@ function apenasDigitos(valor, limite) {
 }
 
 /**
- * Executa a rotina formatar cnpj.
+ * Formata cnpj para exibicao ou envio.
  */
 function formatarCnpj(valor) {
   const digitos = apenasDigitos(valor, 14);
@@ -72,14 +72,14 @@ function formatarCnpj(valor) {
 }
 
 /**
- * Executa a rotina obter nome cliente documento.
+ * Obtem nome cliente documento a partir dos dados informados.
  */
 function obterNomeClienteDocumento(cliente) {
   return cliente?.razao_social || cliente?.nome || `#${cliente?.id}`;
 }
 
 /**
- * Executa a rotina formatar mensagem documento duplicado.
+ * Formata mensagem documento duplicado para exibicao ou envio.
  */
 function formatarMensagemDocumentoDuplicado(cliente) {
   if (!cliente) return '';
@@ -90,7 +90,7 @@ function formatarMensagemDocumentoDuplicado(cliente) {
 }
 
 /**
- * Executa a rotina formatar telefone com ddd.
+ * Formata telefone com ddd para exibicao ou envio.
  */
 function formatarTelefoneComDdd(valor, celular = false) {
   const digitos = apenasDigitos(valor, celular ? 11 : 10);
@@ -112,14 +112,14 @@ function formatarTelefoneComDdd(valor, celular = false) {
 }
 
 /**
- * Executa a rotina juntar telefone.
+ * Processa juntar telefone conforme as regras do dominio.
  */
 function juntarTelefone(ddd, numero, celular = false) {
   return formatarTelefoneComDdd(`${ddd || ''}${numero || ''}`, celular);
 }
 
 /**
- * Executa a rotina separar telefone.
+ * Processa separar telefone conforme as regras do dominio.
  */
 function separarTelefone(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
@@ -135,7 +135,7 @@ function separarTelefone(valor) {
 }
 
 /**
- * Executa a rotina parse valor input.
+ * Renderiza parse valor input.
  */
 function parseValorInput(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
@@ -146,7 +146,7 @@ function parseValorInput(valor) {
 }
 
 /**
- * Executa a rotina formatar input moeda br.
+ * Formata input moeda br para exibicao ou envio.
  */
 function formatarInputMoedaBR(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
@@ -160,7 +160,7 @@ function formatarInputMoedaBR(valor) {
 }
 
 /**
- * Executa a rotina formatar valor pago input.
+ * Renderiza formatar valor pago input.
  */
 function formatarValorPagoInput(valor) {
   if (valor === undefined || valor === null || valor === '') return '';
@@ -172,7 +172,7 @@ function formatarValorPagoInput(valor) {
 }
 
 /**
- * Executa a rotina nova operadora cliente.
+ * Processa nova operadora cliente conforme as regras do dominio.
  */
 function novaOperadoraCliente(dados = {}) {
   return {
@@ -184,7 +184,7 @@ function novaOperadoraCliente(dados = {}) {
 }
 
 /**
- * Executa a rotina normalizar operadoras cliente form.
+ * Normaliza operadoras cliente form para uso interno consistente.
  */
 function normalizarOperadorasClienteForm(cliente) {
   const operadorasCliente = cliente?.operadoras_atuais || cliente?.operadorasAtuais || [];
@@ -205,7 +205,7 @@ function normalizarOperadorasClienteForm(cliente) {
 }
 
 /**
- * Executa a rotina montar payload cliente.
+ * Monta payload cliente a partir dos dados informados.
  */
 function montarPayloadCliente(form) {
   const whatsapp = separarTelefone(form.whatsapp);
@@ -235,7 +235,7 @@ function montarPayloadCliente(form) {
 }
 
 /**
- * Executa a rotina normalizar cliente form.
+ * Normaliza cliente form para uso interno consistente.
  */
 function normalizarClienteForm(cliente) {
   if (!cliente) return FORM_INICIAL;
@@ -258,7 +258,7 @@ function normalizarClienteForm(cliente) {
 }
 
 /**
- * Executa a rotina formatar data venda.
+ * Formata data venda para exibicao ou envio.
  */
 function formatarDataVenda(valor) {
   if (!valor) return '-';
@@ -274,7 +274,7 @@ function formatarDataVenda(valor) {
 }
 
 /**
- * Executa a rotina formatar moeda.
+ * Formata moeda para exibicao ou envio.
  */
 function formatarMoeda(valor) {
   if (valor === undefined || valor === null || valor === '') return '-';
@@ -286,7 +286,7 @@ function formatarMoeda(valor) {
 }
 
 /**
- * Executa a rotina obter timestamp venda.
+ * Obtem timestamp venda a partir dos dados informados.
  */
 function obterTimestampVenda(venda) {
   const valor = venda.data_venda || venda.criado_em || venda.created_at;
@@ -301,7 +301,7 @@ function obterTimestampVenda(venda) {
 }
 
 /**
- * Executa a rotina ordenar vendas recentes.
+ * Processa ordenar vendas recentes conforme as regras do dominio.
  */
 function ordenarVendasRecentes(vendas) {
   return [...(vendas || [])].sort((a, b) => (
@@ -310,14 +310,14 @@ function ordenarVendasRecentes(vendas) {
 }
 
 /**
- * Executa a rotina obter titulo venda.
+ * Obtem titulo venda a partir dos dados informados.
  */
 function obterTituloVenda(venda) {
   return formatarNomeServico(venda.servico?.nome) || venda.produto_fechado || venda.tipoVenda?.nome || `Venda #${venda.id}`;
 }
 
 /**
- * Executa a rotina obter responsaveis venda.
+ * Obtem responsaveis venda a partir dos dados informados.
  */
 function obterResponsaveisVenda(venda) {
   const nomes = Array.isArray(venda.vendedoras)
@@ -329,7 +329,7 @@ function obterResponsaveisVenda(venda) {
 }
 
 /**
- * Executa a rotina cliente modal.
+ * Renderiza cliente modal.
  */
 function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'cliente', initialDraft = null, onDraftChange, notesOnly = false, onOpenVenda }) {
   const editando = Boolean(cliente);
@@ -391,7 +391,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
     el.style.height = `${alturaNova}px`;
 
     /**
-     * Executa a rotina finalizar.
+     * Processa finalizar conforme as regras do dominio.
      */
     const finalizar = () => {
       el.style.height = '';
@@ -443,7 +443,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   /* eslint-enable react-hooks/set-state-in-effect */
 
   /**
-   * Executa a rotina handle close.
+   * Trata o evento de close.
    */
   function handleClose() {
     if (!editando && onDraftChange) {
@@ -454,7 +454,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina limpar dados cliente.
+   * Limpa dados cliente e restaura o estado inicial.
    */
   function limparDadosCliente() {
     if (editando || salvando) return;
@@ -478,14 +478,14 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina atualizar campo.
+   * Atualiza campo com os dados informados.
    */
   function atualizarCampo(campo, valor) {
     setForm(prev => ({ ...prev, [campo]: valor }));
   }
 
   /**
-   * Executa a rotina alterar tipo busca.
+   * Executa a acao de alterar tipo busca mantendo o estado da tela consistente.
    */
   function alterarTipoBusca(tipo) {
     setTipoBusca(tipo);
@@ -500,7 +500,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina adicionar operadora cliente.
+   * Adiciona operadora cliente ao conjunto atual.
    */
   function adicionarOperadoraCliente() {
     setForm(prev => ({
@@ -510,7 +510,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina atualizar operadora cliente.
+   * Atualiza operadora cliente com os dados informados.
    */
   function atualizarOperadoraCliente(index, campo, valor) {
     setForm(prev => ({
@@ -522,7 +522,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina remover operadora cliente.
+   * Remove operadora cliente da colecao ou estado atual.
    */
   function removerOperadoraCliente(index) {
     setForm(prev => ({
@@ -532,14 +532,14 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina formatar mensagem cnpj.
+   * Formata mensagem cnpj para exibicao ou envio.
    */
   function formatarMensagemCnpj(dados) {
     return formatarMensagemResumoCnpj(dados);
   }
 
   /**
-   * Executa a rotina montar sugestoes cnpj.
+   * Monta sugestoes cnpj a partir dos dados informados.
    */
   function montarSugestoesCnpj(dados) {
     return Object.entries(CNPJ_SUGESTOES_CLIENTE).reduce((acc, [campoApi]) => {
@@ -550,7 +550,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina aceitar sugestao cnpj.
+   * Processa aceitar sugestao cnpj conforme as regras do dominio.
    */
   function aceitarSugestaoCnpj(campoApi) {
     const valor = cnpjSugestoes[campoApi];
@@ -581,7 +581,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina recusar sugestao cnpj.
+   * Processa recusar sugestao cnpj conforme as regras do dominio.
    */
   function recusarSugestaoCnpj(campoApi) {
     setCnpjSugestoes(prev => {
@@ -592,7 +592,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina buscar dados cnpj.
+   * Busca dados cnpj conforme os parametros informados.
    */
   async function buscarDadosCnpj(manual = false) {
     const cnpj = sanitizarCnpj(form.cnpj);
@@ -637,7 +637,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }
 
   /**
-   * Executa a rotina verificar duplicidade documento.
+   * Processa verificar duplicidade documento conforme as regras do dominio.
    */
   async function verificarDuplicidadeDocumento(documento) {
     const digitos = tipoBusca === 'cpf' ? sanitizarCpf(documento) : sanitizarCnpj(documento);
@@ -749,7 +749,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
   }, [form.cnpj, tipoBusca]);
 
   /**
-   * Executa a rotina handle submit.
+   * Trata o evento de submit.
    */
   async function handleSubmit(event) {
     event.preventDefault();

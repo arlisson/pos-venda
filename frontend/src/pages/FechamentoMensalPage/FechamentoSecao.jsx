@@ -1,21 +1,21 @@
 import * as I from '../../components/Icons';
 
 /**
- * Executa a rotina fmt moeda.
+ * Formata moeda para exibicao.
  */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 /**
- * Executa a rotina somar coluna.
+ * Soma coluna considerando os dados informados.
  */
 function somarColuna(linhas, campo) {
   return linhas.reduce((soma, linha) => soma + Number(linha[campo] || 0), 0);
 }
 
 /**
- * Executa a rotina etapas da secao.
+ * Retorna etapas da secao no formato esperado pelo fluxo.
  */
 function etapasDaSecao(linhas) {
   const mapa = new Map();
@@ -40,7 +40,7 @@ function etapasDaSecao(linhas) {
 }
 
 /**
- * Executa a rotina etapas resumo.
+ * Retorna etapas resumo no formato esperado pelo fluxo.
  */
 function EtapasResumo({ etapas }) {
   if (!etapas.length) return null;
@@ -64,7 +64,7 @@ function EtapasResumo({ etapas }) {
 }
 
 /**
- * Executa a rotina fechamento secao.
+ * Renderiza fechamento secao com os dados informados.
  */
 function FechamentoSecao({ titulo, subtitulo, linhas = [], onDetalhes, secao, loading }) {
   const totais = {

@@ -2,6 +2,9 @@ import { useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from '
 import { createPortal } from 'react-dom';
 import './SelectFiltro.css';
 
+/**
+ * Renderiza um select customizado com busca, portal e navegacao por teclado.
+ */
 export default function SelectFiltro({
   value,
   onChange,
@@ -35,7 +38,7 @@ export default function SelectFiltro({
   ];
 
   /**
-   * Executa a rotina proximo selecionavel.
+   * Processa proximo selecionavel conforme as regras do dominio.
    */
   function proximoSelecionavel(de, dir) {
     const n = itensNavegaveis.length;
@@ -49,7 +52,7 @@ export default function SelectFiltro({
   }
 
   /**
-   * Executa a rotina calcular posicao.
+   * Calcula posicao com base nos valores informados.
    */
   function calcularPosicao() {
     if (!triggerRef.current) return;
@@ -80,7 +83,7 @@ export default function SelectFiltro({
     if (!aberto) return;
 
     /**
-     * Executa a rotina fechar fora.
+     * Fecha fora e limpa o estado relacionado.
      */
     function fecharFora(e) {
       if (
@@ -104,7 +107,7 @@ export default function SelectFiltro({
   }, [aberto]);
 
   /**
-   * Executa a rotina selecionar.
+   * Seleciona  e atualiza o estado relacionado.
    */
   function selecionar(val) {
     onChange(val);
@@ -113,7 +116,7 @@ export default function SelectFiltro({
   }
 
   /**
-   * Executa a rotina handle key down.
+   * Trata o evento de key down.
    */
   function handleKeyDown(e) {
     if (e.key === 'Escape') {
@@ -141,7 +144,7 @@ export default function SelectFiltro({
   }
 
   /**
-   * Executa a rotina alternar menu.
+   * Alterna menu no estado atual.
    */
   function alternarMenu() {
     if (aberto) setBusca('');
@@ -228,7 +231,7 @@ export default function SelectFiltro({
 }
 
 /**
- * Executa a rotina normalizar busca.
+ * Normaliza busca para uso interno consistente.
  */
 function normalizarBusca(valor) {
   return String(valor || '')
@@ -239,7 +242,7 @@ function normalizarBusca(valor) {
 }
 
 /**
- * Executa a rotina search icon.
+ * Renderiza search icon.
  */
 function SearchIcon() {
   return (
@@ -251,7 +254,7 @@ function SearchIcon() {
 }
 
 /**
- * Executa a rotina check icon.
+ * Renderiza check icon.
  */
 function CheckIcon() {
   return (

@@ -13,35 +13,35 @@ const PERMISSAO_RECEBER_EMAIL = 'notificacoes_receber_email';
 let transporter = null;
 
 /**
- * Executa a rotina email user.
+ * Retorna email user no formato esperado pelo fluxo.
  */
 function emailUser() {
   return process.env.EMAIL || process.env.SMTP_USER || '';
 }
 
 /**
- * Executa a rotina email password.
+ * Retorna email password no formato esperado pelo fluxo.
  */
 function emailPassword() {
   return process.env.EMAIL_PASSWORD || process.env.SMTP_PASS || '';
 }
 
 /**
- * Executa a rotina email host.
+ * Retorna email host no formato esperado pelo fluxo.
  */
 function emailHost() {
   return process.env.EMAIL_HOST || process.env.SMTP_HOST || 'smtp.hostinger.com';
 }
 
 /**
- * Executa a rotina email port.
+ * Retorna email port no formato esperado pelo fluxo.
  */
 function emailPort() {
   return Number(process.env.EMAIL_PORT || process.env.SMTP_PORT || 465);
 }
 
 /**
- * Executa a rotina email secure.
+ * Retorna email secure no formato esperado pelo fluxo.
  */
 function emailSecure() {
   const valor = process.env.EMAIL_SECURE || process.env.SMTP_SECURE || 'true';
@@ -49,7 +49,7 @@ function emailSecure() {
 }
 
 /**
- * Executa a rotina status configuracao.
+ * Retorna status configuracao no formato esperado pelo fluxo.
  */
 function statusConfiguracao() {
   return {
@@ -63,7 +63,7 @@ function statusConfiguracao() {
 }
 
 /**
- * Executa a rotina parse dados.
+ * Converte dados para o formato interno esperado.
  */
 function parseDados(dados) {
   if (!dados) return {};
@@ -79,7 +79,7 @@ function parseDados(dados) {
 }
 
 /**
- * Executa a rotina usuario pode receber email.
+ * Verifica se usuario pode receber email atende a condicao esperada.
  */
 function usuarioPodeReceberEmail(usuario) {
   if (!usuario?.ativo) return false;
@@ -87,14 +87,14 @@ function usuarioPodeReceberEmail(usuario) {
 }
 
 /**
- * Executa a rotina email configurado.
+ * Retorna email configurado no formato esperado pelo fluxo.
  */
 function emailConfigurado() {
   return Boolean(emailUser() && emailPassword());
 }
 
 /**
- * Executa a rotina get transporter.
+ * Retorna transporter a partir dos dados informados.
  */
 function getTransporter() {
   if (!emailConfigurado()) return null;
@@ -115,7 +115,7 @@ function getTransporter() {
 }
 
 /**
- * Executa a rotina escape html.
+ * Escapa escape html para evitar quebra de formato.
  */
 function escapeHtml(valor) {
   return String(valor ?? '')
@@ -127,14 +127,14 @@ function escapeHtml(valor) {
 }
 
 /**
- * Executa a rotina frontend url.
+ * Retorna frontend url no formato esperado pelo fluxo.
  */
 function frontendUrl() {
   return String(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
 }
 
 /**
- * Executa a rotina absolute url.
+ * Retorna absolute url no formato esperado pelo fluxo.
  */
 function absoluteUrl(path) {
   if (!path) return frontendUrl();
@@ -143,7 +143,7 @@ function absoluteUrl(path) {
 }
 
 /**
- * Executa a rotina detalhes from entries.
+ * Retorna detalhes from entries no formato esperado pelo fluxo.
  */
 function detalhesFromEntries(entries) {
   return entries
@@ -152,7 +152,7 @@ function detalhesFromEntries(entries) {
 }
 
 /**
- * Executa a rotina montar acao.
+ * Monta acao a partir dos dados informados.
  */
 function montarAcao(notificacao) {
   const dados = parseDados(notificacao.dados);
@@ -249,7 +249,7 @@ function montarAcao(notificacao) {
 }
 
 /**
- * Executa a rotina montar html.
+ * Monta html a partir dos dados informados.
  */
 function montarHtml({ notificacao, usuario, actionUrl, actionLabel, detalhes }) {
   const detalhesHtml = detalhes.length > 0
@@ -304,7 +304,7 @@ function montarHtml({ notificacao, usuario, actionUrl, actionLabel, detalhes }) 
 }
 
 /**
- * Executa a rotina montar texto.
+ * Monta texto a partir dos dados informados.
  */
 function montarTexto({ notificacao, usuario, actionUrl, actionLabel, detalhes }) {
   const linhas = [
@@ -323,7 +323,7 @@ function montarTexto({ notificacao, usuario, actionUrl, actionLabel, detalhes })
 }
 
 /**
- * Executa a rotina enviar email destinatario.
+ * Envia email destinatario para processamento.
  */
 async function enviarEmailDestinatario({ notificacao, destinatario, usuario }) {
   if (!usuarioPodeReceberEmail(usuario)) {
@@ -372,7 +372,7 @@ async function enviarEmailDestinatario({ notificacao, destinatario, usuario }) {
 }
 
 /**
- * Executa a rotina enviar email teste.
+ * Envia email teste para processamento.
  */
 async function enviarEmailTeste(usuario) {
   if (!emailConfigurado()) {
@@ -422,7 +422,7 @@ async function enviarEmailTeste(usuario) {
 }
 
 /**
- * Executa a rotina enviar emails pendentes.
+ * Envia emails pendentes para processamento.
  */
 async function enviarEmailsPendentes(notificacaoId) {
   if (!emailConfigurado()) return { enviados: 0, ignorado: true };
@@ -463,7 +463,7 @@ async function enviarEmailsPendentes(notificacaoId) {
 }
 
 /**
- * Executa a rotina enviar emails pendentes async.
+ * Envia emails pendentes async para processamento.
  */
 function enviarEmailsPendentesAsync(notificacaoId) {
   setTimeout(() => {

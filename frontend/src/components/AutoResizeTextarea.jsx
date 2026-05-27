@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * Executa a rotina auto resize textarea.
+ * Processa auto resize textarea conforme as regras do dominio.
  */
 function AutoResizeTextarea({
   value,

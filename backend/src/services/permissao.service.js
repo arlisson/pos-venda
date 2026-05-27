@@ -5,7 +5,7 @@ const Permissao = require('../models/Permissao'); // Importa o modelo Permissao
 
 // Função para listar todas as permissões ativas
 /**
- * Executa a rotina listar permissoes.
+ * Lista permissoes conforme os filtros e parametros informados.
  */
 async function listarPermissoes() {
   return Permissao.query()
@@ -15,7 +15,7 @@ async function listarPermissoes() {
 
 // Função para buscar permissão por ID
 /**
- * Executa a rotina buscar permissao por id.
+ * Busca permissao por id conforme os parametros informados.
  */
 async function buscarPermissaoPorId(id) {
   return Permissao.query().findById(id);
@@ -23,7 +23,7 @@ async function buscarPermissaoPorId(id) {
 
 // Função para criar uma nova permissão
 /**
- * Executa a rotina criar permissao.
+ * Cria permissao com os dados informados.
  */
 async function criarPermissao(dados) {
   return Permissao.query().insert({

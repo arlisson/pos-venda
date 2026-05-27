@@ -6,7 +6,7 @@ function texto(valor) {
 }
 
 /**
- * Executa a rotina normalizar texto.
+ * Normaliza texto para uso interno consistente.
  */
 function normalizarTexto(valor) {
   return texto(valor)
@@ -16,7 +16,7 @@ function normalizarTexto(valor) {
 }
 
 /**
- * Executa a rotina linha.
+ * Retorna linha no formato esperado pelo fluxo.
  */
 function linha(label, value) {
   const valor = texto(value);
@@ -24,7 +24,7 @@ function linha(label, value) {
 }
 
 /**
- * Executa a rotina telefone.
+ * Normaliza telefone para exibicao ou envio.
  */
 function telefone(numero) {
   let valor = texto(numero);
@@ -33,14 +33,14 @@ function telefone(numero) {
 }
 
 /**
- * Executa a rotina cnpj.
+ * Normaliza CNPJ para exibicao ou envio.
  */
 function cnpj(valor) {
   return texto(valor).replace(/\D/g, '');
 }
 
 /**
- * Executa a rotina formatar moeda.
+ * Formata moeda para exibicao ou envio.
  */
 function formatarMoeda(valor) {
   if (valor === null || valor === undefined || valor === '') return '';
@@ -55,7 +55,7 @@ function formatarMoeda(valor) {
 }
 
 /**
- * Executa a rotina formatar decimal.
+ * Formata decimal para exibicao ou envio.
  */
 function formatarDecimal(valor) {
   const numero = Number(valor);
@@ -68,7 +68,7 @@ function formatarDecimal(valor) {
 }
 
 /**
- * Executa a rotina formatar data.
+ * Formata data para exibicao ou envio.
  */
 function formatarData(valor) {
   const raw = texto(valor);
@@ -81,7 +81,7 @@ function formatarData(valor) {
 }
 
 /**
- * Executa a rotina parse numero.
+ * Converte numero para o formato interno esperado.
  */
 function parseNumero(valor) {
   if (valor === null || valor === undefined || valor === '') return 0;
@@ -112,7 +112,7 @@ function parseNumero(valor) {
 }
 
 /**
- * Executa a rotina parse itens chips.
+ * Converte itens chips para o formato interno esperado.
  */
 function parseItensChips(valor, gbPadrao = '') {
   if (!valor) return [];
@@ -154,7 +154,7 @@ function parseItensChips(valor, gbPadrao = '') {
 }
 
 /**
- * Executa a rotina normalizar tipo linha chip.
+ * Normaliza tipo linha chip para uso interno consistente.
  */
 function normalizarTipoLinhaChip(valor) {
   const tipo = normalizarTexto(valor);
@@ -162,7 +162,7 @@ function normalizarTipoLinhaChip(valor) {
 }
 
 /**
- * Executa a rotina parse portados.
+ * Converte portados para o formato interno esperado.
  */
 function parsePortados(valor) {
   if (!valor) return [];
@@ -186,7 +186,7 @@ function parsePortados(valor) {
 }
 
 /**
- * Executa a rotina quantidade linhas.
+ * Retorna quantidade linhas no formato esperado pelo fluxo.
  */
 function quantidadeLinhas(venda, itens) {
   const qtdVenda = Number(venda.quantidade_linhas || 0);
@@ -197,7 +197,7 @@ function quantidadeLinhas(venda, itens) {
 }
 
 /**
- * Executa a rotina preco unitario padrao.
+ * Retorna preco unitario padrao no formato esperado pelo fluxo.
  */
 function precoUnitarioPadrao(venda, qtd) {
   if (!qtd) return '';
@@ -208,14 +208,14 @@ function precoUnitarioPadrao(venda, qtd) {
 }
 
 /**
- * Executa a rotina valor total.
+ * Retorna valor total no formato esperado pelo fluxo.
  */
 function valorTotal(venda) {
   return formatarMoeda(venda.valor_total);
 }
 
 /**
- * Executa a rotina gb com sufixo.
+ * Retorna gb com sufixo no formato esperado pelo fluxo.
  */
 function gbComSufixo(valor) {
   const gb = texto(valor);
@@ -224,28 +224,28 @@ function gbComSufixo(valor) {
 }
 
 /**
- * Executa a rotina nome cliente.
+ * Retorna nome cliente no formato esperado pelo fluxo.
  */
 function nomeCliente(venda) {
   return texto(venda.razao_social || venda.cliente?.razao_social || venda.cliente?.nome || venda.nome);
 }
 
 /**
- * Executa a rotina nome vendedora.
+ * Retorna nome vendedora no formato esperado pelo fluxo.
  */
 function nomeVendedora(venda) {
   return texto(venda.vendedora?.nome);
 }
 
 /**
- * Executa a rotina endereco receita.
+ * Retorna endereco receita no formato esperado pelo fluxo.
  */
 function enderecoReceita(venda, campo) {
   return texto(venda[campo]);
 }
 
 /**
- * Executa a rotina montar contexto.
+ * Monta contexto a partir dos dados informados.
  */
 function montarContexto(venda) {
   const itens = parseItensChips(venda.valores_unitarios_chips, venda.gb);
@@ -269,7 +269,7 @@ function montarContexto(venda) {
 }
 
 /**
- * Executa a rotina formatar plano claro.
+ * Formata plano claro para exibicao ou envio.
  */
 function formatarPlanoClaro(venda, ctx) {
   if (ctx.itens.length > 0) {
@@ -293,7 +293,7 @@ function formatarPlanoClaro(venda, ctx) {
 }
 
 /**
- * Executa a rotina render claro.
+ * Renderiza claro no fluxo da tela.
  */
 function renderClaro(venda) {
   const ctx = montarContexto(venda);
@@ -329,7 +329,7 @@ function renderClaro(venda) {
 }
 
 /**
- * Executa a rotina plano vivo.
+ * Retorna plano vivo no formato esperado pelo fluxo.
  */
 function planoVivo(venda, ctx) {
   if (ctx.itens.length > 0) {
@@ -353,7 +353,7 @@ function planoVivo(venda, ctx) {
 }
 
 /**
- * Executa a rotina render vivo.
+ * Renderiza vivo no fluxo da tela.
  */
 function renderVivo(venda) {
   const ctx = montarContexto(venda);
@@ -386,7 +386,7 @@ function renderVivo(venda) {
 }
 
 /**
- * Executa a rotina resolver operadora.
+ * Resolve operadora a partir do contexto atual.
  */
 function resolverOperadora(venda) {
   const nome = texto(venda.operadora?.nome);
@@ -399,7 +399,7 @@ function resolverOperadora(venda) {
 }
 
 /**
- * Executa a rotina render email venda.
+ * Renderiza email venda no fluxo da tela.
  */
 function renderEmailVenda(venda) {
   const operadora = resolverOperadora(venda);

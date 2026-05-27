@@ -13,7 +13,7 @@ const PERMISSAO_RECEBER = 'notificacoes_venda_cancelada';
 const PERMISSAO_RECEBER_TODAS = 'notificacoes_receber_todas';
 
 /**
- * Executa a rotina usuario pode receber.
+ * Verifica se usuario pode receber atende a condicao esperada.
  */
 function usuarioPodeReceber(usuario) {
   if (!usuario || !usuario.ativo) return false;
@@ -22,21 +22,21 @@ function usuarioPodeReceber(usuario) {
 }
 
 /**
- * Executa a rotina source key venda.
+ * Retorna source key venda no formato esperado pelo fluxo.
  */
 function sourceKeyVenda(vendaId) {
   return `venda_cancelada:${vendaId}`;
 }
 
 /**
- * Executa a rotina nome venda.
+ * Retorna nome venda no formato esperado pelo fluxo.
  */
 function nomeVenda(venda) {
   return venda?.cliente?.nome || venda?.nome || venda?.razao_social || `Venda #${venda?.id}`;
 }
 
 /**
- * Executa a rotina listar destinatarios.
+ * Lista destinatarios conforme os filtros e parametros informados.
  */
 async function listarDestinatarios(usuarioDisparadorId) {
   const usuarios = await Usuario.query()
@@ -68,7 +68,7 @@ async function listarDestinatarios(usuarioDisparadorId) {
 }
 
 /**
- * Executa a rotina criar notificacao cancelamento.
+ * Cria notificacao cancelamento com os dados informados.
  */
 async function criarNotificacaoCancelamento({ venda, motivo, usuarioId, trx = null }) {
   if (!venda?.id) return null;
@@ -148,7 +148,7 @@ async function criarNotificacaoCancelamento({ venda, motivo, usuarioId, trx = nu
 }
 
 /**
- * Executa a rotina desativar notificacao cancelamento.
+ * Desativa notificacao cancelamento quando nao e mais necessaria.
  */
 async function desativarNotificacaoCancelamento(vendaId, trx = null) {
   return Notificacao.query(trx)

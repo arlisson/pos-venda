@@ -4,7 +4,7 @@
 import { apiGet } from './api';
 
 /**
- * Executa a rotina obter contexto notificacoes dashboard.
+ * Obtem contexto notificacoes dashboard a partir dos dados informados.
  */
 export async function obterContextoNotificacoesDashboard() {
   return apiGet('/dashboard/notificacoes-contexto');

@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para clientes cadastrados no sistema.
+ */
 class Cliente extends Model {
   static get tableName() {
     return 'clientes';

@@ -33,7 +33,7 @@ const ALLOWED_TYPES = String(
 ).split(',').map(item => item.trim()).filter(Boolean);
 
 /**
- * Executa a rotina buscar escopo vendas.
+ * Busca escopo vendas conforme os parametros informados.
  */
 async function buscarEscopoVendas(usuarioId) {
   const usuario = await Usuario.query()
@@ -52,7 +52,7 @@ async function buscarEscopoVendas(usuarioId) {
 }
 
 /**
- * Executa a rotina usuario tem permissao.
+ * Verifica se usuario tem permissao atende a condicao esperada.
  */
 async function usuarioTemPermissao(usuarioId, permissao) {
   const usuario = await Usuario.query()
@@ -67,7 +67,7 @@ async function usuarioTemPermissao(usuarioId, permissao) {
 }
 
 /**
- * Executa a rotina usuario pode acessar venda.
+ * Verifica se usuario pode acessar venda atende a condicao esperada.
  */
 async function usuarioPodeAcessarVenda(vendaId, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
@@ -98,7 +98,7 @@ async function usuarioPodeAcessarVenda(vendaId, usuarioId) {
 }
 
 /**
- * Executa a rotina garantir acesso venda.
+ * Garante acesso venda antes de continuar o fluxo.
  */
 async function garantirAcessoVenda(vendaId, usuarioId) {
   const permitido = await usuarioPodeAcessarVenda(vendaId, usuarioId);
@@ -111,7 +111,7 @@ async function garantirAcessoVenda(vendaId, usuarioId) {
 }
 
 /**
- * Executa a rotina adicionar dias.
+ * Adiciona dias ao conjunto atual.
  */
 function adicionarDias(data, dias) {
   const nova = new Date(data);
@@ -120,7 +120,7 @@ function adicionarDias(data, dias) {
 }
 
 /**
- * Executa a rotina formatar arquivo venda.
+ * Formata arquivo venda para exibicao ou envio.
  */
 function formatarArquivoVenda(row) {
   return {
@@ -151,7 +151,7 @@ function formatarArquivoVenda(row) {
 }
 
 /**
- * Executa a rotina formatar pacote.
+ * Formata pacote para exibicao ou envio.
  */
 function formatarPacote(pacote) {
   if (!pacote) return null;
@@ -172,7 +172,7 @@ function formatarPacote(pacote) {
 }
 
 /**
- * Executa a rotina listar arquivos.
+ * Lista arquivos conforme os filtros e parametros informados.
  */
 async function listarArquivos(vendaId, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
@@ -204,7 +204,7 @@ async function listarArquivos(vendaId, usuarioId) {
 }
 
 /**
- * Executa a rotina receber arquivo upload.
+ * Processa receber arquivo upload conforme as regras do dominio.
  */
 async function receberArquivoUpload(req, vendaId, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
@@ -240,7 +240,7 @@ async function receberArquivoUpload(req, vendaId, usuarioId) {
 }
 
 /**
- * Executa a rotina salvar arquivo venda.
+ * Salva arquivo venda com os dados informados.
  */
 async function salvarArquivoVenda(vendaId, usuarioId, upload) {
   const arquivo = await materializarArquivo(upload, usuarioId);
@@ -271,7 +271,7 @@ async function salvarArquivoVenda(vendaId, usuarioId, upload) {
 }
 
 /**
- * Executa a rotina buscar vinculo arquivo.
+ * Busca vinculo arquivo conforme os parametros informados.
  */
 async function buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
@@ -292,7 +292,7 @@ async function buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId) {
 }
 
 /**
- * Executa a rotina preparar download arquivo.
+ * Prepara o download de arquivo.
  */
 async function prepararDownloadArquivo(vendaId, arquivoVendaId, usuarioId) {
   const vinculo = await buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId);
@@ -315,7 +315,7 @@ async function prepararDownloadArquivo(vendaId, arquivoVendaId, usuarioId) {
 }
 
 /**
- * Executa a rotina excluir arquivo venda.
+ * Exclui arquivo venda conforme a regra de negocio.
  */
 async function excluirArquivoVenda(vendaId, arquivoVendaId, usuarioId) {
   await buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId);
@@ -337,7 +337,7 @@ async function excluirArquivoVenda(vendaId, arquivoVendaId, usuarioId) {
 }
 
 /**
- * Executa a rotina obter pacote.
+ * Obtem pacote a partir dos dados informados.
  */
 async function obterPacote(vendaId, usuarioId, opcoes = {}) {
   if (opcoes.validarAcesso !== false) {
@@ -353,7 +353,7 @@ async function obterPacote(vendaId, usuarioId, opcoes = {}) {
 }
 
 /**
- * Executa a rotina solicitar pacote venda.
+ * Executa a acao de solicitar pacote venda mantendo o estado da tela consistente.
  */
 async function solicitarPacoteVenda(vendaId, usuarioId, opcoes = {}) {
   if (opcoes.validarAcesso !== false) {
@@ -393,7 +393,7 @@ async function solicitarPacoteVenda(vendaId, usuarioId, opcoes = {}) {
 }
 
 /**
- * Executa a rotina gerar pacote venda.
+ * Gera pacote venda a partir dos dados informados.
  */
 async function gerarPacoteVenda(vendaId, usuarioId, pacoteId = null) {
   const pacote = pacoteId
@@ -464,7 +464,7 @@ async function gerarPacoteVenda(vendaId, usuarioId, pacoteId = null) {
 }
 
 /**
- * Executa a rotina nome unico zip.
+ * Retorna nome unico zip no formato esperado pelo fluxo.
  */
 function nomeUnicoZip(nome, usados) {
   const limpo = normalizarNomeArquivo(nome);
@@ -483,7 +483,7 @@ function nomeUnicoZip(nome, usados) {
 }
 
 /**
- * Executa a rotina criar zip venda.
+ * Cria zip venda com os dados informados.
  */
 async function criarZipVenda(destino, arquivos) {
   await fs.promises.unlink(destino).catch(() => {});
@@ -511,7 +511,7 @@ async function criarZipVenda(destino, arquivos) {
 }
 
 /**
- * Executa a rotina hash arquivo.
+ * Processa hash arquivo conforme as regras do dominio.
  */
 async function hashArquivo(absPath) {
   return new Promise((resolve, reject) => {
@@ -532,7 +532,7 @@ async function hashArquivo(absPath) {
 }
 
 /**
- * Executa a rotina preparar download pacote.
+ * Prepara o download de pacote.
  */
 async function prepararDownloadPacote(vendaId, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
@@ -561,7 +561,7 @@ async function prepararDownloadPacote(vendaId, usuarioId) {
 }
 
 /**
- * Executa a rotina marcar pacote desatualizado.
+ * Marca pacote desatualizado conforme a acao solicitada.
  */
 async function marcarPacoteDesatualizado(vendaId) {
   await VendaArquivoPacote.query()
@@ -574,7 +574,7 @@ async function marcarPacoteDesatualizado(vendaId) {
 }
 
 /**
- * Executa a rotina limpar arquivos individuais vencidos.
+ * Limpa arquivos individuais vencidos e restaura o estado inicial.
  */
 async function limparArquivosIndividuaisVencidos() {
   const vencidos = await VendaArquivo.query()

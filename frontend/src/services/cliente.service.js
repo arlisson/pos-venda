@@ -1,7 +1,7 @@
 import { apiBlob, apiDelete, apiGet, apiPost, apiPut, apiRequest } from './api';
 
 /**
- * Executa a rotina montar query.
+ * Monta query a partir dos dados informados.
  */
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -27,7 +27,7 @@ export async function listarClientes(filtros = {}) {
 }
 
 /**
- * Executa a rotina baixar blob.
+ * Baixa blob para o usuario.
  */
 function baixarBlob(blob, nomeArquivo) {
   const url = URL.createObjectURL(blob);
@@ -105,7 +105,7 @@ export async function criarCliente(dados) {
 }
 
 /**
- * Executa a rotina montar form data importacao.
+ * Monta form data importacao a partir dos dados informados.
  */
 function montarFormDataImportacao(arquivo, mapeamento) {
   const formData = new FormData();

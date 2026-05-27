@@ -30,7 +30,7 @@ const PERMISSAO_POS_VENDA = {
 };
 
 /**
- * Executa a rotina garantir permissao pos venda.
+ * Garante permissao pos venda antes de continuar o fluxo.
  */
 function garantirPermissaoPosVenda(permissoes = []) {
   if (permissoes.some(permissao => permissao.chave === PERMISSAO_POS_VENDA.chave)) {
@@ -41,7 +41,7 @@ function garantirPermissaoPosVenda(permissoes = []) {
 }
 
 /**
- * Executa a rotina editar usuario page.
+ * Renderiza editar usuario page.
  */
 function EditarUsuarioPage() {
   const { id } = useParams();
@@ -76,7 +76,7 @@ function EditarUsuarioPage() {
 
   useEffect(() => {
     /**
-     * Executa a rotina carregar dados.
+     * Carrega dados e atualiza o estado relacionado.
      */
     async function carregarDados() {
       try {
@@ -124,7 +124,7 @@ function EditarUsuarioPage() {
   }, [id]);
 
   /**
-   * Executa a rotina handle permissao change.
+   * Trata o evento de permissao change.
    */
   function handlePermissaoChange(chave, opcoes = {}) {
     setPermissoesSelecionadas((atuais) => {
@@ -142,7 +142,7 @@ function EditarUsuarioPage() {
   }
 
   /**
-   * Executa a rotina handle bloco permissoes change.
+   * Trata o evento de bloco permissoes change.
    */
   function handleBlocoPermissoesChange(chaves, selecionar) {
     setPermissoesSelecionadas((atuais) => {
@@ -201,7 +201,7 @@ function EditarUsuarioPage() {
   }, [erro]);
 
   /**
-   * Executa a rotina handle submit.
+   * Trata o evento de submit.
    */
   async function handleSubmit(event) {
     event.preventDefault();

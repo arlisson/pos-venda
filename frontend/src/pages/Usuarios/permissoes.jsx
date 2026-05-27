@@ -10,7 +10,7 @@ export const PERMISSAO_POS_VENDA = {
 export const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
 
 /**
- * Executa a rotina garantir permissao pos venda.
+ * Garante permissao pos venda antes de continuar o fluxo.
  */
 export function garantirPermissaoPosVenda(permissoes = []) {
   if (permissoes.some(permissao => permissao.chave === PERMISSAO_POS_VENDA.chave)) {
@@ -442,14 +442,14 @@ export const GRUPOS_PERMISSOES = [
 ];
 
 /**
- * Executa a rotina get chaves grupo.
+ * Retorna chaves grupo a partir dos dados informados.
  */
 export function getChavesGrupo(grupo) {
   return Array.from(new Set(grupo.secoes.flatMap(secao => secao.itens.map(item => item.chave))));
 }
 
 /**
- * Executa a rotina get permissoes declaradas.
+ * Retorna permissoes declaradas a partir dos dados informados.
  */
 export function getPermissoesDeclaradas() {
   return GRUPOS_PERMISSOES.flatMap(grupo => (
@@ -464,7 +464,7 @@ export function getPermissoesDeclaradas() {
 }
 
 /**
- * Executa a rotina montar grupos permissoes.
+ * Monta grupos permissoes a partir dos dados informados.
  */
 export function montarGruposPermissoes(permissoes = []) {
   const permissoesPorChave = [...permissoes, ...getPermissoesDeclaradas()].reduce((acc, permissao) => {
@@ -516,7 +516,7 @@ export function montarGruposPermissoes(permissoes = []) {
 }
 
 /**
- * Executa a rotina copiar permissoes select.
+ * Renderiza copiar permissoes select.
  */
 export function CopiarPermissoesSelect({ value, onChange, options, placeholder = 'Selecione um usuário' }) {
   const [aberto, setAberto] = useState(false);
@@ -525,7 +525,7 @@ export function CopiarPermissoesSelect({ value, onChange, options, placeholder =
   useEffect(() => {
     if (!aberto) return undefined;
     /**
-     * Executa a rotina handle click fora.
+     * Trata o evento de click fora.
      */
     function handleClickFora(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -533,7 +533,7 @@ export function CopiarPermissoesSelect({ value, onChange, options, placeholder =
       }
     }
     /**
-     * Executa a rotina handle esc.
+     * Trata o evento de esc.
      */
     function handleEsc(event) {
       if (event.key === 'Escape') setAberto(false);
@@ -590,7 +590,7 @@ export function CopiarPermissoesSelect({ value, onChange, options, placeholder =
 }
 
 /**
- * Executa a rotina parse permissoes usuario.
+ * Converte permissoes usuario para o formato interno esperado.
  */
 export function parsePermissoesUsuario(permissoes) {
   if (!permissoes) return [];
@@ -602,7 +602,7 @@ export function parsePermissoesUsuario(permissoes) {
 }
 
 /**
- * Executa a rotina normalizar permissoes usuario.
+ * Normaliza permissoes usuario para uso interno consistente.
  */
 export function normalizarPermissoesUsuario(permissoes) {
   if (!permissoes) return {};
@@ -619,7 +619,7 @@ export function normalizarPermissoesUsuario(permissoes) {
 }
 
 /**
- * Executa a rotina get permissoes selecionadas usuario.
+ * Retorna permissoes selecionadas usuario a partir dos dados informados.
  */
 export function getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis = []) {
   if (usuario?.role?.nome !== 'admin') {
@@ -635,7 +635,7 @@ export function getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis 
 }
 
 /**
- * Executa a rotina montar permissoes admin para salvar.
+ * Monta permissoes admin para salvar a partir dos dados informados.
  */
 export function montarPermissoesAdminParaSalvar(selecionadas = [], permissoesDisponiveis = []) {
   return permissoesDisponiveis.map(permissao => permissao.chave).reduce((acc, chave) => {
@@ -648,14 +648,14 @@ export function montarPermissoesAdminParaSalvar(selecionadas = [], permissoesDis
 }
 
 /**
- * Executa a rotina get permissoes copiaveis.
+ * Retorna permissoes copiaveis a partir dos dados informados.
  */
 export function getPermissoesCopiaveis(usuarioOrigem, permissoesDisponiveis) {
   return getPermissoesSelecionadasUsuario(usuarioOrigem, permissoesDisponiveis);
 }
 
 /**
- * Executa a rotina permissao card.
+ * Renderiza permissao card.
  */
 export function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, onToggle }) {
   return (
@@ -676,7 +676,7 @@ export function PermissaoCard({ item, selecionado, exclusivo, grupoExclusivo, on
 }
 
 /**
- * Executa a rotina seletor bloco permissoes.
+ * Processa seletor bloco permissoes conforme as regras do dominio.
  */
 function SeletorBlocoPermissoes({ titulo, total, selecionadas, onToggle }) {
   const checkboxRef = useRef(null);
@@ -706,7 +706,7 @@ function SeletorBlocoPermissoes({ titulo, total, selecionadas, onToggle }) {
 }
 
 /**
- * Executa a rotina permissao grupo.
+ * Processa permissao grupo conforme as regras do dominio.
  */
 export function PermissaoGrupo({ grupo, selecionadas, onToggle, onToggleBloco }) {
   const chaves = getChavesGrupo(grupo);

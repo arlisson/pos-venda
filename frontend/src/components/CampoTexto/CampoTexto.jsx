@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Executa a rotina campo texto.
+ * Renderiza um campo de texto controlado com label opcional.
  */
 function CampoTexto({
   label,

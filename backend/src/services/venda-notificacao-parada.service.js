@@ -14,7 +14,7 @@ const PERMISSAO_VENDAS_PARADAS = 'notificacoes_vendas_paradas';
 const HORAS_LIMITE = 5 * 24; // 5 dias corridos em horas
 
 /**
- * Executa a rotina usuario tem permissao.
+ * Verifica se usuario tem permissao atende a condicao esperada.
  */
 function usuarioTemPermissao(usuario, permissao) {
   if (!usuario || !usuario.ativo) return false;
@@ -22,7 +22,7 @@ function usuarioTemPermissao(usuario, permissao) {
 }
 
 /**
- * Executa a rotina horas decorridas.
+ * Processa horas decorridas conforme as regras do dominio.
  */
 function horasDecorridas(dataInicio, dataFim) {
   if (!dataInicio || !dataFim) return 0;
@@ -33,7 +33,7 @@ function horasDecorridas(dataInicio, dataFim) {
 }
 
 /**
- * Executa a rotina registrar entrada estagio.
+ * Registra entrada estagio no historico ou log.
  */
 async function registrarEntradaEstagio(vendaId, etapaCodigo, dataEntrada = new Date(), trx = null) {
   try {
@@ -59,7 +59,7 @@ async function registrarEntradaEstagio(vendaId, etapaCodigo, dataEntrada = new D
 }
 
 /**
- * Executa a rotina desativar notificacao venda parada.
+ * Desativa notificacao venda parada quando nao e mais necessaria.
  */
 async function desativarNotificacaoVendaParada(vendaId, etapaCodigo, trx = null) {
   try {
@@ -84,7 +84,7 @@ async function desativarNotificacaoVendaParada(vendaId, etapaCodigo, trx = null)
 }
 
 /**
- * Executa a rotina garantir registros entrada ativos.
+ * Garante registros entrada ativos antes de continuar o fluxo.
  */
 async function garantirRegistrosEntradaAtivos() {
   const vendasSemRegistro = await db('vendas as v')
@@ -122,7 +122,7 @@ async function garantirRegistrosEntradaAtivos() {
 }
 
 /**
- * Executa a rotina sincronizar vendas paradas.
+ * Sincroniza vendas paradas com os dados atuais.
  */
 async function sincronizarVendasParadas() {
   try {
@@ -217,7 +217,7 @@ async function sincronizarVendasParadas() {
 }
 
 /**
- * Executa a rotina obter destinatarios venda.
+ * Obtem destinatarios venda a partir dos dados informados.
  */
 async function obterDestinatariosVenda(venda) {
   try {

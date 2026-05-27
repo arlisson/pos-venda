@@ -1,5 +1,5 @@
 /**
- * Executa a rotina fmt moeda.
+ * Formata moeda para exibicao.
  */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -16,7 +16,7 @@ const INDICADORES = [
 ];
 
 /**
- * Executa a rotina painel gerencial.
+ * Processa painel gerencial conforme as regras do dominio.
  */
 function PainelGerencial({ linhas = [], loading }) {
   return (

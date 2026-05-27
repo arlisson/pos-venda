@@ -3,14 +3,14 @@
  */
 export async function listarPlanos() { return []; }
 /**
- * Executa a rotina criar plano.
+ * Cria plano com os dados informados.
  */
 export async function criarPlano() { throw new Error('Planos removidos'); }
 /**
- * Executa a rotina atualizar plano.
+ * Atualiza plano com os dados informados.
  */
 export async function atualizarPlano() { throw new Error('Planos removidos'); }
 /**
- * Executa a rotina excluir plano.
+ * Exclui plano conforme a regra de negocio.
  */
 export async function excluirPlano() { throw new Error('Planos removidos'); }

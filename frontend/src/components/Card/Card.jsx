@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Executa a rotina card.
+ * Renderiza um painel simples com corpo padronizado.
  */
 function Card({ children, className = '' }) {
   return (

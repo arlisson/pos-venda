@@ -11,7 +11,7 @@ import {
 } from '../../services/venda.service';
 
 /**
- * Executa a rotina formatar data.
+ * Formata data para exibicao ou envio.
  */
 function formatarData(value) {
   if (!value) return '-';
@@ -26,7 +26,7 @@ function formatarData(value) {
 }
 
 /**
- * Executa a rotina get problema status label.
+ * Retorna problema status label a partir dos dados informados.
  */
 function getProblemaStatusLabel(status) {
   if (status === 'resolvido') return 'Aguardando verificação';
@@ -35,7 +35,7 @@ function getProblemaStatusLabel(status) {
 }
 
 /**
- * Executa a rotina get problema titulo.
+ * Retorna problema titulo a partir dos dados informados.
  */
 function getProblemaTitulo(problema) {
   const abertura = (problema.eventos || []).find(evento => evento.tipo === 'abertura');
@@ -43,14 +43,14 @@ function getProblemaTitulo(problema) {
 }
 
 /**
- * Executa a rotina get responsaveis.
+ * Retorna responsaveis a partir dos dados informados.
  */
 function getResponsaveis(problema) {
   return (problema.destinatarios || []).map(item => item.usuario?.nome).filter(Boolean).join(', ') || '-';
 }
 
 /**
- * Executa a rotina venda problema card.
+ * Renderiza venda problema card.
  */
 function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
   const [mensagemResolucao, setMensagemResolucao] = useState('');
@@ -69,7 +69,7 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
   const detalhesId = `problema-${problema.id}-detalhes`;
 
   /**
-   * Executa a rotina executar.
+   * Processa executar conforme as regras do dominio.
    */
   async function executar(acao) {
     setErro('');
@@ -167,7 +167,7 @@ function VendaProblemaCard({ problema, usuario, destacado, onAtualizar }) {
 }
 
 /**
- * Executa a rotina novo problema form.
+ * Processa novo problema form conforme as regras do dominio.
  */
 function NovoProblemaForm({ venda, onSalvo }) {
   const [aberto, setAberto] = useState(false);
@@ -179,7 +179,7 @@ function NovoProblemaForm({ venda, onSalvo }) {
   const [salvando, setSalvando] = useState(false);
 
   /**
-   * Executa a rotina abrir.
+   * Abre  e prepara o estado necessario.
    */
   async function abrir() {
     setAberto(true);
@@ -192,7 +192,7 @@ function NovoProblemaForm({ venda, onSalvo }) {
   }
 
   /**
-   * Executa a rotina fechar.
+   * Fecha  e limpa o estado relacionado.
    */
   function fechar() {
     setAberto(false);
@@ -203,14 +203,14 @@ function NovoProblemaForm({ venda, onSalvo }) {
   }
 
   /**
-   * Executa a rotina toggle usuario.
+   * Alterna usuario no estado atual.
    */
   function toggleUsuario(id) {
     setDestinatarios(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
   }
 
   /**
-   * Executa a rotina salvar.
+   * Salva  com os dados informados.
    */
   async function salvar() {
     setErro('');
@@ -287,7 +287,7 @@ function NovoProblemaForm({ venda, onSalvo }) {
 }
 
 /**
- * Executa a rotina venda problema panel.
+ * Processa venda problema panel conforme as regras do dominio.
  */
 function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
   const [problemas, setProblemas] = useState([]);
@@ -296,7 +296,7 @@ function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
   const podeAdicionarProblema = temPermissao(usuario, 'pos_venda');
 
   /**
-   * Executa a rotina carregar.
+   * Carrega  e atualiza o estado relacionado.
    */
   async function carregar() {
     if (!venda?.id) return;
@@ -331,7 +331,7 @@ function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
   }, [initialProblemaId, problemas.length]);
 
   /**
-   * Executa a rotina atualizar problema.
+   * Atualiza problema com os dados informados.
    */
   function atualizarProblema(problemaId, atualizado) {
     setProblemas(prev => {
@@ -344,7 +344,7 @@ function VendaProblemaPanel({ venda, usuario, initialProblemaId }) {
   }
 
   /**
-   * Executa a rotina adicionar problema.
+   * Adiciona problema ao conjunto atual.
    */
   function adicionarProblema(novo) {
     setProblemas(prev => [...prev, novo]);

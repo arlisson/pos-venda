@@ -27,7 +27,7 @@ const CAMPOS = [
 ];
 
 /**
- * Executa a rotina limpar valor.
+ * Limpa valor e restaura o estado inicial.
  */
 function limparValor(valor) {
   if (valor === undefined) return undefined;
@@ -36,7 +36,7 @@ function limparValor(valor) {
 }
 
 /**
- * Executa a rotina normalizar data.
+ * Normaliza data para uso interno consistente.
  */
 function normalizarData(valor) {
   if (!valor) return null;
@@ -62,11 +62,11 @@ function normalizarData(valor) {
 }
 
 /**
- * Executa a rotina formatar date time sql.
+ * Formata date time sql para exibicao ou envio.
  */
 function formatarDateTimeSQL(data = new Date()) {
   /**
-   * Executa a rotina pad.
+   * Preenche valores numericos com zero a esquerda.
    */
   const pad = (value) => String(value).padStart(2, '0');
 
@@ -82,7 +82,7 @@ function formatarDateTimeSQL(data = new Date()) {
 }
 
 /**
- * Executa a rotina adicionar um mes.
+ * Adiciona um mes ao conjunto atual.
  */
 function adicionarUmMes(data = new Date()) {
   const proxima = new Date(data);
@@ -91,7 +91,7 @@ function adicionarUmMes(data = new Date()) {
 }
 
 /**
- * Executa a rotina separar telefone.
+ * Processa separar telefone conforme as regras do dominio.
  */
 function separarTelefone(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
@@ -107,7 +107,7 @@ function separarTelefone(valor) {
 }
 
 /**
- * Executa a rotina normalizar valor monetario.
+ * Normaliza valor monetario para uso interno consistente.
  */
 function normalizarValorMonetario(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
@@ -124,7 +124,7 @@ function normalizarValorMonetario(valor) {
 }
 
 /**
- * Executa a rotina normalizar texto.
+ * Normaliza texto para uso interno consistente.
  */
 function normalizarTexto(valor) {
   return String(valor || '')
@@ -135,35 +135,35 @@ function normalizarTexto(valor) {
 }
 
 /**
- * Executa a rotina sanitizar cnpj.
+ * Sanitiza cnpj removendo caracteres nao esperados.
  */
 function sanitizarCnpj(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 14);
 }
 
 /**
- * Executa a rotina apenas digitos.
+ * Processa apenas digitos conforme as regras do dominio.
  */
 function apenasDigitos(valor) {
   return String(valor || '').replace(/\D/g, '');
 }
 
 /**
- * Executa a rotina sql somente digitos.
+ * Processa sql somente digitos conforme as regras do dominio.
  */
 function sqlSomenteDigitos(coluna) {
   return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${coluna}, '.', ''), '/', ''), '-', ''), '(', ''), ')', ''), ' ', '')`;
 }
 
 /**
- * Executa a rotina sanitizar cpf.
+ * Sanitiza cpf removendo caracteres nao esperados.
  */
 function sanitizarCpf(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 11);
 }
 
 /**
- * Executa a rotina formatar cnpj.
+ * Formata cnpj para exibicao ou envio.
  */
 function formatarCnpj(valor) {
   const digitos = sanitizarCnpj(valor);
@@ -172,7 +172,7 @@ function formatarCnpj(valor) {
 }
 
 /**
- * Executa a rotina formatar cpf.
+ * Formata cpf para exibicao ou envio.
  */
 function formatarCpf(valor) {
   const digitos = sanitizarCpf(valor);
@@ -181,13 +181,13 @@ function formatarCpf(valor) {
 }
 
 /**
- * Executa a rotina validar digitos cnpj.
+ * Valida digitos cnpj e retorna o resultado esperado.
  */
 function validarDigitosCnpj(cnpj) {
   if (!/^\d{14}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
 
   /**
-   * Executa a rotina calcular digito.
+   * Calcula digito com base nos valores informados.
    */
   const calcularDigito = (base) => {
     const pesos = base === 12
@@ -202,13 +202,13 @@ function validarDigitosCnpj(cnpj) {
 }
 
 /**
- * Executa a rotina validar digitos cpf.
+ * Valida digitos cpf e retorna o resultado esperado.
  */
 function validarDigitosCpf(cpf) {
   if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
 
   /**
-   * Executa a rotina calc.
+   * Calcula o digito ou valor auxiliar usado na validacao.
    */
   const calc = (n) => {
     const soma = Array.from({ length: n }, (_, i) => Number(cpf[i]) * (n + 1 - i)).reduce((a, b) => a + b, 0);
@@ -220,7 +220,7 @@ function validarDigitosCpf(cpf) {
 }
 
 /**
- * Executa a rotina normalizar documento obrigatorio.
+ * Normaliza documento obrigatorio para uso interno consistente.
  */
 function normalizarDocumentoObrigatorio(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
@@ -249,7 +249,7 @@ function normalizarDocumentoObrigatorio(valor) {
 }
 
 /**
- * Executa a rotina texto celula.
+ * Retorna texto celula no formato esperado pelo fluxo.
  */
 function textoCelula(valor) {
   if (valor === null || valor === undefined) return '';
@@ -265,7 +265,7 @@ function textoCelula(valor) {
 }
 
 /**
- * Executa a rotina obter valor linha.
+ * Obtem valor linha a partir dos dados informados.
  */
 function obterValorLinha(row, headerMap, coluna) {
   if (!coluna) return '';
@@ -275,7 +275,7 @@ function obterValorLinha(row, headerMap, coluna) {
 }
 
 /**
- * Executa a rotina somar numero.
+ * Soma numero considerando os dados informados.
  */
 function somarNumero(valor) {
   const numero = normalizarValorMonetario(valor);
@@ -283,7 +283,7 @@ function somarNumero(valor) {
 }
 
 /**
- * Executa a rotina normalizar inteiro.
+ * Normaliza inteiro para uso interno consistente.
  */
 function normalizarInteiro(valor) {
   const numero = Number(String(valor || '').replace(/\D/g, ''));
@@ -291,7 +291,7 @@ function normalizarInteiro(valor) {
 }
 
 /**
- * Executa a rotina normalizar inteiro opcional.
+ * Normaliza inteiro opcional para uso interno consistente.
  */
 function normalizarInteiroOpcional(valor) {
   if (valor === undefined || valor === null || valor === '') return null;
@@ -301,7 +301,7 @@ function normalizarInteiroOpcional(valor) {
 }
 
 /**
- * Executa a rotina normalizar operadoras cliente.
+ * Normaliza operadoras cliente para uso interno consistente.
  */
 function normalizarOperadorasCliente(dados = {}) {
   const fonte = Array.isArray(dados.operadoras_atuais)
@@ -360,7 +360,7 @@ function normalizarOperadorasCliente(dados = {}) {
 }
 
 /**
- * Executa a rotina ordenar operadoras cliente.
+ * Processa ordenar operadoras cliente conforme as regras do dominio.
  */
 function ordenarOperadorasCliente(operadoras = []) {
   return [...operadoras].sort((a, b) => (
@@ -370,7 +370,7 @@ function ordenarOperadorasCliente(operadoras = []) {
 }
 
 /**
- * Executa a rotina obter resumo operadoras cliente.
+ * Obtem resumo operadoras cliente a partir dos dados informados.
  */
 function obterResumoOperadorasCliente(operadoras = []) {
   const ordenadas = ordenarOperadorasCliente(operadoras);
@@ -392,7 +392,7 @@ function obterResumoOperadorasCliente(operadoras = []) {
 }
 
 /**
- * Executa a rotina formatar operadoras cliente.
+ * Formata operadoras cliente para exibicao ou envio.
  */
 function formatarOperadorasCliente(operadoras = []) {
   return ordenarOperadorasCliente(operadoras).map(item => ({
@@ -408,7 +408,7 @@ function formatarOperadorasCliente(operadoras = []) {
 }
 
 /**
- * Executa a rotina sincronizar operadoras cliente.
+ * Sincroniza operadoras cliente com os dados atuais.
  */
 async function sincronizarOperadorasCliente(clienteId, operadoras, trx = null) {
   const clienteIdNormalizado = Number(clienteId);
@@ -430,7 +430,7 @@ async function sincronizarOperadorasCliente(clienteId, operadoras, trx = null) {
 }
 
 /**
- * Executa a rotina atualizar resumo legado cliente.
+ * Atualiza resumo legado cliente com os dados informados.
  */
 async function atualizarResumoLegadoCliente(clienteId, trx = null) {
   const clienteIdNormalizado = Number(clienteId);
@@ -452,14 +452,14 @@ async function atualizarResumoLegadoCliente(clienteId, trx = null) {
 }
 
 /**
- * Executa a rotina escolher texto.
+ * Processa escolher texto conforme as regras do dominio.
  */
 function escolherTexto(...valores) {
   return valores.find(valor => String(valor || '').trim()) || '';
 }
 
 /**
- * Executa a rotina complementar campo.
+ * Processa complementar campo conforme as regras do dominio.
  */
 function complementarCampo(payload, cliente, campo, valor) {
   if (cliente[campo] === null || cliente[campo] === undefined || cliente[campo] === '') {
@@ -468,7 +468,7 @@ function complementarCampo(payload, cliente, campo, valor) {
 }
 
 /**
- * Executa a rotina criar http error.
+ * Cria http error com os dados informados.
  */
 function criarHttpError(statusCode, message) {
   const error = new Error(message);
@@ -477,7 +477,7 @@ function criarHttpError(statusCode, message) {
 }
 
 /**
- * Executa a rotina normalizar paginacao.
+ * Normaliza paginacao para uso interno consistente.
  */
 function normalizarPaginacao(filtros = {}) {
   const opcoesPorPagina = new Set([20, 50, 100]);
@@ -488,7 +488,7 @@ function normalizarPaginacao(filtros = {}) {
 }
 
 /**
- * Executa a rotina ler arquivo multipart.
+ * Processa ler arquivo multipart conforme as regras do dominio.
  */
 function lerArquivoMultipart(req) {
   return new Promise((resolve, reject) => {
@@ -539,7 +539,7 @@ function lerArquivoMultipart(req) {
 }
 
 /**
- * Executa a rotina ler workbook.
+ * Processa ler workbook conforme as regras do dominio.
  */
 async function lerWorkbook(buffer) {
   const workbook = new ExcelJS.Workbook();
@@ -552,7 +552,7 @@ async function lerWorkbook(buffer) {
 }
 
 /**
- * Executa a rotina obter cabecalhos.
+ * Obtem cabecalhos a partir dos dados informados.
  */
 function obterCabecalhos(worksheet) {
   const headerRow = worksheet.getRow(1);
@@ -573,13 +573,13 @@ function obterCabecalhos(worksheet) {
 }
 
 /**
- * Executa a rotina sugerir mapeamento.
+ * Processa sugerir mapeamento conforme as regras do dominio.
  */
 function sugerirMapeamento(colunas) {
   const porTexto = new Map(colunas.map(coluna => [normalizarTexto(coluna.nome), coluna.nome]));
 
   /**
-   * Executa a rotina achar.
+   * Processa achar conforme as regras do dominio.
    */
   function achar(...termos) {
     const termosNorm = termos.map(normalizarTexto);
@@ -608,7 +608,7 @@ function sugerirMapeamento(colunas) {
 }
 
 /**
- * Executa a rotina montar amostras.
+ * Monta amostras a partir dos dados informados.
  */
 function montarAmostras(worksheet, colunas) {
   const amostras = [];
@@ -648,7 +648,7 @@ async function previewImportacaoBaseAnterior(req) {
 }
 
 /**
- * Executa a rotina montar mapa operadoras.
+ * Monta mapa operadoras a partir dos dados informados.
  */
 async function montarMapaOperadoras(trx = null) {
   const operadoras = await Operadora.query(trx).select('id', 'nome');
@@ -656,7 +656,7 @@ async function montarMapaOperadoras(trx = null) {
 }
 
 /**
- * Executa a rotina consolidar linhas importacao.
+ * Consolida linhas importacao em uma estrutura unica.
  */
 function consolidarLinhasImportacao(worksheet, mapeamento, operadorasPorNome) {
   const colunas = obterCabecalhos(worksheet);
@@ -741,7 +741,7 @@ function consolidarLinhasImportacao(worksheet, mapeamento, operadorasPorNome) {
 }
 
 /**
- * Executa a rotina parse mapeamento.
+ * Converte mapeamento para o formato interno esperado.
  */
 function parseMapeamento(valor) {
   if (!valor) return {};
@@ -754,7 +754,7 @@ function parseMapeamento(valor) {
 }
 
 /**
- * Executa a rotina montar payload importacao.
+ * Monta payload importacao a partir dos dados informados.
  */
 function montarPayloadImportacao(dados, clienteExistente = null) {
   const telefoneWhatsapp = separarTelefone(dados.whatsapp);
@@ -862,7 +862,7 @@ async function importarBaseAnterior(req, usuarioId) {
 }
 
 /**
- * Executa a rotina montar payload.
+ * Monta payload a partir dos dados informados.
  */
 function montarPayload(dados) {
   const dadosNormalizados = { ...dados };
@@ -931,7 +931,7 @@ function montarPayload(dados) {
 }
 
 /**
- * Executa a rotina buscar cliente duplicado por cnpj.
+ * Busca cliente duplicado por cnpj conforme os parametros informados.
  */
 async function buscarClienteDuplicadoPorCnpj(cnpjDigitos, ignorarId = null, trx = null) {
   if (!cnpjDigitos) return null;
@@ -988,7 +988,7 @@ async function verificarDocumentoCliente(documento, opcoes = {}) {
 }
 
 /**
- * Executa a rotina lancar erro cnpj duplicado.
+ * Processa lancar erro cnpj duplicado conforme as regras do dominio.
  */
 function lancarErroCnpjDuplicado(cliente) {
   const nome = cliente.razao_social || cliente.nome || `#${cliente.id}`;
@@ -1000,7 +1000,7 @@ function lancarErroCnpjDuplicado(cliente) {
 }
 
 /**
- * Executa a rotina buscar escopo clientes.
+ * Busca escopo clientes conforme os parametros informados.
  */
 async function buscarEscopoClientes(usuarioId) {
   const usuario = await Usuario.query()
@@ -1019,7 +1019,7 @@ async function buscarEscopoClientes(usuarioId) {
 
 
 /**
- * Executa a rotina aplicar escopo clientes.
+ * Aplica escopo clientes sobre a consulta ou conjunto informado.
  */
 function aplicarEscopoClientes(query, usuarioId, escopo) {
   if (escopo.podeVerTodos) {
@@ -1036,7 +1036,7 @@ function aplicarEscopoClientes(query, usuarioId, escopo) {
 }
 
 /**
- * Executa a rotina montar aviso fidelidade.
+ * Monta aviso fidelidade a partir dos dados informados.
  */
 function montarAvisoFidelidade(cliente) {
   if (!cliente.fidelidade_fim || cliente.fidelidade_fim === '1899-11-30') {
@@ -1066,7 +1066,7 @@ function montarAvisoFidelidade(cliente) {
 }
 
 /**
- * Executa a rotina valor data excel.
+ * Retorna valor data excel no formato esperado pelo fluxo.
  */
 function valorDataExcel(valor) {
   const texto = valor instanceof Date
@@ -1086,7 +1086,7 @@ function valorDataExcel(valor) {
 }
 
 /**
- * Executa a rotina nome arquivo seguro.
+ * Retorna nome arquivo seguro no formato esperado pelo fluxo.
  */
 function nomeArquivoSeguro(valor) {
   return String(valor || '')
@@ -1098,7 +1098,7 @@ function nomeArquivoSeguro(valor) {
 }
 
 /**
- * Executa a rotina aplicar estilo exportacao.
+ * Aplica estilo exportacao sobre a consulta ou conjunto informado.
  */
 function aplicarEstiloExportacao(worksheet) {
   worksheet.views = [{ state: 'frozen', ySplit: 1 }];
@@ -1130,7 +1130,7 @@ function aplicarEstiloExportacao(worksheet) {
 }
 
 /**
- * Executa a rotina formatar telefone exportacao.
+ * Formata telefone exportacao para exibicao ou envio.
  */
 function formatarTelefoneExportacao(ddd, numero) {
   const d = String(ddd || '').trim();
@@ -1140,7 +1140,7 @@ function formatarTelefoneExportacao(ddd, numero) {
 }
 
 /**
- * Executa a rotina formatar operadoras exportacao.
+ * Formata operadoras exportacao para exibicao ou envio.
  */
 function formatarOperadorasExportacao(cliente) {
   const operadoras = cliente.operadoras_atuais || cliente.operadorasAtuais || [];
@@ -1224,7 +1224,7 @@ async function gerarXlsxClientes(filtros = {}, usuarioId) {
 }
 
 /**
- * Executa a rotina formatar cliente.
+ * Formata cliente para exibicao ou envio.
  */
 function formatarCliente(cliente) {
   if (!cliente) return cliente;
@@ -1247,7 +1247,7 @@ function formatarCliente(cliente) {
 }
 
 /**
- * Executa a rotina montar resumo notas clientes.
+ * Monta resumo notas clientes a partir dos dados informados.
  */
 async function montarResumoNotasClientes(clientes, usuarioId) {
   const ids = clientes.map(cliente => Number(cliente.id)).filter(Boolean);
@@ -1281,7 +1281,7 @@ async function montarResumoNotasClientes(clientes, usuarioId) {
 }
 
 /**
- * Executa a rotina montar resumo vendas clientes.
+ * Monta resumo vendas clientes a partir dos dados informados.
  */
 async function montarResumoVendasClientes(clientes) {
   const ids = clientes.map(cliente => Number(cliente.id)).filter(Boolean);
@@ -1303,7 +1303,7 @@ async function montarResumoVendasClientes(clientes) {
 }
 
 /**
- * Executa a rotina adicionar resumo notas clientes.
+ * Adiciona resumo notas clientes ao conjunto atual.
  */
 async function adicionarResumoNotasClientes(clientes, usuarioId) {
   const resumoPorCliente = await montarResumoNotasClientes(clientes, usuarioId);
@@ -1321,7 +1321,7 @@ async function adicionarResumoNotasClientes(clientes, usuarioId) {
 }
 
 /**
- * Executa a rotina adicionar resumo vendas relacionadas.
+ * Adiciona resumo vendas relacionadas ao conjunto atual.
  */
 async function adicionarResumoVendasRelacionadas(clientes) {
   const resumoPorCliente = await montarResumoVendasClientes(clientes);
@@ -1333,7 +1333,7 @@ async function adicionarResumoVendasRelacionadas(clientes) {
 }
 
 /**
- * Executa a rotina aplicar busca clientes.
+ * Aplica busca clientes sobre a consulta ou conjunto informado.
  */
 function aplicarBuscaClientes(query, termo) {
   const busca = `%${termo}%`;
@@ -1361,7 +1361,7 @@ function aplicarBuscaClientes(query, termo) {
 }
 
 /**
- * Executa a rotina aplicar busca campo clientes.
+ * Aplica busca campo clientes sobre a consulta ou conjunto informado.
  */
 function aplicarBuscaCampoClientes(query, filtros = {}) {
   const campo = String(filtros.busca_campo || '').trim();
@@ -1415,7 +1415,7 @@ function aplicarBuscaCampoClientes(query, filtros = {}) {
 }
 
 /**
- * Executa a rotina subquery soma chips cliente.
+ * Processa subquery soma chips cliente conforme as regras do dominio.
  */
 function subquerySomaChipsCliente() {
   return Cliente.knex().raw(`(
@@ -1426,7 +1426,7 @@ function subquerySomaChipsCliente() {
 }
 
 /**
- * Executa a rotina aplicar filtro fidelidade operadoras.
+ * Aplica filtro fidelidade operadoras sobre a consulta ou conjunto informado.
  */
 function aplicarFiltroFidelidadeOperadoras(query, tipo) {
   const knex = Cliente.knex();
@@ -1771,7 +1771,7 @@ async function excluirCliente(id, usuarioId) {
 }
 
 /**
- * Executa a rotina normalizar cliente ids.
+ * Normaliza cliente ids para uso interno consistente.
  */
 function normalizarClienteIds(ids) {
   return [...new Set([ids]
@@ -1781,7 +1781,7 @@ function normalizarClienteIds(ids) {
 }
 
 /**
- * Executa a rotina buscar source keys notificacoes cliente.
+ * Busca source keys notificacoes cliente conforme os parametros informados.
  */
 async function buscarSourceKeysNotificacoesCliente(clienteIds, trx) {
   const notas = await trx('entidade_notas')
@@ -1800,7 +1800,7 @@ async function buscarSourceKeysNotificacoesCliente(clienteIds, trx) {
 }
 
 /**
- * Executa a rotina excluir notificacoes clientes.
+ * Exclui notificacoes clientes conforme a regra de negocio.
  */
 async function excluirNotificacoesClientes(clienteIdsEntrada, trx) {
   const clienteIds = normalizarClienteIds(clienteIdsEntrada);
@@ -1842,7 +1842,7 @@ async function excluirNotificacoesClientes(clienteIdsEntrada, trx) {
 }
 
 /**
- * Executa a rotina contar vendas relacionadas cliente.
+ * Conta vendas relacionadas cliente conforme os dados informados.
  */
 async function contarVendasRelacionadasCliente(clienteId, trx = null) {
   const resultado = await Venda.query(trx)
@@ -1854,7 +1854,7 @@ async function contarVendasRelacionadasCliente(clienteId, trx = null) {
 }
 
 /**
- * Executa a rotina limpar clientes vencidos da lixeira.
+ * Limpa clientes vencidos da lixeira e restaura o estado inicial.
  */
 async function limparClientesVencidosDaLixeira() {
   return Cliente.transaction(async trx => {

@@ -4,7 +4,7 @@
 import { apiGet, apiRequest } from './api';
 
 /**
- * Executa a rotina montar query.
+ * Monta query a partir dos dados informados.
  */
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -20,21 +20,21 @@ function montarQuery(filtros = {}) {
 }
 
 /**
- * Executa a rotina listar notificacoes.
+ * Lista notificacoes conforme os filtros e parametros informados.
  */
 export async function listarNotificacoes(filtros = {}) {
   return apiGet(`/notificacoes${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina listar notificacoes urgentes.
+ * Lista notificacoes urgentes conforme os filtros e parametros informados.
  */
 export async function listarNotificacoesUrgentes() {
   return apiGet('/notificacoes/urgentes');
 }
 
 /**
- * Executa a rotina marcar notificacao lida.
+ * Marca notificacao lida conforme a acao solicitada.
  */
 export async function marcarNotificacaoLida(id) {
   return apiRequest(`/notificacoes/${id}/lida`, {
@@ -43,7 +43,7 @@ export async function marcarNotificacaoLida(id) {
 }
 
 /**
- * Executa a rotina marcar popup notificacao visto.
+ * Marca popup notificacao visto conforme a acao solicitada.
  */
 export async function marcarPopupNotificacaoVisto(id) {
   return apiRequest(`/notificacoes/${id}/popup-visto`, {
@@ -52,7 +52,7 @@ export async function marcarPopupNotificacaoVisto(id) {
 }
 
 /**
- * Executa a rotina marcar todas notificacoes lidas.
+ * Marca todas notificacoes lidas conforme a acao solicitada.
  */
 export async function marcarTodasNotificacoesLidas() {
   return apiRequest('/notificacoes/lidas', {

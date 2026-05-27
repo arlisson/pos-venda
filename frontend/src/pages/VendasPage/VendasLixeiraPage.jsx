@@ -9,14 +9,14 @@ import { formatarNomeServico } from '../../utils/servicos';
 import './VendasPage.css';
 
 /**
- * Executa a rotina formatar data.
+ * Formata data para exibicao ou envio.
  */
 function formatarData(value) {
   return formatDateValue(value, undefined, '-');
 }
 
 /**
- * Executa a rotina formatar moeda.
+ * Formata moeda para exibicao ou envio.
  */
 function formatarMoeda(value) {
   if (value === null || value === undefined || value === '') return '-';
@@ -24,7 +24,7 @@ function formatarMoeda(value) {
 }
 
 /**
- * Executa a rotina confirmar exclusao definitiva modal.
+ * Renderiza confirmar exclusao definitiva modal.
  */
 function ConfirmarExclusaoDefinitivaModal({ venda, excluindo, onClose, onConfirm }) {
   if (!venda) return null;
@@ -66,7 +66,7 @@ function ConfirmarExclusaoDefinitivaModal({ venda, excluindo, onClose, onConfirm
 }
 
 /**
- * Executa a rotina vendas lixeira page.
+ * Renderiza vendas lixeira page.
  */
 function VendasLixeiraPage() {
   const navigate = useNavigate();
@@ -96,7 +96,7 @@ function VendasLixeiraPage() {
   }, [sucesso]);
 
   /**
-   * Executa a rotina carregar dados.
+   * Carrega dados e atualiza o estado relacionado.
    */
   async function carregarDados(proximosFiltros = filtros) {
     setErro('');
@@ -118,7 +118,7 @@ function VendasLixeiraPage() {
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   /**
-   * Executa a rotina handle buscar.
+   * Trata o evento de buscar.
    */
   async function handleBuscar(event) {
     event.preventDefault();
@@ -126,7 +126,7 @@ function VendasLixeiraPage() {
   }
 
   /**
-   * Executa a rotina handle restaurar.
+   * Trata o evento de restaurar.
    */
   async function handleRestaurar(venda) {
     setProcessandoId(venda.id);
@@ -145,7 +145,7 @@ function VendasLixeiraPage() {
   }
 
   /**
-   * Executa a rotina confirmar exclusao definitiva.
+   * Executa a acao de confirmar exclusao definitiva mantendo o estado da tela consistente.
    */
   async function confirmarExclusaoDefinitiva() {
     if (!vendaParaExcluir) return;

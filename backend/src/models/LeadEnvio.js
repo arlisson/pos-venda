@@ -1,5 +1,8 @@
 const { Model } = require('objection');
 
+/**
+ * Modelo Objection para lotes de distribuicao de leads.
+ */
 class LeadEnvio extends Model {
   static get tableName() {
     return 'lead_envios';

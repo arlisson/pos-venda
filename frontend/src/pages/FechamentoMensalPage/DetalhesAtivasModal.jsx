@@ -28,14 +28,14 @@ const FILTROS_INICIAIS = {
 };
 
 /**
- * Executa a rotina fmt moeda.
+ * Formata moeda para exibicao.
  */
 function fmtMoeda(valor) {
   return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 /**
- * Executa a rotina fmt data.
+ * Formata data para exibicao.
  */
 function fmtData(valor) {
   if (!valor) return '-';
@@ -46,7 +46,7 @@ function fmtData(valor) {
 }
 
 /**
- * Executa a rotina fmt bool.
+ * Formata bool para exibicao.
  */
 function fmtBool(valor) {
   if (valor === true) return 'Sim';
@@ -55,21 +55,21 @@ function fmtBool(valor) {
 }
 
 /**
- * Executa a rotina fmt texto.
+ * Formata texto para exibicao.
  */
 function fmtTexto(valor) {
   return String(valor || '').trim() || '-';
 }
 
 /**
- * Executa a rotina linha teve retorno.
+ * Retorna linha teve retorno no formato esperado pelo fluxo.
  */
 function linhaTeveRetorno(linha = {}) {
   return linha.status_funil !== 'retorno' && Boolean(linha.retornou_em || linha.motivo_retorno || linha.status_anterior_retorno);
 }
 
 /**
- * Executa a rotina fmt retorno badge.
+ * Formata retorno badge para exibicao.
  */
 function fmtRetornoBadge(linha = {}) {
   if (linha.retornou_em) return `Já retornou em ${fmtData(linha.retornou_em)}`;
@@ -77,7 +77,7 @@ function fmtRetornoBadge(linha = {}) {
 }
 
 /**
- * Executa a rotina fmt lista.
+ * Formata lista para exibicao.
  */
 function fmtLista(valor) {
   if (!valor) return '-';
@@ -96,7 +96,7 @@ function fmtLista(valor) {
 }
 
 /**
- * Executa a rotina juntar valores.
+ * Processa juntar valores conforme as regras do dominio.
  */
 function juntarValores(valores, separador = ', ') {
   const texto = (valores || []).map(item => String(item || '').trim()).filter(Boolean).join(separador);
@@ -104,7 +104,7 @@ function juntarValores(valores, separador = ', ') {
 }
 
 /**
- * Executa a rotina formatar horario aceite.
+ * Formata horario aceite para exibicao ou envio.
  */
 function formatarHorarioAceite(linha) {
   const partes = [];
@@ -116,7 +116,7 @@ function formatarHorarioAceite(linha) {
 }
 
 /**
- * Executa a rotina fmt endereco.
+ * Formata endereco para exibicao.
  */
 function fmtEndereco(linha) {
   return juntarValores([
@@ -131,7 +131,7 @@ function fmtEndereco(linha) {
 }
 
 /**
- * Executa a rotina fmt endereco real.
+ * Formata endereco real para exibicao.
  */
 function fmtEnderecoReal(linha) {
   return juntarValores([
@@ -146,7 +146,7 @@ function fmtEnderecoReal(linha) {
 }
 
 /**
- * Executa a rotina fmt regra.
+ * Formata regra para exibicao.
  */
 function fmtRegra(regra) {
   if (!regra) return 'Sem regra';
@@ -154,7 +154,7 @@ function fmtRegra(regra) {
 }
 
 /**
- * Executa a rotina fmt repasse.
+ * Formata repasse para exibicao.
  */
 function fmtRepasse(linha) {
   if (linha.cliente_base_propria && linha.cliente_base_operadora) return 'Nossa base + base da operadora';
@@ -164,7 +164,7 @@ function fmtRepasse(linha) {
 }
 
 /**
- * Executa a rotina fmt etapa funil.
+ * Formata etapa funil para exibicao.
  */
 function fmtEtapaFunil(codigo) {
   const etapas = {
@@ -181,7 +181,7 @@ function fmtEtapaFunil(codigo) {
 }
 
 /**
- * Executa a rotina fmt prioridade funil.
+ * Formata prioridade funil para exibicao.
  */
 function fmtPrioridadeFunil(valor) {
   const prioridades = {
@@ -194,7 +194,7 @@ function fmtPrioridadeFunil(valor) {
 }
 
 /**
- * Executa a rotina classe etapa funil.
+ * Retorna classe etapa funil no formato esperado pelo fluxo.
  */
 function classeEtapaFunil(codigo) {
   if (codigo === 'retorno') return 'is-return';
@@ -203,7 +203,7 @@ function classeEtapaFunil(codigo) {
 }
 
 /**
- * Executa a rotina normalizar busca.
+ * Normaliza busca para uso interno consistente.
  */
 function normalizarBusca(valor) {
   return String(valor || '')
@@ -214,14 +214,14 @@ function normalizarBusca(valor) {
 }
 
 /**
- * Executa a rotina chave opcao.
+ * Retorna chave opcao no formato esperado pelo fluxo.
  */
 function chaveOpcao(valor) {
   return normalizarBusca(valor);
 }
 
 /**
- * Executa a rotina criar opcoes.
+ * Cria opcoes com os dados informados.
  */
 function criarOpcoes(linhas, obterValor, obterLabel = obterValor) {
   const mapa = new Map();
@@ -240,7 +240,7 @@ function criarOpcoes(linhas, obterValor, obterLabel = obterValor) {
 }
 
 /**
- * Executa a rotina valores busca linha.
+ * Retorna valores busca linha no formato esperado pelo fluxo.
  */
 function valoresBuscaLinha(linha) {
   const vendedorasLinha = Array.isArray(linha.vendedoras) && linha.vendedoras.length > 0
@@ -335,7 +335,7 @@ function valoresBuscaLinha(linha) {
 }
 
 /**
- * Executa a rotina vendedoras comissao linha.
+ * Retorna vendedoras comissao linha no formato esperado pelo fluxo.
  */
 function vendedorasComissaoLinha(linha) {
   if (linha.vendedora?.id) return [linha.vendedora];
@@ -343,7 +343,7 @@ function vendedorasComissaoLinha(linha) {
 }
 
 /**
- * Executa a rotina nomes vendedoras linha.
+ * Retorna nomes vendedoras linha no formato esperado pelo fluxo.
  */
 function nomesVendedorasLinha(linha) {
   if (linha.vendedora?.nome) {
@@ -358,7 +358,7 @@ function nomesVendedorasLinha(linha) {
 }
 
 /**
- * Executa a rotina calcular totais.
+ * Calcula totais com base nos valores informados.
  */
 function calcularTotais(linhas) {
   const totaisVendedora = new Map();
@@ -404,7 +404,7 @@ function calcularTotais(linhas) {
 }
 
 /**
- * Executa a rotina detalhes ativas modal.
+ * Renderiza detalhes ativas modal.
  */
 function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda, reloadKey = 0 }) {
   const [dados, setDados] = useState(DADOS_VAZIOS);
@@ -522,7 +522,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
   };
 
   /**
-   * Executa a rotina abrir venda.
+   * Abre venda e prepara o estado necessario.
    */
   function abrirVenda(vendaId) {
     if (!vendaId) return;
@@ -530,7 +530,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
   }
 
   /**
-   * Executa a rotina handle linha key down.
+   * Trata o evento de linha key down.
    */
   function handleLinhaKeyDown(event, vendaId) {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -540,14 +540,14 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
   }
 
   /**
-   * Executa a rotina atualizar filtro.
+   * Atualiza filtro com os dados informados.
    */
   function atualizarFiltro(campo, valor) {
     setFiltros(prev => ({ ...prev, [campo]: valor }));
   }
 
   /**
-   * Executa a rotina limpar filtros.
+   * Limpa filtros e restaura o estado inicial.
    */
   function limparFiltros() {
     setBusca('');

@@ -6,7 +6,7 @@ import { apiBlob, apiDelete, apiGet, apiPost, apiPut } from './api';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 /**
- * Executa a rotina montar query.
+ * Monta query a partir dos dados informados.
  */
 function montarQuery(filtros = {}) {
   const params = new URLSearchParams();
@@ -24,21 +24,21 @@ function montarQuery(filtros = {}) {
 }
 
 /**
- * Executa a rotina listar lead planilhas.
+ * Lista lead planilhas conforme os filtros e parametros informados.
  */
 export function listarLeadPlanilhas() {
   return apiGet('/lead-planilhas');
 }
 
 /**
- * Executa a rotina criar lead planilha.
+ * Cria lead planilha com os dados informados.
  */
 export function criarLeadPlanilha(dados) {
   return apiPost('/lead-planilhas', dados);
 }
 
 /**
- * Executa a rotina upload lead planilha.
+ * Processa upload lead planilha conforme as regras do dominio.
  */
 export function uploadLeadPlanilha(file, onProgress) {
   return new Promise((resolve, reject) => {
@@ -76,56 +76,56 @@ export function uploadLeadPlanilha(file, onProgress) {
 }
 
 /**
- * Executa a rotina buscar lead planilha status.
+ * Busca lead planilha status conforme os parametros informados.
  */
 export function buscarLeadPlanilhaStatus(id) {
   return apiGet(`/lead-planilhas/${id}/status`);
 }
 
 /**
- * Executa a rotina salvar lead linhas.
+ * Salva lead linhas com os dados informados.
  */
 export function salvarLeadLinhas(planilhaId, linhas) {
   return apiPost(`/lead-planilhas/${planilhaId}/linhas`, { linhas });
 }
 
 /**
- * Executa a rotina finalizar lead planilha.
+ * Executa a acao de finalizar lead planilha mantendo o estado da tela consistente.
  */
 export function finalizarLeadPlanilha(planilhaId, dados = {}) {
   return apiPost(`/lead-planilhas/${planilhaId}/finalizar`, dados);
 }
 
 /**
- * Executa a rotina marcar erro lead planilha.
+ * Marca erro lead planilha conforme a acao solicitada.
  */
 export function marcarErroLeadPlanilha(planilhaId, message) {
   return apiPost(`/lead-planilhas/${planilhaId}/erro`, { message });
 }
 
 /**
- * Executa a rotina atualizar lead schema.
+ * Atualiza lead schema com os dados informados.
  */
 export function atualizarLeadSchema(planilhaId, schema_colunas) {
   return apiPut(`/lead-planilhas/${planilhaId}/schema`, { schema_colunas });
 }
 
 /**
- * Executa a rotina excluir lead planilha.
+ * Exclui lead planilha conforme a regra de negocio.
  */
 export function excluirLeadPlanilha(planilhaId) {
   return apiDelete(`/lead-planilhas/${planilhaId}`);
 }
 
 /**
- * Executa a rotina listar lead linhas.
+ * Lista lead linhas conforme os filtros e parametros informados.
  */
 export function listarLeadLinhas(filtros = {}) {
   return apiGet(`/lead-planilhas/linhas${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina exportar lead linhas.
+ * Exporta lead linhas no formato esperado.
  */
 export function exportarLeadLinhas(dados = {}) {
   return apiBlob('/lead-planilhas/exportar', {
@@ -135,35 +135,35 @@ export function exportarLeadLinhas(dados = {}) {
 }
 
 /**
- * Executa a rotina dividir lead linhas.
+ * Processa dividir lead linhas conforme as regras do dominio.
  */
 export function dividirLeadLinhas(dados) {
   return apiPost('/lead-planilhas/dividir', dados);
 }
 
 /**
- * Executa a rotina listar lead envios.
+ * Lista lead envios conforme os filtros e parametros informados.
  */
 export function listarLeadEnvios() {
   return apiGet('/lead-planilhas/envios');
 }
 
 /**
- * Executa a rotina listar meus lead envios.
+ * Lista meus lead envios conforme os filtros e parametros informados.
  */
 export function listarMeusLeadEnvios() {
   return apiGet('/lead-planilhas/me/envios');
 }
 
 /**
- * Executa a rotina listar minhas lead linhas.
+ * Lista minhas lead linhas conforme os filtros e parametros informados.
  */
 export function listarMinhasLeadLinhas(filtros = {}) {
   return apiGet(`/lead-planilhas/me/linhas${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina exportar minhas lead linhas.
+ * Exporta minhas lead linhas no formato esperado.
  */
 export function exportarMinhasLeadLinhas(dados = {}) {
   return apiBlob('/lead-planilhas/me/exportar', {
@@ -173,49 +173,49 @@ export function exportarMinhasLeadLinhas(dados = {}) {
 }
 
 /**
- * Executa a rotina atualizar campo lead recebido.
+ * Atualiza campo lead recebido com os dados informados.
  */
 export function atualizarCampoLeadRecebido(linhaId, dados) {
   return apiPut(`/lead-planilhas/me/linhas/${linhaId}/campo-atualizado`, dados);
 }
 
 /**
- * Executa a rotina marcar futuro cliente lead.
+ * Marca futuro cliente lead conforme a acao solicitada.
  */
 export function marcarFuturoClienteLead(linhaId, dados) {
   return apiPost(`/lead-planilhas/me/linhas/${linhaId}/futuro-cliente`, dados);
 }
 
 /**
- * Executa a rotina listar futuros clientes leads.
+ * Lista futuros clientes leads conforme os filtros e parametros informados.
  */
 export function listarFuturosClientesLeads(filtros = {}) {
   return apiGet(`/lead-planilhas/me/futuros-clientes${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina listar futuros clientes lixeira.
+ * Lista futuros clientes lixeira conforme os filtros e parametros informados.
  */
 export function listarFuturosClientesLixeira(filtros = {}) {
   return apiGet(`/lead-planilhas/me/futuros-clientes/lixeira${montarQuery(filtros)}`);
 }
 
 /**
- * Executa a rotina excluir futuro cliente.
+ * Exclui futuro cliente conforme a regra de negocio.
  */
 export function excluirFuturoCliente(linhaId) {
   return apiDelete(`/lead-planilhas/me/futuros-clientes/${linhaId}`);
 }
 
 /**
- * Executa a rotina restaurar futuro cliente.
+ * Restaura futuro cliente quando a regra de negocio permite.
  */
 export function restaurarFuturoCliente(linhaId) {
   return apiPost(`/lead-planilhas/me/futuros-clientes/${linhaId}/restaurar`, {});
 }
 
 /**
- * Executa a rotina excluir futuro cliente definitivo.
+ * Exclui futuro cliente definitivo conforme a regra de negocio.
  */
 export function excluirFuturoClienteDefinitivo(linhaId) {
   return apiDelete(`/lead-planilhas/me/futuros-clientes/${linhaId}/definitivo`);

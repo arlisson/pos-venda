@@ -37,7 +37,7 @@ const OPS = {
 };
 
 /**
- * Executa a rotina normalizar texto.
+ * Normaliza texto para uso interno consistente.
  */
 function normalizarTexto(valor) {
   return String(valor ?? '')
@@ -48,7 +48,7 @@ function normalizarTexto(valor) {
 }
 
 /**
- * Executa a rotina get valor coluna.
+ * Retorna valor coluna a partir dos dados informados.
  */
 function getValorColuna(linha, coluna) {
   if (!coluna) return '';
@@ -59,7 +59,7 @@ function getValorColuna(linha, coluna) {
 }
 
 /**
- * Executa a rotina get status distribuicao.
+ * Retorna status distribuicao a partir dos dados informados.
  */
 function getStatusDistribuicao(linha) {
   return linha.atribuido_para_id || linha.atribuidoPara || linha.envio_id || linha.envio
@@ -68,14 +68,14 @@ function getStatusDistribuicao(linha) {
 }
 
 /**
- * Executa a rotina formatar numero.
+ * Formata numero para exibicao ou envio.
  */
 function formatarNumero(valor) {
   return Number(valor || 0).toLocaleString('pt-BR');
 }
 
 /**
- * Executa a rotina get conflitos colunas.
+ * Retorna conflitos colunas a partir dos dados informados.
  */
 function getConflitosColunas(planilhasSelecionadas) {
   const mapa = new Map();
@@ -103,7 +103,7 @@ function getConflitosColunas(planilhasSelecionadas) {
 }
 
 /**
- * Executa a rotina montar filtros backend.
+ * Monta filtros backend a partir dos dados informados.
  */
 function montarFiltrosBackend(filtros, colunas, planilhasSelecionadas, schema) {
   return filtros.map(filtro => {
@@ -124,7 +124,7 @@ function montarFiltrosBackend(filtros, colunas, planilhasSelecionadas, schema) {
 }
 
 /**
- * Executa a rotina dividir modal.
+ * Renderiza dividir modal.
  */
 function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDivisao, onClose, onSave }) {
   const [nome, setNome] = useState(`Envio ${new Date().toLocaleDateString('pt-BR')}`);
@@ -137,14 +137,14 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   const [incluirEnviados, setIncluirEnviados] = useState(false);
 
   /**
-   * Executa a rotina toggle usuario.
+   * Alterna usuario no estado atual.
    */
   function toggleUsuario(id) {
     setUsuarios(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
   }
 
   /**
-   * Executa a rotina mover coluna.
+   * Executa a acao de mover coluna mantendo o estado da tela consistente.
    */
   function moverColuna(index, direcao) {
     const novoIndex = index + direcao;
@@ -156,7 +156,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   }
 
   /**
-   * Executa a rotina submit.
+   * Envia o formulario para processamento.
    */
   async function submit(event) {
     event.preventDefault();
@@ -338,13 +338,13 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
 }
 
 /**
- * Executa a rotina mesclar colunas modal.
+ * Renderiza mesclar colunas modal.
  */
 function MesclarColunasModal({ grupos, defaultSelecionadas, onClose, onConfirm }) {
   const [selecionadas, setSelecionadas] = useState(defaultSelecionadas);
 
   /**
-   * Executa a rotina toggle.
+   * Alterna  no estado atual.
    */
   function toggle(chave) {
     setSelecionadas(prev => (
@@ -355,14 +355,14 @@ function MesclarColunasModal({ grupos, defaultSelecionadas, onClose, onConfirm }
   }
 
   /**
-   * Executa a rotina selecionar todas.
+   * Seleciona todas e atualiza o estado relacionado.
    */
   function selecionarTodas() {
     setSelecionadas(grupos.map(grupo => grupo.chave));
   }
 
   /**
-   * Executa a rotina limpar todas.
+   * Limpa todas e restaura o estado inicial.
    */
   function limparTodas() {
     setSelecionadas([]);
@@ -420,7 +420,7 @@ function MesclarColunasModal({ grupos, defaultSelecionadas, onClose, onConfirm }
 }
 
 /**
- * Executa a rotina excluir planilha modal.
+ * Renderiza excluir planilha modal.
  */
 function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }) {
   if (!planilha) return null;
@@ -473,7 +473,7 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
 }
 
 /**
- * Executa a rotina admin leads page.
+ * Renderiza admin leads page.
  */
 function AdminLeadsPage() {
   const inputRef = useRef(null);
@@ -501,7 +501,7 @@ function AdminLeadsPage() {
   const [erroExclusao, setErroExclusao] = useState('');
 
   /**
-   * Executa a rotina carregar base.
+   * Carrega base e atualiza o estado relacionado.
    */
   async function carregarBase() {
     setCarregando(true);
@@ -640,7 +640,7 @@ function AdminLeadsPage() {
     : 0;
 
   /**
-   * Executa a rotina importar arquivo.
+   * Importa arquivo a partir dos dados recebidos.
    */
   async function importarArquivo(file) {
     if (!file.name.toLowerCase().endsWith('.csv')) return;
@@ -671,14 +671,14 @@ function AdminLeadsPage() {
       let totalBatches = 0;
 
       /**
-       * Executa a rotina update import status.
+       * Atualiza import status com o estado mais recente.
        */
       function updateImportStatus() {
         setProcessando(`Parseando ${parsedProgress}% | Enviando lote ${sentBatches}/${Math.max(totalBatches, sentBatches)}`);
       }
 
       /**
-       * Executa a rotina finish with error.
+       * Finaliza o processamento informando o erro ocorrido.
        */
       function finishWithError(error) {
         if (rejected) return;
@@ -689,7 +689,7 @@ function AdminLeadsPage() {
       }
 
       /**
-       * Executa a rotina send batch.
+       * Processa send batch conforme as regras do dominio.
        */
       async function sendBatch(item) {
         for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
@@ -704,7 +704,7 @@ function AdminLeadsPage() {
       }
 
       /**
-       * Executa a rotina try finish.
+       * Tenta finalizar o processamento quando todas as pendencias terminam.
        */
       async function tryFinish() {
         if (!finishedParsing || active > 0 || queue.length > 0 || rejected) return;
@@ -723,7 +723,7 @@ function AdminLeadsPage() {
       }
 
       /**
-       * Executa a rotina pump queue.
+       * Processa a fila respeitando o limite de concorrencia.
        */
       function pumpQueue() {
         while (active < maxParallel && queue.length > 0 && !rejected) {
@@ -786,7 +786,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Executa a rotina handle upload.
+   * Trata o evento de upload.
    */
   async function handleUpload(event) {
     const files = Array.from(event.target.files || []);
@@ -807,7 +807,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Executa a rotina toggle planilha.
+   * Alterna planilha no estado atual.
    */
   function togglePlanilha(id) {
     const jaSelecionada = selecionadas.includes(id);
@@ -830,7 +830,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Executa a rotina aplicar mesclagem colunas.
+   * Aplica mesclagem colunas sobre a consulta ou conjunto informado.
    */
   function aplicarMesclagemColunas(chaves) {
     const conflitos = modalMesclar?.grupos || [];
@@ -847,7 +847,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Executa a rotina adicionar filtro.
+   * Adiciona filtro ao conjunto atual.
    */
   function adicionarFiltro() {
     if (!novoFiltro.coluna) return;
@@ -857,7 +857,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Executa a rotina exportar csv backend.
+   * Exporta csv backend no formato esperado.
    */
   async function exportarCsvBackend() {
     const blob = await exportarLeadLinhas({
@@ -875,7 +875,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Executa a rotina alterar tipo.
+   * Executa a acao de alterar tipo mantendo o estado da tela consistente.
    */
   async function alterarTipo(planilha, coluna, tipo) {
     const schemaAtualizado = {
@@ -887,7 +887,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Executa a rotina salvar divisao.
+   * Salva divisao com os dados informados.
    */
   async function salvarDivisao(payload) {
     const resultado = await dividirLeadLinhas({
@@ -907,7 +907,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Executa a rotina confirmar exclusao planilha.
+   * Executa a acao de confirmar exclusao planilha mantendo o estado da tela consistente.
    */
   async function confirmarExclusaoPlanilha() {
     if (!modalExcluir) return;
@@ -937,7 +937,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Executa a rotina get tipo coluna por id.
+   * Retorna tipo coluna por id a partir dos dados informados.
    */
   function getTipoColunaPorId(colunaId) {
     const coluna = colunas.find(item => item.id === colunaId);

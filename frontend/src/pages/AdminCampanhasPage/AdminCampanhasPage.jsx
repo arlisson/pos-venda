@@ -19,7 +19,7 @@ const CATEGORIAS = [
 ];
 
 /**
- * Executa a rotina admin campanhas page.
+ * Renderiza admin campanhas page.
  */
 function AdminCampanhasPage() {
   const [campanhas, setCampanhas] = useState([]);
@@ -39,7 +39,7 @@ function AdminCampanhasPage() {
   }, [message]);
 
   /**
-   * Executa a rotina load campanhas.
+   * Carrega campanhas e atualiza o estado.
    */
   async function loadCampanhas() {
     try {
@@ -57,7 +57,7 @@ function AdminCampanhasPage() {
   }
 
   /**
-   * Executa a rotina handle campanhas change.
+   * Trata o evento de campanhas change.
    */
   function handleCampanhasChange(id, field, value) {
     setCampanhas(prev => prev.map(campanha => {
@@ -73,7 +73,7 @@ function AdminCampanhasPage() {
   }
 
   /**
-   * Executa a rotina handle add campanha.
+   * Trata o evento de add campanha.
    */
   async function handleAddCampanha() {
     setSaving(true);
@@ -100,7 +100,7 @@ function AdminCampanhasPage() {
   }
 
   /**
-   * Executa a rotina handle delete campanha.
+   * Trata o evento de delete campanha.
    */
   async function handleDeleteCampanha(id) {
     if (!window.confirm('Deseja excluir esta campanha?')) return;
@@ -121,7 +121,7 @@ function AdminCampanhasPage() {
   }
 
   /**
-   * Executa a rotina handle save.
+   * Trata o evento de save.
    */
   async function handleSave() {
     setSaving(true);
