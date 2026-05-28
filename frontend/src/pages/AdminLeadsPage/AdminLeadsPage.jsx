@@ -1008,7 +1008,7 @@ function AdminLeadsPage() {
           <div className="lead-doc-strip__title">
             <span>Planilhas</span>
             <button className="btn btn-primary" type="button" onClick={() => inputRef.current?.click()}>
-              <I.Plus size={14} /> Upload CSV
+              <I.Plus size={14} /> Importar planilha
             </button>
           </div>
 
