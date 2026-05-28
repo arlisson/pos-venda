@@ -23,7 +23,7 @@ const routeConfigs = [
   { path: '/clientes', title: 'Clientes', sub: 'Representantes e empresas vinculados as vendas', id: 'clientes', end: true },
   { path: '/clientes/lixeira', title: 'Lixeira de clientes', sub: 'Clientes removidos e prazo de exclusão definitiva', id: 'clientes' },
   { path: '/clientes/:id/editar', title: 'Editar cliente', sub: 'Atualize dados do representante e fidelidade', id: 'clientes' },
-  { path: '/funil', title: 'Funil de vendas', sub: 'Acompanhe cada venda do lançamento até a conclusão', id: 'funil' },
+  { path: '/funil', title: 'Funil de Vendas', sub: 'Acompanhe cada venda do lançamento até a conclusão', id: 'funil' },
   { path: '/vendas/aprovacoes', title: 'Aprovações', sub: 'Solicitações de liberação ADM para vendas especiais', id: 'aprovacoes' },
   { path: '/retornos', title: 'Retornos', sub: 'Chips que retornaram por algum erro', id: 'retornos' },
   { path: '/relatorios', title: 'Relatórios', sub: 'Indicadores comerciais e desempenho por usuário', id: 'relatorios' },
