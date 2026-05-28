@@ -24,11 +24,11 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
   }, [podeVerCampanhas]);
 
   const items = [
-    { id: 'dashboard', label: 'Inicio', icon: <I.Home /> },
+    { id: 'dashboard', label: 'Início', icon: <I.Home /> },
     { id: 'vendas', label: 'Vendas', icon: <I.Chart />, permission: ['vendas', 'vendas_ver_proprias', 'vendas_ver_todas', 'vendas_criar', 'vendas_editar', 'vendas_excluir'] },
     { id: 'clientes', label: 'Clientes', icon: <I.Users />, permission: ['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_importar_planilhas', 'clientes_editar', 'clientes_excluir'] },
     { id: 'futuros-clientes', label: 'Futuros Clientes', icon: <I.Calendar />, permission: ['futuros_clientes_ver'] },
-    { id: 'funil', label: 'Funil de vendas', icon: <I.Funnel />, badge: counts?.active, permission: 'funil_vendas' },
+    { id: 'funil', label: 'Funil de Vendas', icon: <I.Funnel />, badge: counts?.active, permission: 'funil_vendas' },
     { id: 'aprovacoes', label: 'Aprovações', icon: <I.Shield />, badge: counts?.aprovacoes, alert: counts?.aprovacoes > 0, permission: 'vendas_aprovacoes_visualizar' },
     { id: 'retornos', label: 'Retornos', icon: <I.Return />, badge: counts?.returns, permission: ['vendas_ver_proprias', 'vendas_ver_todas', 'ver_vendas_compartilhadas'] },
     { id: 'relatorios', label: 'Relatórios', icon: <I.Chart />, permission: 'relatorios_visualizar' },
