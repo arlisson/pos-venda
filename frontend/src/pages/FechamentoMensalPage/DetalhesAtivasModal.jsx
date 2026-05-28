@@ -164,6 +164,23 @@ function fmtRepasse(linha) {
 }
 
 /**
+ * Formata tipo de linha para exibicao.
+ */
+function fmtTipoLinha(valor) {
+  const tipo = normalizarBusca(valor);
+  if (tipo.includes('porta')) return 'Portabilidade';
+  if (tipo.includes('novo')) return 'Novo';
+  return fmtTexto(valor);
+}
+
+/**
+ * Retorna tipo de linha da UGR, com fallback para vendas antigas.
+ */
+function tipoLinhaUgr(linha) {
+  return linha.tipo_linha || linha.tipo_venda || '';
+}
+
+/**
  * Formata etapa funil para exibicao.
  */
 function fmtEtapaFunil(codigo) {
@@ -288,7 +305,8 @@ function valoresBuscaLinha(linha) {
     linha.status_funil,
     fmtEtapaFunil(linha.status_funil),
     fmtRepasse(linha),
-    linha.tipo_venda,
+    tipoLinhaUgr(linha),
+    fmtTipoLinha(tipoLinhaUgr(linha)),
     linha.servico,
     linha.dia_vencimento,
     linha.ddd,
@@ -457,7 +475,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
     ),
     operadoras: criarOpcoes(linhasBase, linha => linha.operadora?.id || linha.operadora?.nome, linha => linha.operadora?.nome),
     etapas: criarOpcoes(linhasBase, linha => linha.status_funil, linha => fmtEtapaFunil(linha.status_funil)),
-    tiposVenda: criarOpcoes(linhasBase, linha => linha.tipo_venda),
+    tiposVenda: criarOpcoes(linhasBase, linha => tipoLinhaUgr(linha), linha => fmtTipoLinha(tipoLinhaUgr(linha))),
     servicos: criarOpcoes(linhasBase, linha => normalizarNomeServicoParaFiltro(linha.servico), linha => formatarNomeServico(linha.servico)),
     repasses: [
       { value: 'base_propria', label: 'Nossa base' },
@@ -502,7 +520,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
       }
       if (filtros.operadora && chaveOpcao(linha.operadora?.id || linha.operadora?.nome) !== filtros.operadora) return false;
       if (filtros.etapa && chaveOpcao(linha.status_funil) !== filtros.etapa) return false;
-      if (filtros.tipoVenda && chaveOpcao(linha.tipo_venda) !== filtros.tipoVenda) return false;
+      if (filtros.tipoVenda && chaveOpcao(tipoLinhaUgr(linha)) !== filtros.tipoVenda) return false;
       if (filtros.servico && normalizarNomeServicoParaFiltro(linha.servico) !== filtros.servico) return false;
       if (filtros.repasse && linha.tipo_repasse !== filtros.repasse) return false;
       if (filtros.regra === 'com_regra' && linha.sem_regra) return false;
@@ -617,7 +635,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                     <SelectFiltro value={filtros.etapa} onChange={val => atualizarFiltro('etapa', val)} placeholder="Todas" options={opcoesFiltro.etapas} />
                   </label>
                   <label>
-                    <span>Tipo</span>
+                    <span>Tipo de linha</span>
                     <SelectFiltro value={filtros.tipoVenda} onChange={val => atualizarFiltro('tipoVenda', val)} placeholder="Todos" options={opcoesFiltro.tiposVenda} />
                   </label>
                   <label>
@@ -771,7 +789,7 @@ function DetalhesAtivasModal({ secao = 'ativas', periodo, onClose, onAbrirVenda,
                         <td>{fmtEtapaFunil(linha.status_funil)}</td>
                         <td>{linha.cliente?.operadora_atual?.nome || '-'}</td>
                         <td>{fmtRepasse(linha)}</td>
-                        <td>{linha.tipo_venda || '-'}</td>
+                        <td>{fmtTipoLinha(tipoLinhaUgr(linha))}</td>
                         <td>{formatarNomeServico(linha.servico) || '-'}</td>
                         <td className="num">{linha.dia_vencimento ?? '-'}</td>
                         <td>{fmtLista(linha.cliente_solicitou_servicos)}</td>
