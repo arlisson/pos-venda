@@ -692,12 +692,17 @@
 }
 
 .funil-stage__name {
+  display: -webkit-box;
+  max-width: min(112px, 100%);
+  overflow: hidden;
   font-size: 11px;
   font-weight: 500;
   color: var(--text-3);
   text-align: center;
-  white-space: nowrap;
   line-height: 1.2;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .funil-stage--done .funil-stage__name {
