@@ -891,27 +891,24 @@ function DashboardPage() {
   useEffect(() => {
     if (!podeVerNotificacoes) return undefined;
 
+    obterContextoNotificacoesDashboard()
+      .then(contextoData => {
+        setClientes(Array.isArray(contextoData.clientes) ? contextoData.clientes : []);
+        setReferenciasClientes(Array.isArray(contextoData.referencias_clientes) ? contextoData.referencias_clientes : []);
+        setVendasAtivasIdsLista(Array.isArray(contextoData.vendas_ativas_ids) ? contextoData.vendas_ativas_ids : []);
+        setVendasRetorno(Array.isArray(contextoData.vendas_retorno) ? contextoData.vendas_retorno : []);
+        setVendas([]);
+        setVendasCarregadas(Array.isArray(contextoData.vendas_ativas_ids) && contextoData.vendas_ativas_ids.length > 0);
+      })
+      .catch(console.error);
+
     Promise.all([
-      obterContextoNotificacoesDashboard().catch(() => ({})),
       listarVendedoras().catch(() => []),
       listarOperadoras().catch(() => []),
       listarTiposVenda().catch(() => []),
       listarServicos().catch(() => []),
       listarEtapasFunil().catch(() => [])
-    ]).then(([
-      contextoData,
-      vendedorasData,
-      operadorasData,
-      tiposVendaData,
-      servicosData,
-      etapasData
-    ]) => {
-      setClientes(Array.isArray(contextoData.clientes) ? contextoData.clientes : []);
-      setReferenciasClientes(Array.isArray(contextoData.referencias_clientes) ? contextoData.referencias_clientes : []);
-      setVendasAtivasIdsLista(Array.isArray(contextoData.vendas_ativas_ids) ? contextoData.vendas_ativas_ids : []);
-      setVendasRetorno(Array.isArray(contextoData.vendas_retorno) ? contextoData.vendas_retorno : []);
-      setVendas([]);
-      setVendasCarregadas(Array.isArray(contextoData.vendas_ativas_ids) && contextoData.vendas_ativas_ids.length > 0);
+    ]).then(([vendedorasData, operadorasData, tiposVendaData, servicosData, etapasData]) => {
       setVendedoras(Array.isArray(vendedorasData) ? vendedorasData : []);
       setOperadoras(Array.isArray(operadorasData) ? operadorasData : []);
       setTiposVenda(Array.isArray(tiposVendaData) ? tiposVendaData : []);
