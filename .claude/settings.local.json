@@ -130,7 +130,12 @@
       "Bash(node -e \"try{require.resolve\\('puppeteer'\\);console.log\\('puppeteer OK'\\)}catch\\(e\\){console.log\\('no puppeteer'\\)}\")",
       "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --dump-dom --virtual-time-budget=2000 \"file:///C:/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend/_align_probe.html\")",
       "Bash(sed 's/.cliente-operadora-row .form-field{min-width:0;margin-bottom:0}/.cliente-operadora-row .form-field{min-width:0}/' _align_probe.html)",
-      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --dump-dom --virtual-time-budget=2000 \"file:///C:/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend/_align_probe_old.html\")"
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --dump-dom --virtual-time-budget=2000 \"file:///C:/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend/_align_probe_old.html\")",
+      "Bash(command -v chromium-cli)",
+      "Bash(command -v chromium)",
+      "Bash(command -v google-chrome)",
+      "Bash(node -e \"console.log\\('node', process.version\\)\")",
+      "PowerShell($paths = @\\(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\",\"C:\\\\Program Files\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\",\"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\",\"C:\\\\Program Files \\(x86\\)\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\"\\); $paths | Where-Object { Test-Path $_ })"
     ]
   }
 }

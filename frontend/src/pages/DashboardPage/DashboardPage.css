@@ -814,14 +814,15 @@
   display: grid;
   gap: 4px;
   min-width: 0;
+  container-type: inline-size;
 }
 
 .today-financial > div:first-child strong {
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: clamp(20px, 4.5vw, 31px);
+  font-size: clamp(14px, 12cqi, 30px);
   line-height: 1;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .today-financial > div:first-child span {
