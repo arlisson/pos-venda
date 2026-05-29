@@ -39,7 +39,6 @@ const TIPOS_OPERACIONAIS_VENDA = [
 ];
 const TIPO_VENDA_PARADA = vendaNotificacaoParadaService.TIPO_NOTIFICACAO;
 const PERMISSAO_VENDAS_PARADAS = vendaNotificacaoParadaService.PERMISSAO_VENDAS_PARADAS;
-const RETORNO_PRE_AVISO_MINUTOS = 15;
 
 /**
  * Verifica se usuario tem permissao local atende a condicao esperada.
@@ -412,10 +411,10 @@ async function salvarNotificacaoRetornoNota(nota, etapa, agora) {
  */
 async function sincronizarRetornosNotas(usuarioId = null) {
   const agora = new Date();
-  const limitePreAviso = new Date(agora.getTime() + RETORNO_PRE_AVISO_MINUTOS * 60000);
+  // Gera a notificacao assim que a nota tem data de retorno marcada (qualquer data),
+  // independente da janela de pre-aviso e do status de pos-venda da venda.
   const query = db('entidade_notas')
     .whereNotNull('retorno_agendado_para')
-    .where('retorno_agendado_para', '<=', limitePreAviso)
     .select('id', 'entidade_tipo', 'entidade_id', 'usuario_id', 'titulo', 'retorno_agendado_para');
 
   if (usuarioId) {

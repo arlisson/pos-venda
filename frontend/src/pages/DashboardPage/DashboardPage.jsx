@@ -65,6 +65,9 @@ const INBOX_TYPE_LABELS = {
   problemas: 'Problema',
 };
 
+// Tipos que exigem acao imediata (compoem o banner de urgencia da visao em lista)
+const INBOX_URGENT_VARIANTS = ['danger', 'stalled', 'info'];
+
 /**
  * Retorna campanha key a partir dos dados informados.
  */
@@ -530,8 +533,25 @@ function PendingInbox({ cards }) {
       .some(valor => String(valor || '').toLowerCase().includes(termo));
   });
 
+  const urgentCount = cards
+    .filter(card => INBOX_URGENT_VARIANTS.includes(card.variant))
+    .reduce((soma, card) => soma + card.count, 0);
+
   return (
     <div className="pendencias">
+      <div className="pend-headline">
+        {urgentCount > 0 ? (
+          <div className="pend-urgent-banner">
+            <span className="banner-icon"><I.AlertTriangle size={14} /></span>
+            <span>
+              <strong>{urgentCount} {urgentCount === 1 ? 'pendência precisa' : 'pendências precisam'}</strong> de ação imediata
+            </span>
+          </div>
+        ) : (
+          <div className="pend-subtitle">Tudo em dia por aqui ✓</div>
+        )}
+      </div>
+
       <div className="pend-stats">
         <button
           type="button"
@@ -560,7 +580,9 @@ function PendingInbox({ cards }) {
             </div>
             <div>
               <div className="stat-label">{INBOX_TYPE_LABELS[card.key] || card.title}</div>
-              <div className="stat-sub">{card.subtitle}</div>
+              <div className={`stat-sub ${card.count > 0 ? 'alarm' : ''}`}>
+                {card.count > 0 ? card.subtitle : 'Tudo em dia'}
+              </div>
             </div>
           </button>
         ))}
@@ -727,11 +749,9 @@ function getRetornoMinutosParaVencer(notificacao) {
  * Renderiza retorno deve aparecer no card.
  */
 function retornoDeveAparecerNoCard(notificacao) {
-  if (!TIPOS_RETORNO_NOTA.includes(notificacao.tipo)) return false;
-  if (notificacao.tipo === 'nota_retorno_due') return true;
-
-  const minutos = getRetornoMinutosParaVencer(notificacao);
-  return minutos !== null && minutos > 0 && minutos <= RETORNO_PRE_AVISO_MINUTOS;
+  // Exibe qualquer nota com data de retorno marcada (independente de quanto falta
+  // para a data e do status de pos-venda da venda).
+  return TIPOS_RETORNO_NOTA.includes(notificacao.tipo);
 }
 
 /**

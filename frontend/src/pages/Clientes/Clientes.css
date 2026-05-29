@@ -1071,6 +1071,7 @@
 
 .cliente-operadora-row .form-field {
   min-width: 0;
+  margin-bottom: 0;
 }
 
 .cliente-operadora-row .form-field:nth-child(1) {
@@ -1097,7 +1098,9 @@
 .cliente-operadora-remove {
   align-self: end;
   grid-column: span 1;
-  min-width: 32px;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
 }
 
 .cliente-operadoras-summary {
@@ -1631,4 +1634,11 @@
 .operadora-vivo {
   background: rgba(124, 58, 237, 0.12);
   color: #7c3aed;
+}
+
+/* No mobile o input ganha min-height: 42px (global.css); igualar a lixeira. */
+@media (max-width: 640px) {
+  .cliente-operadora-remove {
+    height: 42px;
+  }
 }

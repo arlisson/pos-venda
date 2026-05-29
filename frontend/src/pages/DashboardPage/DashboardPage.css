@@ -1886,8 +1886,8 @@
   color: var(--text-3);
 }
 .pend-stat .stat-num {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 800;
   line-height: 1;
   letter-spacing: -0.03em;
   color: var(--text);
@@ -1896,15 +1896,110 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
   background: var(--surface-2);
   color: var(--text-3);
+  transition: transform 150ms ease, background 150ms ease, color 150ms ease;
 }
 .pend-stat .stat-label { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.25; }
-.pend-stat .stat-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+.pend-stat .stat-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
 .pend-stat.active { box-shadow: 0 0 0 2px var(--text); }
+.pend-stat.attn { border-width: 1.5px; }
+.pend-stat.attn::before { opacity: 1; width: 5px; }
+
+/* Subtexto em alarme + ponto pulsante (quando ha pendencia) */
+.pend-stat .stat-sub.alarm { font-weight: 600; }
+.pend-stat .stat-sub.alarm::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  animation: pend-dot-pulse 1.4s ease-in-out infinite;
+}
+.pend-stat.danger.attn .stat-sub.alarm { color: var(--danger); }
+.pend-stat.warn.attn .stat-sub.alarm { color: #b45309; }
+.pend-stat.info.attn .stat-sub.alarm { color: #1d4ed8; }
+.pend-stat.contact.attn .stat-sub.alarm { color: #059669; }
+.pend-stat.stalled.attn .stat-sub.alarm { color: #7c3aed; }
+@keyframes pend-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  50% { box-shadow: 0 0 0 4px transparent; opacity: 0.55; }
+}
+
+/* Icone pulsando enquanto houver pendencia */
+.pend-stat.attn .stat-icon {
+  background: rgba(255, 255, 255, 0.7);
+  animation: pend-icon-pulse 2s ease-in-out infinite;
+}
+@keyframes pend-icon-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+/* Anel pulsante nos retornos (mais critico) */
+.pend-stat.danger.attn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--danger);
+  opacity: 0;
+  pointer-events: none;
+  animation: pend-ring-pulse 2.4s ease-out infinite;
+}
+@keyframes pend-ring-pulse {
+  0% { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.03); }
+}
+
+/* Cabecalho da caixa de pendencias + banner de urgencia */
+.pend-headline {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 8px;
+}
+.pend-subtitle { font-size: 13px; color: var(--text-2); }
+.pend-urgent-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 8px;
+  background: var(--danger);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.25);
+  animation: pend-banner-pulse 2.2s ease-in-out infinite;
+}
+.pend-urgent-banner strong { font-weight: 700; }
+.pend-urgent-banner .banner-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  flex-shrink: 0;
+}
+@keyframes pend-banner-pulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(185, 28, 28, 0.25); }
+  50% { box-shadow: 0 4px 22px rgba(185, 28, 28, 0.55); }
+}
 
 /* Variantes por tipo (alinhadas com as cores dos cards) */
 .pend-stat.danger.attn { background: linear-gradient(160deg, #fee2e2 0%, #fef2f2 70%); border-color: #fca5a5; }

@@ -120,7 +120,17 @@
       "Bash(npx vite *)",
       "PowerShell(Stop-Process -Id 20984 -Force)",
       "PowerShell(\"Processo Vite encerrado\")",
-      "PowerShell($f = \"C:\\\\Users\\\\breno\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-breno-OneDrive-Documents-GitHub-pos-venda\\\\c4ccace1-7e2f-4696-865b-20368dde213f\\\\tasks\\\\b8s9pfyqo.output\"; $deadline = \\(Get-Date\\).AddSeconds\\(25\\); while \\(\\(Get-Date\\) -lt $deadline\\) { if \\(\\(Test-Path $f\\) -and \\(Select-String -Path $f -Pattern 'ready in|Local:|error' -Quiet\\)\\) { break }; Start-Sleep -Milliseconds 800 }; if \\(Test-Path $f\\) { Get-Content $f } else { \"sem output ainda\" })"
+      "PowerShell($f = \"C:\\\\Users\\\\breno\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-breno-OneDrive-Documents-GitHub-pos-venda\\\\c4ccace1-7e2f-4696-865b-20368dde213f\\\\tasks\\\\b8s9pfyqo.output\"; $deadline = \\(Get-Date\\).AddSeconds\\(25\\); while \\(\\(Get-Date\\) -lt $deadline\\) { if \\(\\(Test-Path $f\\) -and \\(Select-String -Path $f -Pattern 'ready in|Local:|error' -Quiet\\)\\) { break }; Start-Sleep -Milliseconds 800 }; if \\(Test-Path $f\\) { Get-Content $f } else { \"sem output ainda\" })",
+      "Bash(cd /c/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend/src && grep -rn \"input\\\\[type=\\\\\"date\\\\\"\\\\]\\\\|^input,\\\\|input, select\\\\|input,select\" styles/global.css index.css | head -20)",
+      "Read(//c/c/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend/src/styles/**)",
+      "Read(//c/c/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend/src/pages/Clientes/**)",
+      "Bash(cd /c/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend && cat package.json | grep -A8 '\"scripts\"')",
+      "Read(//c/c/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend/**)",
+      "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('playwright OK'\\)}catch\\(e\\){console.log\\('no playwright'\\)}\")",
+      "Bash(node -e \"try{require.resolve\\('puppeteer'\\);console.log\\('puppeteer OK'\\)}catch\\(e\\){console.log\\('no puppeteer'\\)}\")",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --dump-dom --virtual-time-budget=2000 \"file:///C:/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend/_align_probe.html\")",
+      "Bash(sed 's/.cliente-operadora-row .form-field{min-width:0;margin-bottom:0}/.cliente-operadora-row .form-field{min-width:0}/' _align_probe.html)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --disable-gpu --dump-dom --virtual-time-budget=2000 \"file:///C:/Users/breno/OneDrive/Documents/GitHub/pos-venda/frontend/_align_probe_old.html\")"
     ]
   }
 }
