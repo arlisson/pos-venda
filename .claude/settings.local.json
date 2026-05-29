@@ -117,7 +117,10 @@
       "Bash(curl -s -o /dev/null -w \"mensagens\\(sem token\\): %{http_code}\\\\n\" http://localhost:3000/api/mensagens/contatos)",
       "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const db=require\\('./src/database/connection'\\); \\(async\\(\\)=>{ const idx=await db.raw\\('SHOW INDEX FROM mensagens'\\); console.log\\('Índices:'\\); idx[0].forEach\\(i=>console.log\\('  ',i.Key_name,'->',i.Column_name\\)\\); const c=await db\\('mensagens'\\).count\\('* as n'\\).first\\(\\); console.log\\('Total de mensagens:', c.n\\); const sz=await db.raw\\(\\\\\"SELECT ROUND\\(\\(data_length+index_length\\)/1024,2\\) AS kb FROM information_schema.tables WHERE table_schema=DATABASE\\(\\) AND table_name='mensagens'\\\\\"\\); console.log\\('Tamanho tabela \\(KB\\):', sz[0][0].kb\\); await db.destroy\\(\\); }\\)\\(\\).catch\\(e=>{console.error\\(e.message\\);process.exit\\(1\\)}\\)\")",
       "Bash(xargs grep -l \"drag\\\\|drop\\\\|dnd\\\\|sortable\")",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "PowerShell(Stop-Process -Id 20984 -Force)",
+      "PowerShell(\"Processo Vite encerrado\")",
+      "PowerShell($f = \"C:\\\\Users\\\\breno\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-breno-OneDrive-Documents-GitHub-pos-venda\\\\c4ccace1-7e2f-4696-865b-20368dde213f\\\\tasks\\\\b8s9pfyqo.output\"; $deadline = \\(Get-Date\\).AddSeconds\\(25\\); while \\(\\(Get-Date\\) -lt $deadline\\) { if \\(\\(Test-Path $f\\) -and \\(Select-String -Path $f -Pattern 'ready in|Local:|error' -Quiet\\)\\) { break }; Start-Sleep -Milliseconds 800 }; if \\(Test-Path $f\\) { Get-Content $f } else { \"sem output ainda\" })"
     ]
   }
 }

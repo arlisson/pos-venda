@@ -54,6 +54,17 @@ const TIPO_VENDA_PARADA = 'venda_parada_funil';
 const RETORNO_PRE_AVISO_MINUTOS = 15;
 const NOTIFICATION_DRAWER_KEYS = ['retornos', 'fidelidade', 'ligacoes', 'vendas-paradas', 'problemas'];
 
+const HOME_NOTIF_VIEW_KEY = 'pos-venda:home-notificacoes-view';
+const HOME_NOTIF_VIEWS = ['card', 'list'];
+
+const INBOX_TYPE_LABELS = {
+  retornos: 'Retorno',
+  fidelidade: 'Fidelidade',
+  ligacoes: 'Ligação',
+  'vendas-paradas': 'Venda parada',
+  problemas: 'Problema',
+};
+
 /**
  * Retorna campanha key a partir dos dados informados.
  */
@@ -493,6 +504,136 @@ function ProblemasModal({ open, notificacoes, onClose, onOpenNotification }) {
 }
 
 /**
+ * Renderiza a caixa de pendencias unificada (visualizacao "em lista").
+ */
+function PendingInbox({ cards }) {
+  const [activeType, setActiveType] = useState('todas');
+  const [query, setQuery] = useState('');
+
+  const allRows = useMemo(() => (
+    cards.flatMap(card => (card.items || []).map(item => ({
+      card,
+      item,
+      key: `${card.key}-${item.destinatario_id || item.id}`,
+      title: card.getTitle(item),
+      description: card.getDescription(item),
+      metric: card.metric(item),
+      unread: item.lida === false,
+    })))
+  ), [cards]);
+
+  const termo = query.trim().toLowerCase();
+  const rows = allRows.filter(row => {
+    if (activeType !== 'todas' && row.card.key !== activeType) return false;
+    if (!termo) return true;
+    return [row.title, row.description]
+      .some(valor => String(valor || '').toLowerCase().includes(termo));
+  });
+
+  return (
+    <div className="pendencias">
+      <div className="pend-stats">
+        <button
+          type="button"
+          className={`pend-stat ${activeType === 'todas' ? 'active' : ''}`}
+          onClick={() => setActiveType('todas')}
+        >
+          <div className="stat-top">
+            <span className="stat-num">{allRows.length}</span>
+            <span className="stat-icon"><I.Bell size={18} /></span>
+          </div>
+          <div>
+            <div className="stat-label">Todas</div>
+            <div className="stat-sub">Pendências ativas</div>
+          </div>
+        </button>
+        {cards.map(card => (
+          <button
+            key={card.key}
+            type="button"
+            className={`pend-stat ${card.variant} ${card.count > 0 ? 'attn' : 'zero'} ${activeType === card.key ? 'active' : ''}`}
+            onClick={() => setActiveType(activeType === card.key ? 'todas' : card.key)}
+          >
+            <div className="stat-top">
+              <span className="stat-num">{card.count}</span>
+              <span className="stat-icon">{card.icon}</span>
+            </div>
+            <div>
+              <div className="stat-label">{INBOX_TYPE_LABELS[card.key] || card.title}</div>
+              <div className="stat-sub">{card.subtitle}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="pend-list-header">
+        <div className="pend-section-title">
+          {activeType === 'todas' ? 'Todas as pendências' : `Filtrando: ${INBOX_TYPE_LABELS[activeType] || activeType}`}
+          <span className="muted-count">{rows.length}</span>
+        </div>
+        <div className="pend-list-controls">
+          <div className="pend-search">
+            <I.Search size={13} />
+            <input
+              placeholder="Buscar…"
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+            />
+            {query && (
+              <button type="button" className="clear-x" onClick={() => setQuery('')}>
+                <I.Close size={11} />
+              </button>
+            )}
+          </div>
+          {activeType !== 'todas' && (
+            <button type="button" className="clear-filter" onClick={() => setActiveType('todas')}>
+              <I.Close size={10} /> Limpar filtro
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="pend-list">
+        {rows.length === 0 ? (
+          <div className="pend-empty">
+            <div className="empty-icon">✓</div>
+            <div className="empty-title">Nada por aqui</div>
+            <div className="empty-sub">{termo ? 'Tente outro termo.' : 'Tudo em dia.'}</div>
+          </div>
+        ) : rows.map(row => (
+          <button
+            key={row.key}
+            type="button"
+            className={`pend-row ${row.card.variant} ${row.unread ? 'is-unread' : ''}`}
+            onClick={() => row.card.onItemClick(row.item)}
+            title={row.card.getTooltip ? row.card.getTooltip(row.item) : undefined}
+          >
+            <span className={`pend-row-marker ${row.card.variant}`}>{row.card.icon}</span>
+            <span className="pend-row-main">
+              <span className="pend-row-title">{row.title}</span>
+              <span className="pend-row-sub">
+                <span className={`pend-row-type ${row.card.variant}`}>{INBOX_TYPE_LABELS[row.card.key] || ''}</span>
+                <span className="pend-row-dot">·</span>
+                {row.description}
+              </span>
+            </span>
+            <span className="pend-row-side">
+              <span className="pend-row-time">{row.metric}</span>
+            </span>
+            <span className="pend-row-chev"><I.ArrowRight size={13} /></span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const HOME_VIEW_OPTIONS = [
+  { id: 'card', label: 'Card' },
+  { id: 'list', label: 'Lista' },
+];
+
+/**
  * Retorna initials a partir dos dados informados.
  */
 function getInitials(name) {
@@ -776,6 +917,11 @@ function DashboardPage() {
   const [notificacoes, setNotificacoes] = useState([]);
   const [contatosMarcadosOpen, setContatosMarcadosOpen] = useState(false);
   const [problemasModalOpen, setProblemasModalOpen] = useState(false);
+  const [notificacoesView, setNotificacoesView] = useState(() => {
+    if (typeof window === 'undefined') return 'card';
+    const salvo = window.localStorage.getItem(HOME_NOTIF_VIEW_KEY);
+    return HOME_NOTIF_VIEWS.includes(salvo) ? salvo : 'card';
+  });
   const [openNotificationDrawers, setOpenNotificationDrawers] = useState(() => (
     typeof window !== 'undefined' && window.innerWidth > 760
       ? new Set(NOTIFICATION_DRAWER_KEYS)
@@ -1227,6 +1373,19 @@ function DashboardPage() {
   ];
 
   /**
+   * Aplica e persiste a visualizacao das notificacoes escolhida.
+   */
+  function aplicarNotificacoesView(modo) {
+    if (!HOME_NOTIF_VIEWS.includes(modo)) return;
+    setNotificacoesView(modo);
+    try {
+      window.localStorage.setItem(HOME_NOTIF_VIEW_KEY, modo);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  /**
    * Alterna notification drawer no estado atual.
    */
   function toggleNotificationDrawer(key) {
@@ -1408,8 +1567,26 @@ function DashboardPage() {
                 <h2>Notificações</h2>
                 <p>Acompanhe os pontos que exigem atenção imediata.</p>
               </div>
+              <div className="today-view-controls">
+                <div className="today-view-toggle" role="group" aria-label="Visualização das notificações">
+                  {HOME_VIEW_OPTIONS.map(option => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`today-view-button ${notificacoesView === option.id ? 'is-active' : ''}`}
+                      aria-pressed={notificacoesView === option.id}
+                      onClick={() => aplicarNotificacoesView(option.id)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
+            {notificacoesView === 'list' ? (
+              <PendingInbox cards={notificacaoCards} />
+            ) : (
             <div className="home-notifications__list" style={{ '--notification-card-count': notificacaoCards.length }}>
               {notificacaoCards.map(card => {
                 const drawerOpen = openNotificationDrawers.has(card.key);
@@ -1471,6 +1648,7 @@ function DashboardPage() {
                 );
               })}
             </div>
+            )}
           </section>
         )}
 
