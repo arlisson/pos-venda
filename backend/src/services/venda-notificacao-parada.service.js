@@ -173,15 +173,24 @@ async function sincronizarVendasParadas() {
           updated_at: agora
         };
 
-        let notificacao = await Notificacao.query()
+        await db('notificacoes')
+          .insert(payload)
+          .onConflict('source_key')
+          .merge({
+            tipo: payload.tipo,
+            titulo: payload.titulo,
+            mensagem: payload.mensagem,
+            nivel: payload.nivel,
+            entidade: payload.entidade,
+            entidade_id: payload.entidade_id,
+            dados: payload.dados,
+            ativa: payload.ativa,
+            updated_at: payload.updated_at
+          });
+
+        const notificacao = await Notificacao.query()
           .where('source_key', sourceKey)
           .first();
-
-        if (notificacao) {
-          notificacao = await Notificacao.query().patchAndFetchById(notificacao.id, payload);
-        } else {
-          notificacao = await Notificacao.query().insertAndFetch(payload);
-        }
 
         const destinatarios = await obterDestinatariosVenda(venda);
 
@@ -195,17 +204,13 @@ async function sincronizarVendasParadas() {
         await destinatariosQuery.delete();
 
         for (const usuarioId of destinatarios) {
-          const existente = await NotificacaoDestinatario.query()
-            .where('notificacao_id', notificacao.id)
-            .where('usuario_id', usuarioId)
-            .first();
-
-          if (!existente) {
-            await NotificacaoDestinatario.query().insert({
+          await db('notificacao_destinatarios')
+            .insert({
               notificacao_id: notificacao.id,
               usuario_id: usuarioId
-            });
-          }
+            })
+            .onConflict(['notificacao_id', 'usuario_id'])
+            .ignore();
         }
 
         notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
