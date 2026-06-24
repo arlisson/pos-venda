@@ -19,8 +19,12 @@ const mensagemRoutes = require('./routes/mensagem.routes');
 const notaRoutes = require('./routes/nota.routes');
 const fechamentoRoutes = require('./routes/fechamento.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const { securityHeadersMiddleware } = require('./middlewares/security-headers.middleware');
 
 const app = express();
+
+app.disable('x-powered-by');
+app.use(securityHeadersMiddleware);
 
 const allowedOrigins = [
   'http://localhost:5173',
