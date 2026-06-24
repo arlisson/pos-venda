@@ -20,6 +20,7 @@ import Clientes from '../pages/Clientes/Clientes';
 import ClienteFormPage from '../pages/Clientes/ClienteFormPage';
 import ClientesLixeiraPage from '../pages/Clientes/ClientesLixeiraPage';
 import AdminLeadsPage from '../pages/AdminLeadsPage/AdminLeadsPage';
+import CruzarVendasPage from '../pages/CruzarVendasPage/CruzarVendasPage';
 import FuturosClientesPage from '../pages/FuturosClientesPage/FuturosClientesPage';
 import FechamentoMensalPage from '../pages/FechamentoMensalPage/FechamentoMensalPage';
 import MensagensPage from '../pages/MensagensPage/MensagensPage';
@@ -98,6 +99,10 @@ function AppRoutes() {
       <Route
         path="/admin/leads"
         element={<PrivateRoute permission="gerenciar_leads"><AdminLeadsPage /></PrivateRoute>}
+      />
+      <Route
+        path="/admin/cruzar-vendas"
+        element={<PrivateRoute permission="clientes_importar_planilhas"><CruzarVendasPage /></PrivateRoute>}
       />
 
       <Route

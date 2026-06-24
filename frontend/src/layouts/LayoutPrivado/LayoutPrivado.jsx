@@ -39,6 +39,7 @@ const routeConfigs = [
   { path: '/admin/campanhas', title: 'Campanhas', sub: 'Configure desafios e recompensas do time', id: 'campanhas' },
   { path: '/admin/fechamento-mensal', title: 'Fechamento Mensal', sub: 'Consolide contratos, UGRs e comissões do período', id: 'fechamento-mensal' },
   { path: '/admin/leads', title: 'Planilha de Mailing', sub: 'Importe, filtre e distribua mailing para vendedores', id: 'leads' },
+  { path: '/admin/cruzar-vendas', title: 'Cruzar Vendas', sub: 'Cruze a planilha principal com as concluídas das operadoras', id: 'cruzar-vendas' },
   { path: '/futuros-clientes', title: 'Futuros Clientes', sub: 'Mailing marcados para acompanhamento futuro', id: 'futuros-clientes', end: true },
   { path: '/mensagens', title: 'Mensagens', sub: 'Conversas internas entre usuários', id: 'mensagens', end: true },
 ];
@@ -139,6 +140,7 @@ function LayoutPrivado({ children }) {
       campanhas: '/admin/campanhas',
       'fechamento-mensal': '/admin/fechamento-mensal',
       leads: '/admin/leads',
+      'cruzar-vendas': '/admin/cruzar-vendas',
     };
 
     if (routeMap[id]) {

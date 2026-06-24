@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const vendaController = require('../controllers/venda.controller');
+const vendaCruzamentoController = require('../controllers/venda-cruzamento.controller');
 const vendaArquivoController = require('../controllers/venda-arquivo.controller');
 const vendaProblemaController = require('../controllers/venda-problema.controller');
 const vendaAprovacaoController = require('../controllers/venda-aprovacao.controller');
@@ -48,6 +49,18 @@ router.post(
     dados: (req, resultado) => resultado
   }),
   vendaController.importarEmpresas
+);
+router.post('/cruzamento/preview', exigirUmaPermissao(['clientes_importar_planilhas']), vendaCruzamentoController.preview);
+router.post(
+  '/cruzamento/processar',
+  exigirUmaPermissao(['clientes_importar_planilhas']),
+  auditar({
+    acao: 'vendas.cruzamento_gerado',
+    entidade: 'vendas',
+    entidade_id: null,
+    dados: () => ({ tipo: 'cruzamento' })
+  }),
+  vendaCruzamentoController.processar
 );
 router.get('/', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.index);
 router.get('/problemas/destinatarios', exigirUmaPermissao(['pos_venda']), vendaProblemaController.destinatarios);

@@ -1,0 +1,218 @@
+.cruzar-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 980px;
+}
+
+.cruzar-section {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.cruzar-section__title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.cruzar-section__sub {
+  margin: 0 0 16px;
+  color: var(--text-muted, #6b7280);
+  font-size: 13px;
+}
+
+.cruzar-uploads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.cruzar-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px dashed var(--border, #e5e7eb);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.cruzar-upload__label {
+  display: flex;
+  flex-direction: column;
+}
+
+.cruzar-upload__label small {
+  color: var(--text-muted, #6b7280);
+  font-size: 12px;
+}
+
+.cruzar-upload__file {
+  font-size: 12px;
+  color: var(--success, #16a34a);
+  word-break: break-all;
+}
+
+.cruzar-card {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.cruzar-card__title {
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cruzar-card__meta {
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+
+.cruzar-map {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cruzar-map__row {
+  display: grid;
+  grid-template-columns: 180px minmax(160px, 1fr) minmax(120px, 1.2fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.cruzar-map__row > label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cruzar-map__row > span {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cruzar-map__row select,
+.cruzar-map__row input {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.required-mark {
+  color: var(--danger, #dc2626);
+  margin-left: 3px;
+}
+
+.cruzar-tipo-map {
+  margin-top: 14px;
+  border-top: 1px dashed var(--border, #e5e7eb);
+  padding-top: 12px;
+}
+
+.cruzar-tipo-map__head {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.cruzar-tipo-map__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.cruzar-tipo-map__item {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  align-items: center;
+  gap: 8px;
+}
+
+.cruzar-tipo-map__item > span {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cruzar-tipo-map__item select {
+  padding: 6px 8px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.cruzar-empty {
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+}
+
+.cruzar-column-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cruzar-column-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.cruzar-column-row > span {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cruzar-removidas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+}
+
+.cruzar-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-lg {
+  padding: 10px 22px;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .cruzar-map__row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .cruzar-map__row > span {
+    white-space: normal;
+  }
+}

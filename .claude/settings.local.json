@@ -135,7 +135,14 @@
       "Bash(command -v chromium)",
       "Bash(command -v google-chrome)",
       "Bash(node -e \"console.log\\('node', process.version\\)\")",
-      "PowerShell($paths = @\\(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\",\"C:\\\\Program Files\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\",\"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\",\"C:\\\\Program Files \\(x86\\)\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\"\\); $paths | Where-Object { Test-Path $_ })"
+      "PowerShell($paths = @\\(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\",\"C:\\\\Program Files\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe\",\"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\",\"C:\\\\Program Files \\(x86\\)\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\"\\); $paths | Where-Object { Test-Path $_ })",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\" -Depth 1)",
+      "Bash(node -e \"const s=require\\('./src/services/venda-cruzamento.service'\\); console.log\\('loaded ok'\\); console.log\\('cpf:', s.normalizarCpf\\('123.456.789-00'\\)\\); console.log\\('tipo:', s.aplicarTipoMap\\({NOVO:'Novo',INCREMENTO:'Base'}, 'novo'\\)\\);\")",
+      "Bash(node -e \"require\\('./src/routes/venda.routes'\\); console.log\\('routes ok'\\);\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('test:',p.scripts&&p.scripts.test\\); console.log\\('jest:',!!\\(p.devDependencies&&p.devDependencies.jest\\), 'vitest:',!!\\(p.devDependencies&&p.devDependencies.vitest\\)\\);\")",
+      "Bash(node --test test/venda-cruzamento.service.test.js)",
+      "Bash(node -e \"require\\('./src/services/venda-cruzamento.service'\\); console.log\\('service load ok'\\);\")",
+      "Bash(node --test \"test/*.test.js\")"
     ]
   }
 }

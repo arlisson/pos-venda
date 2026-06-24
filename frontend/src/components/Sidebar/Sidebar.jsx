@@ -42,6 +42,7 @@ function Sidebar({ page, setPage, counts, usuario, onLogout, onPerfilClick, isMo
     { id: 'campanhas', label: 'Configurar Campanhas', icon: <I.Settings />, permission: ['gerenciar_campanhas'] },
     { id: 'fechamento-mensal', label: 'Fechamento Mensal', icon: <I.Chart />, permission: 'vendas_fechamento_mensal' },
     { id: 'leads', label: 'Planilha de Mailing', icon: <I.LayoutList />, permission: 'gerenciar_leads' },
+    { id: 'cruzar-vendas', label: 'Cruzar Vendas', icon: <I.TableSheet />, permission: 'clientes_importar_planilhas' },
   ].filter(it => !it.permission || temPermissao(usuario, it.permission));
 
   /**
