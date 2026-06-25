@@ -46,10 +46,44 @@ function encontrarColunaPorTermos(dados, ...termos) {
   }) || '';
 }
 
-function obterCnpjLinha(dados, mapeamento = {}) {
-  const coluna = mapeamento.cnpj || encontrarColunaPorTermos(dados, 'cnpj', 'cpf/cnpj', 'cnpj/cpf');
-  const documento = coluna ? normalizarDocumento(dados[coluna]) : '';
-  return documento.length >= 14 ? documento.slice(-14) : documento;
+/**
+ * Classifica um valor como CPF (11 digitos) ou CNPJ (14 digitos) e devolve a chave de
+ * indexacao com prefixo de tipo. O prefixo impede casamento cruzado entre CPF e CNPJ.
+ *
+ * @param {*} valor - Valor cru da celula de documento.
+ * @returns {{ tipo: ('cpf'|'cnpj'|null), digitos: string, chave: string }}
+ */
+function classificarDocumento(valor) {
+  const digitos = normalizarDocumento(valor);
+  if (digitos.length >= 14) {
+    const cnpj = digitos.slice(-14);
+    return { tipo: 'cnpj', digitos: cnpj, chave: `cnpj:${cnpj}` };
+  }
+  if (digitos.length === 11) {
+    return { tipo: 'cpf', digitos, chave: `cpf:${digitos}` };
+  }
+  return { tipo: null, digitos: '', chave: '' };
+}
+
+/**
+ * Extrai o documento de uma linha tentando a coluna de CNPJ e, em seguida, a de CPF
+ * (a primeira preenchida vence). Na principal so existe uma coluna mista (em `cnpj`);
+ * nas operadoras as colunas de CPF e CNPJ vivem em abas distintas ja combinadas.
+ *
+ * @param {Object} dados - Linha da planilha.
+ * @param {Object} [mapeamento] - Mapeamento com `cnpj` e/ou `cpf`.
+ * @returns {{ tipo: ('cpf'|'cnpj'|null), digitos: string, chave: string }}
+ */
+function documentoDaLinha(dados, mapeamento = {}) {
+  const colunas = [mapeamento.cnpj, mapeamento.cpf].filter(Boolean);
+  const candidatas = colunas.length
+    ? colunas
+    : [encontrarColunaPorTermos(dados, 'cnpj', 'cpf/cnpj', 'cnpj/cpf', 'cpf')].filter(Boolean);
+  for (const coluna of candidatas) {
+    const documento = classificarDocumento(dados[coluna]);
+    if (documento.chave) return documento;
+  }
+  return { tipo: null, digitos: '', chave: '' };
 }
 
 /**
@@ -265,6 +299,7 @@ async function listarAbas(buffer) {
 function sugerirMapeamentoOperadora(colunas) {
   return {
     cnpj: acharColuna(colunas, 'cnpj', 'cpf/cnpj', 'cnpj/cpf'),
+    cpf: acharColuna(colunas, 'cpf'),
     razaoSocial: acharColuna(colunas, 'razao social', 'razão social', 'razao', 'empresa', 'cliente'),
     tipo: acharColuna(colunas, 'base/fresh', 'base', 'tipo')
   };
@@ -343,7 +378,7 @@ function parseConfig(valor, colunasPorPlanilha) {
   const principal = config.principal || {};
   const operadoras = Array.isArray(config.operadoras) ? config.operadoras : [];
 
-  exigirColuna(colunasPorPlanilha[0], principal.cnpj, 'CNPJ da planilha principal');
+  exigirColuna(colunasPorPlanilha[0], principal.cnpj, 'CPF/CNPJ da planilha principal');
   if (principal.razaoSocial) {
     exigirColuna(colunasPorPlanilha[0], principal.razaoSocial, 'Razao Social da planilha principal');
   }
@@ -356,7 +391,15 @@ function parseConfig(valor, colunasPorPlanilha) {
   }
   operadoras.forEach((operadora, index) => {
     const numero = index + 2;
-    exigirColuna(colunasPorPlanilha[numero - 1], operadora.cnpj, `CNPJ da planilha ${numero}`);
+    if (!operadora.cnpj && !operadora.cpf) {
+      throw criarHttpError(400, `Selecione a coluna de CPF ou CNPJ da planilha ${numero}.`);
+    }
+    if (operadora.cnpj) {
+      exigirColuna(colunasPorPlanilha[numero - 1], operadora.cnpj, `CNPJ da planilha ${numero}`);
+    }
+    if (operadora.cpf) {
+      exigirColuna(colunasPorPlanilha[numero - 1], operadora.cpf, `CPF da planilha ${numero}`);
+    }
     if (operadora.razaoSocial) {
       exigirColuna(colunasPorPlanilha[numero - 1], operadora.razaoSocial, `Razao Social da planilha ${numero}`);
     }
@@ -383,7 +426,8 @@ function parseConfig(valor, colunasPorPlanilha) {
       colunasResultado
     },
     operadoras: operadoras.map(operadora => ({
-      cnpj: operadora.cnpj,
+      cnpj: operadora.cnpj || '',
+      cpf: operadora.cpf || '',
       razaoSocial: operadora.razaoSocial,
       tipo: operadora.tipo,
       valorOperadora: normalizarTexto(operadora.valorOperadora),
@@ -537,7 +581,7 @@ function escreverAba(workbook, titulo, cabecalho, linhas) {
  */
 async function gerarWorkbook(resultado, colunasResultado) {
   const workbook = new ExcelJS.Workbook();
-  const cabecalho = [...colunasResultado, 'Tipo', 'Status_Conciliacao', 'Arquivo_Confirmacao', 'Aba_Confirmacao', 'Linha_Confirmacao', 'Razao_Social_Confirmacao', 'Observacao_Automatica'];
+  const cabecalho = [...colunasResultado, 'Tipo', 'Tipo_Documento', 'Status_Conciliacao', 'Arquivo_Confirmacao', 'Aba_Confirmacao', 'Linha_Confirmacao', 'Razao_Social_Confirmacao', 'Observacao_Automatica'];
   escreverAba(workbook, 'Vendas Concluidas', cabecalho, resultado.concluidas);
   escreverAba(workbook, 'Vendas Nao Concluidas', cabecalho, resultado.naoConcluidas);
   return workbook.xlsx.writeBuffer();
@@ -545,7 +589,7 @@ async function gerarWorkbook(resultado, colunasResultado) {
 
 function indexarConfirmacao(linhas, mapeamento, arquivo) {
   const indice = {
-    porCnpj: new Map(),
+    porDocumento: new Map(),
     porRazaoSocial: new Map()
   };
 
@@ -557,15 +601,16 @@ function indexarConfirmacao(linhas, mapeamento, arquivo) {
 
   for (const dados of linhas) {
     const chaveRazao = normalizarChave(dados[mapeamento.razaoSocial]);
-    const cnpj = obterCnpjLinha(dados, mapeamento);
+    const documento = documentoDaLinha(dados, mapeamento);
     const registro = {
       tipo: aplicarTipoMap(mapeamento.tipoMap, dados[mapeamento.tipo]),
       dados,
       arquivo,
-      cnpj,
+      tipoDocumento: documento.tipo,
+      chaveDocumento: documento.chave,
       chaveRazao
     };
-    adicionar(indice.porCnpj, cnpj, registro);
+    adicionar(indice.porDocumento, documento.chave, registro);
     adicionar(indice.porRazaoSocial, chaveRazao, registro);
   }
 
@@ -574,10 +619,10 @@ function indexarConfirmacao(linhas, mapeamento, arquivo) {
   return indice;
 }
 
-function buscarConfirmacao(indice, cnpj, chaveRazao) {
+function buscarConfirmacao(indice, chaveDocumento, chaveRazao) {
   if (!indice) return null;
   if (indice instanceof Map) return chaveRazao ? indice.get(chaveRazao) : null;
-  if (cnpj && indice.porCnpj?.has(cnpj)) return indice.porCnpj.get(cnpj)[0];
+  if (chaveDocumento && indice.porDocumento?.has(chaveDocumento)) return indice.porDocumento.get(chaveDocumento)[0];
   if (chaveRazao && indice.porRazaoSocial?.has(chaveRazao)) return indice.porRazaoSocial.get(chaveRazao)[0];
   return null;
 }
@@ -589,19 +634,22 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
   const { principal, operadoras } = config;
   const classificadas = linhasPrincipal.map(dados => {
     const chave = normalizarChave(dados[principal.razaoSocial]);
-    const cnpj = obterCnpjLinha(dados, principal);
+    const documento = documentoDaLinha(dados, principal);
     const textoOperadora = normalizarTexto(dados[principal.operadora]);
     const indice = operadoras.findIndex(operadora => textoOperadora.includes(operadora.valorOperadora));
-    const confirmacao = indice >= 0 ? buscarConfirmacao(indicesOperadoras[indice], cnpj, chave) : null;
+    const confirmacao = indice >= 0 ? buscarConfirmacao(indicesOperadoras[indice], documento.chave, chave) : null;
     const encontrou = Boolean(confirmacao);
     const tipo = confirmacao?.tipo || confirmacao || '';
-    return { dados, chave, cnpj, operadora: indice, concluida: encontrou, tipo, confirmacao: typeof confirmacao === 'object' ? confirmacao : null };
+    return { dados, chave, documento, operadora: indice, concluida: encontrou, tipo, confirmacao: typeof confirmacao === 'object' ? confirmacao : null };
   });
+
+  const rotuloTipoDocumento = tipo => tipo === 'cpf' ? 'CPF' : tipo === 'cnpj' ? 'CNPJ' : '';
 
   const montarLinha = linha => Object.assign(
     Object.fromEntries(principal.colunasResultado.map(nome => [nome, linha.dados[nome] || ''])),
     {
       Tipo: linha.tipo || '',
+      Tipo_Documento: rotuloTipoDocumento(linha.documento?.tipo),
       Status_Conciliacao: linha.tipo === 'UNKNOWN' ? 'VALIDAR_MANUALMENTE' : (linha.concluida ? 'PAGO' : 'NAO_ENCONTRADO'),
       Arquivo_Confirmacao: linha.confirmacao?.arquivo || '',
       Aba_Confirmacao: linha.confirmacao?.dados?.__abaOrigem || '',
@@ -651,5 +699,7 @@ module.exports = {
   indexarOperadora,
   indexarConfirmacao,
   aplicarTipoMap,
-  normalizarChave
+  normalizarChave,
+  classificarDocumento,
+  documentoDaLinha
 };

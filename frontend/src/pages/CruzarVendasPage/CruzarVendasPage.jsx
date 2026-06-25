@@ -92,11 +92,17 @@ function BlocoOperadora({ titulo, preview, config, onConfig }) {
       <div className="cruzar-map">
         <SelectColuna
           label="Coluna CNPJ"
-          obrigatorio
           valor={config.cnpj}
           colunas={colunas}
           amostras={preview?.amostras}
           onChange={valor => onConfig({ ...config, cnpj: valor })}
+        />
+        <SelectColuna
+          label="Coluna CPF"
+          valor={config.cpf}
+          colunas={colunas}
+          amostras={preview?.amostras}
+          onChange={valor => onConfig({ ...config, cpf: valor })}
         />
         <SelectColuna
           label="Coluna Razão Social (fallback)"
@@ -171,7 +177,7 @@ function CruzarVendasPage() {
   const todosArquivos = arquivos.length >= 2;
   const podeGerar = Boolean(
     preview && principalCfg.cnpj && principalCfg.operadora &&
-    operadorasCfg.length > 0 && operadorasCfg.every(config => config.cnpj && config.tipo && config.valorOperadora) &&
+    operadorasCfg.length > 0 && operadorasCfg.every(config => (config.cnpj || config.cpf) && config.tipo && config.valorOperadora) &&
     colunasResultado.length > 0 && !gerando
   );
 
@@ -228,6 +234,7 @@ function CruzarVendasPage() {
         const sugestao = sug.operadoras?.[index] || {};
         return {
           cnpj: sugestao.cnpj || '',
+          cpf: sugestao.cpf || '',
           razaoSocial: sugestao.razaoSocial || '',
           tipo: sugestao.tipo || '',
           valorOperadora: '',
@@ -375,7 +382,7 @@ function CruzarVendasPage() {
                 </div>
                 <div className="cruzar-map">
                   <SelectColuna
-                    label="Coluna CNPJ"
+                    label="Coluna CPF/CNPJ (documento)"
                     obrigatorio
                     valor={principalCfg.cnpj}
                     colunas={preview.principal.colunas}
@@ -412,7 +419,7 @@ function CruzarVendasPage() {
                   key={`${planilha.arquivo}-${index}`}
                   titulo={`Planilha ${index + 2}: ${planilha.arquivo}`}
                   preview={planilha}
-                  config={operadorasCfg[index] || { cnpj: '', razaoSocial: '', tipo: '', valorOperadora: '', tipoMap: {} }}
+                  config={operadorasCfg[index] || { cnpj: '', cpf: '', razaoSocial: '', tipo: '', valorOperadora: '', tipoMap: {} }}
                   onConfig={config => setOperadorasCfg(prev => prev.map((item, itemIndex) => itemIndex === index ? config : item))}
                 />
               ))}

@@ -6,7 +6,8 @@ const {
   indexarOperadora,
   indexarConfirmacao,
   aplicarTipoMap,
-  normalizarChave
+  normalizarChave,
+  classificarDocumento
 } = require('../src/services/venda-cruzamento.service');
 
 const config = {
@@ -183,4 +184,69 @@ test('cruzamento multiplo mantem vendas repetidas da principal', () => {
   assert.equal(concluidas.length, 2);
   assert.equal(naoConcluidas.length, 0);
   assert.deepEqual(concluidas.map(item => item.Cliente), ['venda 1', 'venda 2']);
+});
+
+test('classificarDocumento distingue CPF (11) de CNPJ (14)', () => {
+  assert.equal(classificarDocumento('111.444.777-35').tipo, 'cpf');
+  assert.equal(classificarDocumento('11.111.111/0001-11').tipo, 'cnpj');
+  assert.equal(classificarDocumento('').tipo, null);
+  assert.equal(classificarDocumento('123').tipo, null);
+});
+
+test('CPF e CNPJ misturados na principal casam com a confirmacao do tipo certo', () => {
+  const configMultipla = {
+    principal: { ...config.principal, colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'Documento'] },
+    operadoras: [
+      { cnpj: 'CNPJ', cpf: 'CPF', razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: { NOVO: 'Novo' } }
+    ]
+  };
+  // Operadora vem com abas separadas ja combinadas: linha de CNPJ preenche CNPJ; linha de CPF preenche CPF.
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { 'Razao Social': 'Empresa PJ', CNPJ: '11.111.111/0001-11', CPF: '', Tipo: 'NOVO' },
+      { 'Razao Social': 'Cliente PF', CNPJ: '', CPF: '111.444.777-35', Tipo: 'NOVO' }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  // Principal: documento misturado numa unica coluna mapeada como `cnpj`.
+  const principal = [
+    { 'Razao Social': 'Empresa PJ', Operadora: 'Claro', Cliente: 'pj', Documento: '11.111.111/0001-11' },
+    { 'Razao Social': 'Cliente PF', Operadora: 'Claro', Cliente: 'pf', Documento: '111.444.777-35' }
+  ];
+
+  const { concluidas, naoConcluidas } = cruzarMultiplasPlanilhas(
+    principal,
+    indicesOperadoras,
+    { ...configMultipla, principal: { ...configMultipla.principal, cnpj: 'Documento' } }
+  );
+
+  assert.equal(naoConcluidas.length, 0);
+  const porCliente = Object.fromEntries(concluidas.map(item => [item.Cliente, item]));
+  assert.equal(porCliente.pj.Tipo_Documento, 'CNPJ');
+  assert.equal(porCliente.pf.Tipo_Documento, 'CPF');
+  assert.equal(porCliente.pj.Status_Conciliacao, 'PAGO');
+  assert.equal(porCliente.pf.Status_Conciliacao, 'PAGO');
+});
+
+test('CPF da principal nao casa com CNPJ de mesmos digitos (prefixo de tipo)', () => {
+  const configMultipla = {
+    principal: { ...config.principal, cnpj: 'Documento', colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'Documento'] },
+    operadoras: [
+      { cnpj: 'CNPJ', cpf: 'CPF', razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: { NOVO: 'Novo' } }
+    ]
+  };
+  // Confirmacao tem apenas um CNPJ cujos digitos coincidem com um CPF informado na principal.
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { 'Razao Social': 'So PJ', CNPJ: '11144477735000', CPF: '', Tipo: 'NOVO' }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { 'Razao Social': 'Sem Match', Operadora: 'Claro', Cliente: 'pf', Documento: '111.444.777-35' }
+  ];
+
+  const { concluidas, naoConcluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(concluidas.length, 0);
+  assert.equal(naoConcluidas.length, 1);
+  assert.equal(naoConcluidas[0].Tipo_Documento, 'CPF');
 });
