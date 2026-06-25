@@ -4,13 +4,25 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { previewCruzamento, processarCruzamento } from '../../services/venda-cruzamento.service';
 import './CruzarVendasPage.css';
 
-const PLANILHAS = [
-  { campo: 'principal', label: 'Planilha principal', descricao: 'Todas as vendas dos meses' },
-  { campo: 'claro', label: 'Vendas concluídas Claro', descricao: 'Confirmadas pela Claro' },
-  { campo: 'vivo', label: 'Vendas concluídas Vivo', descricao: 'Confirmadas pela Vivo' }
+const OPCOES_TIPO = ['Novo', 'Base'];
+const TIPOS_ABA = [
+  { valor: 'INTERNAL_SALES', rotulo: 'Vendas internas' },
+  { valor: 'CLARO_MONTHLY_CLOSING', rotulo: 'Fechamento mensal Claro' },
+  { valor: 'VIVO_DETAILED', rotulo: 'Vivo — detalhada' },
+  { valor: 'VIVO_MIRROR', rotulo: 'Vivo — espelho/resumo' },
+  { valor: 'VIVO_PF', rotulo: 'Vivo — pessoa física' },
+  { valor: 'OTHER_CONFIRMATION', rotulo: 'Outra planilha de confirmação' },
+  { valor: 'IGNORE', rotulo: 'Ignorar' }
 ];
 
-const OPCOES_TIPO = ['Novo', 'Base'];
+function sugerirTipoAba(nome, arquivoIndex) {
+  const texto = String(nome).toLowerCase();
+  if (arquivoIndex === 0) return 'INTERNAL_SALES';
+  if (texto.includes('pf')) return 'VIVO_PF';
+  if (texto.includes('fevereiro') || texto.includes('abril')) return 'VIVO_DETAILED';
+  if (texto.includes('março') || texto.includes('marco') || texto.includes('maio')) return 'VIVO_MIRROR';
+  return 'OTHER_CONFIRMATION';
+}
 
 /**
  * Sugere Novo/Base a partir do texto do valor de Tipo de origem.
@@ -134,10 +146,10 @@ function BlocoOperadora({ titulo, preview, config, onConfig }) {
 }
 
 /**
- * Página de cruzamento de vendas: upload das 3 planilhas, mapeamento configurável e download.
+ * Página de cruzamento de vendas: upload de várias planilhas, mapeamento configurável e download.
  */
 function CruzarVendasPage() {
-  const [arquivos, setArquivos] = useState({ principal: null, claro: null, vivo: null });
+  const [arquivos, setArquivos] = useState([]);
   const [preview, setPreview] = useState(null);
   const [carregandoPreview, setCarregandoPreview] = useState(false);
   const [gerando, setGerando] = useState(false);
@@ -145,28 +157,42 @@ function CruzarVendasPage() {
   const [sucesso, setSucesso] = useState('');
 
   const [principalCfg, setPrincipalCfg] = useState({ razaoSocial: '', operadora: '', data: '' });
-  const [claroCfg, setClaroCfg] = useState({ razaoSocial: '', tipo: '', valorOperadora: 'claro', tipoMap: {} });
-  const [vivoCfg, setVivoCfg] = useState({ razaoSocial: '', tipo: '', valorOperadora: 'vivo', tipoMap: {} });
+  const [operadorasCfg, setOperadorasCfg] = useState([]);
+  const [selecoesAbas, setSelecoesAbas] = useState([]);
   const [colunasResultado, setColunasResultado] = useState([]);
 
-  const todosArquivos = arquivos.principal && arquivos.claro && arquivos.vivo;
+  const todosArquivos = arquivos.length >= 2;
   const podeGerar = Boolean(
     preview && principalCfg.razaoSocial && principalCfg.operadora &&
-    claroCfg.razaoSocial && claroCfg.tipo && vivoCfg.razaoSocial && vivoCfg.tipo &&
+    operadorasCfg.length > 0 && operadorasCfg.every(config => config.razaoSocial && config.tipo && config.valorOperadora) &&
     colunasResultado.length > 0 && !gerando
   );
 
   /**
-   * Atualiza o arquivo selecionado e limpa o preview anterior.
+   * Adiciona arquivos selecionados e limpa o preview anterior.
    */
-  function selecionarArquivo(campo, file) {
-    setArquivos(prev => ({ ...prev, [campo]: file || null }));
+  function selecionarArquivos(fileList) {
+    setArquivos(prev => [...prev, ...Array.from(fileList || [])]);
     setPreview(null);
+    setErro('');
     setSucesso('');
   }
 
   /**
-   * Carrega o preview das 3 planilhas e pré-preenche o mapeamento sugerido.
+   * Remove uma planilha carregada. A nova primeira da lista passa a ser a principal.
+   */
+  function removerArquivo(index) {
+    setArquivos(prev => prev.filter((_, itemIndex) => itemIndex !== index));
+    setPreview(null);
+    setOperadorasCfg([]);
+    setSelecoesAbas([]);
+    setColunasResultado([]);
+    setErro('');
+    setSucesso('');
+  }
+
+  /**
+   * Carrega o preview das planilhas e pré-preenche o mapeamento sugerido.
    */
   async function carregarPreview() {
     if (!todosArquivos) return;
@@ -179,23 +205,26 @@ function CruzarVendasPage() {
       setPreview(dados);
 
       const sug = dados.sugestoes || {};
+      setSelecoesAbas((dados.abasPorArquivo || []).flatMap(item => item.abas.map(aba => ({
+        arquivoIndex: item.arquivoIndex,
+        aba: aba.nome,
+        usar: aba.total_linhas > 0,
+        tipo: aba.total_linhas > 0 ? sugerirTipoAba(aba.nome, item.arquivoIndex) : 'IGNORE'
+      }))));
       setPrincipalCfg({
         razaoSocial: sug.principal?.razaoSocial || '',
         operadora: sug.principal?.operadora || '',
         data: sug.principal?.data || ''
       });
-      setClaroCfg({
-        razaoSocial: sug.claro?.razaoSocial || '',
-        tipo: sug.claro?.tipo || '',
-        valorOperadora: 'claro',
-        tipoMap: montarTipoMapInicial(dados.claro?.valoresDistintos?.[sug.claro?.tipo] || [])
-      });
-      setVivoCfg({
-        razaoSocial: sug.vivo?.razaoSocial || '',
-        tipo: sug.vivo?.tipo || '',
-        valorOperadora: 'vivo',
-        tipoMap: montarTipoMapInicial(dados.vivo?.valoresDistintos?.[sug.vivo?.tipo] || [])
-      });
+      setOperadorasCfg((dados.operadoras || []).map((planilha, index) => {
+        const sugestao = sug.operadoras?.[index] || {};
+        return {
+          razaoSocial: sugestao.razaoSocial || '',
+          tipo: sugestao.tipo || '',
+          valorOperadora: '',
+          tipoMap: montarTipoMapInicial(planilha.valoresDistintos?.[sugestao.tipo] || [])
+        };
+      }));
       setColunasResultado((dados.principal?.colunas || []).map(coluna => coluna.nome));
     } catch (error) {
       setErro(error.message || 'Erro ao ler as planilhas.');
@@ -241,13 +270,11 @@ function CruzarVendasPage() {
 
     try {
       await processarCruzamento({
-        principal: arquivos.principal,
-        claro: arquivos.claro,
-        vivo: arquivos.vivo,
+        arquivos,
         config: {
           principal: { ...principalCfg, colunasResultado },
-          claro: claroCfg,
-          vivo: vivoCfg
+          operadoras: operadorasCfg,
+          selecoesAbas
         }
       });
       setSucesso('Cruzamento gerado. O download foi iniciado.');
@@ -269,22 +296,37 @@ function CruzarVendasPage() {
         {sucesso && <div className="alert-success" style={{ marginBottom: 16 }}>{sucesso}</div>}
 
         <section className="cruzar-section">
-          <h2 className="cruzar-section__title">1. Envie as três planilhas</h2>
+          <h2 className="cruzar-section__title">1. Envie as planilhas</h2>
           <div className="cruzar-uploads">
-            {PLANILHAS.map(item => (
-              <div key={item.campo} className="cruzar-upload">
-                <div className="cruzar-upload__label">
-                  <strong>{item.label}</strong>
-                  <small>{item.descricao}</small>
-                </div>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  onChange={event => selecionarArquivo(item.campo, event.target.files?.[0])}
-                />
-                {arquivos[item.campo] && <span className="cruzar-upload__file">{arquivos[item.campo].name}</span>}
+            <div className="cruzar-upload">
+              <div className="cruzar-upload__label">
+                <strong>Planilhas para cruzamento</strong>
+                <small>A primeira é a principal; todas as demais são planilhas de conclusão.</small>
               </div>
-            ))}
+              <input
+                type="file"
+                multiple
+                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={event => {
+                  selecionarArquivos(event.target.files);
+                  event.target.value = '';
+                }}
+              />
+              {arquivos.map((arquivo, index) => (
+                <div key={`${arquivo.name}-${index}`} className="cruzar-upload__file">
+                  <span>{index === 0 ? 'Principal: ' : `Planilha ${index + 1}: `}{arquivo.name}</span>
+                  <button
+                    type="button"
+                    className="btn btn-icon btn-ghost btn-danger-icon cruzar-upload__remove"
+                    onClick={() => removerArquivo(index)}
+                    title={`Remover ${arquivo.name}`}
+                    aria-label={`Remover ${arquivo.name}`}
+                  >
+                    <I.Trash size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
           <button type="button" className="btn btn-primary" onClick={carregarPreview} disabled={!todosArquivos || carregandoPreview}>
             {carregandoPreview ? 'Lendo planilhas…' : 'Carregar e configurar'}
@@ -294,7 +336,27 @@ function CruzarVendasPage() {
         {preview && (
           <>
             <section className="cruzar-section">
-              <h2 className="cruzar-section__title">2. Configure as colunas</h2>
+              <h2 className="cruzar-section__title">2. Selecione e classifique as abas</h2>
+              <p className="cruzar-section__sub">Somente as abas marcadas como usar entram no cruzamento. Abas vazias já começam ignoradas.</p>
+              <div className="cruzar-sheet-list">
+                {(preview.abasPorArquivo || []).flatMap(item => item.abas.map(aba => {
+                  const indice = selecoesAbas.findIndex(selecao => selecao.arquivoIndex === item.arquivoIndex && selecao.aba === aba.nome);
+                  const selecao = selecoesAbas[indice];
+                  if (!selecao) return null;
+                  const atualizar = alteracao => setSelecoesAbas(prev => prev.map((valor, index) => index === indice ? { ...valor, ...alteracao } : valor));
+                  return <div className="cruzar-sheet-row" key={`${item.arquivoIndex}-${aba.nome}`}>
+                    <label><input type="checkbox" checked={selecao.usar} onChange={event => atualizar({ usar: event.target.checked })} /> {item.arquivo} — {aba.nome}</label>
+                    <span>{aba.total_linhas} linhas</span>
+                    <select value={selecao.tipo} onChange={event => atualizar({ tipo: event.target.value })} disabled={!selecao.usar}>
+                      {TIPOS_ABA.map(tipo => <option key={tipo.valor} value={tipo.valor}>{tipo.rotulo}</option>)}
+                    </select>
+                  </div>;
+                }))}
+              </div>
+            </section>
+
+            <section className="cruzar-section">
+              <h2 className="cruzar-section__title">3. Configure as colunas</h2>
               <p className="cruzar-section__sub">Diga o que é cada coluna em cada planilha. As sugestões já vêm pré-selecionadas.</p>
 
               <div className="cruzar-card">
@@ -329,12 +391,19 @@ function CruzarVendasPage() {
                 </div>
               </div>
 
-              <BlocoOperadora titulo="Claro" preview={preview.claro} config={claroCfg} onConfig={setClaroCfg} />
-              <BlocoOperadora titulo="Vivo" preview={preview.vivo} config={vivoCfg} onConfig={setVivoCfg} />
+              {(preview.operadoras || []).map((planilha, index) => (
+                <BlocoOperadora
+                  key={`${planilha.arquivo}-${index}`}
+                  titulo={`Planilha ${index + 2}: ${planilha.arquivo}`}
+                  preview={planilha}
+                  config={operadorasCfg[index] || { razaoSocial: '', tipo: '', valorOperadora: '', tipoMap: {} }}
+                  onConfig={config => setOperadorasCfg(prev => prev.map((item, itemIndex) => itemIndex === index ? config : item))}
+                />
+              ))}
             </section>
 
             <section className="cruzar-section">
-              <h2 className="cruzar-section__title">3. Colunas do resultado</h2>
+              <h2 className="cruzar-section__title">4. Colunas do resultado</h2>
               <p className="cruzar-section__sub">Escolha e ordene as colunas da planilha principal que vão para o arquivo final. A coluna <strong>Tipo</strong> é sempre adicionada.</p>
 
               <div className="cruzar-column-editor">

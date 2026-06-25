@@ -1,7 +1,6 @@
 const Busboy = require('busboy');
 const ExcelJS = require('exceljs');
 
-const CAMPOS_ARQUIVOS = ['principal', 'claro', 'vivo'];
 const LIMITE_VALORES_DISTINTOS = 50;
 const LIMITE_AMOSTRAS = 5;
 
@@ -49,7 +48,8 @@ function textoCelula(valor) {
 }
 
 /**
- * Le o corpo multipart coletando os 3 arquivos esperados e os campos de texto.
+ * Le o corpo multipart coletando uma ou mais planilhas, na ordem de envio.
+ * A primeira planilha e tratada como a principal.
  *
  * @param {Object} req - Requisicao Express (stream multipart).
  * @returns {Promise.<{ arquivos: Object, campos: Object }>}
@@ -58,8 +58,7 @@ function lerMultipart(req) {
   return new Promise((resolve, reject) => {
     const busboy = Busboy({ headers: req.headers });
     const campos = {};
-    const arquivos = {};
-    const buffers = {};
+    const arquivos = [];
 
     busboy.on('field', (name, value) => {
       campos[name] = value;
@@ -67,7 +66,7 @@ function lerMultipart(req) {
 
     busboy.on('file', (name, file, info) => {
       const filename = String(info.filename || '').toLowerCase();
-      if (!CAMPOS_ARQUIVOS.includes(name)) {
+      if (name !== 'planilhas') {
         file.resume();
         return;
       }
@@ -77,29 +76,23 @@ function lerMultipart(req) {
         return;
       }
 
+      const indiceArquivo = arquivos.length;
+      arquivos.push(null);
       const chunks = [];
       file.on('data', chunk => chunks.push(chunk));
       file.on('limit', () => reject(criarHttpError(400, 'Arquivo excede o limite permitido.')));
       file.on('end', () => {
-        buffers[name] = Buffer.concat(chunks);
-        arquivos[name] = { filename: info.filename, mimeType: info.mimeType };
+        arquivos[indiceArquivo] = { filename: info.filename, mimeType: info.mimeType, buffer: Buffer.concat(chunks) };
       });
     });
 
     busboy.on('error', reject);
     busboy.on('finish', () => {
-      const faltando = CAMPOS_ARQUIVOS.filter(campo => !buffers[campo]);
-      if (faltando.length > 0) {
-        reject(criarHttpError(400, `Envie as 3 planilhas. Faltando: ${faltando.join(', ')}.`));
+      if (arquivos.length < 2 || arquivos.some(arquivo => !arquivo)) {
+        reject(criarHttpError(400, 'Envie a planilha principal e ao menos uma planilha para cruzamento.'));
         return;
       }
-
-      resolve({
-        arquivos: Object.fromEntries(
-          CAMPOS_ARQUIVOS.map(campo => [campo, { ...arquivos[campo], buffer: buffers[campo] }])
-        ),
-        campos
-      });
+      resolve({ arquivos, campos });
     });
 
     req.pipe(busboy);
@@ -114,7 +107,7 @@ function lerMultipart(req) {
  * @param {Buffer} buffer - Conteudo do arquivo .xlsx.
  * @returns {Promise.<{ colunas: {nome: string, index: number}[], linhas: Object[], abas: number }>}
  */
-async function carregarPlanilha(buffer) {
+async function carregarPlanilha(buffer, abasSelecionadas = null) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   if (workbook.worksheets.length === 0) {
@@ -126,6 +119,7 @@ async function carregarPlanilha(buffer) {
   let abasComDados = 0;
 
   for (const worksheet of workbook.worksheets) {
+    if (Array.isArray(abasSelecionadas) && !abasSelecionadas.includes(worksheet.name)) continue;
     const colunasAba = obterCabecalhos(worksheet);
     if (colunasAba.length === 0) continue; // aba sem cabecalho (resumo, em branco) e ignorada
     abasComDados += 1;
@@ -134,7 +128,9 @@ async function carregarPlanilha(buffer) {
         colunasUniao.set(coluna.nome, colunasUniao.size + 1);
       }
     });
-    linhas.push(...lerLinhas(worksheet, colunasAba));
+    const linhasAba = lerLinhas(worksheet, colunasAba);
+    linhasAba.forEach(linha => { linha.__abaOrigem = worksheet.name; });
+    linhas.push(...linhasAba);
   }
 
   if (colunasUniao.size === 0) {
@@ -175,6 +171,7 @@ function lerLinhas(worksheet, colunas) {
       if (valor) preenchida = true;
     });
     if (preenchida) {
+      dados.__linhaOrigem = rowIndex;
       linhas.push(dados);
     }
   }
@@ -225,21 +222,29 @@ function acharColuna(colunas, ...termos) {
 /**
  * Monta as sugestoes de mapeamento para os tres papeis de planilha.
  */
-function sugerirMapeamento(colunasPorPapel) {
+function sugerirMapeamentoPrincipal(colunas) {
   return {
-    principal: {
-      razaoSocial: acharColuna(colunasPorPapel.principal, 'razao social', 'razão social', 'razao', 'empresa', 'cliente'),
-      operadora: acharColuna(colunasPorPapel.principal, 'operadora'),
-      data: acharColuna(colunasPorPapel.principal, 'data da venda', 'data')
-    },
-    claro: {
-      razaoSocial: acharColuna(colunasPorPapel.claro, 'razao social', 'razão social', 'razao', 'empresa', 'cliente'),
-      tipo: acharColuna(colunasPorPapel.claro, 'tipo')
-    },
-    vivo: {
-      razaoSocial: acharColuna(colunasPorPapel.vivo, 'razao social', 'razão social', 'razao', 'empresa', 'cliente'),
-      tipo: acharColuna(colunasPorPapel.vivo, 'base/fresh', 'base', 'tipo')
-    }
+    razaoSocial: acharColuna(colunas, 'razao social', 'razão social', 'razao', 'empresa', 'cliente'),
+    operadora: acharColuna(colunas, 'operadora'),
+    data: acharColuna(colunas, 'data da venda', 'data')
+  };
+}
+
+/** Retorna metadados de cada aba sem misturar suas linhas. */
+async function listarAbas(buffer) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  return workbook.worksheets.map(worksheet => {
+    const colunas = obterCabecalhos(worksheet);
+    const linhas = colunas.length ? lerLinhas(worksheet, colunas) : [];
+    return { nome: worksheet.name, colunas, total_linhas: linhas.length, amostras: montarAmostras(linhas, colunas) };
+  });
+}
+
+function sugerirMapeamentoOperadora(colunas) {
+  return {
+    razaoSocial: acharColuna(colunas, 'razao social', 'razão social', 'razao', 'empresa', 'cliente'),
+    tipo: acharColuna(colunas, 'base/fresh', 'base', 'tipo')
   };
 }
 
@@ -257,26 +262,31 @@ function previewPlanilha({ colunas, linhas, abas }) {
 }
 
 /**
- * Gera a pre-visualizacao das tres planilhas para configuracao do mapeamento.
+ * Gera a pre-visualizacao das planilhas para configuracao do mapeamento.
  *
- * @param {Object} req - Requisicao multipart com os campos principal/claro/vivo.
- * @returns {Promise.<Object>} Preview por planilha + sugestoes de mapeamento.
+ * @param {Object} req - Requisicao multipart com as planilhas em ordem.
+ * @returns {Promise.<Object>} Preview da principal e das planilhas secundarias.
  */
 async function previewCruzamento(req) {
   const { arquivos } = await lerMultipart(req);
 
-  const previews = {};
-  const colunasPorPapel = {};
-  for (const campo of CAMPOS_ARQUIVOS) {
-    const planilha = await carregarPlanilha(arquivos[campo].buffer);
-    previews[campo] = previewPlanilha(planilha);
-    previews[campo].arquivo = arquivos[campo].filename;
-    colunasPorPapel[campo] = planilha.colunas;
-  }
+  const planilhas = await Promise.all(arquivos.map(async arquivo => {
+    const planilha = await carregarPlanilha(arquivo.buffer);
+    return { ...previewPlanilha(planilha), arquivo: arquivo.filename };
+  }));
 
   return {
-    ...previews,
-    sugestoes: sugerirMapeamento(colunasPorPapel)
+    principal: planilhas[0],
+    operadoras: planilhas.slice(1),
+    sugestoes: {
+      principal: sugerirMapeamentoPrincipal(planilhas[0].colunas),
+      operadoras: planilhas.slice(1).map(planilha => sugerirMapeamentoOperadora(planilha.colunas))
+    },
+    abasPorArquivo: await Promise.all(arquivos.map(async (arquivo, arquivoIndex) => ({
+      arquivoIndex,
+      arquivo: arquivo.filename,
+      abas: await listarAbas(arquivo.buffer)
+    })))
   };
 }
 
@@ -296,7 +306,7 @@ function exigirColuna(colunas, nomeColuna, descricao) {
 /**
  * Faz o parse e valida a config de mapeamento recebida no corpo multipart.
  */
-function parseConfig(valor, colunasPorPapel) {
+function parseConfig(valor, colunasPorPlanilha) {
   let config;
   try {
     config = typeof valor === 'string' ? JSON.parse(valor) : valor;
@@ -309,22 +319,28 @@ function parseConfig(valor, colunasPorPapel) {
   }
 
   const principal = config.principal || {};
-  const claro = config.claro || {};
-  const vivo = config.vivo || {};
+  const operadoras = Array.isArray(config.operadoras) ? config.operadoras : [];
 
-  exigirColuna(colunasPorPapel.principal, principal.razaoSocial, 'Razao Social da planilha principal');
-  exigirColuna(colunasPorPapel.principal, principal.operadora, 'operadora da planilha principal');
+  exigirColuna(colunasPorPlanilha[0], principal.razaoSocial, 'Razao Social da planilha principal');
+  exigirColuna(colunasPorPlanilha[0], principal.operadora, 'operadora da planilha principal');
   if (principal.data) {
-    exigirColuna(colunasPorPapel.principal, principal.data, 'data da planilha principal');
+    exigirColuna(colunasPorPlanilha[0], principal.data, 'data da planilha principal');
   }
-  exigirColuna(colunasPorPapel.claro, claro.razaoSocial, 'Razao Social da planilha Claro');
-  exigirColuna(colunasPorPapel.claro, claro.tipo, 'Tipo da planilha Claro');
-  exigirColuna(colunasPorPapel.vivo, vivo.razaoSocial, 'Razao Social da planilha Vivo');
-  exigirColuna(colunasPorPapel.vivo, vivo.tipo, 'Tipo da planilha Vivo');
+  if (operadoras.length !== colunasPorPlanilha.length - 1) {
+    throw criarHttpError(400, 'A configuracao das planilhas enviadas esta incompleta.');
+  }
+  operadoras.forEach((operadora, index) => {
+    const numero = index + 2;
+    exigirColuna(colunasPorPlanilha[numero - 1], operadora.razaoSocial, `Razao Social da planilha ${numero}`);
+    exigirColuna(colunasPorPlanilha[numero - 1], operadora.tipo, `Tipo da planilha ${numero}`);
+    if (!String(operadora.valorOperadora || '').trim()) {
+      throw criarHttpError(400, `Informe o identificador da planilha ${numero} na principal.`);
+    }
+  });
 
   const colunasResultado = Array.isArray(principal.colunasResultado) && principal.colunasResultado.length > 0
-    ? principal.colunasResultado.filter(nome => colunasPorPapel.principal.some(coluna => coluna.nome === nome))
-    : colunasPorPapel.principal.map(coluna => coluna.nome);
+    ? principal.colunasResultado.filter(nome => colunasPorPlanilha[0].some(coluna => coluna.nome === nome))
+    : colunasPorPlanilha[0].map(coluna => coluna.nome);
 
   if (colunasResultado.length === 0) {
     throw criarHttpError(400, 'Selecione ao menos uma coluna para o resultado.');
@@ -337,18 +353,12 @@ function parseConfig(valor, colunasPorPapel) {
       data: principal.data || '',
       colunasResultado
     },
-    claro: {
-      razaoSocial: claro.razaoSocial,
-      tipo: claro.tipo,
-      valorOperadora: normalizarTexto(claro.valorOperadora || 'claro'),
-      tipoMap: claro.tipoMap || {}
-    },
-    vivo: {
-      razaoSocial: vivo.razaoSocial,
-      tipo: vivo.tipo,
-      valorOperadora: normalizarTexto(vivo.valorOperadora || 'vivo'),
-      tipoMap: vivo.tipoMap || {}
-    }
+    operadoras: operadoras.map(operadora => ({
+      razaoSocial: operadora.razaoSocial,
+      tipo: operadora.tipo,
+      valorOperadora: normalizarTexto(operadora.valorOperadora),
+      tipoMap: operadora.tipoMap || {}
+    }))
   };
 }
 
@@ -358,6 +368,9 @@ function parseConfig(valor, colunasPorPapel) {
 function aplicarTipoMap(tipoMap, valorOrigem) {
   const valor = (valorOrigem || '').trim();
   if (!valor) return '';
+  // Uma coluna numerica selecionada por engano (ex.: "39") nao pode virar Tipo.
+  // Mantemos o registro para auditoria, mas ele exigira validacao manual no resultado.
+  if (/^\d+(?:[.,]\d+)?$/.test(valor)) return 'UNKNOWN';
   const chave = Object.keys(tipoMap).find(item => normalizarTexto(item) === normalizarTexto(valor));
   return chave ? tipoMap[chave] : valor;
 }
@@ -494,35 +507,89 @@ function escreverAba(workbook, titulo, cabecalho, linhas) {
  */
 async function gerarWorkbook(resultado, colunasResultado) {
   const workbook = new ExcelJS.Workbook();
-  const cabecalho = [...colunasResultado, 'Tipo'];
+  const cabecalho = [...colunasResultado, 'Tipo', 'Status_Conciliacao', 'Arquivo_Confirmacao', 'Aba_Confirmacao', 'Linha_Confirmacao', 'Razao_Social_Confirmacao', 'Observacao_Automatica'];
   escreverAba(workbook, 'Vendas Concluidas', cabecalho, resultado.concluidas);
   escreverAba(workbook, 'Vendas Nao Concluidas', cabecalho, resultado.naoConcluidas);
   return workbook.xlsx.writeBuffer();
 }
 
+function indexarConfirmacao(linhas, mapeamento, arquivo) {
+  const indice = new Map();
+  for (const dados of linhas) {
+    const chave = normalizarChave(dados[mapeamento.razaoSocial]);
+    if (chave) indice.set(chave, { tipo: aplicarTipoMap(mapeamento.tipoMap, dados[mapeamento.tipo]), dados, arquivo });
+  }
+  return indice;
+}
+
+/**
+ * Cruza a principal com qualquer quantidade de planilhas secundarias.
+ */
+function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
+  const { principal, operadoras } = config;
+  const classificadas = linhasPrincipal.map(dados => {
+    const chave = normalizarChave(dados[principal.razaoSocial]);
+    const textoOperadora = normalizarTexto(dados[principal.operadora]);
+    const indice = operadoras.findIndex(operadora => textoOperadora.includes(operadora.valorOperadora));
+    const confirmacao = indice >= 0 && chave ? indicesOperadoras[indice].get(chave) : null;
+    const encontrou = Boolean(confirmacao);
+    const tipo = confirmacao?.tipo || confirmacao || '';
+    return { dados, chave, operadora: indice, concluida: encontrou, tipo, confirmacao: typeof confirmacao === 'object' ? confirmacao : null };
+  });
+
+  const grupos = new Map();
+  classificadas.forEach(linha => {
+    const base = `${linha.chave}::${linha.operadora >= 0 ? linha.operadora : ''}`;
+    const chaveGrupo = linha.chave ? base : `${base}::${grupos.size}`;
+    if (!grupos.has(chaveGrupo)) grupos.set(chaveGrupo, []);
+    grupos.get(chaveGrupo).push(linha);
+  });
+
+  const selecionadas = Array.from(grupos.values()).map(grupo => {
+    const concluida = grupo.find(item => item.concluida);
+    if (concluida) return concluida;
+    return [...grupo].sort((a, b) => String(a.dados[principal.data] || '').localeCompare(String(b.dados[principal.data] || ''))).at(-1);
+  });
+  const montarLinha = linha => Object.assign(
+    Object.fromEntries(principal.colunasResultado.map(nome => [nome, linha.dados[nome] || ''])),
+    {
+      Tipo: linha.tipo || '',
+      Status_Conciliacao: linha.tipo === 'UNKNOWN' ? 'VALIDAR_MANUALMENTE' : (linha.concluida ? 'PAGO' : 'NAO_ENCONTRADO'),
+      Arquivo_Confirmacao: linha.confirmacao?.arquivo || '',
+      Aba_Confirmacao: linha.confirmacao?.dados?.__abaOrigem || '',
+      Linha_Confirmacao: linha.confirmacao?.dados?.__linhaOrigem || '',
+      Razao_Social_Confirmacao: linha.confirmacao?.dados?.[operadoras[linha.operadora]?.razaoSocial] || '',
+      Observacao_Automatica: linha.tipo === 'UNKNOWN'
+        ? 'Tipo da confirmação parece numérico ou inválido; validar o mapeamento da aba.'
+        : (linha.concluida ? 'Encontrado na planilha de confirmação.' : 'Não encontrado na planilha de confirmação.')
+    }
+  );
+  return {
+    concluidas: selecionadas.filter(item => item.concluida).map(montarLinha),
+    naoConcluidas: selecionadas.filter(item => !item.concluida).map(montarLinha)
+  };
+}
+
 /**
  * Orquestra o cruzamento completo: le arquivos + config, cruza e devolve o .xlsx.
  *
- * @param {Object} req - Requisicao multipart com 3 arquivos + campo config (JSON).
+ * @param {Object} req - Requisicao multipart com planilhas + campo config (JSON).
  * @returns {Promise.<Buffer>} Buffer do arquivo cruzamento.xlsx.
  */
 async function processarCruzamento(req) {
   const { arquivos, campos } = await lerMultipart(req);
 
-  const colunasPorPapel = {};
-  const linhasPorPapel = {};
-  for (const campo of CAMPOS_ARQUIVOS) {
-    const planilha = await carregarPlanilha(arquivos[campo].buffer);
-    colunasPorPapel[campo] = planilha.colunas;
-    linhasPorPapel[campo] = planilha.linhas;
-  }
-
-  const config = parseConfig(campos.config, colunasPorPapel);
-
-  const indiceClaro = indexarOperadora(linhasPorPapel.claro, config.claro);
-  const indiceVivo = indexarOperadora(linhasPorPapel.vivo, config.vivo);
-
-  const resultado = cruzar(linhasPorPapel.principal, indiceClaro, indiceVivo, config);
+  let selecoesAbas = [];
+  try { selecoesAbas = JSON.parse(campos.config || '{}').selecoesAbas || []; } catch (_) { /* parseConfig informa o erro */ }
+  const planilhas = await Promise.all(arquivos.map((arquivo, arquivoIndex) => {
+    const abas = selecoesAbas.filter(item => item.usar !== false && item.arquivoIndex === arquivoIndex).map(item => item.aba);
+    return carregarPlanilha(arquivo.buffer, selecoesAbas.length ? abas : null);
+  }));
+  const config = parseConfig(campos.config, planilhas.map(planilha => planilha.colunas));
+  const indicesOperadoras = planilhas.slice(1).map((planilha, index) => (
+    indexarConfirmacao(planilha.linhas, config.operadoras[index], arquivos[index + 1].filename)
+  ));
+  const resultado = cruzarMultiplasPlanilhas(planilhas[0].linhas, indicesOperadoras, config);
 
   return gerarWorkbook(resultado, config.principal.colunasResultado);
 }
@@ -532,7 +599,9 @@ module.exports = {
   processarCruzamento,
   // exportados para teste unitario do nucleo
   cruzar,
+  cruzarMultiplasPlanilhas,
   indexarOperadora,
+  indexarConfirmacao,
   aplicarTipoMap,
   normalizarChave
 };

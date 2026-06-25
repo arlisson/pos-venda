@@ -54,6 +54,38 @@
   font-size: 12px;
   color: var(--success, #16a34a);
   word-break: break-all;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cruzar-upload__remove {
+  flex: 0 0 auto;
+}
+
+.cruzar-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cruzar-sheet-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 220px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.cruzar-sheet-row label { min-width: 0; overflow-wrap: anywhere; }
+.cruzar-sheet-row span { color: var(--text-muted, #6b7280); }
+
+@media (max-width: 640px) {
+  .cruzar-sheet-row { grid-template-columns: 1fr; }
 }
 
 .cruzar-card {
@@ -132,13 +164,13 @@
 
 .cruzar-tipo-map__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, max-content));
   gap: 10px;
 }
 
 .cruzar-tipo-map__item {
   display: grid;
-  grid-template-columns: 1fr 110px;
+  grid-template-columns: max-content 110px;
   align-items: center;
   gap: 8px;
 }

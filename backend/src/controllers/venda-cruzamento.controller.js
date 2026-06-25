@@ -1,15 +1,15 @@
 /**
  * Controller HTTP do cruzamento de vendas.
  *
- * Recebe a planilha principal e as planilhas das operadoras (Claro/Vivo),
+ * Recebe a planilha principal e qualquer quantidade de planilhas secundarias,
  * gera o preview para configuracao do mapeamento e produz o .xlsx cruzado.
  */
 const vendaCruzamentoService = require('../services/venda-cruzamento.service');
 
 /**
- * Gera a pre-visualizacao das tres planilhas para configuracao do mapeamento.
+ * Gera a pre-visualizacao das planilhas para configuracao do mapeamento.
  *
- * @param {Object} req - Requisicao multipart com os campos principal/claro/vivo.
+ * @param {Object} req - Requisicao multipart com as planilhas em ordem.
  * @param {Object} res - Resposta HTTP.
  * @returns {Promise.<Object>} Preview por planilha + sugestoes.
  */
@@ -28,7 +28,7 @@ async function preview(req, res) {
 /**
  * Processa o cruzamento e devolve o arquivo cruzamento.xlsx para download.
  *
- * @param {Object} req - Requisicao multipart com 3 arquivos + campo config (JSON).
+ * @param {Object} req - Requisicao multipart com planilhas + campo config (JSON).
  * @param {Object} res - Resposta HTTP (download do .xlsx).
  * @returns {Promise.<void>}
  */

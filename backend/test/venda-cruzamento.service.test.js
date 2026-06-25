@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   cruzar,
+  cruzarMultiplasPlanilhas,
   indexarOperadora,
   aplicarTipoMap,
   normalizarChave
@@ -110,4 +111,27 @@ test('tipoMap customizado pela config e respeitado', () => {
   const principal = [{ 'Razao Social': 'Empresa Z', Operadora: 'Claro', Cliente: 'Z', Data: '2026-01-01' }];
   const { concluidas } = cruzar(principal, claro, vivo, configCustom);
   assert.equal(concluidas[0].Tipo, 'Novo');
+});
+
+test('cruza uma quantidade ilimitada de planilhas secundarias', () => {
+  const configMultipla = {
+    principal: { ...config.principal },
+    operadoras: [
+      { razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: {} },
+      { razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'vivo', tipoMap: {} },
+      { razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'tim', tipoMap: {} }
+    ]
+  };
+  const indicesOperadoras = [
+    indexarOperadora([{ 'Razao Social': 'Empresa A', Tipo: 'Novo' }], configMultipla.operadoras[0]),
+    indexarOperadora([{ 'Razao Social': 'Empresa B', Tipo: 'Base' }], configMultipla.operadoras[1]),
+    indexarOperadora([{ 'Razao Social': 'Empresa C', Tipo: 'Novo' }], configMultipla.operadoras[2])
+  ];
+  const principal = [
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'A' },
+    { 'Razao Social': 'Empresa B', Operadora: 'Vivo', Cliente: 'B' },
+    { 'Razao Social': 'Empresa C', Operadora: 'TIM', Cliente: 'C' }
+  ];
+  const { concluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+  assert.equal(concluidas.length, 3);
 });
