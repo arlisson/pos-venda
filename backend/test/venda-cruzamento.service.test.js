@@ -250,3 +250,86 @@ test('CPF da principal nao casa com CNPJ de mesmos digitos (prefixo de tipo)', (
   assert.equal(naoConcluidas.length, 1);
   assert.equal(naoConcluidas[0].Tipo_Documento, 'CPF');
 });
+
+test('cruzamento multiplo respeita mapeamento especifico por aba', () => {
+  const configMultipla = {
+    principal: {
+      razaoSocial: '',
+      operadora: '',
+      data: '',
+      colunasResultado: ['Cliente', 'Doc A', 'Doc B', 'Oper A', 'Oper B'],
+      abas: {
+        Janeiro: { cnpj: 'Doc A', operadora: 'Oper A' },
+        Fevereiro: { cnpj: 'Doc B', operadora: 'Oper B' }
+      }
+    },
+    operadoras: [
+      {
+        razaoSocial: '',
+        tipo: '',
+        valorOperadora: 'claro',
+        tipoMap: { NOVO: 'Novo' },
+        abas: {
+          Janeiro: { cnpj: 'Documento Claro', tipo: 'Tipo Claro' },
+          Fevereiro: { cnpj: 'Documento Fev', tipo: 'Tipo Fev' }
+        }
+      }
+    ]
+  };
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { __abaOrigem: 'Janeiro', 'Documento Claro': '11.111.111/0001-11', 'Tipo Claro': 'NOVO' },
+      { __abaOrigem: 'Fevereiro', 'Documento Fev': '22.222.222/0001-22', 'Tipo Fev': 'NOVO' }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { __abaOrigem: 'Janeiro', Cliente: 'A', 'Doc A': '11.111.111/0001-11', 'Oper A': 'Claro' },
+    { __abaOrigem: 'Fevereiro', Cliente: 'B', 'Doc B': '22.222.222/0001-22', 'Oper B': 'Claro' }
+  ];
+
+  const resultado = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(resultado.concluidas.length, 2);
+  assert.deepEqual(resultado.concluidas.map(item => item.Cliente), ['A', 'B']);
+});
+
+test('cruzamento multiplo usa identificador especifico de cada aba', () => {
+  const configMultipla = {
+    principal: {
+      razaoSocial: '',
+      operadora: '',
+      data: '',
+      colunasResultado: ['Cliente', 'Documento', 'Operadora'],
+      abas: {
+        Principal: { cnpj: 'Documento', operadora: 'Operadora' }
+      }
+    },
+    operadoras: [
+      {
+        razaoSocial: '',
+        tipo: '',
+        valorOperadora: '',
+        tipoMap: { NOVO: 'Novo' },
+        abas: {
+          Claro: { cnpj: 'CNPJ', tipo: 'Tipo', valorOperadora: 'claro' },
+          Vivo: { cnpj: 'CNPJ', tipo: 'Tipo', valorOperadora: 'vivo' }
+        }
+      }
+    ]
+  };
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { __abaOrigem: 'Claro', CNPJ: '11.111.111/0001-11', Tipo: 'NOVO' },
+      { __abaOrigem: 'Vivo', CNPJ: '22.222.222/0001-22', Tipo: 'NOVO' }
+    ], configMultipla.operadoras[0], 'confirmacoes.xlsx')
+  ];
+  const principal = [
+    { __abaOrigem: 'Principal', Cliente: 'Claro', Documento: '11.111.111/0001-11', Operadora: 'Claro' },
+    { __abaOrigem: 'Principal', Cliente: 'Vivo', Documento: '22.222.222/0001-22', Operadora: 'Vivo' }
+  ];
+
+  const resultado = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(resultado.concluidas.length, 2);
+  assert.deepEqual(resultado.concluidas.map(item => item.Cliente), ['Claro', 'Vivo']);
+});
