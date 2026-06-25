@@ -4,6 +4,7 @@ const {
   cruzar,
   cruzarMultiplasPlanilhas,
   indexarOperadora,
+  indexarConfirmacao,
   aplicarTipoMap,
   normalizarChave
 } = require('../src/services/venda-cruzamento.service');
@@ -134,4 +135,52 @@ test('cruza uma quantidade ilimitada de planilhas secundarias', () => {
   ];
   const { concluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
   assert.equal(concluidas.length, 3);
+});
+
+test('cruzamento multiplo usa CNPJ como chave principal mesmo com razao social diferente', () => {
+  const configMultipla = {
+    principal: { ...config.principal, colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'CNPJ'] },
+    operadoras: [
+      { razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: { NOVO: 'Novo' } }
+    ]
+  };
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { 'Razao Social': 'Nome na Claro Ltda', CNPJ: '11.111.111/0001-11', Tipo: 'NOVO' }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { 'Razao Social': 'Nome Basari Diferente', Operadora: 'Claro', Cliente: 'A', CNPJ: '11.111.111/0001-11' }
+  ];
+
+  const { concluidas, naoConcluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(concluidas.length, 1);
+  assert.equal(naoConcluidas.length, 0);
+  assert.equal(concluidas[0].Tipo, 'Novo');
+  assert.equal(concluidas[0].Razao_Social_Confirmacao, 'Nome na Claro Ltda');
+});
+
+test('cruzamento multiplo mantem vendas repetidas da principal', () => {
+  const configMultipla = {
+    principal: { ...config.principal, colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'CNPJ'] },
+    operadoras: [
+      { razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: { NOVO: 'Novo' } }
+    ]
+  };
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { 'Razao Social': 'Empresa A', CNPJ: '22.222.222/0001-22', Tipo: 'NOVO' }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'venda 1', CNPJ: '22.222.222/0001-22' },
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'venda 2', CNPJ: '22.222.222/0001-22' }
+  ];
+
+  const { concluidas, naoConcluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(concluidas.length, 2);
+  assert.equal(naoConcluidas.length, 0);
+  assert.deepEqual(concluidas.map(item => item.Cliente), ['venda 1', 'venda 2']);
 });

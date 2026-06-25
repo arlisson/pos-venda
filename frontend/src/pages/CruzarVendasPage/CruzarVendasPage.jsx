@@ -91,8 +91,15 @@ function BlocoOperadora({ titulo, preview, config, onConfig }) {
       </div>
       <div className="cruzar-map">
         <SelectColuna
-          label="Coluna Razão Social"
+          label="Coluna CNPJ"
           obrigatorio
+          valor={config.cnpj}
+          colunas={colunas}
+          amostras={preview?.amostras}
+          onChange={valor => onConfig({ ...config, cnpj: valor })}
+        />
+        <SelectColuna
+          label="Coluna Razão Social (fallback)"
           valor={config.razaoSocial}
           colunas={colunas}
           amostras={preview?.amostras}
@@ -156,15 +163,15 @@ function CruzarVendasPage() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
 
-  const [principalCfg, setPrincipalCfg] = useState({ razaoSocial: '', operadora: '', data: '' });
+  const [principalCfg, setPrincipalCfg] = useState({ cnpj: '', razaoSocial: '', operadora: '', data: '' });
   const [operadorasCfg, setOperadorasCfg] = useState([]);
   const [selecoesAbas, setSelecoesAbas] = useState([]);
   const [colunasResultado, setColunasResultado] = useState([]);
 
   const todosArquivos = arquivos.length >= 2;
   const podeGerar = Boolean(
-    preview && principalCfg.razaoSocial && principalCfg.operadora &&
-    operadorasCfg.length > 0 && operadorasCfg.every(config => config.razaoSocial && config.tipo && config.valorOperadora) &&
+    preview && principalCfg.cnpj && principalCfg.operadora &&
+    operadorasCfg.length > 0 && operadorasCfg.every(config => config.cnpj && config.tipo && config.valorOperadora) &&
     colunasResultado.length > 0 && !gerando
   );
 
@@ -212,6 +219,7 @@ function CruzarVendasPage() {
         tipo: aba.total_linhas > 0 ? sugerirTipoAba(aba.nome, item.arquivoIndex) : 'IGNORE'
       }))));
       setPrincipalCfg({
+        cnpj: sug.principal?.cnpj || '',
         razaoSocial: sug.principal?.razaoSocial || '',
         operadora: sug.principal?.operadora || '',
         data: sug.principal?.data || ''
@@ -219,6 +227,7 @@ function CruzarVendasPage() {
       setOperadorasCfg((dados.operadoras || []).map((planilha, index) => {
         const sugestao = sug.operadoras?.[index] || {};
         return {
+          cnpj: sugestao.cnpj || '',
           razaoSocial: sugestao.razaoSocial || '',
           tipo: sugestao.tipo || '',
           valorOperadora: '',
@@ -366,8 +375,15 @@ function CruzarVendasPage() {
                 </div>
                 <div className="cruzar-map">
                   <SelectColuna
-                    label="Coluna Razão Social"
+                    label="Coluna CNPJ"
                     obrigatorio
+                    valor={principalCfg.cnpj}
+                    colunas={preview.principal.colunas}
+                    amostras={preview.principal.amostras}
+                    onChange={valor => setPrincipalCfg(prev => ({ ...prev, cnpj: valor }))}
+                  />
+                  <SelectColuna
+                    label="Coluna Razão Social (fallback)"
                     valor={principalCfg.razaoSocial}
                     colunas={preview.principal.colunas}
                     amostras={preview.principal.amostras}
@@ -396,7 +412,7 @@ function CruzarVendasPage() {
                   key={`${planilha.arquivo}-${index}`}
                   titulo={`Planilha ${index + 2}: ${planilha.arquivo}`}
                   preview={planilha}
-                  config={operadorasCfg[index] || { razaoSocial: '', tipo: '', valorOperadora: '', tipoMap: {} }}
+                  config={operadorasCfg[index] || { cnpj: '', razaoSocial: '', tipo: '', valorOperadora: '', tipoMap: {} }}
                   onConfig={config => setOperadorasCfg(prev => prev.map((item, itemIndex) => itemIndex === index ? config : item))}
                 />
               ))}

@@ -19,6 +19,7 @@ function criarHttpError(statusCode, message) {
 function normalizarTexto(valor) {
   return String(valor || '')
     .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .trim();
@@ -30,6 +31,25 @@ function normalizarTexto(valor) {
  */
 function normalizarChave(valor) {
   return normalizarTexto(valor).replace(/\s+/g, ' ');
+}
+
+function normalizarDocumento(valor) {
+  return String(valor || '').replace(/\D/g, '');
+}
+
+function encontrarColunaPorTermos(dados, ...termos) {
+  const termosNorm = termos.map(normalizarTexto);
+  return Object.keys(dados || {}).find(nome => {
+    if (nome.startsWith('__')) return false;
+    const nomeNorm = normalizarTexto(nome);
+    return termosNorm.some(termo => nomeNorm === termo || nomeNorm.includes(termo));
+  }) || '';
+}
+
+function obterCnpjLinha(dados, mapeamento = {}) {
+  const coluna = mapeamento.cnpj || encontrarColunaPorTermos(dados, 'cnpj', 'cpf/cnpj', 'cnpj/cpf');
+  const documento = coluna ? normalizarDocumento(dados[coluna]) : '';
+  return documento.length >= 14 ? documento.slice(-14) : documento;
 }
 
 /**
@@ -224,6 +244,7 @@ function acharColuna(colunas, ...termos) {
  */
 function sugerirMapeamentoPrincipal(colunas) {
   return {
+    cnpj: acharColuna(colunas, 'cnpj', 'cpf/cnpj', 'cnpj/cpf'),
     razaoSocial: acharColuna(colunas, 'razao social', 'razão social', 'razao', 'empresa', 'cliente'),
     operadora: acharColuna(colunas, 'operadora'),
     data: acharColuna(colunas, 'data da venda', 'data')
@@ -243,6 +264,7 @@ async function listarAbas(buffer) {
 
 function sugerirMapeamentoOperadora(colunas) {
   return {
+    cnpj: acharColuna(colunas, 'cnpj', 'cpf/cnpj', 'cnpj/cpf'),
     razaoSocial: acharColuna(colunas, 'razao social', 'razão social', 'razao', 'empresa', 'cliente'),
     tipo: acharColuna(colunas, 'base/fresh', 'base', 'tipo')
   };
@@ -321,7 +343,10 @@ function parseConfig(valor, colunasPorPlanilha) {
   const principal = config.principal || {};
   const operadoras = Array.isArray(config.operadoras) ? config.operadoras : [];
 
-  exigirColuna(colunasPorPlanilha[0], principal.razaoSocial, 'Razao Social da planilha principal');
+  exigirColuna(colunasPorPlanilha[0], principal.cnpj, 'CNPJ da planilha principal');
+  if (principal.razaoSocial) {
+    exigirColuna(colunasPorPlanilha[0], principal.razaoSocial, 'Razao Social da planilha principal');
+  }
   exigirColuna(colunasPorPlanilha[0], principal.operadora, 'operadora da planilha principal');
   if (principal.data) {
     exigirColuna(colunasPorPlanilha[0], principal.data, 'data da planilha principal');
@@ -331,7 +356,10 @@ function parseConfig(valor, colunasPorPlanilha) {
   }
   operadoras.forEach((operadora, index) => {
     const numero = index + 2;
-    exigirColuna(colunasPorPlanilha[numero - 1], operadora.razaoSocial, `Razao Social da planilha ${numero}`);
+    exigirColuna(colunasPorPlanilha[numero - 1], operadora.cnpj, `CNPJ da planilha ${numero}`);
+    if (operadora.razaoSocial) {
+      exigirColuna(colunasPorPlanilha[numero - 1], operadora.razaoSocial, `Razao Social da planilha ${numero}`);
+    }
     exigirColuna(colunasPorPlanilha[numero - 1], operadora.tipo, `Tipo da planilha ${numero}`);
     if (!String(operadora.valorOperadora || '').trim()) {
       throw criarHttpError(400, `Informe o identificador da planilha ${numero} na principal.`);
@@ -348,12 +376,14 @@ function parseConfig(valor, colunasPorPlanilha) {
 
   return {
     principal: {
+      cnpj: principal.cnpj,
       razaoSocial: principal.razaoSocial,
       operadora: principal.operadora,
       data: principal.data || '',
       colunasResultado
     },
     operadoras: operadoras.map(operadora => ({
+      cnpj: operadora.cnpj,
       razaoSocial: operadora.razaoSocial,
       tipo: operadora.tipo,
       valorOperadora: normalizarTexto(operadora.valorOperadora),
@@ -514,12 +544,42 @@ async function gerarWorkbook(resultado, colunasResultado) {
 }
 
 function indexarConfirmacao(linhas, mapeamento, arquivo) {
-  const indice = new Map();
+  const indice = {
+    porCnpj: new Map(),
+    porRazaoSocial: new Map()
+  };
+
+  const adicionar = (mapa, chave, registro) => {
+    if (!chave) return;
+    if (!mapa.has(chave)) mapa.set(chave, []);
+    mapa.get(chave).push(registro);
+  };
+
   for (const dados of linhas) {
-    const chave = normalizarChave(dados[mapeamento.razaoSocial]);
-    if (chave) indice.set(chave, { tipo: aplicarTipoMap(mapeamento.tipoMap, dados[mapeamento.tipo]), dados, arquivo });
+    const chaveRazao = normalizarChave(dados[mapeamento.razaoSocial]);
+    const cnpj = obterCnpjLinha(dados, mapeamento);
+    const registro = {
+      tipo: aplicarTipoMap(mapeamento.tipoMap, dados[mapeamento.tipo]),
+      dados,
+      arquivo,
+      cnpj,
+      chaveRazao
+    };
+    adicionar(indice.porCnpj, cnpj, registro);
+    adicionar(indice.porRazaoSocial, chaveRazao, registro);
   }
+
+  indice.has = chave => indice.porRazaoSocial.has(chave);
+  indice.get = chave => indice.porRazaoSocial.get(chave)?.[0] || null;
   return indice;
+}
+
+function buscarConfirmacao(indice, cnpj, chaveRazao) {
+  if (!indice) return null;
+  if (indice instanceof Map) return chaveRazao ? indice.get(chaveRazao) : null;
+  if (cnpj && indice.porCnpj?.has(cnpj)) return indice.porCnpj.get(cnpj)[0];
+  if (chaveRazao && indice.porRazaoSocial?.has(chaveRazao)) return indice.porRazaoSocial.get(chaveRazao)[0];
+  return null;
 }
 
 /**
@@ -529,27 +589,15 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
   const { principal, operadoras } = config;
   const classificadas = linhasPrincipal.map(dados => {
     const chave = normalizarChave(dados[principal.razaoSocial]);
+    const cnpj = obterCnpjLinha(dados, principal);
     const textoOperadora = normalizarTexto(dados[principal.operadora]);
     const indice = operadoras.findIndex(operadora => textoOperadora.includes(operadora.valorOperadora));
-    const confirmacao = indice >= 0 && chave ? indicesOperadoras[indice].get(chave) : null;
+    const confirmacao = indice >= 0 ? buscarConfirmacao(indicesOperadoras[indice], cnpj, chave) : null;
     const encontrou = Boolean(confirmacao);
     const tipo = confirmacao?.tipo || confirmacao || '';
-    return { dados, chave, operadora: indice, concluida: encontrou, tipo, confirmacao: typeof confirmacao === 'object' ? confirmacao : null };
+    return { dados, chave, cnpj, operadora: indice, concluida: encontrou, tipo, confirmacao: typeof confirmacao === 'object' ? confirmacao : null };
   });
 
-  const grupos = new Map();
-  classificadas.forEach(linha => {
-    const base = `${linha.chave}::${linha.operadora >= 0 ? linha.operadora : ''}`;
-    const chaveGrupo = linha.chave ? base : `${base}::${grupos.size}`;
-    if (!grupos.has(chaveGrupo)) grupos.set(chaveGrupo, []);
-    grupos.get(chaveGrupo).push(linha);
-  });
-
-  const selecionadas = Array.from(grupos.values()).map(grupo => {
-    const concluida = grupo.find(item => item.concluida);
-    if (concluida) return concluida;
-    return [...grupo].sort((a, b) => String(a.dados[principal.data] || '').localeCompare(String(b.dados[principal.data] || ''))).at(-1);
-  });
   const montarLinha = linha => Object.assign(
     Object.fromEntries(principal.colunasResultado.map(nome => [nome, linha.dados[nome] || ''])),
     {
@@ -565,8 +613,8 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
     }
   );
   return {
-    concluidas: selecionadas.filter(item => item.concluida).map(montarLinha),
-    naoConcluidas: selecionadas.filter(item => !item.concluida).map(montarLinha)
+    concluidas: classificadas.filter(item => item.concluida).map(montarLinha),
+    naoConcluidas: classificadas.filter(item => !item.concluida).map(montarLinha)
   };
 }
 
