@@ -48,8 +48,38 @@ function montarTipoMapInicial(valores = []) {
   return valores.reduce((mapa, valor) => ({ ...mapa, [valor]: sugerirTipo(valor) }), {});
 }
 
+function indiceColuna(colunas = [], nomeColuna) {
+  return colunas.find(coluna => coluna.nome === nomeColuna)?.index || '';
+}
+
+function aplicarIndice(config, colunas = [], campo) {
+  return {
+    ...config,
+    [`${campo}Index`]: indiceColuna(colunas, config?.[campo])
+  };
+}
+
+function atualizarCampoMapeamento(config, campo, valor, coluna) {
+  return {
+    ...config,
+    [campo]: valor,
+    [`${campo}Index`]: coluna?.index || ''
+  };
+}
+
+function rotuloArquivo(item) {
+  if (!item) return '';
+  return item.arquivoIndex === 0 ? `${item.arquivo} (Principal)` : item.arquivo;
+}
+
 function chaveAba(arquivoIndex, aba) {
   return `${arquivoIndex}::${aba}`;
+}
+
+function semAbas(config = {}) {
+  const resto = { ...(config || {}) };
+  delete resto.abas;
+  return resto;
 }
 
 function sugerirPrincipalAba(aba, sugestaoGeral = {}) {
@@ -95,10 +125,10 @@ function SelectColuna({ label, obrigatorio, valor, colunas, amostras, onChange }
         {label}
         {obrigatorio && <span className="required-mark">*</span>}
       </label>
-      <select value={valor || ''} onChange={event => onChange(event.target.value)} required={obrigatorio}>
+      <select value={valor || ''} onChange={event => onChange(event.target.value, colunas.find(coluna => coluna.nome === event.target.value))} required={obrigatorio}>
         <option value="">Selecione…</option>
         {colunas.map(coluna => (
-          <option key={coluna.index} value={coluna.nome}>{coluna.nome}</option>
+          <option key={`${coluna.index}-${coluna.nome}`} value={coluna.nome}>{coluna.nome}</option>
         ))}
       </select>
       <span title={exemplos}>{exemplos || '-'}</span>
@@ -116,9 +146,9 @@ function BlocoOperadora({ titulo, preview, config, onConfig, operadoras = [], mo
   /**
    * Atualiza a coluna de Tipo e reinicializa o mapa de valores.
    */
-  function alterarColunaTipo(coluna) {
-    const valores = preview?.valoresDistintos?.[coluna] || [];
-    onConfig({ ...config, tipo: coluna, tipoMap: montarTipoMapInicial(valores) });
+  function alterarColunaTipo(valor, coluna) {
+    const valores = preview?.valoresDistintos?.[valor] || [];
+    onConfig({ ...atualizarCampoMapeamento(config, 'tipo', valor, coluna), tipoMap: montarTipoMapInicial(valores) });
   }
 
   return (
@@ -133,21 +163,21 @@ function BlocoOperadora({ titulo, preview, config, onConfig, operadoras = [], mo
           valor={config.cnpj}
           colunas={colunas}
           amostras={preview?.amostras}
-          onChange={valor => onConfig({ ...config, cnpj: valor })}
+          onChange={(valor, coluna) => onConfig(atualizarCampoMapeamento(config, 'cnpj', valor, coluna))}
         />
         <SelectColuna
           label="Coluna CPF"
           valor={config.cpf}
           colunas={colunas}
           amostras={preview?.amostras}
-          onChange={valor => onConfig({ ...config, cpf: valor })}
+          onChange={(valor, coluna) => onConfig(atualizarCampoMapeamento(config, 'cpf', valor, coluna))}
         />
         <SelectColuna
           label="Coluna Razão Social (fallback)"
           valor={config.razaoSocial}
           colunas={colunas}
           amostras={preview?.amostras}
-          onChange={valor => onConfig({ ...config, razaoSocial: valor })}
+          onChange={(valor, coluna) => onConfig(atualizarCampoMapeamento(config, 'razaoSocial', valor, coluna))}
         />
         <SelectColuna
           label="Coluna Tipo"
@@ -223,11 +253,11 @@ function CruzarVendasPage() {
   const abaEstaConfigurada = selecao => {
     if (!selecao?.usar) return true;
     if (selecao.arquivoIndex === 0) {
-      const config = principalCfg.abas?.[selecao.aba] || principalCfg;
+      const config = { ...semAbas(principalCfg), ...(principalCfg.abas?.[selecao.aba] || {}) };
       return Boolean(config.cnpj && config.operadora);
     }
     const configArquivo = operadorasCfg[selecao.arquivoIndex - 1] || {};
-    const config = configArquivo.abas?.[selecao.aba] || configArquivo;
+    const config = { ...semAbas(configArquivo), ...(configArquivo.abas?.[selecao.aba] || {}) };
     return Boolean((config.cnpj || config.cpf) && config.tipo && config.valorOperadora);
   };
   const podeGerar = Boolean(
@@ -323,31 +353,28 @@ function CruzarVendasPage() {
       setSelecoesAbas(proximasSelecoes);
       const primeiraAbaUsada = proximasSelecoes.find(selecao => selecao.usar);
       setAbaConfigAtiva(primeiraAbaUsada ? chaveAba(primeiraAbaUsada.arquivoIndex, primeiraAbaUsada.aba) : '');
-      const abasPrincipal = Object.fromEntries((dados.abasPorArquivo?.[0]?.abas || [])
-        .filter(aba => aba.total_linhas > 0)
-        .map(aba => [aba.nome, sugerirPrincipalAba(aba, sug.principal)]));
-      setPrincipalCfg({
+      setPrincipalCfg(['cnpj', 'razaoSocial', 'operadora', 'data'].reduce((config, campo) => (
+        aplicarIndice(config, dados.principal?.colunas || [], campo)
+      ), {
         cnpj: sug.principal?.cnpj || '',
         razaoSocial: sug.principal?.razaoSocial || '',
         operadora: sug.principal?.operadora || '',
         data: sug.principal?.data || '',
-        abas: abasPrincipal
-      });
+        abas: {}
+      }));
       setOperadorasCfg((dados.operadoras || []).map((planilha, index) => {
         const sugestao = sug.operadoras?.[index] || {};
-        const arquivoIndex = index + 1;
-        const abasArquivo = dados.abasPorArquivo?.find(item => item.arquivoIndex === arquivoIndex)?.abas || [];
-        return {
+        return ['cnpj', 'cpf', 'razaoSocial', 'tipo'].reduce((config, campo) => (
+          aplicarIndice(config, planilha.colunas || [], campo)
+        ), {
           cnpj: sugestao.cnpj || '',
           cpf: sugestao.cpf || '',
           razaoSocial: sugestao.razaoSocial || '',
           tipo: sugestao.tipo || '',
           valorOperadora: '',
           tipoMap: montarTipoMapInicial(planilha.valoresDistintos?.[sugestao.tipo] || []),
-          abas: Object.fromEntries(abasArquivo
-            .filter(aba => aba.total_linhas > 0)
-            .map(aba => [aba.nome, sugerirOperadoraAba(aba, sugestao)]))
-        };
+          abas: {}
+        });
       }));
       setColunasResultado((dados.principal?.colunas || []).map(coluna => coluna.nome));
       return true;
@@ -434,6 +461,55 @@ function CruzarVendasPage() {
     )));
   }
 
+  function removerConfigAbaPrincipal(nomeAba) {
+    setPrincipalCfg(prev => {
+      const abas = { ...(prev.abas || {}) };
+      delete abas[nomeAba];
+      return { ...prev, abas };
+    });
+  }
+
+  function removerConfigAbaOperadora(arquivoIndex, nomeAba) {
+    setOperadorasCfg(prev => prev.map((item, index) => {
+      if (index !== arquivoIndex - 1) return item;
+      const abas = { ...(item.abas || {}) };
+      delete abas[nomeAba];
+      return { ...item, abas };
+    }));
+  }
+
+  function personalizarAba(item) {
+    const key = chaveAba(item.arquivoIndex, item.aba.nome);
+    if (item.arquivoIndex === 0) {
+      setPrincipalCfg(prev => ({
+        ...prev,
+        abas: {
+          ...(prev.abas || {}),
+          [item.aba.nome]: prev.abas?.[item.aba.nome] || ['cnpj', 'razaoSocial', 'operadora', 'data'].reduce(
+            (config, campo) => aplicarIndice(config, item.aba.colunas || [], campo),
+            sugerirPrincipalAba(item.aba, semAbas(prev))
+          )
+        }
+      }));
+    } else {
+      setOperadorasCfg(prev => prev.map((config, index) => (
+        index === item.arquivoIndex - 1
+          ? {
+              ...config,
+              abas: {
+                ...(config.abas || {}),
+                [item.aba.nome]: config.abas?.[item.aba.nome] || ['cnpj', 'cpf', 'razaoSocial', 'tipo'].reduce(
+                  (sugerida, campo) => aplicarIndice(sugerida, item.aba.colunas || [], campo),
+                  sugerirOperadoraAba(item.aba, semAbas(config))
+                )
+              }
+            }
+          : config
+      )));
+    }
+    setAbaConfigAtiva(key);
+  }
+
   const algumaAbaUsada = selecoesAbas.some(selecao => selecao.usar);
   const passoConcluido = {
     upload: Boolean(preview),
@@ -458,7 +534,7 @@ function CruzarVendasPage() {
       : !preview ? 'Clique em “Carregar e continuar” para ler as planilhas.' : '',
     abas: !algumaAbaUsada ? 'Marque ao menos uma aba para usar no cruzamento.' : '',
     colunas: !selecoesAbas.every(abaEstaConfigurada)
-      ? 'Preencha as colunas obrigatórias (marcadas com *) de cada aba selecionada.'
+      ? 'Preencha as colunas obrigatórias (marcadas com *) das planilhas selecionadas.'
       : '',
     resultado: colunasResultado.length === 0 ? 'Escolha ao menos uma coluna para o resultado.' : ''
   };
@@ -610,19 +686,25 @@ function CruzarVendasPage() {
               <span className="cruzar-step-badge">3</span>
               <div>
                 <h2 className="cruzar-section__title">Configure as colunas</h2>
-                <p className="cruzar-section__sub">Para cada aba, indique quais colunas representam documento, razão social, operadora e tipo. As sugestões já vêm pré-selecionadas.</p>
+                <p className="cruzar-section__sub">Configure cada planilha uma vez. Se alguma aba fugir do padrão, personalize somente essa aba.</p>
               </div>
             </div>
             <ConfiguracaoAbas
+              preview={preview}
               ativa={ativa}
               abasConfiguraveis={abasConfiguraveis}
               abaConfigAtiva={chaveAba(ativa?.arquivoIndex, ativa?.aba?.nome)}
               setAbaConfigAtiva={setAbaConfigAtiva}
               principalCfg={principalCfg}
+              setPrincipalCfg={setPrincipalCfg}
               atualizarConfigAbaPrincipal={atualizarConfigAbaPrincipal}
+              removerConfigAbaPrincipal={removerConfigAbaPrincipal}
               operadorasCfg={operadorasCfg}
+              setOperadorasCfg={setOperadorasCfg}
               operadorasBanco={operadorasBanco}
               atualizarConfigAbaOperadora={atualizarConfigAbaOperadora}
+              removerConfigAbaOperadora={removerConfigAbaOperadora}
+              personalizarAba={personalizarAba}
             />
           </section>
         )}
@@ -708,42 +790,137 @@ function CruzarVendasPage() {
 }
 
 function ConfiguracaoAbas({
+  preview,
   ativa,
   abasConfiguraveis,
   abaConfigAtiva,
   setAbaConfigAtiva,
   principalCfg,
+  setPrincipalCfg,
   atualizarConfigAbaPrincipal,
+  removerConfigAbaPrincipal,
   operadorasCfg,
+  setOperadorasCfg,
   operadorasBanco,
-  atualizarConfigAbaOperadora
+  atualizarConfigAbaOperadora,
+  removerConfigAbaOperadora,
+  personalizarAba
 }) {
+  const abasPersonalizadas = abasConfiguraveis.filter(item => (
+    item.arquivoIndex === 0
+      ? Boolean(principalCfg.abas?.[item.aba.nome])
+      : Boolean(operadorasCfg[item.arquivoIndex - 1]?.abas?.[item.aba.nome])
+  ));
+
   return (
     <>
-      <div className="cruzar-sheet-tabs" role="tablist" aria-label="Abas para configurar">
-        {abasConfiguraveis.map(item => {
-          const key = chaveAba(item.arquivoIndex, item.aba.nome);
-          return (
+      <div className="cruzar-grid">
+        <div className="cruzar-card">
+          <div className="cruzar-card__title">
+            {preview?.principal?.arquivo || 'Planilha principal'}
+            <span className="cruzar-card__badge">Principal</span>
+            <small className="cruzar-card__meta">{preview?.principal?.abas || 0} aba(s) · {preview?.principal?.total_linhas || 0} linha(s) lidas</small>
+          </div>
+          <div className="cruzar-map">
+            <SelectColuna
+              label="Coluna CPF/CNPJ (documento)"
+              obrigatorio
+              valor={principalCfg.cnpj || ''}
+              colunas={preview?.principal?.colunas || []}
+              amostras={preview?.principal?.amostras}
+              onChange={(valor, coluna) => setPrincipalCfg(prev => atualizarCampoMapeamento(prev, 'cnpj', valor, coluna))}
+            />
+            <SelectColuna
+              label="Coluna Razão Social (fallback)"
+              valor={principalCfg.razaoSocial || ''}
+              colunas={preview?.principal?.colunas || []}
+              amostras={preview?.principal?.amostras}
+              onChange={(valor, coluna) => setPrincipalCfg(prev => atualizarCampoMapeamento(prev, 'razaoSocial', valor, coluna))}
+            />
+            <SelectColuna
+              label="Coluna Operadora"
+              obrigatorio
+              valor={principalCfg.operadora || ''}
+              colunas={preview?.principal?.colunas || []}
+              amostras={preview?.principal?.amostras}
+              onChange={(valor, coluna) => setPrincipalCfg(prev => atualizarCampoMapeamento(prev, 'operadora', valor, coluna))}
+            />
+            <SelectColuna
+              label="Coluna Data (desempate)"
+              valor={principalCfg.data || ''}
+              colunas={preview?.principal?.colunas || []}
+              amostras={preview?.principal?.amostras}
+              onChange={(valor, coluna) => setPrincipalCfg(prev => atualizarCampoMapeamento(prev, 'data', valor, coluna))}
+            />
+          </div>
+        </div>
+
+        {(preview?.operadoras || []).map((planilha, index) => (
+          <BlocoOperadora
+            key={`geral-${index}`}
+            titulo={planilha.arquivo || `Planilha ${index + 2}`}
+            preview={planilha}
+            config={operadorasCfg[index] || { cnpj: '', cpf: '', razaoSocial: '', tipo: '', tipoMap: {} }}
+            onConfig={config => setOperadorasCfg(prev => prev.map((item, itemIndex) => (
+              itemIndex === index ? { ...config, abas: item?.abas || {} } : item
+            )))}
+            operadoras={operadorasBanco}
+          />
+        ))}
+      </div>
+
+      <div className="cruzar-card cruzar-card--compact">
+        <div className="cruzar-card__title">
+          Ajustes por aba
+          <small className="cruzar-card__meta">Use apenas quando uma aba tiver colunas diferentes do padrão da planilha.</small>
+        </div>
+        <div className="cruzar-sheet-actions">
+          {abasConfiguraveis.map(item => {
+            const key = chaveAba(item.arquivoIndex, item.aba.nome);
+            const personalizada = abasPersonalizadas.some(aba => chaveAba(aba.arquivoIndex, aba.aba.nome) === key);
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`btn ${personalizada ? 'btn-secondary' : 'btn-ghost'}`}
+                onClick={() => personalizarAba(item)}
+              >
+                {personalizada ? 'Editar' : 'Personalizar'} · {rotuloArquivo(item)} / {item.aba.nome}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {abasPersonalizadas.length > 0 && (
+        <div className="cruzar-sheet-tabs" role="tablist" aria-label="Abas personalizadas">
+          {abasPersonalizadas.map(item => {
+            const key = chaveAba(item.arquivoIndex, item.aba.nome);
+            return (
             <button
               key={key}
               type="button"
               className={`cruzar-sheet-tab${key === abaConfigAtiva ? ' is-active' : ''}`}
               onClick={() => setAbaConfigAtiva(key)}
             >
-              <span>{item.arquivoIndex === 0 ? 'Principal' : `Planilha ${item.arquivoIndex + 1}`}</span>
+              <span>{rotuloArquivo(item)}</span>
               <strong>{item.aba.nome}</strong>
             </button>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {!ativa && <div className="cruzar-empty">Selecione ao menos uma aba para configurar.</div>}
+      {abasPersonalizadas.length > 0 && !ativa && <div className="cruzar-empty">Selecione uma aba personalizada para configurar.</div>}
 
-      {ativa?.arquivoIndex === 0 && (
+      {ativa?.arquivoIndex === 0 && principalCfg.abas?.[ativa.aba.nome] && (
         <div className="cruzar-card">
           <div className="cruzar-card__title">
-            Principal: {ativa.aba.nome}
+            {ativa.arquivo} (Principal) / {ativa.aba.nome}
             <small className="cruzar-card__meta">{ativa.aba.total_linhas || 0} linha(s) lidas</small>
+            <button type="button" className="btn btn-ghost" onClick={() => removerConfigAbaPrincipal(ativa.aba.nome)}>
+              Usar padrão da planilha
+            </button>
           </div>
           <div className="cruzar-map">
             <SelectColuna
@@ -752,20 +929,20 @@ function ConfiguracaoAbas({
               valor={(principalCfg.abas?.[ativa.aba.nome] || {}).cnpj || ''}
               colunas={ativa.aba.colunas}
               amostras={ativa.aba.amostras}
-              onChange={valor => atualizarConfigAbaPrincipal(ativa.aba.nome, {
-                ...(principalCfg.abas?.[ativa.aba.nome] || {}),
-                cnpj: valor
-              })}
+              onChange={(valor, coluna) => atualizarConfigAbaPrincipal(
+                ativa.aba.nome,
+                atualizarCampoMapeamento(principalCfg.abas?.[ativa.aba.nome] || {}, 'cnpj', valor, coluna)
+              )}
             />
             <SelectColuna
               label="Coluna Razão Social (fallback)"
               valor={(principalCfg.abas?.[ativa.aba.nome] || {}).razaoSocial || ''}
               colunas={ativa.aba.colunas}
               amostras={ativa.aba.amostras}
-              onChange={valor => atualizarConfigAbaPrincipal(ativa.aba.nome, {
-                ...(principalCfg.abas?.[ativa.aba.nome] || {}),
-                razaoSocial: valor
-              })}
+              onChange={(valor, coluna) => atualizarConfigAbaPrincipal(
+                ativa.aba.nome,
+                atualizarCampoMapeamento(principalCfg.abas?.[ativa.aba.nome] || {}, 'razaoSocial', valor, coluna)
+              )}
             />
             <SelectColuna
               label="Coluna Operadora"
@@ -773,27 +950,35 @@ function ConfiguracaoAbas({
               valor={(principalCfg.abas?.[ativa.aba.nome] || {}).operadora || ''}
               colunas={ativa.aba.colunas}
               amostras={ativa.aba.amostras}
-              onChange={valor => atualizarConfigAbaPrincipal(ativa.aba.nome, {
-                ...(principalCfg.abas?.[ativa.aba.nome] || {}),
-                operadora: valor
-              })}
+              onChange={(valor, coluna) => atualizarConfigAbaPrincipal(
+                ativa.aba.nome,
+                atualizarCampoMapeamento(principalCfg.abas?.[ativa.aba.nome] || {}, 'operadora', valor, coluna)
+              )}
             />
             <SelectColuna
               label="Coluna Data (desempate)"
               valor={(principalCfg.abas?.[ativa.aba.nome] || {}).data || ''}
               colunas={ativa.aba.colunas}
               amostras={ativa.aba.amostras}
-              onChange={valor => atualizarConfigAbaPrincipal(ativa.aba.nome, {
-                ...(principalCfg.abas?.[ativa.aba.nome] || {}),
-                data: valor
-              })}
+              onChange={(valor, coluna) => atualizarConfigAbaPrincipal(
+                ativa.aba.nome,
+                atualizarCampoMapeamento(principalCfg.abas?.[ativa.aba.nome] || {}, 'data', valor, coluna)
+              )}
             />
           </div>
         </div>
       )}
 
-      {ativa && ativa.arquivoIndex > 0 && (
+      {ativa && ativa.arquivoIndex > 0 && operadorasCfg[ativa.arquivoIndex - 1]?.abas?.[ativa.aba.nome] && (
         <>
+          <div className="cruzar-card cruzar-card--compact">
+            <div className="cruzar-card__title">
+              Ajuste ativo: {ativa.arquivo} / {ativa.aba.nome}
+              <button type="button" className="btn btn-ghost" onClick={() => removerConfigAbaOperadora(ativa.arquivoIndex, ativa.aba.nome)}>
+                Usar padrão da planilha
+              </button>
+            </div>
+          </div>
           <BlocoOperadora
             key={`${ativa.arquivoIndex}-${ativa.aba.nome}`}
             titulo={`${ativa.arquivo} / ${ativa.aba.nome}`}

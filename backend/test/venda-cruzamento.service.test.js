@@ -293,6 +293,55 @@ test('cruzamento multiplo respeita mapeamento especifico por aba', () => {
   assert.deepEqual(resultado.concluidas.map(item => item.Cliente), ['A', 'B']);
 });
 
+test('cruzamento multiplo aplica mapeamento geral pela posicao da coluna', () => {
+  const configMultipla = {
+    principal: {
+      cnpj: 'Documento',
+      cnpjIndex: 2,
+      operadora: 'Operadora',
+      operadoraIndex: 3,
+      colunasResultado: ['Cliente', 'Documento', 'Operadora'],
+      abas: {}
+    },
+    operadoras: [
+      {
+        cnpj: 'CNPJ Janeiro',
+        cnpjIndex: 1,
+        tipo: 'Tipo Janeiro',
+        tipoIndex: 2,
+        valorOperadora: 'claro',
+        tipoMap: { NOVO: 'Novo' },
+        abas: {}
+      }
+    ]
+  };
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      {
+        __abaOrigem: 'Janeiro',
+        'CNPJ Janeiro': '11.111.111/0001-11',
+        'Tipo Janeiro': 'NOVO',
+        __colunasPorIndice: { 1: '11.111.111/0001-11', 2: 'NOVO' }
+      },
+      {
+        __abaOrigem: 'Fevereiro',
+        'Documento Fev': '22.222.222/0001-22',
+        'Classificacao Fev': 'NOVO',
+        __colunasPorIndice: { 1: '22.222.222/0001-22', 2: 'NOVO' }
+      }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { Cliente: 'A', Documento: '11.111.111/0001-11', Operadora: 'Claro', __colunasPorIndice: { 2: '11.111.111/0001-11', 3: 'Claro' } },
+    { Cliente: 'B', Documento: '22.222.222/0001-22', Operadora: 'Claro', __colunasPorIndice: { 2: '22.222.222/0001-22', 3: 'Claro' } }
+  ];
+
+  const resultado = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(resultado.concluidas.length, 2);
+  assert.deepEqual(resultado.concluidas.map(item => item.Cliente), ['A', 'B']);
+});
+
 test('cruzamento multiplo usa identificador especifico de cada aba', () => {
   const configMultipla = {
     principal: {

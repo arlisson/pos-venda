@@ -75,15 +75,30 @@ function classificarDocumento(valor) {
  * @returns {{ tipo: ('cpf'|'cnpj'|null), digitos: string, chave: string }}
  */
 function documentoDaLinha(dados, mapeamento = {}) {
-  const colunas = [mapeamento.cnpj, mapeamento.cpf].filter(Boolean);
-  const candidatas = colunas.length
-    ? colunas
+  const campos = ['cnpj', 'cpf'];
+  const candidatas = campos.some(campo => mapeamento[campo] || mapeamento[`${campo}Index`])
+    ? campos
     : [encontrarColunaPorTermos(dados, 'cnpj', 'cpf/cnpj', 'cnpj/cpf', 'cpf')].filter(Boolean);
-  for (const coluna of candidatas) {
-    const documento = classificarDocumento(dados[coluna]);
+  for (const campo of candidatas) {
+    const valor = typeof campo === 'string' && !['cnpj', 'cpf'].includes(campo)
+      ? dados[campo]
+      : valorMapeado(dados, mapeamento, campo);
+    const documento = classificarDocumento(valor);
     if (documento.chave) return documento;
   }
   return { tipo: null, digitos: '', chave: '' };
+}
+
+function valorMapeado(dados, mapeamento = {}, campo) {
+  const nomeColuna = mapeamento[campo];
+  if (nomeColuna && Object.prototype.hasOwnProperty.call(dados, nomeColuna)) {
+    return dados[nomeColuna];
+  }
+  const indice = Number(mapeamento[`${campo}Index`]);
+  if (Number.isInteger(indice) && indice > 0) {
+    return dados.__colunasPorIndice?.[indice] || '';
+  }
+  return nomeColuna ? dados[nomeColuna] : '';
 }
 
 /**
@@ -179,7 +194,7 @@ async function carregarPlanilha(buffer, abasSelecionadas = null) {
     abasComDados += 1;
     colunasAba.forEach(coluna => {
       if (!colunasUniao.has(coluna.nome)) {
-        colunasUniao.set(coluna.nome, colunasUniao.size + 1);
+        colunasUniao.set(coluna.nome, coluna.index);
       }
     });
     const linhasAba = lerLinhas(worksheet, colunasAba);
@@ -222,6 +237,8 @@ function lerLinhas(worksheet, colunas) {
     colunas.forEach(coluna => {
       const valor = textoCelula(row.getCell(coluna.index).value);
       dados[coluna.nome] = valor;
+      dados.__colunasPorIndice = dados.__colunasPorIndice || {};
+      dados.__colunasPorIndice[coluna.index] = valor;
       if (valor) preenchida = true;
     });
     if (preenchida) {
@@ -370,6 +387,29 @@ function validarColunaOpcional(colunas, nomeColuna, descricao) {
   if (nomeColuna) exigirColuna(colunas, nomeColuna, descricao);
 }
 
+function validarIndiceOpcional(colunas, indice, descricao) {
+  if (indice === undefined || indice === null || indice === '') return;
+  const numero = Number(indice);
+  if (!Number.isInteger(numero) || !colunas.some(coluna => coluna.index === numero)) {
+    throw criarHttpError(400, `A coluna informada por posicao (${descricao}) nao existe na planilha.`);
+  }
+}
+
+function campoPreenchido(mapeamento, campo) {
+  return Boolean(mapeamento?.[campo] || mapeamento?.[`${campo}Index`]);
+}
+
+function normalizarMapeamento(mapeamento = {}, campos = []) {
+  return campos.reduce((acc, campo) => {
+    acc[campo] = mapeamento[campo] || '';
+    const indice = Number(mapeamento[`${campo}Index`]);
+    if (Number.isInteger(indice) && indice > 0) {
+      acc[`${campo}Index`] = indice;
+    }
+    return acc;
+  }, {});
+}
+
 function mapeamentosPorAba(mapeamento) {
   return mapeamento && typeof mapeamento.abas === 'object' && mapeamento.abas !== null ? mapeamento.abas : {};
 }
@@ -388,6 +428,7 @@ function normalizarMapeamentosAbas(abas) {
     aba,
     {
       ...mapeamento,
+      ...normalizarMapeamento(mapeamento, ['cnpj', 'cpf', 'razaoSocial', 'operadora', 'data', 'tipo']),
       valorOperadora: normalizarTexto(mapeamento.valorOperadora)
     }
   ]));
@@ -419,21 +460,29 @@ function parseConfig(valor, colunasPorPlanilha) {
   const operadoras = Array.isArray(config.operadoras) ? config.operadoras : [];
   const colunasPrincipal = colunasPorPlanilha[0];
 
-  if (!algumMapeamento(principal, item => Boolean(item.cnpj))) {
+  if (!algumMapeamento(principal, item => campoPreenchido(item, 'cnpj'))) {
     throw criarHttpError(400, 'Selecione a coluna de CPF/CNPJ da planilha principal.');
   }
-  if (!algumMapeamento(principal, item => Boolean(item.operadora))) {
+  if (!algumMapeamento(principal, item => campoPreenchido(item, 'operadora'))) {
     throw criarHttpError(400, 'Selecione a coluna de operadora da planilha principal.');
   }
   validarColunaOpcional(colunasPrincipal, principal.cnpj, 'CPF/CNPJ da planilha principal');
   validarColunaOpcional(colunasPrincipal, principal.razaoSocial, 'Razao Social da planilha principal');
   validarColunaOpcional(colunasPrincipal, principal.operadora, 'operadora da planilha principal');
   validarColunaOpcional(colunasPrincipal, principal.data, 'data da planilha principal');
+  validarIndiceOpcional(colunasPrincipal, principal.cnpjIndex, 'CPF/CNPJ da planilha principal');
+  validarIndiceOpcional(colunasPrincipal, principal.razaoSocialIndex, 'Razao Social da planilha principal');
+  validarIndiceOpcional(colunasPrincipal, principal.operadoraIndex, 'operadora da planilha principal');
+  validarIndiceOpcional(colunasPrincipal, principal.dataIndex, 'data da planilha principal');
   Object.entries(mapeamentosPorAba(principal)).forEach(([aba, mapeamento]) => {
     validarColunaOpcional(colunasPrincipal, mapeamento.cnpj, `CPF/CNPJ da aba ${aba}`);
     validarColunaOpcional(colunasPrincipal, mapeamento.razaoSocial, `Razao Social da aba ${aba}`);
     validarColunaOpcional(colunasPrincipal, mapeamento.operadora, `operadora da aba ${aba}`);
     validarColunaOpcional(colunasPrincipal, mapeamento.data, `data da aba ${aba}`);
+    validarIndiceOpcional(colunasPrincipal, mapeamento.cnpjIndex, `CPF/CNPJ da aba ${aba}`);
+    validarIndiceOpcional(colunasPrincipal, mapeamento.razaoSocialIndex, `Razao Social da aba ${aba}`);
+    validarIndiceOpcional(colunasPrincipal, mapeamento.operadoraIndex, `operadora da aba ${aba}`);
+    validarIndiceOpcional(colunasPrincipal, mapeamento.dataIndex, `data da aba ${aba}`);
   });
   if (operadoras.length !== colunasPorPlanilha.length - 1) {
     throw criarHttpError(400, 'A configuracao das planilhas enviadas esta incompleta.');
@@ -441,21 +490,29 @@ function parseConfig(valor, colunasPorPlanilha) {
   operadoras.forEach((operadora, index) => {
     const numero = index + 2;
     const colunasOperadora = colunasPorPlanilha[numero - 1];
-    if (!algumMapeamento(operadora, item => Boolean(item.cnpj || item.cpf))) {
+    if (!algumMapeamento(operadora, item => campoPreenchido(item, 'cnpj') || campoPreenchido(item, 'cpf'))) {
       throw criarHttpError(400, `Selecione a coluna de CPF ou CNPJ da planilha ${numero}.`);
     }
-    if (!algumMapeamento(operadora, item => Boolean(item.tipo))) {
+    if (!algumMapeamento(operadora, item => campoPreenchido(item, 'tipo'))) {
       throw criarHttpError(400, `Selecione a coluna de Tipo da planilha ${numero}.`);
     }
     validarColunaOpcional(colunasOperadora, operadora.cnpj, `CNPJ da planilha ${numero}`);
     validarColunaOpcional(colunasOperadora, operadora.cpf, `CPF da planilha ${numero}`);
     validarColunaOpcional(colunasOperadora, operadora.razaoSocial, `Razao Social da planilha ${numero}`);
     validarColunaOpcional(colunasOperadora, operadora.tipo, `Tipo da planilha ${numero}`);
+    validarIndiceOpcional(colunasOperadora, operadora.cnpjIndex, `CNPJ da planilha ${numero}`);
+    validarIndiceOpcional(colunasOperadora, operadora.cpfIndex, `CPF da planilha ${numero}`);
+    validarIndiceOpcional(colunasOperadora, operadora.razaoSocialIndex, `Razao Social da planilha ${numero}`);
+    validarIndiceOpcional(colunasOperadora, operadora.tipoIndex, `Tipo da planilha ${numero}`);
     Object.entries(mapeamentosPorAba(operadora)).forEach(([aba, mapeamento]) => {
       validarColunaOpcional(colunasOperadora, mapeamento.cnpj, `CNPJ da aba ${aba}`);
       validarColunaOpcional(colunasOperadora, mapeamento.cpf, `CPF da aba ${aba}`);
       validarColunaOpcional(colunasOperadora, mapeamento.razaoSocial, `Razao Social da aba ${aba}`);
       validarColunaOpcional(colunasOperadora, mapeamento.tipo, `Tipo da aba ${aba}`);
+      validarIndiceOpcional(colunasOperadora, mapeamento.cnpjIndex, `CNPJ da aba ${aba}`);
+      validarIndiceOpcional(colunasOperadora, mapeamento.cpfIndex, `CPF da aba ${aba}`);
+      validarIndiceOpcional(colunasOperadora, mapeamento.razaoSocialIndex, `Razao Social da aba ${aba}`);
+      validarIndiceOpcional(colunasOperadora, mapeamento.tipoIndex, `Tipo da aba ${aba}`);
     });
     if (!algumMapeamento(operadora, item => Boolean(String(item.valorOperadora || '').trim()))) {
       throw criarHttpError(400, `Informe o identificador da planilha ${numero} na principal.`);
@@ -476,6 +533,7 @@ function parseConfig(valor, colunasPorPlanilha) {
       razaoSocial: principal.razaoSocial,
       operadora: principal.operadora,
       data: principal.data || '',
+      ...normalizarMapeamento(principal, ['cnpj', 'razaoSocial', 'operadora', 'data']),
       abas: mapeamentosPorAba(principal),
       colunasResultado
     },
@@ -484,6 +542,7 @@ function parseConfig(valor, colunasPorPlanilha) {
       cpf: operadora.cpf || '',
       razaoSocial: operadora.razaoSocial,
       tipo: operadora.tipo,
+      ...normalizarMapeamento(operadora, ['cnpj', 'cpf', 'razaoSocial', 'tipo']),
       valorOperadora: normalizarTexto(operadora.valorOperadora),
       tipoMap: operadora.tipoMap || {},
       abas: normalizarMapeamentosAbas(mapeamentosPorAba(operadora))
@@ -510,9 +569,9 @@ function aplicarTipoMap(tipoMap, valorOrigem) {
 function indexarOperadora(linhas, mapeamento) {
   const indice = new Map();
   for (const dados of linhas) {
-    const chave = normalizarChave(dados[mapeamento.razaoSocial]);
+    const chave = normalizarChave(valorMapeado(dados, mapeamento, 'razaoSocial'));
     if (!chave) continue;
-    indice.set(chave, aplicarTipoMap(mapeamento.tipoMap, dados[mapeamento.tipo]));
+    indice.set(chave, aplicarTipoMap(mapeamento.tipoMap, valorMapeado(dados, mapeamento, 'tipo')));
   }
   return indice;
 }
@@ -540,8 +599,8 @@ function cruzar(linhasPrincipal, indiceClaro, indiceVivo, config) {
 
   // Passo 3: classificar cada linha
   const classificadas = linhasPrincipal.map(dados => {
-    const chave = normalizarChave(dados[principal.razaoSocial]);
-    const operadora = detectarOperadora(dados[principal.operadora]);
+    const chave = normalizarChave(valorMapeado(dados, principal, 'razaoSocial'));
+    const operadora = detectarOperadora(valorMapeado(dados, principal, 'operadora'));
     const indice = operadora === 'claro' ? indiceClaro : operadora === 'vivo' ? indiceVivo : null;
 
     let concluida = false;
@@ -580,8 +639,8 @@ function cruzar(linhasPrincipal, indiceClaro, indiceVivo, config) {
     }
     // nenhuma concluida: manter a mais recente por data (fallback) ou a ultima
     const ordenadas = [...grupo].sort((a, b) => {
-      const dataA = principal.data ? String(a.dados[principal.data] || '') : '';
-      const dataB = principal.data ? String(b.dados[principal.data] || '') : '';
+      const dataA = campoPreenchido(principal, 'data') ? String(valorMapeado(a.dados, principal, 'data') || '') : '';
+      const dataB = campoPreenchido(principal, 'data') ? String(valorMapeado(b.dados, principal, 'data') || '') : '';
       return dataA.localeCompare(dataB);
     });
     selecionadas.push(ordenadas[ordenadas.length - 1]);
@@ -656,10 +715,10 @@ function indexarConfirmacao(linhas, mapeamento, arquivo) {
 
   for (const dados of linhas) {
     const mapaLinha = mapeamentoDaLinha(mapeamento, dados);
-    const chaveRazao = normalizarChave(dados[mapaLinha.razaoSocial]);
+    const chaveRazao = normalizarChave(valorMapeado(dados, mapaLinha, 'razaoSocial'));
     const documento = documentoDaLinha(dados, mapaLinha);
     const registro = {
-      tipo: aplicarTipoMap(mapaLinha.tipoMap || mapeamento.tipoMap, dados[mapaLinha.tipo]),
+      tipo: aplicarTipoMap(mapaLinha.tipoMap || mapeamento.tipoMap, valorMapeado(dados, mapaLinha, 'tipo')),
       dados,
       arquivo,
       tipoDocumento: documento.tipo,
@@ -690,9 +749,9 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
   const { principal, operadoras } = config;
   const classificadas = linhasPrincipal.map(dados => {
     const mapaPrincipal = mapeamentoDaLinha(principal, dados);
-    const chave = normalizarChave(dados[mapaPrincipal.razaoSocial]);
+    const chave = normalizarChave(valorMapeado(dados, mapaPrincipal, 'razaoSocial'));
     const documento = documentoDaLinha(dados, mapaPrincipal);
-    const textoOperadora = normalizarTexto(dados[mapaPrincipal.operadora]);
+    const textoOperadora = normalizarTexto(valorMapeado(dados, mapaPrincipal, 'operadora'));
     const indice = operadoras.findIndex(operadora => operadoraCombina(textoOperadora, operadora));
     const confirmacao = indice >= 0 ? buscarConfirmacao(indicesOperadoras[indice], documento.chave, chave) : null;
     const encontrou = Boolean(confirmacao);
@@ -712,7 +771,11 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
       Aba_Confirmacao: linha.confirmacao?.dados?.__abaOrigem || '',
       Linha_Confirmacao: linha.confirmacao?.dados?.__linhaOrigem || '',
       Razao_Social_Confirmacao: linha.confirmacao
-        ? linha.confirmacao.dados?.[mapeamentoDaLinha(operadoras[linha.operadora], linha.confirmacao.dados).razaoSocial] || ''
+        ? valorMapeado(
+            linha.confirmacao.dados,
+            mapeamentoDaLinha(operadoras[linha.operadora], linha.confirmacao.dados),
+            'razaoSocial'
+          ) || ''
         : '',
       Observacao_Automatica: linha.tipo === 'UNKNOWN'
         ? 'Tipo da confirmação parece numérico ou inválido; validar o mapeamento da aba.'
