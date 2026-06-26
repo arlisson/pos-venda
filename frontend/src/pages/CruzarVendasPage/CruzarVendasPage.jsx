@@ -21,12 +21,23 @@ const TIPOS_ABA = [
   { valor: 'OTHER_CONFIRMATION', rotulo: 'Outra planilha de confirmação' },
   { valor: 'IGNORE', rotulo: 'Ignorar' }
 ];
+const TIPOS_ABA_VISIVEIS = TIPOS_ABA
+  .filter(tipo => tipo.valor !== 'VIVO_MIRROR')
+  .map(tipo => {
+    if (tipo.valor === 'CLARO_MONTHLY_CLOSING') return { ...tipo, rotulo: 'Claro - vendas detalhadas' };
+    if (tipo.valor === 'VIVO_DETAILED') return { ...tipo, rotulo: 'Vivo - vendas detalhadas' };
+    return tipo;
+  });
 
-function sugerirTipoAba(nome, arquivoIndex) {
-  const texto = String(nome).toLowerCase();
+function sugerirTipoAba(nome, arquivoIndex, nomeArquivo = '') {
+  const textoArquivo = String(nomeArquivo).toLowerCase();
+  const texto = `${textoArquivo} ${String(nome).toLowerCase()}`;
   if (arquivoIndex === 0) return 'INTERNAL_SALES';
+  if (textoArquivo.includes('claro')) return 'CLARO_MONTHLY_CLOSING';
+  if (textoArquivo.includes('vivo')) return texto.includes('pf') ? 'VIVO_PF' : 'VIVO_DETAILED';
   if (texto.includes('pf')) return 'VIVO_PF';
   if (texto.includes('fevereiro') || texto.includes('abril')) return 'VIVO_DETAILED';
+  if (texto.includes('mar') || texto.includes('maio')) return 'VIVO_DETAILED';
   if (texto.includes('março') || texto.includes('marco') || texto.includes('maio')) return 'VIVO_MIRROR';
   return 'OTHER_CONFIRMATION';
 }
@@ -48,6 +59,14 @@ function montarTipoMapInicial(valores = []) {
   return valores.reduce((mapa, valor) => ({ ...mapa, [valor]: sugerirTipo(valor) }), {});
 }
 
+function normalizarTexto(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function indiceColuna(colunas = [], nomeColuna) {
   return colunas.find(coluna => coluna.nome === nomeColuna)?.index || '';
 }
@@ -65,6 +84,17 @@ function atualizarCampoMapeamento(config, campo, valor, coluna) {
     [campo]: valor,
     [`${campo}Index`]: coluna?.index || ''
   };
+}
+
+function colunaBaseFresh(colunas = []) {
+  return colunas.find(coluna => normalizarTexto(coluna.nome) === 'base/fresh') || null;
+}
+
+function operadoraPorNomeArquivo(nomeArquivo, operadoras = []) {
+  const texto = normalizarTexto(nomeArquivo);
+  const alvo = texto.includes('vivo') ? 'vivo' : texto.includes('claro') ? 'claro' : '';
+  if (!alvo) return '';
+  return operadoras.find(operadora => normalizarTexto(operadora.nome) === alvo)?.nome || (alvo === 'vivo' ? 'Vivo' : 'Claro');
 }
 
 function rotuloArquivo(item) {
@@ -348,7 +378,7 @@ function CruzarVendasPage() {
         arquivoIndex: item.arquivoIndex,
         aba: aba.nome,
         usar: aba.total_linhas > 0,
-        tipo: aba.total_linhas > 0 ? sugerirTipoAba(aba.nome, item.arquivoIndex) : 'IGNORE'
+        tipo: aba.total_linhas > 0 ? sugerirTipoAba(aba.nome, item.arquivoIndex, item.arquivo) : 'IGNORE'
       })));
       setSelecoesAbas(proximasSelecoes);
       const primeiraAbaUsada = proximasSelecoes.find(selecao => selecao.usar);
@@ -364,15 +394,16 @@ function CruzarVendasPage() {
       }));
       setOperadorasCfg((dados.operadoras || []).map((planilha, index) => {
         const sugestao = sug.operadoras?.[index] || {};
+        const tipoPreferido = colunaBaseFresh(planilha.colunas)?.nome || sugestao.tipo || '';
         return ['cnpj', 'cpf', 'razaoSocial', 'tipo'].reduce((config, campo) => (
           aplicarIndice(config, planilha.colunas || [], campo)
         ), {
           cnpj: sugestao.cnpj || '',
           cpf: sugestao.cpf || '',
           razaoSocial: sugestao.razaoSocial || '',
-          tipo: sugestao.tipo || '',
-          valorOperadora: '',
-          tipoMap: montarTipoMapInicial(planilha.valoresDistintos?.[sugestao.tipo] || []),
+          tipo: tipoPreferido,
+          valorOperadora: operadoraPorNomeArquivo(planilha.arquivo, operadorasBanco),
+          tipoMap: montarTipoMapInicial(planilha.valoresDistintos?.[tipoPreferido] || []),
           abas: {}
         });
       }));
@@ -672,7 +703,7 @@ function CruzarVendasPage() {
                   <label><input type="checkbox" checked={selecao.usar} onChange={event => atualizar({ usar: event.target.checked })} /> {item.arquivo} — {aba.nome}</label>
                   <span>{aba.total_linhas} linhas</span>
                   <select value={selecao.tipo} onChange={event => atualizar({ tipo: event.target.value })} disabled={!selecao.usar}>
-                    {TIPOS_ABA.map(tipo => <option key={tipo.valor} value={tipo.valor}>{tipo.rotulo}</option>)}
+                    {TIPOS_ABA_VISIVEIS.map(tipo => <option key={tipo.valor} value={tipo.valor}>{tipo.rotulo}</option>)}
                   </select>
                 </div>;
               }))}
