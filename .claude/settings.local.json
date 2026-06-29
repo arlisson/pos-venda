@@ -142,7 +142,9 @@
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('test:',p.scripts&&p.scripts.test\\); console.log\\('jest:',!!\\(p.devDependencies&&p.devDependencies.jest\\), 'vitest:',!!\\(p.devDependencies&&p.devDependencies.vitest\\)\\);\")",
       "Bash(node --test test/venda-cruzamento.service.test.js)",
       "Bash(node -e \"require\\('./src/services/venda-cruzamento.service'\\); console.log\\('service load ok'\\);\")",
-      "Bash(node --test \"test/*.test.js\")"
+      "Bash(node --test \"test/*.test.js\")",
+      "Bash(grep -rn \"\\\\.\\\\./\\\\.\\\\./\\\\.\\\\./\" --include=\"*.js\" --include=\"*.jsx\" --exclude-dir=node_modules --exclude-dir=LixeiraCodigos frontend backend)",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }
