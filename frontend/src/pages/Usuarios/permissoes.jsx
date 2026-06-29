@@ -139,6 +139,11 @@ export const GRUPOS_PERMISSOES = [
             chave: 'vendas_fechamento_mensal',
             nome: 'Fechamento mensal',
             descricao: 'Permite acessar o fechamento mensal de vendas e comissões.'
+          },
+          {
+            chave: 'vendas_cruzar',
+            nome: 'Cruzar vendas',
+            descricao: 'Permite acessar a tela de cruzamento de vendas e gerar a planilha final.'
           }
         ]
       },

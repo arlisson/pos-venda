@@ -50,10 +50,10 @@ router.post(
   }),
   vendaController.importarEmpresas
 );
-router.post('/cruzamento/preview', exigirUmaPermissao(['clientes_importar_planilhas']), vendaCruzamentoController.preview);
+router.post('/cruzamento/preview', exigirUmaPermissao(['vendas_cruzar']), vendaCruzamentoController.preview);
 router.post(
   '/cruzamento/processar',
-  exigirUmaPermissao(['clientes_importar_planilhas']),
+  exigirUmaPermissao(['vendas_cruzar']),
   auditar({
     acao: 'vendas.cruzamento_gerado',
     entidade: 'vendas',

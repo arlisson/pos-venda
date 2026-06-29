@@ -215,6 +215,11 @@ const PERMISSOES = [
     descricao: 'Permite acessar a página de fechamento mensal de vendas e gerenciar planos com taxa de comissão.'
   },
   {
+    chave: 'vendas_cruzar',
+    nome: 'Vendas: cruzar vendas',
+    descricao: 'Permite acessar a tela de cruzamento de vendas e gerar a planilha final.'
+  },
+  {
     chave: 'gerenciar_leads',
     nome: 'Gerenciar mailing',
     descricao: 'Permite importar planilhas, filtrar e distribuir mailing entre vendedores.'

@@ -102,7 +102,7 @@ function AppRoutes() {
       />
       <Route
         path="/admin/cruzar-vendas"
-        element={<PrivateRoute permission="clientes_importar_planilhas"><CruzarVendasPage /></PrivateRoute>}
+        element={<PrivateRoute permission="vendas_cruzar"><CruzarVendasPage /></PrivateRoute>}
       />
 
       <Route
