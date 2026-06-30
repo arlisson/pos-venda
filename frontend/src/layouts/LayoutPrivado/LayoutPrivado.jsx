@@ -40,6 +40,7 @@ const routeConfigs = [
   { path: '/admin/fechamento-mensal', title: 'Fechamento Mensal', sub: 'Consolide contratos, UGRs e comissões do período', id: 'fechamento-mensal' },
   { path: '/admin/leads', title: 'Planilha de Mailing', sub: 'Importe, filtre e distribua mailing para vendedores', id: 'leads' },
   { path: '/admin/cruzar-vendas', title: 'Cruzar Vendas', sub: 'Cruze a planilha principal com as concluídas das operadoras', id: 'cruzar-vendas' },
+  { path: '/admin/consultar-cnpj', title: 'Consultar CNPJ', sub: 'Enriqueça planilhas com dados cadastrais de empresas', id: 'consultar-cnpj' },
   { path: '/futuros-clientes', title: 'Futuros Clientes', sub: 'Mailing marcados para acompanhamento futuro', id: 'futuros-clientes', end: true },
   { path: '/mensagens', title: 'Mensagens', sub: 'Conversas internas entre usuários', id: 'mensagens', end: true },
 ];
@@ -141,6 +142,7 @@ function LayoutPrivado({ children }) {
       'fechamento-mensal': '/admin/fechamento-mensal',
       leads: '/admin/leads',
       'cruzar-vendas': '/admin/cruzar-vendas',
+      'consultar-cnpj': '/admin/consultar-cnpj',
     };
 
     if (routeMap[id]) {

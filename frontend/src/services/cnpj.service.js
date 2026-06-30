@@ -1,7 +1,7 @@
 /**
  * Utilitarios e cliente de API para CPF/CNPJ.
  */
-import { apiGet } from './api';
+import { apiBlob, apiGet, apiPost, apiRequest, apiStreamNdjson } from './api';
 
 /**
  * Sanitiza cpf removendo caracteres nao esperados.
@@ -103,4 +103,59 @@ export function validarCnpjParaConsulta(valor) {
 export async function consultarCnpj(valor) {
   const cnpj = validarCnpjParaConsulta(valor);
   return apiGet(`/cnpj/${cnpj}`);
+}
+
+function montarFormDataPlanilha(arquivo, mapeamento) {
+  const formData = new FormData();
+  formData.append('arquivo', arquivo);
+  if (mapeamento) {
+    formData.append('mapeamento', JSON.stringify(mapeamento));
+  }
+  return formData;
+}
+
+export async function previewPlanilhaCnpj(arquivo) {
+  return apiRequest('/cnpj/planilha/preview', {
+    method: 'POST',
+    body: montarFormDataPlanilha(arquivo)
+  });
+}
+
+export async function consultarPlanilhaCnpj(arquivo, mapeamento) {
+  return apiRequest('/cnpj/planilha/consultar', {
+    method: 'POST',
+    body: montarFormDataPlanilha(arquivo, mapeamento)
+  });
+}
+
+export async function consultarPlanilhaCnpjStream(arquivo, mapeamento, onEvent, opcoes = {}) {
+  return apiStreamNdjson('/cnpj/planilha/consultar-stream', {
+    method: 'POST',
+    body: montarFormDataPlanilha(arquivo, mapeamento),
+    signal: opcoes.signal
+  }, onEvent);
+}
+
+export async function adicionarClientesCnpj(linhas) {
+  return apiPost('/cnpj/planilha/clientes', { linhas });
+}
+
+function baixarBlob(blob, nomeArquivo) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export async function exportarResultadoCnpj(linhas, nome = '') {
+  const blob = await apiBlob('/cnpj/planilha/exportar', {
+    method: 'POST',
+    body: JSON.stringify({ linhas, nome })
+  });
+  const data = new Date().toISOString().slice(0, 10);
+  baixarBlob(blob, `consulta-cnpj-${data}.xlsx`);
 }

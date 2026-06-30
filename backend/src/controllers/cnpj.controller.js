@@ -1,4 +1,5 @@
 const cnpjService = require('../services/cnpj.service');
+const cnpjImportacaoService = require('../services/cnpj-importacao.service');
 
 /**
  * Converte codigos de erro do servico de CNPJ em status HTTP.
@@ -37,6 +38,98 @@ async function consultar(req, res) {
   }
 }
 
+async function previewPlanilha(req, res) {
+  try {
+    const preview = await cnpjImportacaoService.previewPlanilha(req);
+    return res.json(preview);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao ler planilha.'
+    });
+  }
+}
+
+async function consultarPlanilha(req, res) {
+  try {
+    const resultado = await cnpjImportacaoService.consultarPlanilha(req);
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || getStatusErro(error)).json({
+      message: error.message || 'Erro ao consultar CNPJs da planilha.'
+    });
+  }
+}
+
+async function consultarPlanilhaStream(req, res) {
+  /**
+   * Escreve eventos newline-delimited JSON para consumo incremental no frontend.
+   */
+  function escreverEvento(evento) {
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('X-Accel-Buffering', 'no');
+    }
+
+    res.write(`${JSON.stringify(evento)}\n`);
+  }
+
+  try {
+    await cnpjImportacaoService.consultarPlanilhaStream(req, escreverEvento);
+    return res.end();
+  } catch (error) {
+    console.error(error);
+
+    if (res.headersSent) {
+      escreverEvento({
+        tipo: 'erro',
+        message: error.message || 'Erro ao consultar CNPJs da planilha.'
+      });
+      return res.end();
+    }
+
+    return res.status(error.statusCode || getStatusErro(error)).json({
+      message: error.message || 'Erro ao consultar CNPJs da planilha.'
+    });
+  }
+}
+
+async function adicionarClientes(req, res) {
+  try {
+    const resultado = await cnpjImportacaoService.adicionarClientes(req.body?.linhas, req.usuario.id);
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao adicionar clientes.'
+    });
+  }
+}
+
+async function exportarResultado(req, res) {
+  try {
+    const { buffer, nome } = await cnpjImportacaoService.gerarXlsxResultado(req.body?.linhas, {
+      nome: req.body?.nome
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
+    return res.send(buffer);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao exportar resultado.'
+    });
+  }
+}
+
 module.exports = {
-  consultar
+  adicionarClientes,
+  consultar,
+  consultarPlanilha,
+  consultarPlanilhaStream,
+  exportarResultado,
+  previewPlanilha
 };
