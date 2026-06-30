@@ -6,7 +6,7 @@ const db = require('../database/connection');
 
 const CNPJ_TIMEOUT_MS = 5000;
 const CACHE_DIAS = 30;
-const FONTES = ['BrasilAPI', 'CNPJa', 'CNPJws'];
+const FONTES = ['Open CNPJ', 'CNPJws', 'Minha Receita'];
 const CAMPOS_CRITICOS = [
   'razaoSocial',
   'nomeFantasia',
@@ -181,7 +181,7 @@ function contarCamposPreenchidos(payload) {
 /**
  * Normaliza brasil api para uso interno consistente.
  */
-function normalizarBrasilApi(data) {
+function normalizarMinhaReceita(data) {
   return {
     razaoSocial: normalizarTexto(data.razao_social),
     nomeFantasia: normalizarTexto(data.nome_fantasia),
@@ -195,7 +195,7 @@ function normalizarBrasilApi(data) {
     bairro: normalizarTexto(data.bairro),
     municipio: normalizarTexto(data.municipio),
     uf: normalizarTexto(data.uf).toUpperCase(),
-    fonte: 'BrasilAPI',
+    fonte: 'Minha Receita',
     atualizadoEm: null
   };
 }
@@ -224,7 +224,7 @@ function normalizarCnpja(data) {
     bairro: normalizarTexto(address.district),
     municipio: normalizarTexto(typeof address.city === 'string' ? address.city : address.city?.name),
     uf: normalizarTexto(address.state).toUpperCase(),
-    fonte: 'CNPJa',
+    fonte: 'Open CNPJ',
     atualizadoEm: normalizarTexto(data.updated)
   };
 }
@@ -306,7 +306,7 @@ async function consultarFonte(fonte, url, normalizar) {
  * Resume payload bruto para exibicao ou envio.
  */
 function resumirPayloadBruto(fonte, data) {
-  if (fonte === 'BrasilAPI') {
+  if (fonte === 'Minha Receita') {
     return {
       cnpj: data.cnpj,
       razao_social: data.razao_social,
@@ -318,7 +318,7 @@ function resumirPayloadBruto(fonte, data) {
     };
   }
 
-  if (fonte === 'CNPJa') {
+  if (fonte === 'Open CNPJ') {
     return {
       taxId: data.taxId,
       alias: data.alias,
@@ -568,9 +568,9 @@ async function consultarCnpj(valor) {
   if (cache) return cache;
 
   const resultados = await Promise.all([
-    consultarFonte('BrasilAPI', `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, normalizarBrasilApi),
-    consultarFonte('CNPJa', `https://open.cnpja.com/office/${cnpj}`, normalizarCnpja),
-    consultarFonte('CNPJws', `https://publica.cnpj.ws/cnpj/${cnpj}`, normalizarCnpjws)
+    consultarFonte('Open CNPJ', `https://open.cnpja.com/office/${cnpj}`, normalizarCnpja),
+    consultarFonte('CNPJws', `https://publica.cnpj.ws/cnpj/${cnpj}`, normalizarCnpjws),
+    consultarFonte('Minha Receita', `https://minhareceita.org/${cnpj}`, normalizarMinhaReceita)
   ]);
 
   const payload = combinarResultados(resultados);
@@ -600,7 +600,7 @@ module.exports = {
   combinarResultados,
   consultarCnpj,
   montarPayloadCache,
-  normalizarBrasilApi,
+  normalizarMinhaReceita,
   normalizarCnpja,
   normalizarCnpjws,
   sanitizarCnpj,

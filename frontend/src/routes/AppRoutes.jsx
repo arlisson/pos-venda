@@ -21,6 +21,7 @@ import ClienteFormPage from '../pages/Clientes/ClienteFormPage';
 import ClientesLixeiraPage from '../pages/Clientes/ClientesLixeiraPage';
 import AdminLeadsPage from '../pages/AdminLeadsPage/AdminLeadsPage';
 import CruzarVendasPage from '../pages/CruzarVendasPage/CruzarVendasPage';
+import CnpjImportacaoPage from '../pages/CnpjImportacaoPage/CnpjImportacaoPage';
 import FuturosClientesPage from '../pages/FuturosClientesPage/FuturosClientesPage';
 import FechamentoMensalPage from '../pages/FechamentoMensalPage/FechamentoMensalPage';
 import MensagensPage from '../pages/MensagensPage/MensagensPage';
@@ -103,6 +104,10 @@ function AppRoutes() {
       <Route
         path="/admin/cruzar-vendas"
         element={<PrivateRoute permission="vendas_cruzar"><CruzarVendasPage /></PrivateRoute>}
+      />
+      <Route
+        path="/admin/consultar-cnpj"
+        element={<PrivateRoute permission="clientes_importar_planilhas"><CnpjImportacaoPage /></PrivateRoute>}
       />
 
       <Route

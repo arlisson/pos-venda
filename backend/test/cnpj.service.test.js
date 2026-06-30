@@ -5,12 +5,17 @@ const {
   calcularConfianca,
   combinarResultados,
   montarPayloadCache,
-  normalizarBrasilApi,
+  normalizarMinhaReceita,
   normalizarCnpja,
   normalizarCnpjws,
   validarCnpj,
   validarDigitosCnpj
 } = require('../src/services/cnpj.service');
+const {
+  calcularScore: calcularScoreGooglePlaces,
+  montarQueryEmpresa,
+  normalizarTelefone: normalizarTelefoneGooglePlaces
+} = require('../src/services/google-places.service');
 
 test.after(async () => {
   await db.destroy();
@@ -26,7 +31,7 @@ test('valida CNPJ por tamanho, repeticao e digitos verificadores', () => {
 });
 
 test('normaliza payloads das tres fontes com datas quando existirem', () => {
-  assert.deepEqual(normalizarBrasilApi({
+  assert.deepEqual(normalizarMinhaReceita({
     razao_social: 'Empresa Brasil',
     nome_fantasia: 'Brasil',
     descricao_situacao_cadastral: 'ATIVA',
@@ -51,14 +56,14 @@ test('normaliza payloads das tres fontes com datas quando existirem', () => {
     bairro: 'Se',
     municipio: 'Sao Paulo',
     uf: 'SP',
-    fonte: 'BrasilAPI',
+    fonte: 'Minha Receita',
     atualizadoEm: null
   });
 
   assert.equal(normalizarCnpja({
     updated: '2026-03-01T00:00:00.000Z',
-    company: { name: 'Empresa CNPJa' },
-    alias: 'CNPJa',
+    company: { name: 'Empresa Open CNPJ' },
+    alias: 'Open CNPJ',
     status: { text: 'Ativa' },
     phones: [{ area: '11', number: '33334444' }],
     emails: [{ address: 'cnpja@empresa.test' }],
@@ -96,9 +101,9 @@ test('calcula confianca por data e divergencia', () => {
 test('combina resultados com fontes por campo, alternativas e alertas', () => {
   const payload = combinarResultados([
     {
-      fonte: 'BrasilAPI',
+      fonte: 'Minha Receita',
       ok: true,
-      normalizado: { razaoSocial: 'Empresa A', endereco: 'Rua Um', fonte: 'BrasilAPI', atualizadoEm: null }
+      normalizado: { razaoSocial: 'Empresa A', endereco: 'Rua Um', fonte: 'Minha Receita', atualizadoEm: null }
     },
     {
       fonte: 'CNPJws',
@@ -106,7 +111,7 @@ test('combina resultados com fontes por campo, alternativas e alertas', () => {
       normalizado: { razaoSocial: 'Empresa B', endereco: 'Rua Dois', fonte: 'CNPJws', atualizadoEm: '2026-03-01T00:00:00.000Z' }
     },
     {
-      fonte: 'CNPJa',
+      fonte: 'Open CNPJ',
       ok: false,
       code: 'timeout',
       status: null,
@@ -115,8 +120,8 @@ test('combina resultados com fontes por campo, alternativas e alertas', () => {
   ]);
 
   assert.equal(payload.razaoSocial, 'Empresa A');
-  assert.deepEqual(payload.fontesComSucesso, ['BrasilAPI', 'CNPJws']);
-  assert.equal(payload.fontesComErro[0].fonte, 'CNPJa');
+  assert.deepEqual(payload.fontesComSucesso, ['Minha Receita', 'CNPJws']);
+  assert.equal(payload.fontesComErro[0].fonte, 'Open CNPJ');
   assert.equal(payload.fontesPorCampo.razaoSocial.divergente, true);
   assert.equal(payload.fontesPorCampo.razaoSocial.confianca, 'baixa');
   assert.equal(payload.alternativasPorCampo.razaoSocial.length, 2);
@@ -127,10 +132,10 @@ test('enriquece payload antigo vindo do cache sem metadados novos', () => {
   const payload = montarPayloadCache({
     payload_normalizado: JSON.stringify({
       razaoSocial: 'Empresa Cache',
-      fonte: 'BrasilAPI',
-      fontesPorCampo: { razaoSocial: 'BrasilAPI' }
+      fonte: 'Minha Receita',
+      fontesPorCampo: { razaoSocial: 'Minha Receita' }
     }),
-    fontes: JSON.stringify(['BrasilAPI']),
+    fontes: JSON.stringify(['Minha Receita']),
     created_at: '2026-05-01 10:00:00',
     updated_at: '2026-05-02 10:00:00',
     expira_em: '2026-06-01 10:00:00'
@@ -138,15 +143,33 @@ test('enriquece payload antigo vindo do cache sem metadados novos', () => {
 
   assert.equal(payload.razaoSocial, 'Empresa Cache');
   assert.equal(payload.cache, true);
-  assert.deepEqual(payload.fontesConsultadas, ['BrasilAPI', 'CNPJa', 'CNPJws']);
-  assert.deepEqual(payload.fontesComSucesso, ['BrasilAPI']);
+  assert.deepEqual(payload.fontesConsultadas, ['Open CNPJ', 'CNPJws', 'Minha Receita']);
+  assert.deepEqual(payload.fontesComSucesso, ['Minha Receita']);
   assert.deepEqual(payload.fontesComErro, []);
   assert.deepEqual(payload.fontesPorCampo.razaoSocial, {
-    fonte: 'BrasilAPI',
+    fonte: 'Minha Receita',
     atualizadoEm: null,
     confianca: 'media',
     divergente: false
   });
   assert.deepEqual(payload.alternativasPorCampo, {});
   assert.deepEqual(payload.alertas, []);
+});
+
+test('normaliza telefone e calcula match basico para Google Places', () => {
+  const dados = {
+    razaoSocial: 'Empresa Teste LTDA',
+    nomeFantasia: 'Empresa Teste',
+    endereco: 'Rua Um',
+    numero: '10',
+    municipio: 'Sao Paulo',
+    uf: 'SP'
+  };
+
+  assert.equal(normalizarTelefoneGooglePlaces('+55 11 99999-8888'), '11999998888');
+  assert.equal(montarQueryEmpresa(dados), 'Empresa Teste Rua Um 10 Sao Paulo SP');
+  assert.equal(calcularScoreGooglePlaces(dados, {
+    displayName: { text: 'Empresa Teste' },
+    formattedAddress: 'Rua Um, 10 - Sao Paulo, SP'
+  }) >= 3, true);
 });

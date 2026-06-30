@@ -1,0 +1,179 @@
+.cnpj-import-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cnpj-import-panel {
+  padding: 0;
+}
+
+.cnpj-import-panel .panel-header,
+.cnpj-import-results .panel-header {
+  padding: 16px 18px;
+}
+
+.cnpj-import-panel .panel-header h2,
+.cnpj-import-results .panel-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.cnpj-import-panel .panel-header p,
+.cnpj-import-results .panel-header p {
+  margin: 3px 0 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+.cnpj-import-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cnpj-import-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(190px, 0.8fr) minmax(170px, 0.7fr) auto auto;
+  align-items: end;
+  gap: 14px;
+  padding: 16px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.cnpj-import-controls .form-field {
+  margin: 0;
+}
+
+.cnpj-import-samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 18px 16px;
+}
+
+.cnpj-import-samples span {
+  max-width: 240px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cnpj-import-progress {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(180px, auto);
+  align-items: center;
+  gap: 10px;
+  margin: 0 18px 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.cnpj-import-progress strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.cnpj-import-progress__bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.cnpj-import-progress__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 180ms ease;
+}
+
+.cnpj-import-panel .alert-error,
+.cnpj-import-panel .alert-success {
+  margin: 0 18px 16px;
+}
+
+.cnpj-import-results {
+  padding: 0;
+}
+
+.cnpj-import-table .scroll {
+  max-height: calc(100vh - 340px);
+}
+
+.cnpj-import-table table {
+  min-width: 2580px;
+}
+
+.cnpj-import-table th,
+.cnpj-import-table td {
+  vertical-align: top;
+}
+
+.cnpj-import-table td {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cnpj-import-table td:first-child {
+  max-width: 130px;
+}
+
+.cnpj-import-table td:first-child small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-3);
+  font-size: 11px;
+  white-space: normal;
+}
+
+.cnpj-import-table td:last-child {
+  max-width: 140px;
+  white-space: normal;
+}
+
+@media (max-width: 900px) {
+  .cnpj-import-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cnpj-import-controls .btn {
+    justify-content: center;
+  }
+
+  .cnpj-import-actions {
+    justify-content: stretch;
+  }
+
+  .cnpj-import-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cnpj-import-progress {
+    grid-template-columns: 1fr auto;
+  }
+
+  .cnpj-import-progress > span {
+    grid-column: 1 / -1;
+  }
+
+  .cnpj-import-table .scroll {
+    max-height: none;
+  }
+}

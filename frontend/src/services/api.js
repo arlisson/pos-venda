@@ -99,6 +99,67 @@ export async function apiBlob(endpoint, options = {}) {
   return response.blob();
 }
 
+export async function apiStreamNdjson(endpoint, options = {}, onEvent = () => {}) {
+  const token = localStorage.getItem('token');
+  const isFormData = options.body instanceof FormData;
+  const headers = {
+    ...(options.headers || {})
+  };
+
+  if (!isFormData) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      encerrarSessaoExpirada();
+    }
+
+    const contentType = response.headers.get('content-type');
+    const data = contentType?.includes('application/json')
+      ? await response.json()
+      : null;
+    throw new Error(data?.message || data?.error || 'Erro na requisiÃ§Ã£o.');
+  }
+
+  if (!response.body) {
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const partes = buffer.split('\n');
+    buffer = partes.pop() || '';
+
+    partes.forEach(parte => {
+      const texto = parte.trim();
+      if (!texto) return;
+      onEvent(JSON.parse(texto));
+    });
+
+    if (done) break;
+  }
+
+  const resto = buffer.trim();
+  if (resto) {
+    onEvent(JSON.parse(resto));
+  }
+}
+
 /**
  * Atalho para requisicoes GET JSON.
  *
