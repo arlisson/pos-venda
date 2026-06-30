@@ -90,6 +90,21 @@ function colunaBaseFresh(colunas = []) {
   return colunas.find(coluna => normalizarTexto(coluna.nome) === 'base/fresh') || null;
 }
 
+/**
+ * Sugere a coluna de quantidade (chips) da planilha principal.
+ */
+function colunaQuantidade(colunas = []) {
+  return colunas.find(coluna => /quantidade|qtd|chips/i.test(coluna.nome)) || null;
+}
+
+/**
+ * Sugere as colunas de contas/chips a somar numa planilha de operadora (ex.: Claro "Ctns ...").
+ * Vazio quando nao ha (ex.: Vivo, 1 chip por linha).
+ */
+function colunasDeChips(colunas = []) {
+  return colunas.filter(coluna => /\bctns\b|contas|chips/i.test(coluna.nome)).map(coluna => coluna.nome);
+}
+
 function operadoraPorNomeArquivo(nomeArquivo, operadoras = []) {
   const texto = normalizarTexto(nomeArquivo);
   const alvo = texto.includes('vivo') ? 'vivo' : texto.includes('claro') ? 'claro' : '';
@@ -217,6 +232,19 @@ function BlocoOperadora({ titulo, preview, config, onConfig, operadoras = [], mo
           amostras={preview?.amostras}
           onChange={alterarColunaTipo}
         />
+        <div className="cruzar-map__row">
+          <label>Colunas de chips (somar)</label>
+          <select
+            multiple
+            value={config.quantidadeColunas || []}
+            onChange={event => onConfig({ ...config, quantidadeColunas: Array.from(event.target.selectedOptions, opcao => opcao.value) })}
+          >
+            {colunas.map(coluna => (
+              <option key={`${coluna.index}-chips`} value={coluna.nome}>{coluna.nome}</option>
+            ))}
+          </select>
+          <span>Some as colunas de contas (ex.: Claro “Ctns …”). Vazio = 1 chip por linha (ex.: Vivo).</span>
+        </div>
         {mostrarIdentificador && <div className="cruzar-map__row">
           <label>Operadora</label>
           <select
@@ -383,13 +411,14 @@ function CruzarVendasPage() {
       setSelecoesAbas(proximasSelecoes);
       const primeiraAbaUsada = proximasSelecoes.find(selecao => selecao.usar);
       setAbaConfigAtiva(primeiraAbaUsada ? chaveAba(primeiraAbaUsada.arquivoIndex, primeiraAbaUsada.aba) : '');
-      setPrincipalCfg(['cnpj', 'razaoSocial', 'operadora', 'data'].reduce((config, campo) => (
+      setPrincipalCfg(['cnpj', 'razaoSocial', 'operadora', 'data', 'quantidade'].reduce((config, campo) => (
         aplicarIndice(config, dados.principal?.colunas || [], campo)
       ), {
         cnpj: sug.principal?.cnpj || '',
         razaoSocial: sug.principal?.razaoSocial || '',
         operadora: sug.principal?.operadora || '',
         data: sug.principal?.data || '',
+        quantidade: colunaQuantidade(dados.principal?.colunas)?.nome || '',
         abas: {}
       }));
       setOperadorasCfg((dados.operadoras || []).map((planilha, index) => {
@@ -404,6 +433,8 @@ function CruzarVendasPage() {
           tipo: tipoPreferido,
           valorOperadora: operadoraPorNomeArquivo(planilha.arquivo, operadorasBanco),
           tipoMap: montarTipoMapInicial(planilha.valoresDistintos?.[tipoPreferido] || []),
+          // Colunas de contas (chips) a somar — ex.: Claro "Ctns ...". Vazio = 1 chip por linha (Vivo).
+          quantidadeColunas: colunasDeChips(planilha.colunas),
           abas: {}
         });
       }));
@@ -882,6 +913,13 @@ function ConfiguracaoAbas({
               colunas={preview?.principal?.colunas || []}
               amostras={preview?.principal?.amostras}
               onChange={(valor, coluna) => setPrincipalCfg(prev => atualizarCampoMapeamento(prev, 'data', valor, coluna))}
+            />
+            <SelectColuna
+              label="Coluna Quantidade (chips)"
+              valor={principalCfg.quantidade || ''}
+              colunas={preview?.principal?.colunas || []}
+              amostras={preview?.principal?.amostras}
+              onChange={(valor, coluna) => setPrincipalCfg(prev => atualizarCampoMapeamento(prev, 'quantidade', valor, coluna))}
             />
           </div>
         </div>

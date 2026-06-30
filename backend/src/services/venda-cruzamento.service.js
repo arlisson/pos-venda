@@ -3,6 +3,21 @@ const ExcelJS = require('exceljs');
 
 const LIMITE_VALORES_DISTINTOS = 50;
 const LIMITE_AMOSTRAS = 5;
+// Rede de seguranca, nao teto de uso normal: evita derrubar o processo se alguem
+// subir o arquivo errado (um video, um dump). Ajustavel via CRUZAMENTO_LIMITE_BYTES.
+const LIMITE_TAMANHO_ARQUIVO_PADRAO = 50 * 1024 * 1024; // 50 MB
+
+/**
+ * Limite de bytes por arquivo, lido a cada chamada para permitir override por ambiente.
+ */
+function limiteTamanhoArquivo() {
+  const configurado = Number(process.env.CRUZAMENTO_LIMITE_BYTES);
+  return Number.isFinite(configurado) && configurado > 0 ? configurado : LIMITE_TAMANHO_ARQUIVO_PADRAO;
+}
+
+function megabytes(bytes) {
+  return Math.round((bytes / (1024 * 1024)) * 10) / 10;
+}
 
 /**
  * Cria um erro HTTP com statusCode para ser tratado pelo controller.
@@ -37,6 +52,63 @@ function normalizarDocumento(valor) {
   return String(valor || '').replace(/\D/g, '');
 }
 
+/**
+ * Converte um valor de celula (texto/numero, com virgula ou ponto) em numero; 0 se invalido.
+ */
+function paraNumero(valor) {
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+  const limpo = String(valor ?? '').replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  const numero = Number(limpo);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+/**
+ * Detecta automaticamente as colunas de contas/chips de uma operadora pelo padrao do nome
+ * (ex.: Claro "Ctns ..."). Vazio quando nao ha (ex.: Vivo, que conta 1 chip por linha).
+ */
+function detectarColunasChips(nomes = []) {
+  return nomes.filter(nome => !String(nome).startsWith('__') && /\bctns\b|contas|chips/i.test(nome));
+}
+
+/**
+ * Detecta automaticamente a coluna de quantidade da planilha principal pelo nome.
+ */
+function detectarColunaQuantidade(nomes = []) {
+  return nomes.find(nome => !String(nome).startsWith('__') && /\bquantidade\b|\bqtd\b|chips/i.test(nome)) || '';
+}
+
+/**
+ * Quantidade de chips de uma venda da principal. Usa a coluna mapeada em `quantidade`; na falta,
+ * a coluna detectada automaticamente (`colunaAuto`). Default 1.
+ */
+function quantidadePrincipal(dados, mapeamento, colunaAuto = '') {
+  let valor;
+  if (campoPreenchido(mapeamento, 'quantidade')) {
+    valor = valorMapeado(dados, mapeamento, 'quantidade');
+  } else if (colunaAuto) {
+    valor = dados[colunaAuto];
+  } else {
+    return 1;
+  }
+  const qtd = Math.trunc(paraNumero(valor));
+  return qtd > 0 ? qtd : 1;
+}
+
+/**
+ * Quantidade de chips de uma linha de confirmacao da operadora. As planilhas representam isso
+ * de formas diferentes: a Claro soma colunas de contas (Ctns ...), a Vivo tem 1 chip por linha.
+ * Usa `quantidadeColunas` se mapeado; na falta, as colunas detectadas automaticamente
+ * (`colunasAuto`). Sem colunas = 1 chip por linha.
+ */
+function quantidadeConfirmacao(dados, mapeamento, colunasAuto = []) {
+  const colunas = Array.isArray(mapeamento.quantidadeColunas) && mapeamento.quantidadeColunas.length > 0
+    ? mapeamento.quantidadeColunas
+    : colunasAuto;
+  // Sem colunas de contas (ex.: Vivo): 1 chip por linha. Com colunas: a soma (0 = nao confirma).
+  if (colunas.length === 0) return 1;
+  return colunas.reduce((total, nome) => total + Math.trunc(paraNumero(dados[nome])), 0);
+}
+
 function encontrarColunaPorTermos(dados, ...termos) {
   const termosNorm = termos.map(normalizarTexto);
   return Object.keys(dados || {}).find(nome => {
@@ -50,17 +122,23 @@ function encontrarColunaPorTermos(dados, ...termos) {
  * Classifica um valor como CPF (11 digitos) ou CNPJ (14 digitos) e devolve a chave de
  * indexacao com prefixo de tipo. O prefixo impede casamento cruzado entre CPF e CNPJ.
  *
+ * Planilhas que salvam o documento como NUMERO perdem zeros a esquerda (ex.: a Vivo manda
+ * "1327884000156" para "01.327.884/0001-56"). Como CPF (<=11) e CNPJ (>=12) tem faixas de
+ * comprimento que nao se sobrepoem, completamos com zeros a esquerda sem ambiguidade:
+ * 12-13 digitos = CNPJ; 9-10 digitos = CPF. Um numero de 11 digitos e tratado como CPF.
+ *
  * @param {*} valor - Valor cru da celula de documento.
  * @returns {{ tipo: ('cpf'|'cnpj'|null), digitos: string, chave: string }}
  */
 function classificarDocumento(valor) {
   const digitos = normalizarDocumento(valor);
-  if (digitos.length >= 14) {
-    const cnpj = digitos.slice(-14);
+  if (digitos.length >= 12) {
+    const cnpj = digitos.slice(-14).padStart(14, '0');
     return { tipo: 'cnpj', digitos: cnpj, chave: `cnpj:${cnpj}` };
   }
-  if (digitos.length === 11) {
-    return { tipo: 'cpf', digitos, chave: `cpf:${digitos}` };
+  if (digitos.length >= 9) {
+    const cpf = digitos.padStart(11, '0');
+    return { tipo: 'cpf', digitos: cpf, chave: `cpf:${cpf}` };
   }
   return { tipo: null, digitos: '', chave: '' };
 }
@@ -125,7 +203,7 @@ function textoCelula(valor) {
  */
 function lerMultipart(req) {
   return new Promise((resolve, reject) => {
-    const busboy = Busboy({ headers: req.headers });
+    const busboy = Busboy({ headers: req.headers, limits: { fileSize: limiteTamanhoArquivo() } });
     const campos = {};
     const arquivos = [];
 
@@ -149,7 +227,7 @@ function lerMultipart(req) {
       arquivos.push(null);
       const chunks = [];
       file.on('data', chunk => chunks.push(chunk));
-      file.on('limit', () => reject(criarHttpError(400, 'Arquivo excede o limite permitido.')));
+      file.on('limit', () => reject(criarHttpError(400, `O arquivo "${info.filename}" excede o limite de ${megabytes(limiteTamanhoArquivo())} MB.`)));
       file.on('end', () => {
         arquivos[indiceArquivo] = { filename: info.filename, mimeType: info.mimeType, buffer: Buffer.concat(chunks) };
       });
@@ -527,17 +605,20 @@ function parseConfig(valor, colunasPorPlanilha) {
     throw criarHttpError(400, 'Selecione ao menos uma coluna para o resultado.');
   }
 
+  const colunasOperadoraNomes = numero => (colunasPorPlanilha[numero] || []).map(coluna => coluna.nome);
+
   return {
     principal: {
       cnpj: principal.cnpj,
       razaoSocial: principal.razaoSocial,
       operadora: principal.operadora,
       data: principal.data || '',
-      ...normalizarMapeamento(principal, ['cnpj', 'razaoSocial', 'operadora', 'data']),
+      quantidade: principal.quantidade || '',
+      ...normalizarMapeamento(principal, ['cnpj', 'razaoSocial', 'operadora', 'data', 'quantidade']),
       abas: mapeamentosPorAba(principal),
       colunasResultado
     },
-    operadoras: operadoras.map(operadora => ({
+    operadoras: operadoras.map((operadora, index) => ({
       cnpj: operadora.cnpj || '',
       cpf: operadora.cpf || '',
       razaoSocial: operadora.razaoSocial,
@@ -545,6 +626,10 @@ function parseConfig(valor, colunasPorPlanilha) {
       ...normalizarMapeamento(operadora, ['cnpj', 'cpf', 'razaoSocial', 'tipo']),
       valorOperadora: normalizarTexto(operadora.valorOperadora),
       tipoMap: operadora.tipoMap || {},
+      // Colunas de contas a somar como chips (ex.: Claro Ctns ...). Vazio = 1 chip por linha (ex.: Vivo).
+      quantidadeColunas: Array.isArray(operadora.quantidadeColunas)
+        ? operadora.quantidadeColunas.filter(nome => colunasOperadoraNomes(index + 1).includes(nome))
+        : [],
       abas: normalizarMapeamentosAbas(mapeamentosPorAba(operadora))
     }))
   };
@@ -561,105 +646,6 @@ function aplicarTipoMap(tipoMap, valorOrigem) {
   if (/^\d+(?:[.,]\d+)?$/.test(valor)) return 'UNKNOWN';
   const chave = Object.keys(tipoMap).find(item => normalizarTexto(item) === normalizarTexto(valor));
   return chave ? tipoMap[chave] : valor;
-}
-
-/**
- * Indexa uma planilha de operadora em Map<razaoSocial, Tipo>. Ultima ocorrencia prevalece.
- */
-function indexarOperadora(linhas, mapeamento) {
-  const indice = new Map();
-  for (const dados of linhas) {
-    const chave = normalizarChave(valorMapeado(dados, mapeamento, 'razaoSocial'));
-    if (!chave) continue;
-    indice.set(chave, aplicarTipoMap(mapeamento.tipoMap, valorMapeado(dados, mapeamento, 'tipo')));
-  }
-  return indice;
-}
-
-/**
- * Cruza as linhas da principal contra as operadoras e separa concluidas/nao concluidas.
- *
- * Etapas: classificar (achar na operadora) -> deduplicar por razaoSocial+operadora -> separar.
- *
- * @returns {{ concluidas: Object[], naoConcluidas: Object[] }}
- */
-function cruzar(linhasPrincipal, indiceClaro, indiceVivo, config) {
-  const { principal, claro, vivo } = config;
-
-  /**
-   * Detecta a operadora (claro/vivo) a partir do texto da coluna operadora.
-   */
-  function detectarOperadora(textoOperadora) {
-    const texto = normalizarTexto(textoOperadora);
-    if (!texto) return null;
-    if (claro.valorOperadora && texto.includes(claro.valorOperadora)) return 'claro';
-    if (vivo.valorOperadora && texto.includes(vivo.valorOperadora)) return 'vivo';
-    return null;
-  }
-
-  // Passo 3: classificar cada linha
-  const classificadas = linhasPrincipal.map(dados => {
-    const chave = normalizarChave(valorMapeado(dados, principal, 'razaoSocial'));
-    const operadora = detectarOperadora(valorMapeado(dados, principal, 'operadora'));
-    const indice = operadora === 'claro' ? indiceClaro : operadora === 'vivo' ? indiceVivo : null;
-
-    let concluida = false;
-    let tipo = '';
-    if (chave && indice && indice.has(chave)) {
-      concluida = true;
-      tipo = indice.get(chave);
-    }
-
-    return { dados, chave, operadora, concluida, tipo };
-  });
-
-  // Passo 4: deduplicar por razaoSocial+operadora ("manter a concluida")
-  const grupos = new Map();
-  for (const linha of classificadas) {
-    const grupoChave = `${linha.chave}::${linha.operadora || ''}`;
-    if (!linha.chave) {
-      // sem Razao Social nao agrupa: cada uma e unica
-      grupos.set(`${grupoChave}::${grupos.size}`, [linha]);
-      continue;
-    }
-    if (!grupos.has(grupoChave)) grupos.set(grupoChave, []);
-    grupos.get(grupoChave).push(linha);
-  }
-
-  const selecionadas = [];
-  for (const grupo of grupos.values()) {
-    if (grupo.length === 1) {
-      selecionadas.push(grupo[0]);
-      continue;
-    }
-    const concluida = grupo.find(item => item.concluida);
-    if (concluida) {
-      selecionadas.push(concluida);
-      continue;
-    }
-    // nenhuma concluida: manter a mais recente por data (fallback) ou a ultima
-    const ordenadas = [...grupo].sort((a, b) => {
-      const dataA = campoPreenchido(principal, 'data') ? String(valorMapeado(a.dados, principal, 'data') || '') : '';
-      const dataB = campoPreenchido(principal, 'data') ? String(valorMapeado(b.dados, principal, 'data') || '') : '';
-      return dataA.localeCompare(dataB);
-    });
-    selecionadas.push(ordenadas[ordenadas.length - 1]);
-  }
-
-  // Passo 5: montar saidas com colunasResultado + Tipo
-  const montarLinha = linha => {
-    const saida = {};
-    principal.colunasResultado.forEach(nome => {
-      saida[nome] = linha.dados[nome] || '';
-    });
-    saida.Tipo = linha.tipo || '';
-    return saida;
-  };
-
-  return {
-    concluidas: selecionadas.filter(item => item.concluida).map(montarLinha),
-    naoConcluidas: selecionadas.filter(item => !item.concluida).map(montarLinha)
-  };
 }
 
 /**
@@ -690,14 +676,56 @@ function escreverAba(workbook, titulo, cabecalho, linhas) {
   return worksheet;
 }
 
+const COLUNAS_AUTOMATICAS = ['Tipo', 'Tipo_Documento', 'Status_Conciliacao', 'Arquivo_Confirmacao', 'Aba_Confirmacao', 'Linha_Confirmacao', 'Razao_Social_Confirmacao', 'Observacao_Automatica'];
+
 /**
- * Gera o workbook final (.xlsx) com as duas abas do cruzamento.
+ * Sanitiza um nome para uso como aba do Excel: troca caracteres proibidos por espaco,
+ * trunca em 31 caracteres e garante unicidade dentro do conjunto ja usado.
+ */
+function nomeAbaValido(nome, usados) {
+  const limpo = String(nome || '').replace(/[\\/?*[\]:]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Sem mes';
+  let candidato = limpo;
+  let sufixo = 2;
+  while (usados.has(candidato)) {
+    candidato = `${limpo.slice(0, 31 - String(sufixo).length - 1)} ${sufixo}`;
+    sufixo += 1;
+  }
+  usados.add(candidato);
+  return candidato;
+}
+
+/**
+ * Agrupa as linhas concluidas por mes (__mes) e devolve os grupos em ordem cronologica,
+ * seguindo a organizacao por mes das planilhas das operadoras.
+ */
+function agruparPorMes(linhas) {
+  const grupos = new Map();
+  for (const linha of linhas) {
+    const mes = linha.__mes || 'Sem mes';
+    if (!grupos.has(mes)) grupos.set(mes, []);
+    grupos.get(mes).push(linha);
+  }
+  return new Map([...grupos.entries()].sort((a, b) => chaveOrdenacaoMes(a[0]) - chaveOrdenacaoMes(b[0])));
+}
+
+/**
+ * Gera o workbook final (.xlsx) preservando a formatacao por mes das planilhas que chegam:
+ * vendas concluidas em uma aba por mes (na ordem da principal) e uma unica aba com as nao
+ * concluidas, que ganha a coluna "Mes" no inicio para nao perder a origem.
  */
 async function gerarWorkbook(resultado, colunasResultado) {
   const workbook = new ExcelJS.Workbook();
-  const cabecalho = [...colunasResultado, 'Tipo', 'Tipo_Documento', 'Status_Conciliacao', 'Arquivo_Confirmacao', 'Aba_Confirmacao', 'Linha_Confirmacao', 'Razao_Social_Confirmacao', 'Observacao_Automatica'];
-  escreverAba(workbook, 'Vendas Concluidas', cabecalho, resultado.concluidas);
-  escreverAba(workbook, 'Vendas Nao Concluidas', cabecalho, resultado.naoConcluidas);
+  const cabecalho = [...colunasResultado, ...COLUNAS_AUTOMATICAS];
+  const usados = new Set();
+
+  for (const [mes, linhas] of agruparPorMes(resultado.concluidas)) {
+    escreverAba(workbook, nomeAbaValido(mes, usados), cabecalho, linhas);
+  }
+
+  const cabecalhoNaoConcluidas = ['Mês', ...cabecalho];
+  const linhasNaoConcluidas = resultado.naoConcluidas.map(linha => ({ 'Mês': linha.__mes || '', ...linha }));
+  escreverAba(workbook, nomeAbaValido('Vendas Nao Concluidas', usados), cabecalhoNaoConcluidas, linhasNaoConcluidas);
+
   return workbook.xlsx.writeBuffer();
 }
 
@@ -713,12 +741,16 @@ function indexarConfirmacao(linhas, mapeamento, arquivo) {
     mapa.get(chave).push(registro);
   };
 
+  // Detecta o padrao de chips da operadora uma vez (ex.: colunas "Ctns ..." da Claro).
+  const colunasChipsAuto = detectarColunasChips(linhas.length ? Object.keys(linhas[0]) : []);
+
   for (const dados of linhas) {
     const mapaLinha = mapeamentoDaLinha(mapeamento, dados);
     const chaveRazao = normalizarChave(valorMapeado(dados, mapaLinha, 'razaoSocial'));
     const documento = documentoDaLinha(dados, mapaLinha);
     const registro = {
       tipo: aplicarTipoMap(mapaLinha.tipoMap || mapeamento.tipoMap, valorMapeado(dados, mapaLinha, 'tipo')),
+      chips: quantidadeConfirmacao(dados, mapaLinha, colunasChipsAuto),
       dados,
       arquivo,
       tipoDocumento: documento.tipo,
@@ -734,12 +766,129 @@ function indexarConfirmacao(linhas, mapeamento, arquivo) {
   return indice;
 }
 
-function buscarConfirmacao(indice, chaveDocumento, chaveRazao) {
-  if (!indice) return null;
-  if (indice instanceof Map) return chaveRazao ? indice.get(chaveRazao) : null;
-  if (chaveDocumento && indice.porDocumento?.has(chaveDocumento)) return indice.porDocumento.get(chaveDocumento)[0];
-  if (chaveRazao && indice.porRazaoSocial?.has(chaveRazao)) return indice.porRazaoSocial.get(chaveRazao)[0];
-  return null;
+/**
+ * Lista TODAS as confirmacoes de uma empresa numa operadora (planilha de fechamento).
+ * Cada confirmacao representa uma venda concluida; vendas divididas em varias linhas contam
+ * todas. Prefere casar por documento (CPF/CNPJ) e cai para Razao Social quando nao ha documento.
+ */
+function listarConfirmacoes(indice, chaveDocumento, chaveRazao) {
+  if (!indice) return [];
+  if (indice instanceof Map) {
+    const registro = chaveRazao ? indice.get(chaveRazao) : null;
+    return registro ? [registro] : [];
+  }
+  if (chaveDocumento && indice.porDocumento?.has(chaveDocumento)) return indice.porDocumento.get(chaveDocumento);
+  if (chaveRazao && indice.porRazaoSocial?.has(chaveRazao)) return indice.porRazaoSocial.get(chaveRazao);
+  return [];
+}
+
+const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+/**
+ * Deriva o rotulo de mes no mesmo formato das abas das operadoras (ex.: "JANEIRO26",
+ * "MARÇO26"): nome do mes em maiusculas + ano com 2 digitos, sem separador.
+ * Aceita ISO (aaaa-mm-dd) e formato brasileiro (dd/mm/aaaa, com / - ou .).
+ * Retorna '' quando nao consegue interpretar uma data valida.
+ */
+function mesDaData(valor) {
+  const texto = String(valor || '').trim();
+  if (!texto) return '';
+  let ano;
+  let mes;
+  const iso = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    ano = Number(iso[1]);
+    mes = Number(iso[2]);
+  } else {
+    const br = texto.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/);
+    if (br) {
+      mes = Number(br[2]);
+      ano = Number(br[3]);
+      if (ano < 100) ano += 2000;
+    }
+  }
+  if (!mes || mes < 1 || mes > 12) return '';
+  return `${MESES_PT[mes - 1].toUpperCase()}${String(ano).slice(-2)}`;
+}
+
+/**
+ * Chave de ordenacao cronologica para um rotulo de mes (ex.: "MARÇO26", "MAIO26 PF").
+ * Reconhece o nome do mes e o ano (2 ou 4 digitos); um sufixo (ex.: " PF") ordena logo
+ * apos o mes-base. Rotulos nao reconhecidos vao para o fim.
+ */
+function chaveOrdenacaoMes(rotulo) {
+  const texto = normalizarTexto(rotulo);
+  const indice = MESES_PT.findIndex(nome => texto.startsWith(normalizarTexto(nome)));
+  if (indice === -1) return Number.MAX_SAFE_INTEGER;
+  const anoMatch = texto.match(/(\d{2,4})/);
+  const ano = anoMatch ? Number(anoMatch[1]) : 0;
+  const anoNorm = ano < 100 ? 2000 + ano : ano;
+  const semMesNemAno = texto.replace(normalizarTexto(MESES_PT[indice]), '').replace(/\d+/g, '').trim();
+  return anoNorm * 100 + (indice + 1) * 2 + (semMesNemAno ? 1 : 0);
+}
+
+/**
+ * Pareia CHIP A CHIP as vendas da principal (ja explodidas em chips) com as confirmacoes das
+ * operadoras (tambem em chips). Como a operadora pode pagar os chips de uma mesma venda em meses
+ * diferentes, o casamento e por chip individual, nao por venda inteira.
+ *
+ * Agrupa os chips por identidade (documento ou, na falta, Razao Social) + operadora. Em cada grupo
+ * os chips da operadora sao distribuidos por mes (Claro = soma das Ctns; Vivo = 1 por linha) e:
+ * - 1a passada: cada chip da principal pega um chip da operadora do SEU proprio mes (data da venda);
+ * - 2a passada: os chips ainda sem par pegam qualquer chip restante, em ordem cronologica;
+ * - chips sem par (alem do que a operadora faturou) ficam como nao concluidos.
+ *
+ * Cada chip recebe a confirmacao pareada, que define seu Tipo e o mes/aba de fechamento.
+ *
+ * @param {Object[]} chips - Chips da principal (cada um com documento, operadora, mesPrincipal).
+ * @param {Object[]} indicesOperadoras - Indices de confirmacao por operadora (registros com .chips).
+ */
+function parearChips(chips, indicesOperadoras) {
+  const grupos = new Map();
+  let avulsos = 0;
+  for (const chip of chips) {
+    const identidade = chip.documento?.chave || chip.chave;
+    const grupoChave = identidade && chip.operadora >= 0 ? `${identidade}::${chip.operadora}` : `__sem::${avulsos++}`;
+    if (!grupos.has(grupoChave)) grupos.set(grupoChave, []);
+    grupos.get(grupoChave).push(chip);
+  }
+
+  for (const grupo of grupos.values()) {
+    const base = grupo[0];
+    const indiceOp = base.operadora >= 0 ? indicesOperadoras[base.operadora] : null;
+    const confirmacoes = listarConfirmacoes(indiceOp, base.documento?.chave, base.chave);
+    // Chips da operadora distribuidos por mes (cada chip aponta para a confirmacao de origem).
+    const opPorMes = new Map(); // mes -> [confirmacao, ...]
+    for (const confirmacao of confirmacoes) {
+      const mes = confirmacao.dados?.__abaOrigem || base.mesPrincipal || '';
+      const qtd = Number.isFinite(confirmacao.chips) ? confirmacao.chips : 1;
+      if (!opPorMes.has(mes)) opPorMes.set(mes, []);
+      for (let i = 0; i < qtd; i += 1) opPorMes.get(mes).push(confirmacao);
+    }
+    const mesesCronologicos = [...opPorMes.keys()].sort((a, b) => chaveOrdenacaoMes(a) - chaveOrdenacaoMes(b));
+
+    // 1a passada: casa cada chip no seu proprio mes (data da venda).
+    for (const chip of grupo) {
+      const pool = opPorMes.get(chip.mesPrincipal);
+      if (pool && pool.length) chip.confirmacao = pool.shift();
+    }
+    // 2a passada: chips sem par pegam qualquer chip restante, em ordem cronologica.
+    for (const chip of grupo) {
+      if (chip.confirmacao) continue;
+      for (const mes of mesesCronologicos) {
+        const pool = opPorMes.get(mes);
+        if (pool && pool.length) { chip.confirmacao = pool.shift(); break; }
+      }
+    }
+    // Define o status final de cada chip.
+    for (const chip of grupo) {
+      const confirmacao = chip.confirmacao || null;
+      chip.confirmacao = confirmacao;
+      chip.concluida = Boolean(confirmacao);
+      chip.tipo = confirmacao ? (confirmacao.tipo ?? '') : '';
+      chip.mes = confirmacao ? (confirmacao.dados?.__abaOrigem || chip.mesPrincipal) : chip.mesPrincipal;
+    }
+  }
 }
 
 /**
@@ -747,44 +896,66 @@ function buscarConfirmacao(indice, chaveDocumento, chaveRazao) {
  */
 function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
   const { principal, operadoras } = config;
-  const classificadas = linhasPrincipal.map(dados => {
+  // Fallback de mes para a principal (usado nas nao concluidas e quando a confirmacao nao
+  // tem aba de origem): se a principal vem em varias abas, usa o nome da aba; senao, a Data.
+  const abasPrincipal = new Set(linhasPrincipal.map(dados => dados.__abaOrigem).filter(Boolean));
+  const usarAbaComoMes = abasPrincipal.size > 1;
+  // Coluna de quantidade da principal: detectada automaticamente quando nao foi mapeada.
+  const colunaQtdAuto = campoPreenchido(principal, 'quantidade')
+    ? ''
+    : detectarColunaQuantidade(linhasPrincipal.length ? Object.keys(linhasPrincipal[0]) : []);
+  // Coluna de quantidade efetiva (para zerar/normalizar no resultado, pois cada linha vira 1 chip).
+  const colunaQtd = campoPreenchido(principal, 'quantidade') ? principal.quantidade : colunaQtdAuto;
+
+  // Explode cada venda em chips individuais (1 chip por unidade da quantidade).
+  const chips = [];
+  for (const dados of linhasPrincipal) {
     const mapaPrincipal = mapeamentoDaLinha(principal, dados);
     const chave = normalizarChave(valorMapeado(dados, mapaPrincipal, 'razaoSocial'));
     const documento = documentoDaLinha(dados, mapaPrincipal);
     const textoOperadora = normalizarTexto(valorMapeado(dados, mapaPrincipal, 'operadora'));
-    const indice = operadoras.findIndex(operadora => operadoraCombina(textoOperadora, operadora));
-    const confirmacao = indice >= 0 ? buscarConfirmacao(indicesOperadoras[indice], documento.chave, chave) : null;
-    const encontrou = Boolean(confirmacao);
-    const tipo = confirmacao?.tipo || confirmacao || '';
-    return { dados, chave, documento, operadora: indice, concluida: encontrou, tipo, confirmacao: typeof confirmacao === 'object' ? confirmacao : null };
-  });
+    const operadora = operadoras.findIndex(op => operadoraCombina(textoOperadora, op));
+    // Mes da principal (fallback): aba de origem quando multi-aba, senao a Data da venda.
+    const mesPrincipal = usarAbaComoMes ? (dados.__abaOrigem || '') : mesDaData(valorMapeado(dados, mapaPrincipal, 'data'));
+    const qtd = quantidadePrincipal(dados, mapaPrincipal, colunaQtdAuto);
+    for (let i = 0; i < qtd; i += 1) {
+      chips.push({ dados, chave, documento, operadora, mesPrincipal });
+    }
+  }
+
+  parearChips(chips, indicesOperadoras);
 
   const rotuloTipoDocumento = tipo => tipo === 'cpf' ? 'CPF' : tipo === 'cnpj' ? 'CNPJ' : '';
 
-  const montarLinha = linha => Object.assign(
-    Object.fromEntries(principal.colunasResultado.map(nome => [nome, linha.dados[nome] || ''])),
-    {
-      Tipo: linha.tipo || '',
-      Tipo_Documento: rotuloTipoDocumento(linha.documento?.tipo),
-      Status_Conciliacao: linha.tipo === 'UNKNOWN' ? 'VALIDAR_MANUALMENTE' : (linha.concluida ? 'PAGO' : 'NAO_ENCONTRADO'),
-      Arquivo_Confirmacao: linha.confirmacao?.arquivo || '',
-      Aba_Confirmacao: linha.confirmacao?.dados?.__abaOrigem || '',
-      Linha_Confirmacao: linha.confirmacao?.dados?.__linhaOrigem || '',
-      Razao_Social_Confirmacao: linha.confirmacao
+  // Cada linha do resultado representa UM chip.
+  const montarLinha = chip => {
+    const saida = Object.fromEntries(principal.colunasResultado.map(nome => [nome, chip.dados[nome] || '']));
+    if (colunaQtd && Object.prototype.hasOwnProperty.call(saida, colunaQtd)) saida[colunaQtd] = 1;
+    return Object.assign(saida, {
+      // Chave reservada (fora do cabecalho): usada por gerarWorkbook para agrupar por mes.
+      __mes: chip.mes || '',
+      Tipo: chip.tipo || '',
+      Tipo_Documento: rotuloTipoDocumento(chip.documento?.tipo),
+      Status_Conciliacao: chip.tipo === 'UNKNOWN' ? 'VALIDAR_MANUALMENTE' : (chip.concluida ? 'PAGO' : 'NAO_ENCONTRADO'),
+      Arquivo_Confirmacao: chip.confirmacao?.arquivo || '',
+      Aba_Confirmacao: chip.confirmacao?.dados?.__abaOrigem || '',
+      Linha_Confirmacao: chip.confirmacao?.dados?.__linhaOrigem || '',
+      Razao_Social_Confirmacao: chip.confirmacao
         ? valorMapeado(
-            linha.confirmacao.dados,
-            mapeamentoDaLinha(operadoras[linha.operadora], linha.confirmacao.dados),
+            chip.confirmacao.dados,
+            mapeamentoDaLinha(operadoras[chip.operadora], chip.confirmacao.dados),
             'razaoSocial'
           ) || ''
         : '',
-      Observacao_Automatica: linha.tipo === 'UNKNOWN'
+      Observacao_Automatica: chip.tipo === 'UNKNOWN'
         ? 'Tipo da confirmação parece numérico ou inválido; validar o mapeamento da aba.'
-        : (linha.concluida ? 'Encontrado na planilha de confirmação.' : 'Não encontrado na planilha de confirmação.')
-    }
-  );
+        : (chip.concluida ? 'Encontrado na planilha de confirmação.' : 'Não encontrado na planilha de confirmação.')
+    });
+  };
+
   return {
-    concluidas: classificadas.filter(item => item.concluida).map(montarLinha),
-    naoConcluidas: classificadas.filter(item => !item.concluida).map(montarLinha)
+    concluidas: chips.filter(chip => chip.concluida).map(montarLinha),
+    naoConcluidas: chips.filter(chip => !chip.concluida).map(montarLinha)
   };
 }
 
@@ -801,6 +972,9 @@ async function processarCruzamento(req) {
   try { selecoesAbas = JSON.parse(campos.config || '{}').selecoesAbas || []; } catch (_) { /* parseConfig informa o erro */ }
   const planilhas = await Promise.all(arquivos.map((arquivo, arquivoIndex) => {
     const abas = selecoesAbas.filter(item => item.usar !== false && item.arquivoIndex === arquivoIndex).map(item => item.aba);
+    if (selecoesAbas.length && abas.length === 0) {
+      throw criarHttpError(400, `Selecione ao menos uma aba do arquivo "${arquivo.filename}".`);
+    }
     return carregarPlanilha(arquivo.buffer, selecoesAbas.length ? abas : null);
   }));
   const config = parseConfig(campos.config, planilhas.map(planilha => planilha.colunas));
@@ -816,12 +990,12 @@ module.exports = {
   previewCruzamento,
   processarCruzamento,
   // exportados para teste unitario do nucleo
-  cruzar,
   cruzarMultiplasPlanilhas,
-  indexarOperadora,
   indexarConfirmacao,
   aplicarTipoMap,
   normalizarChave,
   classificarDocumento,
-  documentoDaLinha
+  documentoDaLinha,
+  nomeAbaValido,
+  mesDaData
 };
