@@ -94,6 +94,7 @@ function normalizarRegistroKey(registro) {
   return {
     id: registro.id,
     nome: registro.nome || `Chave ${registro.id}`,
+    api_key: String(registro.api_key || ''),
     mascarada: mascararApiKey(registro.api_key),
     ativo: parseBool(registro.ativo),
     esgotada: Boolean(esgotadaAte && esgotadaAte.getTime() > Date.now()),
@@ -186,6 +187,44 @@ async function removerGooglePlacesKey(id) {
     .delete();
 
   return removidos > 0;
+}
+
+async function atualizarGooglePlacesKey(id, { nome, apiKey }) {
+  if (!(await tabelaGoogleKeysExiste())) {
+    const error = new Error('Execute as migrations antes de editar chaves do Google Places.');
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const chaveId = Number.parseInt(id, 10);
+  if (!Number.isFinite(chaveId) || chaveId <= 0) {
+    const error = new Error('Chave invalida.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const atualizacao = {
+    nome: String(nome || '').trim() || `Chave ${chaveId}`,
+    updated_at: formatarDateTimeSQL()
+  };
+
+  const chave = String(apiKey || '').trim();
+  if (chave) {
+    atualizacao.api_key = chave;
+    atualizacao.esgotada_em = null;
+    atualizacao.esgotada_ate = null;
+    atualizacao.ultimo_status = null;
+    atualizacao.ultimo_erro = null;
+  }
+
+  const atualizados = await db(TABELA_GOOGLE_KEYS)
+    .where({ id: chaveId })
+    .update(atualizacao);
+
+  if (!atualizados) return null;
+
+  const registro = await db(TABELA_GOOGLE_KEYS).where({ id: chaveId }).first();
+  return normalizarRegistroKey(registro);
 }
 
 async function marcarKeyUsada(item) {
@@ -496,6 +535,7 @@ module.exports = {
   obterApiKeysGoogleEnv,
   listarGooglePlacesKeys,
   adicionarGooglePlacesKey,
+  atualizarGooglePlacesKey,
   removerGooglePlacesKey,
   GOOGLE_MAPS_API_KEYS_ESPERADAS
 };

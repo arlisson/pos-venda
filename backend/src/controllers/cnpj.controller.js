@@ -149,6 +149,18 @@ async function adicionarGooglePlacesKey(req, res) {
   }
 }
 
+async function atualizarGooglePlacesKey(req, res) {
+  try {
+    const chave = await cnpjImportacaoService.atualizarGooglePlacesKey(req.params.id, req.body || {});
+    return res.json(chave);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao editar chave do Google Places.'
+    });
+  }
+}
+
 async function removerGooglePlacesKey(req, res) {
   try {
     await cnpjImportacaoService.removerGooglePlacesKey(req.params.id);
@@ -164,6 +176,7 @@ async function removerGooglePlacesKey(req, res) {
 module.exports = {
   adicionarClientes,
   adicionarGooglePlacesKey,
+  atualizarGooglePlacesKey,
   consultar,
   consultarPlanilha,
   consultarPlanilhaStream,

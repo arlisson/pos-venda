@@ -5,6 +5,7 @@ import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   adicionarClientesCnpj,
   adicionarGooglePlacesKey,
+  atualizarGooglePlacesKey,
   consultarPlanilhaCnpjStream,
   exportarResultadoCnpj,
   listarGooglePlacesKeys,
@@ -80,6 +81,10 @@ function CnpjImportacaoPage() {
   const [sucesso, setSucesso] = useState('');
   const [progresso, setProgresso] = useState(null);
   const [googleKeys, setGoogleKeys] = useState([]);
+  const [googleKeysModalAberto, setGoogleKeysModalAberto] = useState(false);
+  const [googleKeyDrafts, setGoogleKeyDrafts] = useState({});
+  const [googleKeyVisiveis, setGoogleKeyVisiveis] = useState({});
+  const [novaGoogleKeyVisivel, setNovaGoogleKeyVisivel] = useState(false);
   const [carregandoGoogleKeys, setCarregandoGoogleKeys] = useState(false);
   const [salvandoGoogleKey, setSalvandoGoogleKey] = useState(false);
   const [novaGoogleKey, setNovaGoogleKey] = useState({ nome: '', apiKey: '' });
@@ -88,6 +93,7 @@ function CnpjImportacaoPage() {
   const colunas = preview?.colunas || [];
   const linhas = useMemo(() => resultado?.linhas || [], [resultado]);
   const linhasAdicionaveis = useMemo(() => linhas.filter(linhaPodeAdicionar), [linhas]);
+  const clientesJaBuscados = useMemo(() => linhas.filter(linha => linha.busca_realizada), [linhas]);
   const totalEncontrados = linhas.filter(linha => linha.status === 'encontrado').length;
   const totalErros = linhas.filter(linha => linha.status === 'erro').length;
   const podeBuscar = Boolean(arquivo && colunaCnpj && !carregando);
@@ -102,12 +108,22 @@ function CnpjImportacaoPage() {
     setCarregandoGoogleKeys(true);
     try {
       const data = await listarGooglePlacesKeys();
-      setGoogleKeys(data?.chaves || []);
+      const chaves = data?.chaves || [];
+      setGoogleKeys(chaves);
+      setGoogleKeyDrafts(Object.fromEntries(chaves.map(chave => [
+        chave.id,
+        { nome: chave.nome || '', apiKey: chave.api_key || '' }
+      ])));
     } catch (error) {
       setErro(error.message || 'Erro ao carregar chaves do Google Places.');
     } finally {
       setCarregandoGoogleKeys(false);
     }
+  }
+
+  async function abrirModalGoogleKeys() {
+    setGoogleKeysModalAberto(true);
+    await carregarGoogleKeys();
   }
 
   async function salvarGoogleKey(event) {
@@ -125,6 +141,43 @@ function CnpjImportacaoPage() {
       setSucesso('Chave do Google Places adicionada.');
     } catch (error) {
       setErro(error.message || 'Erro ao adicionar chave do Google Places.');
+    } finally {
+      setSalvandoGoogleKey(false);
+    }
+  }
+
+  function atualizarDraftGoogleKey(id, campo, valor) {
+    setGoogleKeyDrafts(prev => ({
+      ...prev,
+      [id]: {
+        ...(prev[id] || {}),
+        [campo]: valor
+      }
+    }));
+  }
+
+  async function salvarGoogleKeyExistente(id) {
+    if (!id || salvandoGoogleKey) return;
+
+    const draft = googleKeyDrafts[id] || {};
+    if (!String(draft.apiKey || '').trim()) {
+      setErro('Informe a chave da API do Google Places.');
+      return;
+    }
+
+    setSalvandoGoogleKey(true);
+    setErro('');
+    setSucesso('');
+
+    try {
+      await atualizarGooglePlacesKey(id, {
+        nome: draft.nome,
+        apiKey: draft.apiKey
+      });
+      await carregarGoogleKeys();
+      setSucesso('Chave do Google Places atualizada.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao editar chave do Google Places.');
     } finally {
       setSalvandoGoogleKey(false);
     }
@@ -230,6 +283,7 @@ function CnpjImportacaoPage() {
             return {
               ...(prev || {}),
               requisicoes_externas: requisicoesBase + Number(evento.requisicoes_externas || 0),
+              total_ja_buscados: Number(evento.total_ja_buscados || prev?.total_ja_buscados || 0),
               total_consultados: proximasLinhas.length,
               linhas: proximasLinhas
             };
@@ -388,8 +442,18 @@ function CnpjImportacaoPage() {
               <h2>Consulta de empresas por CNPJ</h2>
               <p>Importe uma planilha, escolha a coluna de CNPJ e consulte Open CNPJ, CNPJ.ws e Minha Receita.</p>
             </div>
-            {resultado && podeCriarCliente && (
-              <div className="cnpj-import-actions">
+            <div className="cnpj-import-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={abrirModalGoogleKeys}
+                disabled={carregandoGoogleKeys}
+              >
+                <I.Settings size={14} />
+                Chaves Google
+              </button>
+              {resultado && podeCriarCliente && (
+                <>
                 <button
                   type="button"
                   className="btn"
@@ -418,71 +482,8 @@ function CnpjImportacaoPage() {
                   <I.Plus size={14} />
                   {adicionando ? 'Adicionando...' : 'Adicionar todos exibidos'}
                 </button>
-              </div>
-            )}
-          </div>
-
-          <div className="cnpj-import-keys">
-            <div className="panel-header">
-              <div>
-                <h2>Chaves Google Places</h2>
-                <p>{googleKeys.length} chave(s) cadastrada(s) para rotacao quando faltar telefone nas fontes de CNPJ.</p>
-              </div>
-              <button type="button" className="btn" onClick={carregarGoogleKeys} disabled={carregandoGoogleKeys}>
-                <I.Refresh size={14} />
-                Atualizar
-              </button>
-            </div>
-
-            <div className="cnpj-import-controls">
-              <div className="form-field">
-                <label>Nome</label>
-                <input
-                  type="text"
-                  value={novaGoogleKey.nome}
-                  onChange={event => setNovaGoogleKey(prev => ({ ...prev, nome: event.target.value }))}
-                  placeholder="Conta 1"
-                  disabled={salvandoGoogleKey}
-                />
-              </div>
-              <div className="form-field">
-                <label>API key</label>
-                <input
-                  type="password"
-                  value={novaGoogleKey.apiKey}
-                  onChange={event => setNovaGoogleKey(prev => ({ ...prev, apiKey: event.target.value }))}
-                  placeholder="AIza..."
-                  disabled={salvandoGoogleKey}
-                />
-              </div>
-              <button type="button" className="btn" onClick={salvarGoogleKey} disabled={salvandoGoogleKey || !novaGoogleKey.apiKey.trim()}>
-                <I.Plus size={14} />
-                {salvandoGoogleKey ? 'Salvando...' : 'Adicionar chave'}
-              </button>
-            </div>
-
-            <div className="cnpj-import-key-list">
-              {googleKeys.length === 0 ? (
-                <div className="cnpj-import-key-empty">Nenhuma chave cadastrada.</div>
-              ) : googleKeys.map(chave => (
-                <div className="cnpj-import-key-row" key={chave.id} title={chave.ultimo_erro || ''}>
-                  <div className="cnpj-import-key-main">
-                    <strong>{chave.nome}</strong>
-                    <code>{chave.mascarada}</code>
-                  </div>
-                  <span className={classeStatusGoogleKey(chave)}>{statusGoogleKey(chave)}</span>
-                  {chave.esgotada_ate && <small>Volta em {new Date(chave.esgotada_ate).toLocaleString('pt-BR')}</small>}
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    onClick={() => excluirGoogleKey(chave.id)}
-                    disabled={carregando || salvandoGoogleKey}
-                  >
-                    <I.Trash size={13} />
-                    Remover
-                  </button>
-                </div>
-              ))}
+                </>
+              )}
             </div>
           </div>
 
@@ -573,12 +574,150 @@ function CnpjImportacaoPage() {
           {sucesso && <div className="alert-success">{sucesso}</div>}
         </form>
 
+        {googleKeysModalAberto && (
+          <div className="modal-overlay" role="dialog" aria-modal="true" onClick={event => event.target === event.currentTarget && setGoogleKeysModalAberto(false)}>
+            <div className="modal cnpj-import-keys-modal">
+              <div className="modal-header">
+                <div className="modal-header-row">
+                  <div>
+                    <div className="modal-client">Chaves Google Places</div>
+                    <div className="modal-sub">{googleKeys.length} chave(s) cadastrada(s) para rotacao de busca extra.</div>
+                  </div>
+                  <button type="button" className="btn btn-icon btn-ghost" onClick={() => setGoogleKeysModalAberto(false)} disabled={salvandoGoogleKey}>
+                    <I.Close size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-body">
+                <form className="cnpj-import-key-add" onSubmit={salvarGoogleKey}>
+                  <div className="form-field">
+                    <label>Nome</label>
+                    <input
+                      type="text"
+                      value={novaGoogleKey.nome}
+                      onChange={event => setNovaGoogleKey(prev => ({ ...prev, nome: event.target.value }))}
+                      placeholder="Conta 1"
+                      disabled={salvandoGoogleKey}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>API key</label>
+                    <div className="cnpj-import-secret-field">
+                      <input
+                        type={novaGoogleKeyVisivel ? 'text' : 'password'}
+                        value={novaGoogleKey.apiKey}
+                        onChange={event => setNovaGoogleKey(prev => ({ ...prev, apiKey: event.target.value }))}
+                        placeholder="AIza..."
+                        disabled={salvandoGoogleKey}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-icon btn-ghost"
+                        onClick={() => setNovaGoogleKeyVisivel(prev => !prev)}
+                        title={novaGoogleKeyVisivel ? 'Ocultar chave' : 'Mostrar chave'}
+                      >
+                        {novaGoogleKeyVisivel ? <I.EyeOff size={14} /> : <I.Eye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={salvandoGoogleKey || !novaGoogleKey.apiKey.trim()}>
+                    <I.Plus size={14} />
+                    {salvandoGoogleKey ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </form>
+
+                <div className="cnpj-import-key-list">
+                  {googleKeys.length === 0 ? (
+                    <div className="cnpj-import-key-empty">
+                      {carregandoGoogleKeys ? 'Carregando chaves...' : 'Nenhuma chave cadastrada.'}
+                    </div>
+                  ) : googleKeys.map(chave => {
+                    const draft = googleKeyDrafts[chave.id] || { nome: chave.nome || '', apiKey: chave.api_key || '' };
+                    const visivel = Boolean(googleKeyVisiveis[chave.id]);
+
+                    return (
+                      <div className="cnpj-import-key-row" key={chave.id} title={chave.ultimo_erro || ''}>
+                        <div className="form-field">
+                          <label>Nome</label>
+                          <input
+                            type="text"
+                            value={draft.nome}
+                            onChange={event => atualizarDraftGoogleKey(chave.id, 'nome', event.target.value)}
+                            disabled={salvandoGoogleKey}
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label>API key</label>
+                          <div className="cnpj-import-secret-field">
+                            <input
+                              type={visivel ? 'text' : 'password'}
+                              value={draft.apiKey}
+                              onChange={event => atualizarDraftGoogleKey(chave.id, 'apiKey', event.target.value)}
+                              disabled={salvandoGoogleKey}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-icon btn-ghost"
+                              onClick={() => setGoogleKeyVisiveis(prev => ({ ...prev, [chave.id]: !prev[chave.id] }))}
+                              title={visivel ? 'Ocultar chave' : 'Mostrar chave'}
+                            >
+                              {visivel ? <I.EyeOff size={14} /> : <I.Eye size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="cnpj-import-key-meta">
+                          <span className={classeStatusGoogleKey(chave)}>{statusGoogleKey(chave)}</span>
+                          {chave.esgotada_ate && <small>Volta em {new Date(chave.esgotada_ate).toLocaleString('pt-BR')}</small>}
+                        </div>
+                        <div className="cnpj-import-key-actions">
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={() => salvarGoogleKeyExistente(chave.id)}
+                            disabled={salvandoGoogleKey || !String(draft.apiKey || '').trim()}
+                          >
+                            <I.Check size={13} />
+                            Salvar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={() => excluirGoogleKey(chave.id)}
+                            disabled={carregando || salvandoGoogleKey}
+                          >
+                            <I.Trash size={13} />
+                            Remover
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn" onClick={carregarGoogleKeys} disabled={carregandoGoogleKeys || salvandoGoogleKey}>
+                  <I.Refresh size={14} />
+                  Atualizar
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => setGoogleKeysModalAberto(false)} disabled={salvandoGoogleKey}>
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {resultado && (
           <div className="panel cnpj-import-results">
             <div className="panel-header">
               <div>
                 <h2>Dados retornados</h2>
                 <p>{totalEncontrados} encontrado(s), {totalErros} com erro, {resultado.requisicoes_externas || 0} consulta(s) externa(s).</p>
+                {clientesJaBuscados.length > 0 && (
+                  <p>{clientesJaBuscados.length} cliente(s) ja buscado(s) foram reutilizados sem nova consulta.</p>
+                )}
                 {totalCnpjs > 0 && (
                   <p>{totalConsultadosAcumulado} de {totalCnpjs} CNPJ(s) consultado(s) nesta planilha.</p>
                 )}
@@ -617,6 +756,28 @@ function CnpjImportacaoPage() {
               )}
             </div>
 
+            {clientesJaBuscados.length > 0 && (
+              <div className="cnpj-import-already-searched">
+                <div className="cnpj-import-already-searched__header">
+                  <strong>Clientes ja buscados</strong>
+                  <span>{clientesJaBuscados.length} reutilizado(s)</span>
+                </div>
+                <div className="cnpj-import-already-searched__grid">
+                  {clientesJaBuscados.map(linha => (
+                    <div className="cnpj-import-already-searched__item" key={`ja:${linha.row_index}:${linha.cnpj_digitos}`}>
+                      <strong title={linha.razao_social || linha.nome_fantasia || linha.cnpj}>
+                        {linha.razao_social || linha.nome_fantasia || linha.cnpj}
+                      </strong>
+                      <span>{linha.cnpj}</span>
+                      <span>{[linha.telefone, linha.email].filter(Boolean).join(' | ') || 'Sem contato salvo'}</span>
+                      <span>{[linha.municipio, linha.uf].filter(Boolean).join(' / ') || 'Sem localizacao salva'}</span>
+                      {linha.ja_buscado_em && <small>Buscado em {String(linha.ja_buscado_em).replace('T', ' ').slice(0, 19)}</small>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="list-table cnpj-import-table">
               <div className="scroll">
                 <table>
@@ -631,8 +792,8 @@ function CnpjImportacaoPage() {
                     {linhas.map(linha => (
                       <tr key={`${linha.row_index}:${linha.cnpj_digitos}`}>
                         <td>
-                          <span className={`tag ${linha.status === 'erro' ? 'tag-danger' : linha.cache ? 'tag-info' : 'tag-success'}`}>
-                            {linha.status === 'erro' ? 'Erro' : linha.cache ? 'Cache' : 'OK'}
+                          <span className={`tag ${linha.status === 'erro' ? 'tag-danger' : linha.busca_realizada || linha.cache ? 'tag-info' : 'tag-success'}`}>
+                            {linha.status === 'erro' ? 'Erro' : linha.busca_realizada ? 'Ja buscado' : linha.cache ? 'Cache' : 'OK'}
                           </span>
                           {linha.message && <small>{linha.message}</small>}
                         </td>
