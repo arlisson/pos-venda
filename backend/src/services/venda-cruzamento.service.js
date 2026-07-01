@@ -78,6 +78,45 @@ function detectarColunaQuantidade(nomes = []) {
 }
 
 /**
+ * Detecta automaticamente a coluna de status da planilha principal pelo nome.
+ */
+function detectarColunaStatus(nomes = []) {
+  return nomes.find(nome => !String(nome).startsWith('__') && normalizarTexto(nome) === 'status') || '';
+}
+
+/**
+ * Uma venda esta cancelada quando o STATUS comeca por "cancel" (CANCELADO/CANCELADA/
+ * CANCELADO <motivo>) ou menciona credito negado (inclui o erro comum "CREDIO NEGADO").
+ */
+function vendaCancelada(valorStatus) {
+  const texto = normalizarTexto(valorStatus);
+  return texto.startsWith('cancel') || texto.includes('negado');
+}
+
+/**
+ * Cancelamento comunicado em texto livre (OBS e afins). Usa palavra inteira para evitar falsos
+ * positivos (ex.: "nao cancelar"): cancelado/cancelada/cancelamento ou credito negado.
+ */
+function textoIndicaCancelamento(valor) {
+  const texto = normalizarTexto(valor);
+  if (!texto) return false;
+  return /\bcancelad[oa]\b|\bcancelamento\b/.test(texto) || /cred\w* negado/.test(texto);
+}
+
+/**
+ * Devolve o motivo do cancelamento (o texto que disparou) ou '' se a venda nao foi cancelada.
+ * Prioriza a coluna STATUS; depois varre as demais colunas de texto (exceto as estruturais).
+ */
+function motivoCancelamento(dados, colunaStatus, colunasEstruturais) {
+  if (colunaStatus && vendaCancelada(dados[colunaStatus])) return dados[colunaStatus] || 'CANCELADO';
+  for (const [chave, valor] of Object.entries(dados)) {
+    if (chave.startsWith('__') || chave === colunaStatus || colunasEstruturais.has(chave)) continue;
+    if (textoIndicaCancelamento(valor)) return `${chave}: ${valor}`;
+  }
+  return '';
+}
+
+/**
  * Quantidade de chips de uma venda da principal. Usa a coluna mapeada em `quantidade`; na falta,
  * a coluna detectada automaticamente (`colunaAuto`). Default 1.
  */
@@ -726,6 +765,17 @@ async function gerarWorkbook(resultado, colunasResultado) {
   const linhasNaoConcluidas = resultado.naoConcluidas.map(linha => ({ 'Mês': linha.__mes || '', ...linha }));
   escreverAba(workbook, nomeAbaValido('Vendas Nao Concluidas', usados), cabecalhoNaoConcluidas, linhasNaoConcluidas);
 
+  // Lixeira: vendas canceladas na origem (STATUS), fora do cruzamento. So cria a aba se houver.
+  if (resultado.canceladas?.length) {
+    const cabecalhoCanceladas = ['Mês', ...colunasResultado, 'Status_Cancelamento'];
+    const linhasCanceladas = resultado.canceladas.map(item => ({
+      'Mês': item.mes || '',
+      ...Object.fromEntries(colunasResultado.map(nome => [nome, item.dados[nome] || ''])),
+      'Status_Cancelamento': item.status || ''
+    }));
+    escreverAba(workbook, nomeAbaValido('Vendas Canceladas', usados), cabecalhoCanceladas, linhasCanceladas);
+  }
+
   return workbook.xlsx.writeBuffer();
 }
 
@@ -906,9 +956,17 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
     : detectarColunaQuantidade(linhasPrincipal.length ? Object.keys(linhasPrincipal[0]) : []);
   // Coluna de quantidade efetiva (para zerar/normalizar no resultado, pois cada linha vira 1 chip).
   const colunaQtd = campoPreenchido(principal, 'quantidade') ? principal.quantidade : colunaQtdAuto;
+  // Coluna de status da principal: vendas canceladas saem do cruzamento (viram lixeira).
+  const colunaStatus = detectarColunaStatus(linhasPrincipal.length ? Object.keys(linhasPrincipal[0]) : []);
+  // Colunas estruturais mapeadas: ficam de fora da varredura de cancelamento em texto livre
+  // (evita marcar razao social como "Cancelamentos Express Ltda").
+  const colunasEstruturais = new Set(
+    [principal.cnpj, principal.cpf, principal.razaoSocial, principal.operadora, principal.data, colunaQtd].filter(Boolean)
+  );
 
   // Explode cada venda em chips individuais (1 chip por unidade da quantidade).
   const chips = [];
+  const canceladas = [];
   for (const dados of linhasPrincipal) {
     const mapaPrincipal = mapeamentoDaLinha(principal, dados);
     const chave = normalizarChave(valorMapeado(dados, mapaPrincipal, 'razaoSocial'));
@@ -917,6 +975,13 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
     const operadora = operadoras.findIndex(op => operadoraCombina(textoOperadora, op));
     // Mes da principal (fallback): aba de origem quando multi-aba, senao a Data da venda.
     const mesPrincipal = usarAbaComoMes ? (dados.__abaOrigem || '') : mesDaData(valorMapeado(dados, mapaPrincipal, 'data'));
+    // Vendas canceladas (STATUS ou comunicado em OBS) saem do cruzamento: nao entram no pareamento
+    // nem sao explodidas em chips (1 linha = 1 venda cancelada).
+    const motivo = motivoCancelamento(dados, colunaStatus, colunasEstruturais);
+    if (motivo) {
+      canceladas.push({ dados, mes: mesPrincipal, status: motivo });
+      continue;
+    }
     const qtd = quantidadePrincipal(dados, mapaPrincipal, colunaQtdAuto);
     for (let i = 0; i < qtd; i += 1) {
       chips.push({ dados, chave, documento, operadora, mesPrincipal });
@@ -955,7 +1020,8 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
 
   return {
     concluidas: chips.filter(chip => chip.concluida).map(montarLinha),
-    naoConcluidas: chips.filter(chip => !chip.concluida).map(montarLinha)
+    naoConcluidas: chips.filter(chip => !chip.concluida).map(montarLinha),
+    canceladas
   };
 }
 
