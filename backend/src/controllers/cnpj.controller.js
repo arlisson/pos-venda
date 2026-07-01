@@ -125,11 +125,50 @@ async function exportarResultado(req, res) {
   }
 }
 
+async function listarGooglePlacesKeys(req, res) {
+  try {
+    const chaves = await cnpjImportacaoService.listarGooglePlacesKeys();
+    return res.json({ chaves });
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao listar chaves do Google Places.'
+    });
+  }
+}
+
+async function adicionarGooglePlacesKey(req, res) {
+  try {
+    const chave = await cnpjImportacaoService.adicionarGooglePlacesKey(req.body || {});
+    return res.status(201).json(chave);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao adicionar chave do Google Places.'
+    });
+  }
+}
+
+async function removerGooglePlacesKey(req, res) {
+  try {
+    await cnpjImportacaoService.removerGooglePlacesKey(req.params.id);
+    return res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao remover chave do Google Places.'
+    });
+  }
+}
+
 module.exports = {
   adicionarClientes,
+  adicionarGooglePlacesKey,
   consultar,
   consultarPlanilha,
   consultarPlanilhaStream,
   exportarResultado,
+  listarGooglePlacesKeys,
+  removerGooglePlacesKey,
   previewPlanilha
 };

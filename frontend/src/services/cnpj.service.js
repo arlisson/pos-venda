@@ -1,7 +1,7 @@
 /**
  * Utilitarios e cliente de API para CPF/CNPJ.
  */
-import { apiBlob, apiGet, apiPost, apiRequest, apiStreamNdjson } from './api';
+import { apiBlob, apiDelete, apiGet, apiPost, apiRequest, apiStreamNdjson } from './api';
 
 /**
  * Sanitiza cpf removendo caracteres nao esperados.
@@ -103,6 +103,18 @@ export function validarCnpjParaConsulta(valor) {
 export async function consultarCnpj(valor) {
   const cnpj = validarCnpjParaConsulta(valor);
   return apiGet(`/cnpj/${cnpj}`);
+}
+
+export async function listarGooglePlacesKeys() {
+  return apiGet('/cnpj/google-places/keys');
+}
+
+export async function adicionarGooglePlacesKey(dados) {
+  return apiPost('/cnpj/google-places/keys', dados);
+}
+
+export async function removerGooglePlacesKey(id) {
+  return apiDelete(`/cnpj/google-places/keys/${id}`);
 }
 
 function montarFormDataPlanilha(arquivo, mapeamento) {

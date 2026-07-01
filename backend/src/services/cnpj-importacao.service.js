@@ -21,6 +21,7 @@ const COLUNAS_EXPORTACAO = [
   { header: 'Tel. Google', key: 'telefone_google_places', width: 18 },
   { header: 'Google status', key: 'google_status', width: 18 },
   { header: 'Google detalhe', key: 'google_detalhe', width: 32 },
+  { header: 'Avisos', key: 'avisos', width: 42 },
   { header: 'Fonte telefone', key: 'telefone_fonte', width: 18 },
   { header: 'Conf. telefone', key: 'telefone_confianca', width: 16 },
   { header: 'CEP', key: 'cep', width: 14 },
@@ -202,6 +203,29 @@ async function previewPlanilha(req) {
   };
 }
 
+function listarGooglePlacesKeys() {
+  return googlePlacesService.listarGooglePlacesKeys();
+}
+
+function adicionarGooglePlacesKey(dados) {
+  return googlePlacesService.adicionarGooglePlacesKey({
+    nome: dados?.nome,
+    apiKey: dados?.apiKey || dados?.api_key
+  });
+}
+
+async function removerGooglePlacesKey(id) {
+  const chaveId = Number.parseInt(id, 10);
+  if (!Number.isFinite(chaveId) || chaveId <= 0) {
+    throw criarHttpError(400, 'Chave invalida.');
+  }
+
+  const removida = await googlePlacesService.removerGooglePlacesKey(chaveId);
+  if (!removida) {
+    throw criarHttpError(404, 'Chave nao encontrada.');
+  }
+}
+
 function parseMapeamento(valor) {
   if (!valor) return {};
   if (typeof valor === 'object') return valor;
@@ -242,6 +266,7 @@ function extrairCnpjs(worksheet, colunaCnpj) {
 
 function montarLinhaConsulta(item, dados) {
   const telefonesPorFonte = montarTelefonesPorFonte(dados);
+  const alertas = dados.alertas || [];
 
   return {
     row_index: item.row_index,
@@ -263,6 +288,7 @@ function montarLinhaConsulta(item, dados) {
     google_detalhe: dados.googlePlaces?.encontrado
       ? dados.googlePlaces?.place?.nome || ''
       : dados.googlePlaces?.message || dados.googlePlaces?.motivo || '',
+    avisos: montarTextoAvisos(alertas),
     telefone_fonte: dados.telefoneFonte || (dados.telefone ? dados.fontesPorCampo?.telefone?.fonte || dados.fonte || '' : ''),
     telefone_confianca: dados.telefoneConfianca || dados.fontesPorCampo?.telefone?.confianca || '',
     cep: dados.cep || '',
@@ -275,13 +301,20 @@ function montarLinhaConsulta(item, dados) {
     fontes: dados.fontesComSucesso || [],
     fontes_com_erro: dados.fontesComErro || [],
     fontes_por_campo: dados.fontesPorCampo || {},
-    alertas: dados.alertas || [],
+    alertas,
     google_places: dados.googlePlaces || null,
     cache: Boolean(dados.cache),
     consultado_em: dados.consultadoEm || null,
     cliente_id: null,
     adicionado: false
   };
+}
+
+function montarTextoAvisos(alertas = []) {
+  return alertas
+    .map(alerta => alerta?.mensagem || '')
+    .filter(Boolean)
+    .join(' | ');
 }
 
 function montarTelefonesPorFonte(dados = {}) {
@@ -315,58 +348,13 @@ function montarTelefonesPorFonte(dados = {}) {
   return telefones;
 }
 
-async function enriquecerTelefoneGoogle(dados, modoGoogle = 'sem_telefone') {
-  if (modoGoogle === 'nao') {
-    return {
-      ...dados,
-      googlePlaces: {
-        encontrado: false,
-        motivo: 'desativado'
-      }
-    };
-  }
-
-  if (modoGoogle === 'sem_telefone' && String(dados?.telefone || '').trim()) {
-    return {
-      ...dados,
-      googlePlaces: {
-        encontrado: false,
-        motivo: 'ignorado_com_telefone'
-      }
-    };
-  }
-
-  const resultado = await googlePlacesService.buscarTelefoneEmpresa(dados);
-  if (!resultado.encontrado) {
-    if (String(dados?.telefone || '').trim()) {
-      return {
-        ...dados,
-        googlePlaces: resultado
-      };
-    }
-
-    return {
-      ...dados,
-      googlePlaces: resultado,
-      alertas: [
-        ...(dados.alertas || []),
-        {
-          tipo: 'telefone_google',
-          campo: 'telefone',
-          mensagem: resultado.motivo === 'sem_chave'
-            ? 'Google Places nao configurado para buscar telefone.'
-            : 'Telefone nao encontrado no Google Places.'
-        }
-      ]
-    };
-  }
-
+function aplicarTelefoneEncontrado(dados, resultado, campoResultado) {
   return {
     ...dados,
     telefone: dados.telefone || resultado.telefone,
     telefoneFonte: dados.telefone ? dados.telefoneFonte : resultado.fonte,
     telefoneConfianca: dados.telefone ? dados.telefoneConfianca : resultado.confianca,
-    googlePlaces: resultado,
+    [campoResultado]: resultado,
     fontesComSucesso: Array.from(new Set([...(dados.fontesComSucesso || []), resultado.fonte])),
     fontesPorCampo: {
       ...(dados.fontesPorCampo || {}),
@@ -393,12 +381,94 @@ async function enriquecerTelefoneGoogle(dados, modoGoogle = 'sem_telefone') {
   };
 }
 
+function adicionarAlertaTelefone(dados, tipo, mensagem) {
+  return {
+    ...dados,
+    alertas: [
+      ...(dados.alertas || []),
+      {
+        tipo,
+        campo: 'telefone',
+        mensagem
+      }
+    ]
+  };
+}
+
+function montarAlertasTentativasGoogle(resultadoGoogle = {}) {
+  return (resultadoGoogle.tentativas_google || [])
+    .filter(tentativa => ['limite', 'pausado'].includes(tentativa.motivo))
+    .map(tentativa => ({
+      tipo: 'google_limite',
+      campo: 'telefone',
+      mensagem: tentativa.motivo === 'pausado'
+        ? `Google Places: ${tentativa.env || `chave ${tentativa.index}`} esta pausada por limite; tentando proxima chave.`
+        : `Google Places: ${tentativa.env || `chave ${tentativa.index}`} atingiu o limite; tentando proxima chave.`
+    }));
+}
+
+function adicionarAlertasGoogle(dados, resultadoGoogle) {
+  const alertasGoogle = montarAlertasTentativasGoogle(resultadoGoogle);
+  if (alertasGoogle.length === 0) return dados;
+
+  return {
+    ...dados,
+    alertas: [
+      ...(dados.alertas || []),
+      ...alertasGoogle
+    ]
+  };
+}
+
+async function enriquecerTelefoneFallback(dados, modoBusca = 'sem_telefone') {
+  if (modoBusca === 'nao') {
+    return {
+      ...dados,
+      googlePlaces: {
+        encontrado: false,
+        motivo: 'desativado'
+      }
+    };
+  }
+
+  if (modoBusca === 'sem_telefone' && String(dados?.telefone || '').trim()) {
+    return {
+      ...dados,
+      googlePlaces: {
+        encontrado: false,
+        motivo: 'ignorado_com_telefone'
+      }
+    };
+  }
+
+  const resultadoGoogle = await googlePlacesService.buscarTelefoneEmpresa(dados);
+  if (resultadoGoogle.encontrado) {
+    return adicionarAlertasGoogle(
+      aplicarTelefoneEncontrado(dados, resultadoGoogle, 'googlePlaces'),
+      resultadoGoogle
+    );
+  }
+
+  const dadosComAlertasGoogle = adicionarAlertasGoogle({
+    ...dados,
+    googlePlaces: resultadoGoogle
+  }, resultadoGoogle);
+
+  return adicionarAlertaTelefone(dadosComAlertasGoogle, 'telefone_google', resultadoGoogle.motivo === 'sem_chave'
+    ? 'Google Places nao configurado para buscar telefone. Cadastre uma chave nesta tela.'
+    : resultadoGoogle.motivo === 'credenciais_esgotadas'
+      ? 'Todas as credenciais do Google Places cadastradas esgotaram hoje. Volte amanha para continuar usando a busca extra.'
+      : resultadoGoogle.motivo === 'limite' || resultadoGoogle.motivo === 'pausado'
+        ? 'Todas as chaves do Google Places atingiram limite ou estao pausadas; a busca continuou sem telefone extra.'
+        : 'Telefone nao encontrado no Google Places.');
+}
+
 async function consultarPlanilha(req) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
   const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
-  const modoGoogle = ['sem_telefone', 'nao'].includes(mapeamento.google)
-    ? mapeamento.google
+  const modoBuscaTelefone = ['sem_telefone', 'nao'].includes(mapeamento.buscaTelefone)
+    ? mapeamento.buscaTelefone
     : 'sem_telefone';
 
   if (!mapeamento.cnpj) {
@@ -421,7 +491,7 @@ async function consultarPlanilha(req) {
 
   for (const [index, item] of cnpjs.entries()) {
     try {
-      const dados = await enriquecerTelefoneGoogle(await cnpjService.consultarCnpj(item.cnpj), modoGoogle);
+      const dados = await enriquecerTelefoneFallback(await cnpjService.consultarCnpj(item.cnpj), modoBuscaTelefone);
       if (!dados.cache) requisicoesExternas += 1;
       linhas.push(montarLinhaConsulta(item, dados));
       if (!dados.cache && index < cnpjs.length - 1) {
@@ -468,6 +538,7 @@ async function consultarPlanilha(req) {
       'telefone_google_places',
       'google_status',
       'google_detalhe',
+      'avisos',
       'telefone_fonte',
       'telefone_confianca',
       'cep',
@@ -486,8 +557,8 @@ async function consultarPlanilhaStream(req, onEvento) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
   const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
-  const modoGoogle = ['sem_telefone', 'nao'].includes(mapeamento.google)
-    ? mapeamento.google
+  const modoBuscaTelefone = ['sem_telefone', 'nao'].includes(mapeamento.buscaTelefone)
+    ? mapeamento.buscaTelefone
     : 'sem_telefone';
 
   if (!mapeamento.cnpj) {
@@ -529,6 +600,7 @@ async function consultarPlanilhaStream(req, onEvento) {
       'telefone_google_places',
       'google_status',
       'google_detalhe',
+      'avisos',
       'telefone_fonte',
       'telefone_confianca',
       'cep',
@@ -554,7 +626,7 @@ async function consultarPlanilhaStream(req, onEvento) {
     });
 
     try {
-      const dados = await enriquecerTelefoneGoogle(await cnpjService.consultarCnpj(item.cnpj), modoGoogle);
+      const dados = await enriquecerTelefoneFallback(await cnpjService.consultarCnpj(item.cnpj), modoBuscaTelefone);
       if (!dados.cache) requisicoesExternas += 1;
       await onEvento({
         tipo: 'linha',
@@ -700,8 +772,11 @@ async function gerarXlsxResultado(linhas = [], opcoes = {}) {
 
 module.exports = {
   adicionarClientes,
+  adicionarGooglePlacesKey,
   consultarPlanilha,
   consultarPlanilhaStream,
   gerarXlsxResultado,
+  listarGooglePlacesKeys,
+  removerGooglePlacesKey,
   previewPlanilha
 };

@@ -47,6 +47,73 @@
   margin: 0;
 }
 
+.cnpj-import-keys {
+  border-top: 1px solid var(--border);
+}
+
+.cnpj-import-keys .cnpj-import-controls {
+  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.2fr) auto;
+}
+
+.cnpj-import-key-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0 18px 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.cnpj-import-key-empty {
+  padding: 12px 14px;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+.cnpj-import-key-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto minmax(180px, auto) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.cnpj-import-key-row:first-child {
+  border-top: 0;
+}
+
+.cnpj-import-key-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cnpj-import-key-main strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cnpj-import-key-main code {
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.cnpj-import-key-row small {
+  color: var(--text-3);
+  font-size: 11.5px;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .cnpj-import-samples {
   display: flex;
   flex-wrap: wrap;
@@ -150,6 +217,19 @@
 @media (max-width: 900px) {
   .cnpj-import-controls {
     grid-template-columns: 1fr;
+  }
+
+  .cnpj-import-keys .cnpj-import-controls,
+  .cnpj-import-key-row {
+    grid-template-columns: 1fr;
+  }
+
+  .cnpj-import-key-row {
+    align-items: stretch;
+  }
+
+  .cnpj-import-key-row small {
+    text-align: left;
   }
 
   .cnpj-import-controls .btn {

@@ -1,11 +1,14 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   adicionarClientesCnpj,
+  adicionarGooglePlacesKey,
   consultarPlanilhaCnpjStream,
   exportarResultadoCnpj,
+  listarGooglePlacesKeys,
+  removerGooglePlacesKey,
   previewPlanilhaCnpj
 } from '../../services/cnpj.service';
 import '../Clientes/Clientes.css';
@@ -24,6 +27,7 @@ const COLUNAS_TABELA = [
   { key: 'telefone_google_places', label: 'Tel. Google' },
   { key: 'google_status', label: 'Google status' },
   { key: 'google_detalhe', label: 'Google detalhe' },
+  { key: 'avisos', label: 'Avisos' },
   { key: 'telefone_fonte', label: 'Fonte telefone' },
   { key: 'telefone_confianca', label: 'Conf. telefone' },
   { key: 'cep', label: 'CEP' },
@@ -67,7 +71,7 @@ function CnpjImportacaoPage() {
   const [arquivo, setArquivo] = useState(null);
   const [preview, setPreview] = useState(null);
   const [colunaCnpj, setColunaCnpj] = useState('');
-  const [usarGoogleFallback, setUsarGoogleFallback] = useState(true);
+  const [usarBuscaTelefoneFallback, setUsarBuscaTelefoneFallback] = useState(true);
   const [resultado, setResultado] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
@@ -75,6 +79,10 @@ function CnpjImportacaoPage() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [progresso, setProgresso] = useState(null);
+  const [googleKeys, setGoogleKeys] = useState([]);
+  const [carregandoGoogleKeys, setCarregandoGoogleKeys] = useState(false);
+  const [salvandoGoogleKey, setSalvandoGoogleKey] = useState(false);
+  const [novaGoogleKey, setNovaGoogleKey] = useState({ nome: '', apiKey: '' });
   const cancelControllerRef = useRef(null);
 
   const colunas = preview?.colunas || [];
@@ -85,6 +93,69 @@ function CnpjImportacaoPage() {
   const podeBuscar = Boolean(arquivo && colunaCnpj && !carregando);
   const totalCnpjs = Number(resultado?.total_cnpjs || 0);
   const totalConsultadosAcumulado = linhas.length;
+
+  useEffect(() => {
+    carregarGoogleKeys();
+  }, []);
+
+  async function carregarGoogleKeys() {
+    setCarregandoGoogleKeys(true);
+    try {
+      const data = await listarGooglePlacesKeys();
+      setGoogleKeys(data?.chaves || []);
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar chaves do Google Places.');
+    } finally {
+      setCarregandoGoogleKeys(false);
+    }
+  }
+
+  async function salvarGoogleKey(event) {
+    event.preventDefault();
+    if (salvandoGoogleKey || !novaGoogleKey.apiKey.trim()) return;
+
+    setSalvandoGoogleKey(true);
+    setErro('');
+    setSucesso('');
+
+    try {
+      await adicionarGooglePlacesKey(novaGoogleKey);
+      setNovaGoogleKey({ nome: '', apiKey: '' });
+      await carregarGoogleKeys();
+      setSucesso('Chave do Google Places adicionada.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao adicionar chave do Google Places.');
+    } finally {
+      setSalvandoGoogleKey(false);
+    }
+  }
+
+  async function excluirGoogleKey(id) {
+    if (!id || carregando || salvandoGoogleKey) return;
+
+    setErro('');
+    setSucesso('');
+
+    try {
+      await removerGooglePlacesKey(id);
+      await carregarGoogleKeys();
+      setSucesso('Chave do Google Places removida.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao remover chave do Google Places.');
+    }
+  }
+
+  function statusGoogleKey(chave) {
+    if (!chave.ativo) return 'Inativa';
+    if (chave.esgotada) return 'Esgotada hoje';
+    return 'Disponivel';
+  }
+
+  function classeStatusGoogleKey(chave) {
+    if (!chave.ativo) return 'tag';
+    if (chave.esgotada) return 'tag tag-danger';
+    return 'tag tag-success';
+  }
 
   async function carregarPreview(file) {
     setArquivo(file || null);
@@ -118,7 +189,7 @@ function CnpjImportacaoPage() {
         cnpj: colunaCnpj,
         inicio,
         limite: preview?.limite_linhas,
-        google: usarGoogleFallback ? 'sem_telefone' : 'nao'
+        buscaTelefone: usarBuscaTelefoneFallback ? 'sem_telefone' : 'nao'
       }, evento => {
         if (evento.tipo === 'inicio') {
           setResultado(prev => {
@@ -351,6 +422,70 @@ function CnpjImportacaoPage() {
             )}
           </div>
 
+          <div className="cnpj-import-keys">
+            <div className="panel-header">
+              <div>
+                <h2>Chaves Google Places</h2>
+                <p>{googleKeys.length} chave(s) cadastrada(s) para rotacao quando faltar telefone nas fontes de CNPJ.</p>
+              </div>
+              <button type="button" className="btn" onClick={carregarGoogleKeys} disabled={carregandoGoogleKeys}>
+                <I.Refresh size={14} />
+                Atualizar
+              </button>
+            </div>
+
+            <div className="cnpj-import-controls">
+              <div className="form-field">
+                <label>Nome</label>
+                <input
+                  type="text"
+                  value={novaGoogleKey.nome}
+                  onChange={event => setNovaGoogleKey(prev => ({ ...prev, nome: event.target.value }))}
+                  placeholder="Conta 1"
+                  disabled={salvandoGoogleKey}
+                />
+              </div>
+              <div className="form-field">
+                <label>API key</label>
+                <input
+                  type="password"
+                  value={novaGoogleKey.apiKey}
+                  onChange={event => setNovaGoogleKey(prev => ({ ...prev, apiKey: event.target.value }))}
+                  placeholder="AIza..."
+                  disabled={salvandoGoogleKey}
+                />
+              </div>
+              <button type="button" className="btn" onClick={salvarGoogleKey} disabled={salvandoGoogleKey || !novaGoogleKey.apiKey.trim()}>
+                <I.Plus size={14} />
+                {salvandoGoogleKey ? 'Salvando...' : 'Adicionar chave'}
+              </button>
+            </div>
+
+            <div className="cnpj-import-key-list">
+              {googleKeys.length === 0 ? (
+                <div className="cnpj-import-key-empty">Nenhuma chave cadastrada.</div>
+              ) : googleKeys.map(chave => (
+                <div className="cnpj-import-key-row" key={chave.id} title={chave.ultimo_erro || ''}>
+                  <div className="cnpj-import-key-main">
+                    <strong>{chave.nome}</strong>
+                    <code>{chave.mascarada}</code>
+                  </div>
+                  <span className={classeStatusGoogleKey(chave)}>{statusGoogleKey(chave)}</span>
+                  {chave.esgotada_ate && <small>Volta em {new Date(chave.esgotada_ate).toLocaleString('pt-BR')}</small>}
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={() => excluirGoogleKey(chave.id)}
+                    disabled={carregando || salvandoGoogleKey}
+                  >
+                    <I.Trash size={13} />
+                    Remover
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="cnpj-import-controls">
             <div className="form-field">
               <label>Arquivo .xlsx</label>
@@ -378,14 +513,14 @@ function CnpjImportacaoPage() {
             </div>
 
             <div className="form-field">
-              <label>Google Places</label>
+              <label>Telefone extra</label>
               <select
-                value={usarGoogleFallback ? 'sem_telefone' : 'nao'}
-                onChange={event => setUsarGoogleFallback(event.target.value === 'sem_telefone')}
+                value={usarBuscaTelefoneFallback ? 'sem_telefone' : 'nao'}
+                onChange={event => setUsarBuscaTelefoneFallback(event.target.value === 'sem_telefone')}
                 disabled={carregando || adicionando}
               >
-                <option value="sem_telefone">So se faltar telefone</option>
-                <option value="nao">Nao usar Google</option>
+                <option value="sem_telefone">Google rotativo se faltar telefone</option>
+                <option value="nao">Nao usar busca extra</option>
               </select>
             </div>
 
