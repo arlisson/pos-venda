@@ -777,7 +777,7 @@ function CruzarVendasPage() {
               <span className="cruzar-step-badge">4</span>
               <div>
                 <h2 className="cruzar-section__title">Colunas do resultado</h2>
-                <p className="cruzar-section__sub">Escolha e ordene as colunas da planilha principal que vão para o arquivo final. A coluna <strong>Tipo</strong> é sempre adicionada.</p>
+                <p className="cruzar-section__sub">Escolha e ordene as colunas da planilha principal que vão para o arquivo final. A coluna <strong>Tipo</strong> é sempre adicionada. Vendas canceladas — pelo <strong>STATUS</strong> ou comunicadas nas <strong>observações</strong> (OBS etc.) — saem do cruzamento e vão para uma aba <strong>“Vendas Canceladas”</strong> à parte.</p>
               </div>
             </div>
 
