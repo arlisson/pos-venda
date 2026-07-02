@@ -486,17 +486,20 @@ function montarTelefonesPorFonte(dados = {}) {
   return telefones;
 }
 
-function aplicarTelefoneEncontrado(dados, resultado, campoResultado) {
+function aplicarTelefoneEncontrado(dados, resultado, campoResultado, opcoes = {}) {
+  const substituirTelefone = Boolean(opcoes.substituirTelefone);
+  const telefoneAtual = substituirTelefone ? '' : dados.telefone;
+
   return {
     ...dados,
-    telefone: dados.telefone || resultado.telefone,
-    telefoneFonte: dados.telefone ? dados.telefoneFonte : resultado.fonte,
-    telefoneConfianca: dados.telefone ? dados.telefoneConfianca : resultado.confianca,
+    telefone: telefoneAtual || resultado.telefone,
+    telefoneFonte: telefoneAtual ? dados.telefoneFonte : resultado.fonte,
+    telefoneConfianca: telefoneAtual ? dados.telefoneConfianca : resultado.confianca,
     [campoResultado]: resultado,
     fontesComSucesso: Array.from(new Set([...(dados.fontesComSucesso || []), resultado.fonte])),
     fontesPorCampo: {
       ...(dados.fontesPorCampo || {}),
-      telefone: dados.telefone
+      telefone: telefoneAtual
         ? dados.fontesPorCampo?.telefone
         : {
             fonte: resultado.fonte,
@@ -558,6 +561,19 @@ function adicionarAlertasGoogle(dados, resultadoGoogle) {
   };
 }
 
+function limparTelefonePrincipal(dados) {
+  const fontesPorCampo = { ...(dados.fontesPorCampo || {}) };
+  delete fontesPorCampo.telefone;
+
+  return {
+    ...dados,
+    telefone: '',
+    telefoneFonte: '',
+    telefoneConfianca: '',
+    fontesPorCampo
+  };
+}
+
 async function enriquecerTelefoneFallback(dados, modoBusca = 'sem_telefone') {
   if (modoBusca === 'nao') {
     return {
@@ -568,6 +584,8 @@ async function enriquecerTelefoneFallback(dados, modoBusca = 'sem_telefone') {
       }
     };
   }
+
+  const buscarSomenteGoogle = modoBusca === 'somente_google';
 
   if (modoBusca === 'sem_telefone' && String(dados?.telefone || '').trim()) {
     return {
@@ -582,13 +600,16 @@ async function enriquecerTelefoneFallback(dados, modoBusca = 'sem_telefone') {
   const resultadoGoogle = await googlePlacesService.buscarTelefoneEmpresa(dados);
   if (resultadoGoogle.encontrado) {
     return adicionarAlertasGoogle(
-      aplicarTelefoneEncontrado(dados, resultadoGoogle, 'googlePlaces'),
+      aplicarTelefoneEncontrado(dados, resultadoGoogle, 'googlePlaces', {
+        substituirTelefone: buscarSomenteGoogle
+      }),
       resultadoGoogle
     );
   }
 
+  const dadosBase = buscarSomenteGoogle ? limparTelefonePrincipal(dados) : dados;
   const dadosComAlertasGoogle = adicionarAlertasGoogle({
-    ...dados,
+    ...dadosBase,
     googlePlaces: resultadoGoogle
   }, resultadoGoogle);
 
@@ -605,7 +626,7 @@ async function consultarPlanilha(req) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
   const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
-  const modoBuscaTelefone = ['sem_telefone', 'nao'].includes(mapeamento.buscaTelefone)
+  const modoBuscaTelefone = ['sem_telefone', 'somente_google', 'nao'].includes(mapeamento.buscaTelefone)
     ? mapeamento.buscaTelefone
     : 'sem_telefone';
 
@@ -708,7 +729,7 @@ async function consultarPlanilhaStream(req, onEvento) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
   const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
-  const modoBuscaTelefone = ['sem_telefone', 'nao'].includes(mapeamento.buscaTelefone)
+  const modoBuscaTelefone = ['sem_telefone', 'somente_google', 'nao'].includes(mapeamento.buscaTelefone)
     ? mapeamento.buscaTelefone
     : 'sem_telefone';
 
