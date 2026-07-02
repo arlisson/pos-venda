@@ -106,7 +106,7 @@ test('concluida vai para a aba do mes em que a operadora confirmou', async () =>
   await workbook.xlsx.load(buffer);
   const nomes = workbook.worksheets.map(ws => ws.name);
   // A Claro confirmou na aba JANEIRO26: a concluida segue essa organizacao de mes.
-  assert.deepEqual(nomes, ['JANEIRO26', 'Vendas Nao Concluidas']);
+  assert.deepEqual(nomes, ['Resumo', 'JANEIRO26', 'Vendas Nao Concluidas']);
 
   const concluidas = workbook.getWorksheet('JANEIRO26');
   // linha 1 = cabecalho; linha 2 = a venda conciliada
@@ -163,8 +163,8 @@ test('agrupa concluidas pelo mes da confirmacao em ordem cronologica e nao concl
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
 
-  // Abas-mes das confirmacoes em ordem cronologica + a aba unica de nao concluidas.
-  assert.deepEqual(workbook.worksheets.map(ws => ws.name), ['JANEIRO26', 'FEVEREIRO26', 'Vendas Nao Concluidas']);
+  // Resumo + abas-mes das confirmacoes em ordem cronologica + a aba unica de nao concluidas.
+  assert.deepEqual(workbook.worksheets.map(ws => ws.name), ['Resumo', 'JANEIRO26', 'FEVEREIRO26', 'Vendas Nao Concluidas']);
 
   const clienteDaAba = nome => {
     const ws = workbook.getWorksheet(nome);
@@ -182,6 +182,75 @@ test('agrupa concluidas pelo mes da confirmacao em ordem cronologica e nao concl
   const registro = Object.fromEntries(header.map((nome, i) => [nome, naoConcluidas.getRow(2).values.slice(1)[i]]));
   assert.equal(registro.Cliente, 'fev sem match');
   assert.equal(registro['Mês'], 'FEVEREIRO26');
+});
+
+test('estilo: linha divergente sai amarela e o Resumo traz as contagens por status', async () => {
+  const principal = {
+    filename: 'principal.xlsx',
+    abas: {
+      Plan1: {
+        header: ['Razao Social', 'Operadora', 'Cliente', 'Documento', 'Data', 'Valor'],
+        rows: [
+          ['Empresa A', 'Claro', 'ok', '11.111.111/0001-11', '15/01/2026', '69,99'],
+          ['Empresa B', 'Claro', 'divergente', '22.222.222/0001-22', '15/01/2026', '49,99']
+        ]
+      }
+    }
+  };
+  const claro = {
+    filename: 'claro.xlsx',
+    abas: {
+      JANEIRO26: {
+        header: ['Razao Social', 'CNPJ', 'Tipo', 'Receita'],
+        rows: [
+          ['Empresa A', '11.111.111/0001-11', 'NOVO', '69,99'],
+          ['Empresa B', '22.222.222/0001-22', 'NOVO', '54,99']
+        ]
+      }
+    }
+  };
+  const config = {
+    ...CONFIG_VALIDA,
+    principal: { ...CONFIG_VALIDA.principal, valor: 'Valor' },
+    operadoras: [{ ...CONFIG_VALIDA.operadoras[0], valorColunas: ['Receita'] }]
+  };
+  const arquivos = [
+    { filename: principal.filename, buffer: await xlsxBuffer(principal.abas) },
+    { filename: claro.filename, buffer: await xlsxBuffer(claro.abas) }
+  ];
+
+  const buffer = await processarCruzamento(montarReq({ arquivos, config }));
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+
+  const aba = workbook.getWorksheet('JANEIRO26');
+  const header = aba.getRow(1).values.slice(1);
+  const iStatus = header.indexOf('Status_Conciliacao') + 1;
+  // Cabecalho colorido (azul dos meses).
+  assert.equal(aba.getRow(1).getCell(1).fill?.fgColor?.argb, 'FF305496');
+
+  const statusPorLinha = [2, 3].map(r => aba.getRow(r).getCell(iStatus).value);
+  const linhaDivergente = 2 + statusPorLinha.indexOf('PAGO_VALOR_DIVERGENTE');
+  const linhaPaga = 2 + statusPorLinha.indexOf('PAGO');
+  assert.ok(linhaDivergente >= 2 && linhaPaga >= 2);
+  // A linha divergente sai inteira em amarelo; a paga, nao.
+  assert.equal(aba.getRow(linhaDivergente).getCell(1).fill?.fgColor?.argb, 'FFFFF2CC');
+  assert.equal(aba.getRow(linhaDivergente).getCell(header.length).fill?.fgColor?.argb, 'FFFFF2CC');
+  assert.notEqual(aba.getRow(linhaPaga).getCell(1).fill?.fgColor?.argb, 'FFFFF2CC');
+
+  // Resumo primeiro, com as contagens por status.
+  assert.equal(workbook.worksheets[0].name, 'Resumo');
+  const resumo = workbook.getWorksheet('Resumo');
+  const contagens = {};
+  resumo.eachRow(row => {
+    const rotulo = row.getCell(1).value;
+    if (typeof rotulo === 'string' && /^(PAGO|PAGO_VALOR_DIVERGENTE|VALIDAR_MANUALMENTE|NAO_ENCONTRADO|CANCELADA)$/.test(rotulo)) {
+      contagens[rotulo] = row.getCell(3).value;
+    }
+  });
+  assert.equal(contagens.PAGO, 1);
+  assert.equal(contagens.PAGO_VALOR_DIVERGENTE, 1);
+  assert.equal(contagens.NAO_ENCONTRADO, 0);
 });
 
 test('processarCruzamento erra com mensagem clara quando um arquivo fica sem abas', async () => {
