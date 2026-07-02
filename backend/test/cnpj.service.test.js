@@ -13,8 +13,10 @@ const {
 } = require('../src/services/cnpj.service');
 const {
   calcularScore: calcularScoreGooglePlaces,
-  montarQueryEmpresa,
-  normalizarTelefone: normalizarTelefoneGooglePlaces
+  montarQueryEmpresa: montarQueryEmpresaGoogle,
+  normalizarTelefone: normalizarTelefoneGooglePlaces,
+  obterApiKeysGoogleEnv,
+  GOOGLE_MAPS_API_KEYS_ESPERADAS
 } = require('../src/services/google-places.service');
 
 test.after(async () => {
@@ -167,9 +169,56 @@ test('normaliza telefone e calcula match basico para Google Places', () => {
   };
 
   assert.equal(normalizarTelefoneGooglePlaces('+55 11 99999-8888'), '11999998888');
-  assert.equal(montarQueryEmpresa(dados), 'Empresa Teste Rua Um 10 Sao Paulo SP');
+  assert.equal(montarQueryEmpresaGoogle(dados), 'Empresa Teste Rua Um 10 Sao Paulo SP');
   assert.equal(calcularScoreGooglePlaces(dados, {
     displayName: { text: 'Empresa Teste' },
     formattedAddress: 'Rua Um, 10 - Sao Paulo, SP'
   }) >= 3, true);
+});
+
+test('le multiplas chaves do Google Places em ordem e sem duplicar', async () => {
+  const nomes = [
+    'GOOGLE_MAPS_API_KEY',
+    'GOOGLE_MAPS_API_KEY_1',
+    'GOOGLE_MAPS_API_KEY_2',
+    'GOOGLE_MAPS_API_KEY_3',
+    'GOOGLE_MAPS_API_KEY_4',
+    'GOOGLE_MAPS_API_KEY_5',
+    'GOOGLE_PLACES_API_KEY'
+  ];
+  const antigos = Object.fromEntries(nomes.map(nome => [nome, process.env[nome]]));
+
+  nomes.forEach(nome => {
+    delete process.env[nome];
+  });
+
+  process.env.GOOGLE_MAPS_API_KEY_1 = 'key-a';
+  process.env.GOOGLE_MAPS_API_KEY_2 = 'key-b';
+  process.env.GOOGLE_MAPS_API_KEY_3 = 'key-a';
+  process.env.GOOGLE_MAPS_API_KEY = 'key-legacy';
+  process.env.GOOGLE_PLACES_API_KEY = 'key-c';
+
+  try {
+    assert.deepEqual(GOOGLE_MAPS_API_KEYS_ESPERADAS, [
+      'GOOGLE_MAPS_API_KEY_1',
+      'GOOGLE_MAPS_API_KEY_2',
+      'GOOGLE_MAPS_API_KEY_3',
+      'GOOGLE_MAPS_API_KEY_4',
+      'GOOGLE_MAPS_API_KEY_5'
+    ]);
+    assert.deepEqual(obterApiKeysGoogleEnv(), [
+      { chave: 'key-a', env: 'GOOGLE_MAPS_API_KEY_1', origem: 'env' },
+      { chave: 'key-b', env: 'GOOGLE_MAPS_API_KEY_2', origem: 'env' },
+      { chave: 'key-legacy', env: 'GOOGLE_MAPS_API_KEY', origem: 'env' },
+      { chave: 'key-c', env: 'GOOGLE_PLACES_API_KEY', origem: 'env' }
+    ]);
+  } finally {
+    nomes.forEach(nome => {
+      if (antigos[nome] === undefined) {
+        delete process.env[nome];
+      } else {
+        process.env[nome] = antigos[nome];
+      }
+    });
+  }
 });

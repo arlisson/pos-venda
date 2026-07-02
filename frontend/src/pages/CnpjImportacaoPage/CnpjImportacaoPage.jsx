@@ -1,11 +1,15 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   adicionarClientesCnpj,
+  adicionarGooglePlacesKey,
+  atualizarGooglePlacesKey,
   consultarPlanilhaCnpjStream,
   exportarResultadoCnpj,
+  listarGooglePlacesKeys,
+  removerGooglePlacesKey,
   previewPlanilhaCnpj
 } from '../../services/cnpj.service';
 import '../Clientes/Clientes.css';
@@ -24,6 +28,7 @@ const COLUNAS_TABELA = [
   { key: 'telefone_google_places', label: 'Tel. Google' },
   { key: 'google_status', label: 'Google status' },
   { key: 'google_detalhe', label: 'Google detalhe' },
+  { key: 'avisos', label: 'Avisos' },
   { key: 'telefone_fonte', label: 'Fonte telefone' },
   { key: 'telefone_confianca', label: 'Conf. telefone' },
   { key: 'cep', label: 'CEP' },
@@ -67,7 +72,7 @@ function CnpjImportacaoPage() {
   const [arquivo, setArquivo] = useState(null);
   const [preview, setPreview] = useState(null);
   const [colunaCnpj, setColunaCnpj] = useState('');
-  const [usarGoogleFallback, setUsarGoogleFallback] = useState(true);
+  const [usarBuscaTelefoneFallback, setUsarBuscaTelefoneFallback] = useState(true);
   const [resultado, setResultado] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
@@ -75,6 +80,14 @@ function CnpjImportacaoPage() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [progresso, setProgresso] = useState(null);
+  const [googleKeys, setGoogleKeys] = useState([]);
+  const [googleKeysModalAberto, setGoogleKeysModalAberto] = useState(false);
+  const [googleKeyDrafts, setGoogleKeyDrafts] = useState({});
+  const [googleKeyVisiveis, setGoogleKeyVisiveis] = useState({});
+  const [novaGoogleKeyVisivel, setNovaGoogleKeyVisivel] = useState(false);
+  const [carregandoGoogleKeys, setCarregandoGoogleKeys] = useState(false);
+  const [salvandoGoogleKey, setSalvandoGoogleKey] = useState(false);
+  const [novaGoogleKey, setNovaGoogleKey] = useState({ nome: '', apiKey: '' });
   const cancelControllerRef = useRef(null);
 
   const colunas = preview?.colunas || [];
@@ -85,6 +98,116 @@ function CnpjImportacaoPage() {
   const podeBuscar = Boolean(arquivo && colunaCnpj && !carregando);
   const totalCnpjs = Number(resultado?.total_cnpjs || 0);
   const totalConsultadosAcumulado = linhas.length;
+
+  useEffect(() => {
+    carregarGoogleKeys();
+  }, []);
+
+  async function carregarGoogleKeys() {
+    setCarregandoGoogleKeys(true);
+    try {
+      const data = await listarGooglePlacesKeys();
+      const chaves = data?.chaves || [];
+      setGoogleKeys(chaves);
+      setGoogleKeyDrafts(Object.fromEntries(chaves.map(chave => [
+        chave.id,
+        { nome: chave.nome || '', apiKey: chave.api_key || '' }
+      ])));
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar chaves do Google Places.');
+    } finally {
+      setCarregandoGoogleKeys(false);
+    }
+  }
+
+  async function abrirModalGoogleKeys() {
+    setGoogleKeysModalAberto(true);
+    await carregarGoogleKeys();
+  }
+
+  async function salvarGoogleKey(event) {
+    event.preventDefault();
+    if (salvandoGoogleKey || !novaGoogleKey.apiKey.trim()) return;
+
+    setSalvandoGoogleKey(true);
+    setErro('');
+    setSucesso('');
+
+    try {
+      await adicionarGooglePlacesKey(novaGoogleKey);
+      setNovaGoogleKey({ nome: '', apiKey: '' });
+      await carregarGoogleKeys();
+      setSucesso('Chave do Google Places adicionada.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao adicionar chave do Google Places.');
+    } finally {
+      setSalvandoGoogleKey(false);
+    }
+  }
+
+  function atualizarDraftGoogleKey(id, campo, valor) {
+    setGoogleKeyDrafts(prev => ({
+      ...prev,
+      [id]: {
+        ...(prev[id] || {}),
+        [campo]: valor
+      }
+    }));
+  }
+
+  async function salvarGoogleKeyExistente(id) {
+    if (!id || salvandoGoogleKey) return;
+
+    const draft = googleKeyDrafts[id] || {};
+    if (!String(draft.apiKey || '').trim()) {
+      setErro('Informe a chave da API do Google Places.');
+      return;
+    }
+
+    setSalvandoGoogleKey(true);
+    setErro('');
+    setSucesso('');
+
+    try {
+      await atualizarGooglePlacesKey(id, {
+        nome: draft.nome,
+        apiKey: draft.apiKey
+      });
+      await carregarGoogleKeys();
+      setSucesso('Chave do Google Places atualizada.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao editar chave do Google Places.');
+    } finally {
+      setSalvandoGoogleKey(false);
+    }
+  }
+
+  async function excluirGoogleKey(id) {
+    if (!id || carregando || salvandoGoogleKey) return;
+
+    setErro('');
+    setSucesso('');
+
+    try {
+      await removerGooglePlacesKey(id);
+      await carregarGoogleKeys();
+      setSucesso('Chave do Google Places removida.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao remover chave do Google Places.');
+    }
+  }
+
+  function statusGoogleKey(chave) {
+    if (!chave.ativo) return 'Inativa';
+    if (chave.esgotada) return 'Esgotada hoje';
+    return 'Disponivel';
+  }
+
+  function classeStatusGoogleKey(chave) {
+    if (!chave.ativo) return 'tag';
+    if (chave.esgotada) return 'tag tag-danger';
+    return 'tag tag-success';
+  }
 
   async function carregarPreview(file) {
     setArquivo(file || null);
@@ -118,7 +241,7 @@ function CnpjImportacaoPage() {
         cnpj: colunaCnpj,
         inicio,
         limite: preview?.limite_linhas,
-        google: usarGoogleFallback ? 'sem_telefone' : 'nao'
+        buscaTelefone: usarBuscaTelefoneFallback ? 'sem_telefone' : 'nao'
       }, evento => {
         if (evento.tipo === 'inicio') {
           setResultado(prev => {
@@ -159,6 +282,7 @@ function CnpjImportacaoPage() {
             return {
               ...(prev || {}),
               requisicoes_externas: requisicoesBase + Number(evento.requisicoes_externas || 0),
+              total_ja_buscados: Number(evento.total_ja_buscados || prev?.total_ja_buscados || 0),
               total_consultados: proximasLinhas.length,
               linhas: proximasLinhas
             };
@@ -317,8 +441,18 @@ function CnpjImportacaoPage() {
               <h2>Consulta de empresas por CNPJ</h2>
               <p>Importe uma planilha, escolha a coluna de CNPJ e consulte Open CNPJ, CNPJ.ws e Minha Receita.</p>
             </div>
-            {resultado && podeCriarCliente && (
-              <div className="cnpj-import-actions">
+            <div className="cnpj-import-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={abrirModalGoogleKeys}
+                disabled={carregandoGoogleKeys}
+              >
+                <I.Settings size={14} />
+                Chaves Google
+              </button>
+              {resultado && podeCriarCliente && (
+                <>
                 <button
                   type="button"
                   className="btn"
@@ -347,8 +481,9 @@ function CnpjImportacaoPage() {
                   <I.Plus size={14} />
                   {adicionando ? 'Adicionando...' : 'Adicionar todos exibidos'}
                 </button>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
 
           <div className="cnpj-import-controls">
@@ -378,14 +513,14 @@ function CnpjImportacaoPage() {
             </div>
 
             <div className="form-field">
-              <label>Google Places</label>
+              <label>Telefone extra</label>
               <select
-                value={usarGoogleFallback ? 'sem_telefone' : 'nao'}
-                onChange={event => setUsarGoogleFallback(event.target.value === 'sem_telefone')}
+                value={usarBuscaTelefoneFallback ? 'sem_telefone' : 'nao'}
+                onChange={event => setUsarBuscaTelefoneFallback(event.target.value === 'sem_telefone')}
                 disabled={carregando || adicionando}
               >
-                <option value="sem_telefone">So se faltar telefone</option>
-                <option value="nao">Nao usar Google</option>
+                <option value="sem_telefone">Google rotativo se faltar telefone</option>
+                <option value="nao">Nao usar busca extra</option>
               </select>
             </div>
 
@@ -437,6 +572,141 @@ function CnpjImportacaoPage() {
           {erro && <div className="alert-error">{erro}</div>}
           {sucesso && <div className="alert-success">{sucesso}</div>}
         </form>
+
+        {googleKeysModalAberto && (
+          <div className="modal-overlay" role="dialog" aria-modal="true" onClick={event => event.target === event.currentTarget && setGoogleKeysModalAberto(false)}>
+            <div className="modal cnpj-import-keys-modal">
+              <div className="modal-header">
+                <div className="modal-header-row">
+                  <div>
+                    <div className="modal-client">Chaves Google Places</div>
+                    <div className="modal-sub">{googleKeys.length} chave(s) cadastrada(s) para rotacao de busca extra.</div>
+                  </div>
+                  <button type="button" className="btn btn-icon btn-ghost" onClick={() => setGoogleKeysModalAberto(false)} disabled={salvandoGoogleKey}>
+                    <I.Close size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-body">
+                <form className="cnpj-import-key-add" onSubmit={salvarGoogleKey}>
+                  <div className="form-field">
+                    <label>Nome</label>
+                    <input
+                      type="text"
+                      value={novaGoogleKey.nome}
+                      onChange={event => setNovaGoogleKey(prev => ({ ...prev, nome: event.target.value }))}
+                      placeholder="Conta 1"
+                      disabled={salvandoGoogleKey}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>API key</label>
+                    <div className="cnpj-import-secret-field">
+                      <input
+                        type={novaGoogleKeyVisivel ? 'text' : 'password'}
+                        value={novaGoogleKey.apiKey}
+                        onChange={event => setNovaGoogleKey(prev => ({ ...prev, apiKey: event.target.value }))}
+                        placeholder="AIza..."
+                        disabled={salvandoGoogleKey}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-icon btn-ghost"
+                        onClick={() => setNovaGoogleKeyVisivel(prev => !prev)}
+                        title={novaGoogleKeyVisivel ? 'Ocultar chave' : 'Mostrar chave'}
+                      >
+                        {novaGoogleKeyVisivel ? <I.EyeOff size={14} /> : <I.Eye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={salvandoGoogleKey || !novaGoogleKey.apiKey.trim()}>
+                    <I.Plus size={14} />
+                    {salvandoGoogleKey ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </form>
+
+                <div className="cnpj-import-key-list">
+                  {googleKeys.length === 0 ? (
+                    <div className="cnpj-import-key-empty">
+                      {carregandoGoogleKeys ? 'Carregando chaves...' : 'Nenhuma chave cadastrada.'}
+                    </div>
+                  ) : googleKeys.map(chave => {
+                    const draft = googleKeyDrafts[chave.id] || { nome: chave.nome || '', apiKey: chave.api_key || '' };
+                    const visivel = Boolean(googleKeyVisiveis[chave.id]);
+
+                    return (
+                      <div className="cnpj-import-key-row" key={chave.id} title={chave.ultimo_erro || ''}>
+                        <div className="form-field">
+                          <label>Nome</label>
+                          <input
+                            type="text"
+                            value={draft.nome}
+                            onChange={event => atualizarDraftGoogleKey(chave.id, 'nome', event.target.value)}
+                            disabled={salvandoGoogleKey}
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label>API key</label>
+                          <div className="cnpj-import-secret-field">
+                            <input
+                              type={visivel ? 'text' : 'password'}
+                              value={draft.apiKey}
+                              onChange={event => atualizarDraftGoogleKey(chave.id, 'apiKey', event.target.value)}
+                              disabled={salvandoGoogleKey}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-icon btn-ghost"
+                              onClick={() => setGoogleKeyVisiveis(prev => ({ ...prev, [chave.id]: !prev[chave.id] }))}
+                              title={visivel ? 'Ocultar chave' : 'Mostrar chave'}
+                            >
+                              {visivel ? <I.EyeOff size={14} /> : <I.Eye size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="cnpj-import-key-meta">
+                          <span className={classeStatusGoogleKey(chave)}>{statusGoogleKey(chave)}</span>
+                          {chave.esgotada_ate && <small>Volta em {new Date(chave.esgotada_ate).toLocaleString('pt-BR')}</small>}
+                        </div>
+                        <div className="cnpj-import-key-actions">
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={() => salvarGoogleKeyExistente(chave.id)}
+                            disabled={salvandoGoogleKey || !String(draft.apiKey || '').trim()}
+                          >
+                            <I.Check size={13} />
+                            Salvar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={() => excluirGoogleKey(chave.id)}
+                            disabled={carregando || salvandoGoogleKey}
+                          >
+                            <I.Trash size={13} />
+                            Remover
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn" onClick={carregarGoogleKeys} disabled={carregandoGoogleKeys || salvandoGoogleKey}>
+                  <I.Refresh size={14} />
+                  Atualizar
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => setGoogleKeysModalAberto(false)} disabled={salvandoGoogleKey}>
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {resultado && (
           <div className="panel cnpj-import-results">
@@ -496,8 +766,8 @@ function CnpjImportacaoPage() {
                     {linhas.map(linha => (
                       <tr key={`${linha.row_index}:${linha.cnpj_digitos}`}>
                         <td>
-                          <span className={`tag ${linha.status === 'erro' ? 'tag-danger' : linha.cache ? 'tag-info' : 'tag-success'}`}>
-                            {linha.status === 'erro' ? 'Erro' : linha.cache ? 'Cache' : 'OK'}
+                          <span className={`tag ${linha.status === 'erro' ? 'tag-danger' : linha.busca_realizada || linha.cache ? 'tag-info' : 'tag-success'}`}>
+                            {linha.status === 'erro' ? 'Erro' : linha.busca_realizada ? 'Ja buscado' : linha.cache ? 'Cache' : 'OK'}
                           </span>
                           {linha.message && <small>{linha.message}</small>}
                         </td>

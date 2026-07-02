@@ -1,11 +1,13 @@
 const Busboy = require('busboy');
 const ExcelJS = require('exceljs');
+const db = require('../database/connection');
 const cnpjService = require('./cnpj.service');
 const clienteService = require('./cliente.service');
 const googlePlacesService = require('./google-places.service');
 
 const INTERVALO_CONSULTA_MS = Number(process.env.CNPJ_IMPORT_INTERVALO_MS || 21000);
 const LIMITE_LINHAS = Number(process.env.CNPJ_IMPORT_LIMITE_LINHAS || 50);
+const TABELA_BUSCAS_REALIZADAS = 'cnpj_buscas_realizadas';
 const COLUNAS_EXPORTACAO = [
   { header: 'Status', key: 'status', width: 14 },
   { header: 'Mensagem', key: 'message', width: 32 },
@@ -21,6 +23,7 @@ const COLUNAS_EXPORTACAO = [
   { header: 'Tel. Google', key: 'telefone_google_places', width: 18 },
   { header: 'Google status', key: 'google_status', width: 18 },
   { header: 'Google detalhe', key: 'google_detalhe', width: 32 },
+  { header: 'Avisos', key: 'avisos', width: 42 },
   { header: 'Fonte telefone', key: 'telefone_fonte', width: 18 },
   { header: 'Conf. telefone', key: 'telefone_confianca', width: 16 },
   { header: 'CEP', key: 'cep', width: 14 },
@@ -56,6 +59,18 @@ function textoCelula(valor) {
 
 function sanitizarCnpj(valor) {
   return String(valor || '').replace(/\D/g, '').slice(0, 14);
+}
+
+function formatarDateTimeSQL(data = new Date()) {
+  const d = data instanceof Date ? data : new Date(data);
+  if (Number.isNaN(d.getTime())) return formatarDateTimeSQL(new Date());
+  const pad = valor => String(valor).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function formatarDataHoraCurta(valor) {
+  if (!valor) return '';
+  return String(valor).replace('T', ' ').slice(0, 19);
 }
 
 function formatarCnpj(valor) {
@@ -202,6 +217,47 @@ async function previewPlanilha(req) {
   };
 }
 
+function listarGooglePlacesKeys() {
+  return googlePlacesService.listarGooglePlacesKeys();
+}
+
+function adicionarGooglePlacesKey(dados) {
+  return googlePlacesService.adicionarGooglePlacesKey({
+    nome: dados?.nome,
+    apiKey: dados?.apiKey || dados?.api_key
+  });
+}
+
+async function atualizarGooglePlacesKey(id, dados) {
+  const chaveId = Number.parseInt(id, 10);
+  if (!Number.isFinite(chaveId) || chaveId <= 0) {
+    throw criarHttpError(400, 'Chave invalida.');
+  }
+
+  const atualizada = await googlePlacesService.atualizarGooglePlacesKey(chaveId, {
+    nome: dados?.nome,
+    apiKey: dados?.apiKey || dados?.api_key
+  });
+
+  if (!atualizada) {
+    throw criarHttpError(404, 'Chave nao encontrada.');
+  }
+
+  return atualizada;
+}
+
+async function removerGooglePlacesKey(id) {
+  const chaveId = Number.parseInt(id, 10);
+  if (!Number.isFinite(chaveId) || chaveId <= 0) {
+    throw criarHttpError(400, 'Chave invalida.');
+  }
+
+  const removida = await googlePlacesService.removerGooglePlacesKey(chaveId);
+  if (!removida) {
+    throw criarHttpError(404, 'Chave nao encontrada.');
+  }
+}
+
 function parseMapeamento(valor) {
   if (!valor) return {};
   if (typeof valor === 'object') return valor;
@@ -216,6 +272,112 @@ function normalizarInteiroPositivo(valor, fallback) {
   const numero = Number.parseInt(valor, 10);
   if (!Number.isFinite(numero) || numero < 0) return fallback;
   return numero;
+}
+
+let tabelaBuscasRealizadasDisponivel = null;
+
+async function tabelaBuscasRealizadasExiste() {
+  if (tabelaBuscasRealizadasDisponivel !== null) {
+    return tabelaBuscasRealizadasDisponivel;
+  }
+
+  try {
+    tabelaBuscasRealizadasDisponivel = await db.schema.hasTable(TABELA_BUSCAS_REALIZADAS);
+  } catch (error) {
+    tabelaBuscasRealizadasDisponivel = false;
+  }
+
+  return tabelaBuscasRealizadasDisponivel;
+}
+
+function parseJsonSeguro(valor, fallback = null) {
+  if (!valor) return fallback;
+  if (typeof valor === 'object') return valor;
+  try {
+    return JSON.parse(valor);
+  } catch {
+    return fallback;
+  }
+}
+
+async function buscarCnpjJaBuscado(cnpj) {
+  if (!await tabelaBuscasRealizadasExiste()) return null;
+
+  return db(TABELA_BUSCAS_REALIZADAS)
+    .where({ cnpj: sanitizarCnpj(cnpj) })
+    .first();
+}
+
+function montarLinhaJaBuscada(item, registro) {
+  const payload = parseJsonSeguro(registro.payload, {});
+  const buscadoEm = registro.buscado_em || payload.ja_buscado_em || payload.consultado_em || null;
+  const aviso = `CNPJ ja buscado${buscadoEm ? ` em ${formatarDataHoraCurta(buscadoEm)}` : ''}. Busca ignorada.`;
+  const avisosExistentes = payload.avisos && payload.avisos !== '-'
+    ? String(payload.avisos)
+    : '';
+
+  return {
+    ...payload,
+    row_index: item.row_index,
+    status: 'encontrado',
+    cnpj: formatarCnpj(item.cnpj),
+    cnpj_digitos: item.cnpj,
+    razao_social: payload.razao_social || registro.razao_social || '',
+    nome_fantasia: payload.nome_fantasia || registro.nome_fantasia || '',
+    email: payload.email || registro.email || '',
+    telefone: payload.telefone || registro.telefone || '',
+    cep: payload.cep || registro.cep || '',
+    endereco: payload.endereco || registro.endereco || '',
+    numero: payload.numero || registro.numero || '',
+    complemento: payload.complemento || registro.complemento || '',
+    bairro: payload.bairro || registro.bairro || '',
+    municipio: payload.municipio || registro.municipio || '',
+    uf: payload.uf || registro.uf || '',
+    telefone_fonte: payload.telefone_fonte || registro.telefone_fonte || '',
+    telefone_confianca: payload.telefone_confianca || registro.telefone_confianca || '',
+    google_status: payload.google_status || 'ja_buscado',
+    message: aviso,
+    avisos: avisosExistentes ? `${avisosExistentes} | ${aviso}` : aviso,
+    cache: true,
+    busca_realizada: true,
+    ja_buscado_em: buscadoEm,
+    cliente_id: null,
+    adicionado: false
+  };
+}
+
+async function salvarCnpjBuscado(linha) {
+  if (!linha || linha.status !== 'encontrado' || !linha.cnpj_digitos) return;
+  if (!await tabelaBuscasRealizadasExiste()) return;
+
+  const agora = formatarDateTimeSQL();
+  const registro = {
+    cnpj: sanitizarCnpj(linha.cnpj_digitos),
+    razao_social: linha.razao_social || null,
+    nome_fantasia: linha.nome_fantasia || null,
+    email: linha.email || null,
+    telefone: linha.telefone || null,
+    cep: linha.cep || null,
+    endereco: linha.endereco || null,
+    numero: linha.numero || null,
+    complemento: linha.complemento || null,
+    bairro: linha.bairro || null,
+    municipio: linha.municipio || null,
+    uf: linha.uf || null,
+    telefone_fonte: linha.telefone_fonte || null,
+    telefone_confianca: linha.telefone_confianca || null,
+    payload: JSON.stringify({ ...linha, busca_realizada: false, ja_buscado_em: null }),
+    buscado_em: linha.consultado_em ? formatarDateTimeSQL(linha.consultado_em) : agora,
+    updated_at: agora
+  };
+
+  await db(TABELA_BUSCAS_REALIZADAS)
+    .insert({
+      ...registro,
+      created_at: agora
+    })
+    .onConflict('cnpj')
+    .merge(registro);
 }
 
 function extrairCnpjs(worksheet, colunaCnpj) {
@@ -242,6 +404,7 @@ function extrairCnpjs(worksheet, colunaCnpj) {
 
 function montarLinhaConsulta(item, dados) {
   const telefonesPorFonte = montarTelefonesPorFonte(dados);
+  const alertas = dados.alertas || [];
 
   return {
     row_index: item.row_index,
@@ -263,6 +426,7 @@ function montarLinhaConsulta(item, dados) {
     google_detalhe: dados.googlePlaces?.encontrado
       ? dados.googlePlaces?.place?.nome || ''
       : dados.googlePlaces?.message || dados.googlePlaces?.motivo || '',
+    avisos: montarTextoAvisos(alertas),
     telefone_fonte: dados.telefoneFonte || (dados.telefone ? dados.fontesPorCampo?.telefone?.fonte || dados.fonte || '' : ''),
     telefone_confianca: dados.telefoneConfianca || dados.fontesPorCampo?.telefone?.confianca || '',
     cep: dados.cep || '',
@@ -275,13 +439,20 @@ function montarLinhaConsulta(item, dados) {
     fontes: dados.fontesComSucesso || [],
     fontes_com_erro: dados.fontesComErro || [],
     fontes_por_campo: dados.fontesPorCampo || {},
-    alertas: dados.alertas || [],
+    alertas,
     google_places: dados.googlePlaces || null,
     cache: Boolean(dados.cache),
     consultado_em: dados.consultadoEm || null,
     cliente_id: null,
     adicionado: false
   };
+}
+
+function montarTextoAvisos(alertas = []) {
+  return alertas
+    .map(alerta => alerta?.mensagem || '')
+    .filter(Boolean)
+    .join(' | ');
 }
 
 function montarTelefonesPorFonte(dados = {}) {
@@ -315,58 +486,13 @@ function montarTelefonesPorFonte(dados = {}) {
   return telefones;
 }
 
-async function enriquecerTelefoneGoogle(dados, modoGoogle = 'sem_telefone') {
-  if (modoGoogle === 'nao') {
-    return {
-      ...dados,
-      googlePlaces: {
-        encontrado: false,
-        motivo: 'desativado'
-      }
-    };
-  }
-
-  if (modoGoogle === 'sem_telefone' && String(dados?.telefone || '').trim()) {
-    return {
-      ...dados,
-      googlePlaces: {
-        encontrado: false,
-        motivo: 'ignorado_com_telefone'
-      }
-    };
-  }
-
-  const resultado = await googlePlacesService.buscarTelefoneEmpresa(dados);
-  if (!resultado.encontrado) {
-    if (String(dados?.telefone || '').trim()) {
-      return {
-        ...dados,
-        googlePlaces: resultado
-      };
-    }
-
-    return {
-      ...dados,
-      googlePlaces: resultado,
-      alertas: [
-        ...(dados.alertas || []),
-        {
-          tipo: 'telefone_google',
-          campo: 'telefone',
-          mensagem: resultado.motivo === 'sem_chave'
-            ? 'Google Places nao configurado para buscar telefone.'
-            : 'Telefone nao encontrado no Google Places.'
-        }
-      ]
-    };
-  }
-
+function aplicarTelefoneEncontrado(dados, resultado, campoResultado) {
   return {
     ...dados,
     telefone: dados.telefone || resultado.telefone,
     telefoneFonte: dados.telefone ? dados.telefoneFonte : resultado.fonte,
     telefoneConfianca: dados.telefone ? dados.telefoneConfianca : resultado.confianca,
-    googlePlaces: resultado,
+    [campoResultado]: resultado,
     fontesComSucesso: Array.from(new Set([...(dados.fontesComSucesso || []), resultado.fonte])),
     fontesPorCampo: {
       ...(dados.fontesPorCampo || {}),
@@ -393,12 +519,94 @@ async function enriquecerTelefoneGoogle(dados, modoGoogle = 'sem_telefone') {
   };
 }
 
+function adicionarAlertaTelefone(dados, tipo, mensagem) {
+  return {
+    ...dados,
+    alertas: [
+      ...(dados.alertas || []),
+      {
+        tipo,
+        campo: 'telefone',
+        mensagem
+      }
+    ]
+  };
+}
+
+function montarAlertasTentativasGoogle(resultadoGoogle = {}) {
+  return (resultadoGoogle.tentativas_google || [])
+    .filter(tentativa => ['limite', 'pausado'].includes(tentativa.motivo))
+    .map(tentativa => ({
+      tipo: 'google_limite',
+      campo: 'telefone',
+      mensagem: tentativa.motivo === 'pausado'
+        ? `Google Places: ${tentativa.env || `chave ${tentativa.index}`} esta pausada por limite; tentando proxima chave.`
+        : `Google Places: ${tentativa.env || `chave ${tentativa.index}`} atingiu o limite; tentando proxima chave.`
+    }));
+}
+
+function adicionarAlertasGoogle(dados, resultadoGoogle) {
+  const alertasGoogle = montarAlertasTentativasGoogle(resultadoGoogle);
+  if (alertasGoogle.length === 0) return dados;
+
+  return {
+    ...dados,
+    alertas: [
+      ...(dados.alertas || []),
+      ...alertasGoogle
+    ]
+  };
+}
+
+async function enriquecerTelefoneFallback(dados, modoBusca = 'sem_telefone') {
+  if (modoBusca === 'nao') {
+    return {
+      ...dados,
+      googlePlaces: {
+        encontrado: false,
+        motivo: 'desativado'
+      }
+    };
+  }
+
+  if (modoBusca === 'sem_telefone' && String(dados?.telefone || '').trim()) {
+    return {
+      ...dados,
+      googlePlaces: {
+        encontrado: false,
+        motivo: 'ignorado_com_telefone'
+      }
+    };
+  }
+
+  const resultadoGoogle = await googlePlacesService.buscarTelefoneEmpresa(dados);
+  if (resultadoGoogle.encontrado) {
+    return adicionarAlertasGoogle(
+      aplicarTelefoneEncontrado(dados, resultadoGoogle, 'googlePlaces'),
+      resultadoGoogle
+    );
+  }
+
+  const dadosComAlertasGoogle = adicionarAlertasGoogle({
+    ...dados,
+    googlePlaces: resultadoGoogle
+  }, resultadoGoogle);
+
+  return adicionarAlertaTelefone(dadosComAlertasGoogle, 'telefone_google', resultadoGoogle.motivo === 'sem_chave'
+    ? 'Google Places nao configurado para buscar telefone. Cadastre uma chave nesta tela.'
+    : resultadoGoogle.motivo === 'credenciais_esgotadas'
+      ? 'Todas as credenciais do Google Places cadastradas esgotaram hoje. Volte amanha para continuar usando a busca extra.'
+      : resultadoGoogle.motivo === 'limite' || resultadoGoogle.motivo === 'pausado'
+        ? 'Todas as chaves do Google Places atingiram limite ou estao pausadas; a busca continuou sem telefone extra.'
+        : 'Telefone nao encontrado no Google Places.');
+}
+
 async function consultarPlanilha(req) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
   const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
-  const modoGoogle = ['sem_telefone', 'nao'].includes(mapeamento.google)
-    ? mapeamento.google
+  const modoBuscaTelefone = ['sem_telefone', 'nao'].includes(mapeamento.buscaTelefone)
+    ? mapeamento.buscaTelefone
     : 'sem_telefone';
 
   if (!mapeamento.cnpj) {
@@ -416,14 +624,25 @@ async function consultarPlanilha(req) {
   }
 
   const linhas = [];
+  const jaBuscados = [];
   let requisicoesExternas = 0;
   const proximoInicio = inicio + cnpjs.length;
 
   for (const [index, item] of cnpjs.entries()) {
     try {
-      const dados = await enriquecerTelefoneGoogle(await cnpjService.consultarCnpj(item.cnpj), modoGoogle);
+      const registroJaBuscado = await buscarCnpjJaBuscado(item.cnpj);
+      if (registroJaBuscado) {
+        const linhaJaBuscada = montarLinhaJaBuscada(item, registroJaBuscado);
+        linhas.push(linhaJaBuscada);
+        jaBuscados.push(linhaJaBuscada);
+        continue;
+      }
+
+      const dados = await enriquecerTelefoneFallback(await cnpjService.consultarCnpj(item.cnpj), modoBuscaTelefone);
       if (!dados.cache) requisicoesExternas += 1;
-      linhas.push(montarLinhaConsulta(item, dados));
+      const linha = montarLinhaConsulta(item, dados);
+      linhas.push(linha);
+      await salvarCnpjBuscado(linha);
       if (!dados.cache && index < cnpjs.length - 1) {
         await sleep(INTERVALO_CONSULTA_MS);
       }
@@ -452,6 +671,8 @@ async function consultarPlanilha(req) {
     proximo_inicio: proximoInicio < cnpjsTodos.length ? proximoInicio : null,
     tem_proximo_lote: proximoInicio < cnpjsTodos.length,
     total_consultados: linhas.length,
+    total_ja_buscados: jaBuscados.length,
+    ja_buscados: jaBuscados,
     requisicoes_externas: requisicoesExternas,
     intervalo_ms: INTERVALO_CONSULTA_MS,
     fontes: ['Open CNPJ', 'CNPJws', 'Minha Receita'],
@@ -468,6 +689,7 @@ async function consultarPlanilha(req) {
       'telefone_google_places',
       'google_status',
       'google_detalhe',
+      'avisos',
       'telefone_fonte',
       'telefone_confianca',
       'cep',
@@ -486,8 +708,8 @@ async function consultarPlanilhaStream(req, onEvento) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
   const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
-  const modoGoogle = ['sem_telefone', 'nao'].includes(mapeamento.google)
-    ? mapeamento.google
+  const modoBuscaTelefone = ['sem_telefone', 'nao'].includes(mapeamento.buscaTelefone)
+    ? mapeamento.buscaTelefone
     : 'sem_telefone';
 
   if (!mapeamento.cnpj) {
@@ -529,6 +751,7 @@ async function consultarPlanilhaStream(req, onEvento) {
       'telefone_google_places',
       'google_status',
       'google_detalhe',
+      'avisos',
       'telefone_fonte',
       'telefone_confianca',
       'cep',
@@ -541,6 +764,7 @@ async function consultarPlanilhaStream(req, onEvento) {
     ]
   };
   let requisicoesExternas = 0;
+  let totalJaBuscados = 0;
 
   await onEvento({ tipo: 'inicio', ...meta });
 
@@ -554,12 +778,28 @@ async function consultarPlanilhaStream(req, onEvento) {
     });
 
     try {
-      const dados = await enriquecerTelefoneGoogle(await cnpjService.consultarCnpj(item.cnpj), modoGoogle);
+      const registroJaBuscado = await buscarCnpjJaBuscado(item.cnpj);
+      if (registroJaBuscado) {
+        const linhaJaBuscada = montarLinhaJaBuscada(item, registroJaBuscado);
+        totalJaBuscados += 1;
+        await onEvento({
+          tipo: 'linha',
+          linha: linhaJaBuscada,
+          requisicoes_externas: requisicoesExternas,
+          total_ja_buscados: totalJaBuscados
+        });
+        continue;
+      }
+
+      const dados = await enriquecerTelefoneFallback(await cnpjService.consultarCnpj(item.cnpj), modoBuscaTelefone);
       if (!dados.cache) requisicoesExternas += 1;
+      const linha = montarLinhaConsulta(item, dados);
+      await salvarCnpjBuscado(linha);
       await onEvento({
         tipo: 'linha',
-        linha: montarLinhaConsulta(item, dados),
-        requisicoes_externas: requisicoesExternas
+        linha,
+        requisicoes_externas: requisicoesExternas,
+        total_ja_buscados: totalJaBuscados
       });
 
       if (!dados.cache && index < cnpjs.length - 1) {
@@ -590,6 +830,7 @@ async function consultarPlanilhaStream(req, onEvento) {
     tipo: 'fim',
     ...meta,
     total_consultados: cnpjs.length,
+    total_ja_buscados: totalJaBuscados,
     requisicoes_externas: requisicoesExternas
   });
 }
@@ -700,8 +941,12 @@ async function gerarXlsxResultado(linhas = [], opcoes = {}) {
 
 module.exports = {
   adicionarClientes,
+  adicionarGooglePlacesKey,
+  atualizarGooglePlacesKey,
   consultarPlanilha,
   consultarPlanilhaStream,
   gerarXlsxResultado,
+  listarGooglePlacesKeys,
+  removerGooglePlacesKey,
   previewPlanilha
 };
