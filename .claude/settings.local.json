@@ -144,7 +144,10 @@
       "Bash(node -e \"require\\('./src/services/venda-cruzamento.service'\\); console.log\\('service load ok'\\);\")",
       "Bash(node --test \"test/*.test.js\")",
       "Bash(grep -rn \"\\\\.\\\\./\\\\.\\\\./\\\\.\\\\./\" --include=\"*.js\" --include=\"*.jsx\" --exclude-dir=node_modules --exclude-dir=LixeiraCodigos frontend backend)",
-      "Bash(echo \"exit:$?\")"
+      "Bash(echo \"exit:$?\")",
+      "Bash(node \"C:\\\\Users\\\\USERs\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-USERs-Documents-GitHub-pos-venda\\\\ea14da49-3ce1-45a4-af8f-9087fd4683fe\\\\scratchpad\\\\e2e-valor.js\")",
+      "Bash(node \"C:\\\\Users\\\\USERs\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-USERs-Documents-GitHub-pos-venda\\\\ea14da49-3ce1-45a4-af8f-9087fd4683fe\\\\scratchpad\\\\check-pedro.js\")",
+      "Bash(node \"C:\\\\Users\\\\USERs\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-USERs-Documents-GitHub-pos-venda\\\\ea14da49-3ce1-45a4-af8f-9087fd4683fe\\\\scratchpad\\\\e2e-estilo.js\")"
     ]
   }
 }

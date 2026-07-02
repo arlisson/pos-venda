@@ -105,6 +105,29 @@ function colunasDeChips(colunas = []) {
   return colunas.filter(coluna => /\bctns\b|contas|chips/i.test(coluna.nome)).map(coluna => coluna.nome);
 }
 
+/**
+ * Sugere a coluna de valor unitario (por chip) da planilha principal.
+ */
+function colunaValor(colunas = []) {
+  return colunas.find(coluna => {
+    const nome = normalizarTexto(coluna.nome);
+    return nome === 'valor' || nome.includes('valor da venda') || nome.includes('mensalidade');
+  }) || null;
+}
+
+/**
+ * Sugere as colunas de valor a somar numa planilha de operadora, cujo total e o valor pago
+ * na linha (ex.: Claro "Receita Nova/Incrementada/Renovada"; Vivo "VALOR").
+ */
+function colunasDeValor(colunas = []) {
+  return colunas
+    .filter(coluna => {
+      const nome = normalizarTexto(coluna.nome);
+      return nome === 'valor' || /receita (nova|incrementada|renovada)/.test(nome) || nome.includes('valor da venda');
+    })
+    .map(coluna => coluna.nome);
+}
+
 function operadoraPorNomeArquivo(nomeArquivo, operadoras = []) {
   const texto = normalizarTexto(nomeArquivo);
   const alvo = texto.includes('vivo') ? 'vivo' : texto.includes('claro') ? 'claro' : '';
@@ -133,11 +156,13 @@ function sugerirPrincipalAba(aba, sugestaoGeral = {}) {
     razaoSocial: sugestaoGeral.razaoSocial || '',
     operadora: sugestaoGeral.operadora || '',
     data: sugestaoGeral.data || '',
+    valor: sugestaoGeral.valor || '',
     ...(aba?.colunas ? {
       cnpj: aba.colunas.find(coluna => /cnpj|cpf\/cnpj|cnpj\/cpf/i.test(coluna.nome))?.nome || sugestaoGeral.cnpj || '',
       razaoSocial: aba.colunas.find(coluna => /razao|razão|empresa|cliente/i.test(coluna.nome))?.nome || sugestaoGeral.razaoSocial || '',
       operadora: aba.colunas.find(coluna => /operadora/i.test(coluna.nome))?.nome || sugestaoGeral.operadora || '',
-      data: aba.colunas.find(coluna => /data da venda|data/i.test(coluna.nome))?.nome || sugestaoGeral.data || ''
+      data: aba.colunas.find(coluna => /data da venda|data/i.test(coluna.nome))?.nome || sugestaoGeral.data || '',
+      valor: colunaValor(aba.colunas)?.nome || sugestaoGeral.valor || ''
     } : {})
   };
 }
@@ -150,7 +175,8 @@ function sugerirOperadoraAba(aba, sugestaoGeral = {}) {
     razaoSocial: aba?.colunas?.find(coluna => /razao|razão|empresa|cliente/i.test(coluna.nome))?.nome || sugestaoGeral.razaoSocial || '',
     tipo,
     valorOperadora: '',
-    tipoMap: montarTipoMapInicial(aba?.valoresDistintos?.[tipo] || [])
+    tipoMap: montarTipoMapInicial(aba?.valoresDistintos?.[tipo] || []),
+    valorColunas: colunasDeValor(aba?.colunas || [])
   };
 }
 
@@ -245,6 +271,19 @@ function BlocoOperadora({ titulo, preview, config, onConfig, operadoras = [], mo
           </select>
           <span>Some as colunas de contas (ex.: Claro “Ctns …”). Vazio = 1 chip por linha (ex.: Vivo).</span>
         </div>
+        <div className="cruzar-map__row">
+          <label>Colunas de valor (somar)</label>
+          <select
+            multiple
+            value={config.valorColunas || []}
+            onChange={event => onConfig({ ...config, valorColunas: Array.from(event.target.selectedOptions, opcao => opcao.value) })}
+          >
+            {colunas.map(coluna => (
+              <option key={`${coluna.index}-valor`} value={coluna.nome}>{coluna.nome}</option>
+            ))}
+          </select>
+          <span>Total pago na linha (ex.: Claro “Receita …”; Vivo “VALOR”). Usado para conferir os valores dos chips.</span>
+        </div>
         {mostrarIdentificador && <div className="cruzar-map__row">
           <label>Operadora</label>
           <select
@@ -300,7 +339,7 @@ function CruzarVendasPage() {
   const [sucesso, setSucesso] = useState('');
   const [operadorasBanco, setOperadorasBanco] = useState([]);
 
-  const [principalCfg, setPrincipalCfg] = useState({ cnpj: '', razaoSocial: '', operadora: '', data: '' });
+  const [principalCfg, setPrincipalCfg] = useState({ cnpj: '', razaoSocial: '', operadora: '', data: '', valor: '' });
   const [operadorasCfg, setOperadorasCfg] = useState([]);
   const [selecoesAbas, setSelecoesAbas] = useState([]);
   const [abaConfigAtiva, setAbaConfigAtiva] = useState('');
@@ -411,7 +450,7 @@ function CruzarVendasPage() {
       setSelecoesAbas(proximasSelecoes);
       const primeiraAbaUsada = proximasSelecoes.find(selecao => selecao.usar);
       setAbaConfigAtiva(primeiraAbaUsada ? chaveAba(primeiraAbaUsada.arquivoIndex, primeiraAbaUsada.aba) : '');
-      setPrincipalCfg(['cnpj', 'razaoSocial', 'operadora', 'data', 'quantidade'].reduce((config, campo) => (
+      setPrincipalCfg(['cnpj', 'razaoSocial', 'operadora', 'data', 'quantidade', 'valor'].reduce((config, campo) => (
         aplicarIndice(config, dados.principal?.colunas || [], campo)
       ), {
         cnpj: sug.principal?.cnpj || '',
@@ -419,6 +458,7 @@ function CruzarVendasPage() {
         operadora: sug.principal?.operadora || '',
         data: sug.principal?.data || '',
         quantidade: colunaQuantidade(dados.principal?.colunas)?.nome || '',
+        valor: sug.principal?.valor || colunaValor(dados.principal?.colunas)?.nome || '',
         abas: {}
       }));
       setOperadorasCfg((dados.operadoras || []).map((planilha, index) => {
@@ -435,6 +475,8 @@ function CruzarVendasPage() {
           tipoMap: montarTipoMapInicial(planilha.valoresDistintos?.[tipoPreferido] || []),
           // Colunas de contas (chips) a somar — ex.: Claro "Ctns ...". Vazio = 1 chip por linha (Vivo).
           quantidadeColunas: colunasDeChips(planilha.colunas),
+          // Colunas de valor a somar (total pago na linha) — ex.: Claro "Receita ..."; Vivo "VALOR".
+          valorColunas: colunasDeValor(planilha.colunas),
           abas: {}
         });
       }));
@@ -547,7 +589,7 @@ function CruzarVendasPage() {
         ...prev,
         abas: {
           ...(prev.abas || {}),
-          [item.aba.nome]: prev.abas?.[item.aba.nome] || ['cnpj', 'razaoSocial', 'operadora', 'data'].reduce(
+          [item.aba.nome]: prev.abas?.[item.aba.nome] || ['cnpj', 'razaoSocial', 'operadora', 'data', 'valor'].reduce(
             (config, campo) => aplicarIndice(config, item.aba.colunas || [], campo),
             sugerirPrincipalAba(item.aba, semAbas(prev))
           )
@@ -921,6 +963,13 @@ function ConfiguracaoAbas({
               amostras={preview?.principal?.amostras}
               onChange={(valor, coluna) => setPrincipalCfg(prev => atualizarCampoMapeamento(prev, 'quantidade', valor, coluna))}
             />
+            <SelectColuna
+              label="Coluna Valor (por chip)"
+              valor={principalCfg.valor || ''}
+              colunas={preview?.principal?.colunas || []}
+              amostras={preview?.principal?.amostras}
+              onChange={(valor, coluna) => setPrincipalCfg(prev => atualizarCampoMapeamento(prev, 'valor', valor, coluna))}
+            />
           </div>
         </div>
 
@@ -1032,6 +1081,16 @@ function ConfiguracaoAbas({
               onChange={(valor, coluna) => atualizarConfigAbaPrincipal(
                 ativa.aba.nome,
                 atualizarCampoMapeamento(principalCfg.abas?.[ativa.aba.nome] || {}, 'data', valor, coluna)
+              )}
+            />
+            <SelectColuna
+              label="Coluna Valor (por chip)"
+              valor={(principalCfg.abas?.[ativa.aba.nome] || {}).valor || ''}
+              colunas={ativa.aba.colunas}
+              amostras={ativa.aba.amostras}
+              onChange={(valor, coluna) => atualizarConfigAbaPrincipal(
+                ativa.aba.nome,
+                atualizarCampoMapeamento(principalCfg.abas?.[ativa.aba.nome] || {}, 'valor', valor, coluna)
               )}
             />
           </div>

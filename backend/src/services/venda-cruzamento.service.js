@@ -3,6 +3,11 @@ const ExcelJS = require('exceljs');
 
 const LIMITE_VALORES_DISTINTOS = 50;
 const LIMITE_AMOSTRAS = 5;
+// Tolerancia (R$) por chip na comparacao de valores, para absorver arredondamentos.
+const TOLERANCIA_VALOR = 0.05;
+// Rede de seguranca da busca por combinacoes de chips (grupos sao pequenos; isso evita
+// explosao combinatoria se um cliente tiver um volume atipico de chips).
+const LIMITE_ITERACOES_SUBCONJUNTO = 100000;
 // Rede de seguranca, nao teto de uso normal: evita derrubar o processo se alguem
 // subir o arquivo errado (um video, um dump). Ajustavel via CRUZAMENTO_LIMITE_BYTES.
 const LIMITE_TAMANHO_ARQUIVO_PADRAO = 50 * 1024 * 1024; // 50 MB
@@ -85,6 +90,29 @@ function detectarColunaStatus(nomes = []) {
 }
 
 /**
+ * Detecta automaticamente a coluna de valor unitario (por chip) da planilha principal.
+ */
+function detectarColunaValor(nomes = []) {
+  return nomes.find(nome => {
+    if (String(nome).startsWith('__')) return false;
+    const norm = normalizarTexto(nome);
+    return norm === 'valor' || norm.includes('valor da venda') || norm.includes('mensalidade');
+  }) || '';
+}
+
+/**
+ * Detecta automaticamente as colunas de valor de uma planilha de operadora, cuja soma e o
+ * total pago na linha (ex.: Claro "Receita Nova/Incrementada/Renovada"; Vivo "VALOR").
+ */
+function detectarColunasValor(nomes = []) {
+  return nomes.filter(nome => {
+    if (String(nome).startsWith('__')) return false;
+    const norm = normalizarTexto(nome);
+    return norm === 'valor' || /receita (nova|incrementada|renovada)/.test(norm) || norm.includes('valor da venda');
+  });
+}
+
+/**
  * Uma venda esta cancelada quando o STATUS comeca por "cancel" (CANCELADO/CANCELADA/
  * CANCELADO <motivo>) ou menciona credito negado (inclui o erro comum "CREDIO NEGADO").
  */
@@ -146,6 +174,44 @@ function quantidadeConfirmacao(dados, mapeamento, colunasAuto = []) {
   // Sem colunas de contas (ex.: Vivo): 1 chip por linha. Com colunas: a soma (0 = nao confirma).
   if (colunas.length === 0) return 1;
   return colunas.reduce((total, nome) => total + Math.trunc(paraNumero(dados[nome])), 0);
+}
+
+/**
+ * Valores unitarios dos chips de uma venda da principal (array de tamanho `qtd`).
+ * A coluna de valor traz o valor POR CHIP; combos fibra+fixo vem como "84,90 + 30,00"
+ * (um valor por item). Retorna null por chip quando o valor nao pode ser interpretado
+ * (o chip cai no pareamento por contagem, sem flag de divergencia).
+ */
+function valoresChipsPrincipal(dados, mapeamento, qtd, colunaAuto = '') {
+  let texto;
+  if (campoPreenchido(mapeamento, 'valor')) {
+    texto = valorMapeado(dados, mapeamento, 'valor');
+  } else if (colunaAuto) {
+    texto = dados[colunaAuto];
+  }
+  const partes = String(texto ?? '').split('+').map(parte => parte.trim()).filter(Boolean);
+  const valores = partes.map(paraNumero);
+  if (valores.length > 0 && valores.every(valor => valor > 0)) {
+    // Um valor por item (combo) ou um unico valor unitario replicado para todos os chips.
+    if (valores.length === qtd) return valores;
+    if (valores.length === 1) return Array(qtd).fill(valores[0]);
+  }
+  return Array(qtd).fill(null);
+}
+
+/**
+ * Valor total pago numa linha de confirmacao da operadora: soma de `valorColunas` se mapeado;
+ * na falta, das colunas detectadas automaticamente (`colunasAuto`). Retorna null quando nao ha
+ * colunas de valor ou nenhuma esta preenchida (linha sem valor nao participa da comparacao).
+ */
+function valorConfirmacao(dados, mapeamento, colunasAuto = []) {
+  const colunas = Array.isArray(mapeamento.valorColunas) && mapeamento.valorColunas.length > 0
+    ? mapeamento.valorColunas
+    : colunasAuto;
+  if (colunas.length === 0) return null;
+  const preenchida = colunas.some(nome => String(dados[nome] ?? '').trim() !== '');
+  if (!preenchida) return null;
+  return colunas.reduce((total, nome) => total + paraNumero(dados[nome]), 0);
 }
 
 function encontrarColunaPorTermos(dados, ...termos) {
@@ -415,7 +481,8 @@ function sugerirMapeamentoPrincipal(colunas) {
     cnpj: acharColuna(colunas, 'cnpj', 'cpf/cnpj', 'cnpj/cpf'),
     razaoSocial: acharColuna(colunas, 'razao social', 'razão social', 'razao', 'empresa', 'cliente'),
     operadora: acharColuna(colunas, 'operadora'),
-    data: acharColuna(colunas, 'data da venda', 'data')
+    data: acharColuna(colunas, 'data da venda', 'data'),
+    valor: detectarColunaValor(colunas.map(coluna => coluna.nome))
   };
 }
 
@@ -545,7 +612,7 @@ function normalizarMapeamentosAbas(abas) {
     aba,
     {
       ...mapeamento,
-      ...normalizarMapeamento(mapeamento, ['cnpj', 'cpf', 'razaoSocial', 'operadora', 'data', 'tipo']),
+      ...normalizarMapeamento(mapeamento, ['cnpj', 'cpf', 'razaoSocial', 'operadora', 'data', 'tipo', 'valor']),
       valorOperadora: normalizarTexto(mapeamento.valorOperadora)
     }
   ]));
@@ -587,6 +654,7 @@ function parseConfig(valor, colunasPorPlanilha) {
   validarColunaOpcional(colunasPrincipal, principal.razaoSocial, 'Razao Social da planilha principal');
   validarColunaOpcional(colunasPrincipal, principal.operadora, 'operadora da planilha principal');
   validarColunaOpcional(colunasPrincipal, principal.data, 'data da planilha principal');
+  validarColunaOpcional(colunasPrincipal, principal.valor, 'valor da planilha principal');
   validarIndiceOpcional(colunasPrincipal, principal.cnpjIndex, 'CPF/CNPJ da planilha principal');
   validarIndiceOpcional(colunasPrincipal, principal.razaoSocialIndex, 'Razao Social da planilha principal');
   validarIndiceOpcional(colunasPrincipal, principal.operadoraIndex, 'operadora da planilha principal');
@@ -596,6 +664,7 @@ function parseConfig(valor, colunasPorPlanilha) {
     validarColunaOpcional(colunasPrincipal, mapeamento.razaoSocial, `Razao Social da aba ${aba}`);
     validarColunaOpcional(colunasPrincipal, mapeamento.operadora, `operadora da aba ${aba}`);
     validarColunaOpcional(colunasPrincipal, mapeamento.data, `data da aba ${aba}`);
+    validarColunaOpcional(colunasPrincipal, mapeamento.valor, `valor da aba ${aba}`);
     validarIndiceOpcional(colunasPrincipal, mapeamento.cnpjIndex, `CPF/CNPJ da aba ${aba}`);
     validarIndiceOpcional(colunasPrincipal, mapeamento.razaoSocialIndex, `Razao Social da aba ${aba}`);
     validarIndiceOpcional(colunasPrincipal, mapeamento.operadoraIndex, `operadora da aba ${aba}`);
@@ -653,7 +722,8 @@ function parseConfig(valor, colunasPorPlanilha) {
       operadora: principal.operadora,
       data: principal.data || '',
       quantidade: principal.quantidade || '',
-      ...normalizarMapeamento(principal, ['cnpj', 'razaoSocial', 'operadora', 'data', 'quantidade']),
+      valor: principal.valor || '',
+      ...normalizarMapeamento(principal, ['cnpj', 'razaoSocial', 'operadora', 'data', 'quantidade', 'valor']),
       abas: mapeamentosPorAba(principal),
       colunasResultado
     },
@@ -668,6 +738,11 @@ function parseConfig(valor, colunasPorPlanilha) {
       // Colunas de contas a somar como chips (ex.: Claro Ctns ...). Vazio = 1 chip por linha (ex.: Vivo).
       quantidadeColunas: Array.isArray(operadora.quantidadeColunas)
         ? operadora.quantidadeColunas.filter(nome => colunasOperadoraNomes(index + 1).includes(nome))
+        : [],
+      // Colunas de valor a somar como total pago na linha (ex.: Claro Receita ...; Vivo VALOR).
+      // Vazio = detectar pelo nome; sem deteccao, o pareamento nao compara valores.
+      valorColunas: Array.isArray(operadora.valorColunas)
+        ? operadora.valorColunas.filter(nome => colunasOperadoraNomes(index + 1).includes(nome))
         : [],
       abas: normalizarMapeamentosAbas(mapeamentosPorAba(operadora))
     }))
@@ -687,10 +762,48 @@ function aplicarTipoMap(tipoMap, valorOrigem) {
   return chave ? tipoMap[chave] : valor;
 }
 
+// Paleta do arquivo final (ARGB do ExcelJS).
+const CORES = {
+  cabecalhoMes: 'FF305496', // azul escuro
+  cabecalhoNaoConcluidas: 'FFC0504D', // vermelho escuro
+  cabecalhoCanceladas: 'FF808080', // cinza
+  fonteCabecalho: 'FFFFFFFF',
+  linhaRevisao: 'FFFFF2CC', // amarelo: linha inteira quando precisa de revisao
+  linhaCancelada: 'FFEDEDED', // cinza claro
+  zebra: 'FFF2F2F2',
+  borda: 'FFD9D9D9',
+  fontePago: 'FF2E7D32', // verde
+  fonteRevisao: 'FFB45309', // ambar
+  fonteNaoEncontrado: 'FFC0392B' // vermelho
+};
+
+const STATUS_REVISAO = new Set(['PAGO_VALOR_DIVERGENTE', 'VALIDAR_MANUALMENTE']);
+const COLUNAS_MONETARIAS = new Set(['Valor_Chip', 'Valor_Confirmacao']);
+
+const fill = cor => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: cor } });
+const bordaFina = { style: 'thin', color: { argb: CORES.borda } };
+
 /**
- * Escreve uma aba com cabecalho, linhas, autoFilter e cabecalho congelado.
+ * Cor da fonte da celula de Status_Conciliacao, para leitura rapida do status.
  */
-function escreverAba(workbook, titulo, cabecalho, linhas) {
+function corFonteStatus(status) {
+  if (status === 'PAGO') return CORES.fontePago;
+  if (STATUS_REVISAO.has(status)) return CORES.fonteRevisao;
+  if (status === 'NAO_ENCONTRADO') return CORES.fonteNaoEncontrado;
+  return '';
+}
+
+/**
+ * Escreve uma aba com cabecalho, linhas, autoFilter e cabecalho congelado, aplicando o
+ * visual do arquivo final: cabecalho colorido, zebra, bordas e destaque de revisao.
+ *
+ * @param {Object} [opcoes]
+ * @param {string} [opcoes.corCabecalho] - Cor de fundo do cabecalho (default: azul dos meses).
+ * @param {string} [opcoes.corLinha] - Cor fixa para todas as linhas (ex.: canceladas em cinza).
+ * @param {number} [opcoes.colunaDivisao] - Coluna (1-based) que abre o bloco de colunas
+ *   automaticas; recebe borda media a esquerda como divisoria.
+ */
+function escreverAba(workbook, titulo, cabecalho, linhas, opcoes = {}) {
   const worksheet = workbook.addWorksheet(titulo, {
     views: [{ state: 'frozen', ySplit: 1 }]
   });
@@ -698,12 +811,45 @@ function escreverAba(workbook, titulo, cabecalho, linhas) {
   worksheet.columns = cabecalho.map(nome => ({
     header: nome,
     key: nome,
-    width: Math.min(Math.max(nome.length + 4, 12), 40)
+    width: Math.min(Math.max(nome.length + 4, 12), 40),
+    ...(COLUNAS_MONETARIAS.has(nome) ? { style: { numFmt: '#,##0.00' } } : {})
   }));
 
-  worksheet.getRow(1).font = { bold: true };
+  const colunaStatus = cabecalho.indexOf('Status_Conciliacao') + 1;
+  const colunaDivisao = opcoes.colunaDivisao || 0;
 
-  linhas.forEach(linha => worksheet.addRow(linha));
+  const estilizar = (row, corFundo) => {
+    for (let col = 1; col <= cabecalho.length; col += 1) {
+      const cell = row.getCell(col);
+      if (corFundo) cell.fill = fill(corFundo);
+      cell.border = {
+        top: bordaFina,
+        bottom: bordaFina,
+        left: col === colunaDivisao ? { style: 'medium', color: { argb: CORES.borda } } : bordaFina,
+        right: bordaFina
+      };
+    }
+  };
+
+  const headerRow = worksheet.getRow(1);
+  headerRow.height = 22;
+  headerRow.font = { bold: true, color: { argb: CORES.fonteCabecalho } };
+  headerRow.alignment = { vertical: 'middle' };
+  estilizar(headerRow, opcoes.corCabecalho || CORES.cabecalhoMes);
+
+  linhas.forEach(linha => {
+    const row = worksheet.addRow(linha);
+    const revisao = STATUS_REVISAO.has(linha.Status_Conciliacao);
+    // Destaque de revisao vence a cor fixa e a zebra; zebra so nas linhas pares.
+    const corFundo = revisao
+      ? CORES.linhaRevisao
+      : opcoes.corLinha || (row.number % 2 === 0 ? '' : CORES.zebra);
+    estilizar(row, corFundo);
+    if (colunaStatus > 0) {
+      const corFonte = corFonteStatus(linha.Status_Conciliacao);
+      if (corFonte) row.getCell(colunaStatus).font = { bold: true, color: { argb: corFonte } };
+    }
+  });
 
   if (cabecalho.length > 0) {
     worksheet.autoFilter = {
@@ -715,7 +861,7 @@ function escreverAba(workbook, titulo, cabecalho, linhas) {
   return worksheet;
 }
 
-const COLUNAS_AUTOMATICAS = ['Tipo', 'Tipo_Documento', 'Status_Conciliacao', 'Arquivo_Confirmacao', 'Aba_Confirmacao', 'Linha_Confirmacao', 'Razao_Social_Confirmacao', 'Observacao_Automatica'];
+const COLUNAS_AUTOMATICAS = ['Tipo', 'Tipo_Documento', 'Valor_Chip', 'Valor_Confirmacao', 'Status_Conciliacao', 'Arquivo_Confirmacao', 'Aba_Confirmacao', 'Linha_Confirmacao', 'Razao_Social_Confirmacao', 'Observacao_Automatica'];
 
 /**
  * Sanitiza um nome para uso como aba do Excel: troca caracteres proibidos por espaco,
@@ -748,22 +894,82 @@ function agruparPorMes(linhas) {
 }
 
 /**
+ * Escreve a aba "Resumo" (primeira do arquivo): totais por status com legenda de cores
+ * e a quantidade de vendas pagas por mes.
+ */
+function escreverResumo(workbook, resultado) {
+  const worksheet = workbook.addWorksheet('Resumo');
+  worksheet.columns = [{ width: 30 }, { width: 60 }, { width: 12 }];
+
+  const contagens = { PAGO: 0, PAGO_VALOR_DIVERGENTE: 0, VALIDAR_MANUALMENTE: 0, NAO_ENCONTRADO: 0 };
+  for (const linha of [...resultado.concluidas, ...resultado.naoConcluidas]) {
+    if (linha.Status_Conciliacao in contagens) contagens[linha.Status_Conciliacao] += 1;
+  }
+
+  const titulo = worksheet.addRow(['Cruzamento de Vendas']);
+  titulo.font = { bold: true, size: 16 };
+  const agora = new Date();
+  worksheet.addRow([`Gerado em ${String(agora.getDate()).padStart(2, '0')}/${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()}`]).font = {
+    color: { argb: 'FF808080' }
+  };
+  worksheet.addRow([]);
+
+  const cabecalhoTabela = (linha) => {
+    linha.font = { bold: true, color: { argb: CORES.fonteCabecalho } };
+    linha.height = 20;
+    [1, 2, 3].forEach(col => { linha.getCell(col).fill = fill(CORES.cabecalhoMes); });
+  };
+
+  cabecalhoTabela(worksheet.addRow(['Status', 'O que significa', 'Chips']));
+  const legenda = [
+    ['PAGO', 'Confirmado pela operadora (valor conferido quando mapeado).', contagens.PAGO, { fonte: CORES.fontePago }],
+    ['PAGO_VALOR_DIVERGENTE', 'Pago, mas o valor não fecha com a operadora — revisar (linha amarela).', contagens.PAGO_VALOR_DIVERGENTE, { fundo: CORES.linhaRevisao, fonte: CORES.fonteRevisao }],
+    ['VALIDAR_MANUALMENTE', 'Tipo da confirmação suspeito — revisar (linha amarela).', contagens.VALIDAR_MANUALMENTE, { fundo: CORES.linhaRevisao, fonte: CORES.fonteRevisao }],
+    ['NAO_ENCONTRADO', 'Sem confirmação da operadora (aba "Vendas Nao Concluidas").', contagens.NAO_ENCONTRADO, { fonte: CORES.fonteNaoEncontrado }],
+    ['CANCELADA', 'Cancelada na origem, fora do cruzamento (aba "Vendas Canceladas", linhas cinza).', resultado.canceladas?.length || 0, { fundo: CORES.linhaCancelada }]
+  ];
+  for (const [status, descricao, total, cores] of legenda) {
+    const linha = worksheet.addRow([status, descricao, total]);
+    if (cores.fundo) [1, 2, 3].forEach(col => { linha.getCell(col).fill = fill(cores.fundo); });
+    linha.getCell(1).font = { bold: true, ...(cores.fonte ? { color: { argb: cores.fonte } } : {}) };
+  }
+
+  const pagosPorMes = agruparPorMes(resultado.concluidas);
+  if (pagosPorMes.size > 0) {
+    worksheet.addRow([]);
+    cabecalhoTabela(worksheet.addRow(['Mês do fechamento', '', 'Chips']));
+    for (const [mes, linhas] of pagosPorMes) {
+      const linha = worksheet.addRow([mes, '', linhas.length]);
+      linha.getCell(1).font = { bold: true };
+    }
+  }
+}
+
+/**
  * Gera o workbook final (.xlsx) preservando a formatacao por mes das planilhas que chegam:
- * vendas concluidas em uma aba por mes (na ordem da principal) e uma unica aba com as nao
- * concluidas, que ganha a coluna "Mes" no inicio para nao perder a origem.
+ * aba "Resumo" com totais e legenda, vendas concluidas em uma aba por mes (na ordem da
+ * principal) e uma unica aba com as nao concluidas, que ganha a coluna "Mes" no inicio
+ * para nao perder a origem.
  */
 async function gerarWorkbook(resultado, colunasResultado) {
   const workbook = new ExcelJS.Workbook();
   const cabecalho = [...colunasResultado, ...COLUNAS_AUTOMATICAS];
-  const usados = new Set();
+  const usados = new Set(['Resumo']);
+  // Divisoria visual entre as colunas originais e o bloco automatico (comeca em "Tipo").
+  const colunaDivisao = colunasResultado.length + 1;
+
+  escreverResumo(workbook, resultado);
 
   for (const [mes, linhas] of agruparPorMes(resultado.concluidas)) {
-    escreverAba(workbook, nomeAbaValido(mes, usados), cabecalho, linhas);
+    escreverAba(workbook, nomeAbaValido(mes, usados), cabecalho, linhas, { colunaDivisao });
   }
 
   const cabecalhoNaoConcluidas = ['Mês', ...cabecalho];
   const linhasNaoConcluidas = resultado.naoConcluidas.map(linha => ({ 'Mês': linha.__mes || '', ...linha }));
-  escreverAba(workbook, nomeAbaValido('Vendas Nao Concluidas', usados), cabecalhoNaoConcluidas, linhasNaoConcluidas);
+  escreverAba(workbook, nomeAbaValido('Vendas Nao Concluidas', usados), cabecalhoNaoConcluidas, linhasNaoConcluidas, {
+    corCabecalho: CORES.cabecalhoNaoConcluidas,
+    colunaDivisao: colunaDivisao + 1
+  });
 
   // Lixeira: vendas canceladas na origem (STATUS), fora do cruzamento. So cria a aba se houver.
   if (resultado.canceladas?.length) {
@@ -773,7 +979,11 @@ async function gerarWorkbook(resultado, colunasResultado) {
       ...Object.fromEntries(colunasResultado.map(nome => [nome, item.dados[nome] || ''])),
       'Status_Cancelamento': item.status || ''
     }));
-    escreverAba(workbook, nomeAbaValido('Vendas Canceladas', usados), cabecalhoCanceladas, linhasCanceladas);
+    escreverAba(workbook, nomeAbaValido('Vendas Canceladas', usados), cabecalhoCanceladas, linhasCanceladas, {
+      corCabecalho: CORES.cabecalhoCanceladas,
+      corLinha: CORES.linhaCancelada,
+      colunaDivisao: cabecalhoCanceladas.length
+    });
   }
 
   return workbook.xlsx.writeBuffer();
@@ -791,8 +1001,9 @@ function indexarConfirmacao(linhas, mapeamento, arquivo) {
     mapa.get(chave).push(registro);
   };
 
-  // Detecta o padrao de chips da operadora uma vez (ex.: colunas "Ctns ..." da Claro).
+  // Detecta os padroes da operadora uma vez (ex.: colunas "Ctns ..." e "Receita ..." da Claro).
   const colunasChipsAuto = detectarColunasChips(linhas.length ? Object.keys(linhas[0]) : []);
+  const colunasValorAuto = detectarColunasValor(linhas.length ? Object.keys(linhas[0]) : []);
 
   for (const dados of linhas) {
     const mapaLinha = mapeamentoDaLinha(mapeamento, dados);
@@ -801,6 +1012,9 @@ function indexarConfirmacao(linhas, mapeamento, arquivo) {
     const registro = {
       tipo: aplicarTipoMap(mapaLinha.tipoMap || mapeamento.tipoMap, valorMapeado(dados, mapaLinha, 'tipo')),
       chips: quantidadeConfirmacao(dados, mapaLinha, colunasChipsAuto),
+      // Valor total pago na linha (bundle): a Claro pode juntar chips de valores diferentes
+      // numa linha so; null = sem coluna de valor (pareamento por contagem, como antes).
+      valorTotal: valorConfirmacao(dados, mapaLinha, colunasValorAuto),
       dados,
       arquivo,
       tipoDocumento: documento.tipo,
@@ -878,20 +1092,51 @@ function chaveOrdenacaoMes(rotulo) {
 }
 
 /**
- * Pareia CHIP A CHIP as vendas da principal (ja explodidas em chips) com as confirmacoes das
- * operadoras (tambem em chips). Como a operadora pode pagar os chips de uma mesma venda em meses
- * diferentes, o casamento e por chip individual, nao por venda inteira.
+ * Procura um subconjunto de exatamente `qtd` chips cuja soma de valores atinja `alvo`
+ * (± tolerancia). Busca por combinacoes com poda: os grupos por cliente sao pequenos e a
+ * quantidade por linha e baixa (1-3), entao o custo e trivial; ha um teto de iteracoes
+ * como rede de seguranca.
  *
- * Agrupa os chips por identidade (documento ou, na falta, Razao Social) + operadora. Em cada grupo
- * os chips da operadora sao distribuidos por mes (Claro = soma das Ctns; Vivo = 1 por linha) e:
- * - 1a passada: cada chip da principal pega um chip da operadora do SEU proprio mes (data da venda);
- * - 2a passada: os chips ainda sem par pegam qualquer chip restante, em ordem cronologica;
+ * @returns {Object[]|null} Os chips escolhidos, ou null se nenhuma combinacao fecha.
+ */
+function encontrarSubconjuntoPorValor(chips, qtd, alvo, tolerancia) {
+  if (qtd <= 0 || chips.length < qtd) return null;
+  let iteracoes = 0;
+  const escolhidos = [];
+  const buscar = (inicio, restantes, soma) => {
+    if (restantes === 0) return Math.abs(soma - alvo) <= tolerancia;
+    for (let i = inicio; i <= chips.length - restantes; i += 1) {
+      if ((iteracoes += 1) > LIMITE_ITERACOES_SUBCONJUNTO) return false;
+      escolhidos.push(chips[i]);
+      if (buscar(i + 1, restantes - 1, soma + chips[i].valor)) return true;
+      escolhidos.pop();
+    }
+    return false;
+  };
+  return buscar(0, qtd, 0) ? [...escolhidos] : null;
+}
+
+/**
+ * Pareia CHIP A CHIP as vendas da principal (ja explodidas em chips) com as confirmacoes das
+ * operadoras. Como a operadora pode pagar os chips de uma mesma venda em meses diferentes,
+ * o casamento e por chip individual, nao por venda inteira.
+ *
+ * Agrupa os chips por identidade (documento ou, na falta, Razao Social) + operadora. Cada linha
+ * de confirmacao vira um "bundle" de N chips (Claro = soma das Ctns, podendo agregar chips de
+ * valores diferentes numa linha; Vivo = 1 por linha) com o valor total pago. Em cada grupo:
+ * - 1a fase (valor): cada bundle com valor procura exatamente N chips cuja soma de valores
+ *   unitarios feche com o total pago (± tolerancia), preferindo chips do mes do bundle. Isso
+ *   garante que o chip certo seja marcado como pago (ex.: operadora pagou o de 59,99, nao o
+ *   de 49,99) e resolve linhas agregadas da Claro sem dividir valor por quantidade;
+ * - 2a fase (contagem): bundles sem casamento por valor e chips restantes pareiam por slot,
+ *   como antes (mes proprio -> ordem cronologica). Se ambos os lados tinham valor e nada
+ *   fechou, o chip e sinalizado com divergencia de valor (pago, mas validar);
  * - chips sem par (alem do que a operadora faturou) ficam como nao concluidos.
  *
  * Cada chip recebe a confirmacao pareada, que define seu Tipo e o mes/aba de fechamento.
  *
- * @param {Object[]} chips - Chips da principal (cada um com documento, operadora, mesPrincipal).
- * @param {Object[]} indicesOperadoras - Indices de confirmacao por operadora (registros com .chips).
+ * @param {Object[]} chips - Chips da principal (com documento, operadora, mesPrincipal, valor).
+ * @param {Object[]} indicesOperadoras - Indices de confirmacao por operadora (registros com .chips e .valorTotal).
  */
 function parearChips(chips, indicesOperadoras) {
   const grupos = new Map();
@@ -907,22 +1152,49 @@ function parearChips(chips, indicesOperadoras) {
     const base = grupo[0];
     const indiceOp = base.operadora >= 0 ? indicesOperadoras[base.operadora] : null;
     const confirmacoes = listarConfirmacoes(indiceOp, base.documento?.chave, base.chave);
-    // Chips da operadora distribuidos por mes (cada chip aponta para a confirmacao de origem).
-    const opPorMes = new Map(); // mes -> [confirmacao, ...]
-    for (const confirmacao of confirmacoes) {
-      const mes = confirmacao.dados?.__abaOrigem || base.mesPrincipal || '';
-      const qtd = Number.isFinite(confirmacao.chips) ? confirmacao.chips : 1;
-      if (!opPorMes.has(mes)) opPorMes.set(mes, []);
-      for (let i = 0; i < qtd; i += 1) opPorMes.get(mes).push(confirmacao);
+
+    // Bundles: cada linha de confirmacao com sua quantidade de chips e o valor total pago.
+    const bundles = confirmacoes
+      .map(confirmacao => ({
+        confirmacao,
+        qtd: Number.isFinite(confirmacao.chips) ? confirmacao.chips : 1,
+        valorTotal: confirmacao.valorTotal ?? null,
+        mes: confirmacao.dados?.__abaOrigem || base.mesPrincipal || ''
+      }))
+      .filter(bundle => bundle.qtd > 0)
+      .sort((a, b) => chaveOrdenacaoMes(a.mes) - chaveOrdenacaoMes(b.mes));
+
+    // 1a fase: casamento por valor. So participam bundles com valor e chips com valor unitario.
+    for (const bundle of bundles) {
+      if (bundle.valorTotal === null) continue;
+      const livres = grupo.filter(chip => !chip.confirmacao && chip.valor != null);
+      const doMes = livres.filter(chip => chip.mesPrincipal === bundle.mes);
+      const tolerancia = TOLERANCIA_VALOR * bundle.qtd;
+      const subconjunto = encontrarSubconjuntoPorValor(doMes, bundle.qtd, bundle.valorTotal, tolerancia)
+        || encontrarSubconjuntoPorValor(livres, bundle.qtd, bundle.valorTotal, tolerancia);
+      if (!subconjunto) continue;
+      for (const chip of subconjunto) {
+        chip.confirmacao = bundle.confirmacao;
+        chip.valorOk = true;
+      }
+      bundle.consumido = true;
+    }
+
+    // 2a fase: fallback por contagem com os bundles e chips restantes (comportamento original).
+    const opPorMes = new Map(); // mes -> [confirmacao, ...] (1 slot por chip do bundle)
+    for (const bundle of bundles) {
+      if (bundle.consumido) continue;
+      if (!opPorMes.has(bundle.mes)) opPorMes.set(bundle.mes, []);
+      for (let i = 0; i < bundle.qtd; i += 1) opPorMes.get(bundle.mes).push(bundle.confirmacao);
     }
     const mesesCronologicos = [...opPorMes.keys()].sort((a, b) => chaveOrdenacaoMes(a) - chaveOrdenacaoMes(b));
 
-    // 1a passada: casa cada chip no seu proprio mes (data da venda).
+    // Casa cada chip no seu proprio mes (data da venda); depois, qualquer mes em ordem cronologica.
     for (const chip of grupo) {
+      if (chip.confirmacao) continue;
       const pool = opPorMes.get(chip.mesPrincipal);
       if (pool && pool.length) chip.confirmacao = pool.shift();
     }
-    // 2a passada: chips sem par pegam qualquer chip restante, em ordem cronologica.
     for (const chip of grupo) {
       if (chip.confirmacao) continue;
       for (const mes of mesesCronologicos) {
@@ -930,6 +1202,7 @@ function parearChips(chips, indicesOperadoras) {
         if (pool && pool.length) { chip.confirmacao = pool.shift(); break; }
       }
     }
+
     // Define o status final de cada chip.
     for (const chip of grupo) {
       const confirmacao = chip.confirmacao || null;
@@ -937,6 +1210,10 @@ function parearChips(chips, indicesOperadoras) {
       chip.concluida = Boolean(confirmacao);
       chip.tipo = confirmacao ? (confirmacao.tipo ?? '') : '';
       chip.mes = confirmacao ? (confirmacao.dados?.__abaOrigem || chip.mesPrincipal) : chip.mesPrincipal;
+      // Divergencia: pareado por contagem quando ambos os lados tinham valor e nada fechou.
+      if (confirmacao && chip.valorOk !== true && chip.valor != null && (confirmacao.valorTotal ?? null) !== null) {
+        chip.valorOk = false;
+      }
     }
   }
 }
@@ -956,12 +1233,17 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
     : detectarColunaQuantidade(linhasPrincipal.length ? Object.keys(linhasPrincipal[0]) : []);
   // Coluna de quantidade efetiva (para zerar/normalizar no resultado, pois cada linha vira 1 chip).
   const colunaQtd = campoPreenchido(principal, 'quantidade') ? principal.quantidade : colunaQtdAuto;
+  // Coluna de valor unitario (por chip) da principal: detectada quando nao mapeada.
+  const colunaValorAuto = campoPreenchido(principal, 'valor')
+    ? ''
+    : detectarColunaValor(linhasPrincipal.length ? Object.keys(linhasPrincipal[0]) : []);
+  const colunaValor = campoPreenchido(principal, 'valor') ? principal.valor : colunaValorAuto;
   // Coluna de status da principal: vendas canceladas saem do cruzamento (viram lixeira).
   const colunaStatus = detectarColunaStatus(linhasPrincipal.length ? Object.keys(linhasPrincipal[0]) : []);
   // Colunas estruturais mapeadas: ficam de fora da varredura de cancelamento em texto livre
   // (evita marcar razao social como "Cancelamentos Express Ltda").
   const colunasEstruturais = new Set(
-    [principal.cnpj, principal.cpf, principal.razaoSocial, principal.operadora, principal.data, colunaQtd].filter(Boolean)
+    [principal.cnpj, principal.cpf, principal.razaoSocial, principal.operadora, principal.data, colunaQtd, colunaValor].filter(Boolean)
   );
 
   // Explode cada venda em chips individuais (1 chip por unidade da quantidade).
@@ -983,14 +1265,34 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
       continue;
     }
     const qtd = quantidadePrincipal(dados, mapaPrincipal, colunaQtdAuto);
+    // Valor unitario de cada chip (null quando nao interpretavel): usado na fase por valor.
+    const valores = valoresChipsPrincipal(dados, mapaPrincipal, qtd, colunaValorAuto);
     for (let i = 0; i < qtd; i += 1) {
-      chips.push({ dados, chave, documento, operadora, mesPrincipal });
+      chips.push({ dados, chave, documento, operadora, mesPrincipal, valor: valores[i] });
     }
   }
 
   parearChips(chips, indicesOperadoras);
 
   const rotuloTipoDocumento = tipo => tipo === 'cpf' ? 'CPF' : tipo === 'cnpj' ? 'CNPJ' : '';
+  const formatarValor = valor => Number(valor).toFixed(2).replace('.', ',');
+
+  const statusConciliacao = chip => {
+    if (chip.tipo === 'UNKNOWN') return 'VALIDAR_MANUALMENTE';
+    if (!chip.concluida) return 'NAO_ENCONTRADO';
+    // Pareado por contagem com valores conhecidos dos dois lados que nao fecharam: validar.
+    return chip.valorOk === false ? 'PAGO_VALOR_DIVERGENTE' : 'PAGO';
+  };
+
+  const observacaoAutomatica = chip => {
+    if (chip.tipo === 'UNKNOWN') return 'Tipo da confirmação parece numérico ou inválido; validar o mapeamento da aba.';
+    if (!chip.concluida) return 'Não encontrado na planilha de confirmação.';
+    if (chip.valorOk === false) {
+      return `Pago, mas valor divergente: chip de R$ ${formatarValor(chip.valor)}, linha de confirmação soma R$ ${formatarValor(chip.confirmacao?.valorTotal)}.`;
+    }
+    if (chip.valorOk === true) return 'Encontrado na planilha de confirmação (valor conferido).';
+    return 'Encontrado na planilha de confirmação.';
+  };
 
   // Cada linha do resultado representa UM chip.
   const montarLinha = chip => {
@@ -1001,7 +1303,9 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
       __mes: chip.mes || '',
       Tipo: chip.tipo || '',
       Tipo_Documento: rotuloTipoDocumento(chip.documento?.tipo),
-      Status_Conciliacao: chip.tipo === 'UNKNOWN' ? 'VALIDAR_MANUALMENTE' : (chip.concluida ? 'PAGO' : 'NAO_ENCONTRADO'),
+      Valor_Chip: chip.valor != null ? chip.valor : '',
+      Valor_Confirmacao: chip.confirmacao?.valorTotal != null ? chip.confirmacao.valorTotal : '',
+      Status_Conciliacao: statusConciliacao(chip),
       Arquivo_Confirmacao: chip.confirmacao?.arquivo || '',
       Aba_Confirmacao: chip.confirmacao?.dados?.__abaOrigem || '',
       Linha_Confirmacao: chip.confirmacao?.dados?.__linhaOrigem || '',
@@ -1012,9 +1316,7 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
             'razaoSocial'
           ) || ''
         : '',
-      Observacao_Automatica: chip.tipo === 'UNKNOWN'
-        ? 'Tipo da confirmação parece numérico ou inválido; validar o mapeamento da aba.'
-        : (chip.concluida ? 'Encontrado na planilha de confirmação.' : 'Não encontrado na planilha de confirmação.')
+      Observacao_Automatica: observacaoAutomatica(chip)
     });
   };
 

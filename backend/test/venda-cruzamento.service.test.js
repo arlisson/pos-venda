@@ -420,6 +420,161 @@ test('sem conciliacao: todos os chips da empresa vao para nao concluidas', () =>
   assert.equal(naoConcluidas.length, 2);
 });
 
+test('pareamento por valor: paga o chip de valor certo, nao o primeiro da lista', () => {
+  const configMultipla = {
+    principal: { ...config.principal, cnpj: 'CNPJ', valor: 'Valor', colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'CNPJ'] },
+    operadoras: [
+      { cnpj: 'CNPJ', razaoSocial: 'Razao Social', tipo: 'BASE/FRESH', valorOperadora: 'vivo', tipoMap: { Fresh: 'Novo' }, valorColunas: ['VALOR'] }
+    ]
+  };
+  // Vivo pagou apenas o chip de 59,99 (a venda feita depois).
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { 'Razao Social': 'Empresa A', CNPJ: '11.111.111/0001-11', 'BASE/FRESH': 'Fresh', VALOR: '59,99' }
+    ], configMultipla.operadoras[0], 'vivo.xlsx')
+  ];
+  // A venda de 49,99 foi feita primeiro (viria antes na ordem de pareamento por contagem).
+  const principal = [
+    { 'Razao Social': 'Empresa A', Operadora: 'Vivo', Cliente: 'barato', CNPJ: '11.111.111/0001-11', Valor: '49,99' },
+    { 'Razao Social': 'Empresa A', Operadora: 'Vivo', Cliente: 'caro', CNPJ: '11.111.111/0001-11', Valor: '59,99' }
+  ];
+
+  const { concluidas, naoConcluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(concluidas.length, 1);
+  assert.equal(concluidas[0].Cliente, 'caro');
+  assert.equal(concluidas[0].Status_Conciliacao, 'PAGO');
+  assert.equal(concluidas[0].Valor_Chip, 59.99);
+  assert.equal(concluidas[0].Valor_Confirmacao, 59.99);
+  assert.equal(naoConcluidas.length, 1);
+  assert.equal(naoConcluidas[0].Cliente, 'barato');
+});
+
+test('linha agregada da Claro: soma de chips de valores diferentes casa por subconjunto', () => {
+  const configMultipla = {
+    principal: { ...config.principal, cnpj: 'CNPJ', valor: 'Valor', colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'CNPJ'] },
+    operadoras: [
+      { cnpj: 'CNPJ', razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: { NOVO: 'Novo' }, quantidadeColunas: ['Ctns'], valorColunas: ['Receita'] }
+    ]
+  };
+  // Fechamento juntou 2 vendas numa linha so: 2 chips somando 109,98 (49,99 + 59,99).
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { 'Razao Social': 'Empresa A', CNPJ: '11.111.111/0001-11', Tipo: 'NOVO', Ctns: 2, Receita: '109,98' }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'a', CNPJ: '11.111.111/0001-11', Valor: '49,99' },
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'b', CNPJ: '11.111.111/0001-11', Valor: '59,99' },
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'c', CNPJ: '11.111.111/0001-11', Valor: '69,99' }
+  ];
+
+  const { concluidas, naoConcluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  // 49,99 + 59,99 fecham com a linha agregada; o chip de 69,99 fica sem par.
+  assert.deepEqual(concluidas.map(item => item.Cliente).sort(), ['a', 'b']);
+  assert.ok(concluidas.every(item => item.Status_Conciliacao === 'PAGO'));
+  assert.equal(naoConcluidas.length, 1);
+  assert.equal(naoConcluidas[0].Cliente, 'c');
+});
+
+test('valores que nao fecham: pareia por contagem e sinaliza PAGO_VALOR_DIVERGENTE', () => {
+  const configMultipla = {
+    principal: { ...config.principal, cnpj: 'CNPJ', valor: 'Valor', colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'CNPJ'] },
+    operadoras: [
+      { cnpj: 'CNPJ', razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: { NOVO: 'Novo' }, valorColunas: ['Receita'] }
+    ]
+  };
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { 'Razao Social': 'Empresa A', CNPJ: '11.111.111/0001-11', Tipo: 'NOVO', Receita: '54,99' }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'a', CNPJ: '11.111.111/0001-11', Valor: '49,99' }
+  ];
+
+  const { concluidas, naoConcluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(concluidas.length, 1);
+  assert.equal(naoConcluidas.length, 0);
+  assert.equal(concluidas[0].Status_Conciliacao, 'PAGO_VALOR_DIVERGENTE');
+  assert.match(concluidas[0].Observacao_Automatica, /49,99/);
+  assert.match(concluidas[0].Observacao_Automatica, /54,99/);
+});
+
+test('tolerancia de valor: diferenca de centavo casa; diferenca real diverge', () => {
+  const configMultipla = {
+    principal: { ...config.principal, cnpj: 'CNPJ', valor: 'Valor', colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'CNPJ'] },
+    operadoras: [
+      { cnpj: 'CNPJ', razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: { NOVO: 'Novo' }, valorColunas: ['Receita'] }
+    ]
+  };
+  // Duas empresas: uma com arredondamento de centavos (casa), outra com diferenca real (diverge).
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { 'Razao Social': 'Empresa A', CNPJ: '11.111.111/0001-11', Tipo: 'NOVO', Receita: '50,00' },
+      { 'Razao Social': 'Empresa B', CNPJ: '22.222.222/0001-22', Tipo: 'NOVO', Receita: '54,99' }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'arredondado', CNPJ: '11.111.111/0001-11', Valor: '49,99' },
+    { 'Razao Social': 'Empresa B', Operadora: 'Claro', Cliente: 'diferente', CNPJ: '22.222.222/0001-22', Valor: '49,99' }
+  ];
+
+  const { concluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  const porCliente = Object.fromEntries(concluidas.map(item => [item.Cliente, item]));
+  assert.equal(porCliente.arredondado.Status_Conciliacao, 'PAGO');
+  assert.equal(porCliente.diferente.Status_Conciliacao, 'PAGO_VALOR_DIVERGENTE');
+});
+
+test('sem colunas de valor mapeadas ou detectadas, o pareamento por contagem segue igual', () => {
+  const configMultipla = {
+    principal: { ...config.principal, cnpj: 'CNPJ', colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'CNPJ'] },
+    operadoras: [
+      { cnpj: 'CNPJ', razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: { NOVO: 'Novo' } }
+    ]
+  };
+  const indicesOperadoras = [
+    indexarConfirmacao([{ 'Razao Social': 'Empresa A', CNPJ: '11.111.111/0001-11', Tipo: 'NOVO' }], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'a', CNPJ: '11.111.111/0001-11' }
+  ];
+
+  const { concluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(concluidas.length, 1);
+  assert.equal(concluidas[0].Status_Conciliacao, 'PAGO');
+  assert.equal(concluidas[0].Valor_Chip, '');
+  assert.equal(concluidas[0].Valor_Confirmacao, '');
+});
+
+test('combo fibra+fixo ("84,90 + 30,00"): cada item recebe seu valor e a soma fecha com a linha', () => {
+  const configMultipla = {
+    principal: { ...config.principal, cnpj: 'CNPJ', quantidade: 'QTD', valor: 'Valor', colunasResultado: ['Razao Social', 'Operadora', 'Cliente', 'CNPJ'] },
+    operadoras: [
+      { cnpj: 'CNPJ', razaoSocial: 'Razao Social', tipo: 'Tipo', valorOperadora: 'claro', tipoMap: { NOVO: 'Novo' }, quantidadeColunas: ['Ctns'], valorColunas: ['Receita'] }
+    ]
+  };
+  const indicesOperadoras = [
+    indexarConfirmacao([
+      { 'Razao Social': 'Empresa A', CNPJ: '11.111.111/0001-11', Tipo: 'NOVO', Ctns: 2, Receita: '114,90' }
+    ], configMultipla.operadoras[0], 'claro.xlsx')
+  ];
+  const principal = [
+    { 'Razao Social': 'Empresa A', Operadora: 'Claro', Cliente: 'combo', CNPJ: '11.111.111/0001-11', QTD: 2, Valor: '84,90 + 30,00' }
+  ];
+
+  const { concluidas, naoConcluidas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
+
+  assert.equal(concluidas.length, 2);
+  assert.equal(naoConcluidas.length, 0);
+  assert.deepEqual(concluidas.map(item => item.Valor_Chip).sort((a, b) => a - b), [30, 84.9]);
+  assert.ok(concluidas.every(item => item.Status_Conciliacao === 'PAGO'));
+});
+
 test('classificarDocumento completa zeros a esquerda perdidos quando salvo como numero', () => {
   // CNPJ de 13 digitos (zero a esquerda perdido) gera a mesma chave do formatado de 14
   assert.equal(classificarDocumento('1327884000156').tipo, 'cnpj');
