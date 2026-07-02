@@ -93,7 +93,6 @@ function CnpjImportacaoPage() {
   const colunas = preview?.colunas || [];
   const linhas = useMemo(() => resultado?.linhas || [], [resultado]);
   const linhasAdicionaveis = useMemo(() => linhas.filter(linhaPodeAdicionar), [linhas]);
-  const clientesJaBuscados = useMemo(() => linhas.filter(linha => linha.busca_realizada), [linhas]);
   const totalEncontrados = linhas.filter(linha => linha.status === 'encontrado').length;
   const totalErros = linhas.filter(linha => linha.status === 'erro').length;
   const podeBuscar = Boolean(arquivo && colunaCnpj && !carregando);
@@ -715,9 +714,6 @@ function CnpjImportacaoPage() {
               <div>
                 <h2>Dados retornados</h2>
                 <p>{totalEncontrados} encontrado(s), {totalErros} com erro, {resultado.requisicoes_externas || 0} consulta(s) externa(s).</p>
-                {clientesJaBuscados.length > 0 && (
-                  <p>{clientesJaBuscados.length} cliente(s) ja buscado(s) foram reutilizados sem nova consulta.</p>
-                )}
                 {totalCnpjs > 0 && (
                   <p>{totalConsultadosAcumulado} de {totalCnpjs} CNPJ(s) consultado(s) nesta planilha.</p>
                 )}
@@ -755,28 +751,6 @@ function CnpjImportacaoPage() {
                 </button>
               )}
             </div>
-
-            {clientesJaBuscados.length > 0 && (
-              <div className="cnpj-import-already-searched">
-                <div className="cnpj-import-already-searched__header">
-                  <strong>Clientes ja buscados</strong>
-                  <span>{clientesJaBuscados.length} reutilizado(s)</span>
-                </div>
-                <div className="cnpj-import-already-searched__grid">
-                  {clientesJaBuscados.map(linha => (
-                    <div className="cnpj-import-already-searched__item" key={`ja:${linha.row_index}:${linha.cnpj_digitos}`}>
-                      <strong title={linha.razao_social || linha.nome_fantasia || linha.cnpj}>
-                        {linha.razao_social || linha.nome_fantasia || linha.cnpj}
-                      </strong>
-                      <span>{linha.cnpj}</span>
-                      <span>{[linha.telefone, linha.email].filter(Boolean).join(' | ') || 'Sem contato salvo'}</span>
-                      <span>{[linha.municipio, linha.uf].filter(Boolean).join(' / ') || 'Sem localizacao salva'}</span>
-                      {linha.ja_buscado_em && <small>Buscado em {String(linha.ja_buscado_em).replace('T', ' ').slice(0, 19)}</small>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="list-table cnpj-import-table">
               <div className="scroll">

@@ -190,65 +190,6 @@
   padding: 0;
 }
 
-.cnpj-import-already-searched {
-  margin: 0 18px 16px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-2);
-}
-
-.cnpj-import-already-searched__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-  color: var(--text);
-  font-size: 13px;
-}
-
-.cnpj-import-already-searched__header span {
-  color: var(--text-3);
-  font-size: 12px;
-}
-
-.cnpj-import-already-searched__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 8px;
-}
-
-.cnpj-import-already-searched__item {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  font-size: 12px;
-}
-
-.cnpj-import-already-searched__item strong,
-.cnpj-import-already-searched__item span,
-.cnpj-import-already-searched__item small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cnpj-import-already-searched__item strong {
-  color: var(--text);
-  font-size: 12.5px;
-}
-
-.cnpj-import-already-searched__item span,
-.cnpj-import-already-searched__item small {
-  color: var(--text-3);
-}
-
 .cnpj-import-table .scroll {
   max-height: calc(100vh - 340px);
 }

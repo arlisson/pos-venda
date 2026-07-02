@@ -290,18 +290,15 @@ async function sincronizarFidelidadeCliente(clienteId, trx = null) {
 
     await destinatariosQuery.delete();
 
+    const knex = trx || db;
     for (const usuarioId of destinatarios) {
-      const existente = await NotificacaoDestinatario.query(trx)
-        .where('notificacao_id', notificacao.id)
-        .where('usuario_id', usuarioId)
-        .first();
-
-      if (!existente) {
-        await NotificacaoDestinatario.query(trx).insert({
+      await knex('notificacao_destinatarios')
+        .insert({
           notificacao_id: notificacao.id,
           usuario_id: usuarioId
-        });
-      }
+        })
+        .onConflict(['notificacao_id', 'usuario_id'])
+        .ignore();
     }
 
     notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
