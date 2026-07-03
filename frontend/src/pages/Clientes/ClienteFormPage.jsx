@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import CnpjSugestoes, { formatarMensagemResumoCnpj } from '../../components/CnpjSugestoes';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
-import { buscarClientePorId, atualizarCliente, criarCliente, verificarDocumentoCliente } from '../../services/cliente.service';
+import {
+  atualizarCliente,
+  atualizarClienteSecreto,
+  buscarClientePorId,
+  buscarClienteSecretoPorId,
+  criarCliente,
+  criarClienteSecreto,
+  verificarDocumentoCliente,
+  verificarDocumentoClienteSecreto
+} from '../../services/cliente.service';
 import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj, formatarCpf, sanitizarCpf, validarDigitosCpf } from '../../services/cnpj.service';
 import { listarOperadoras } from '../../services/config.service';
 import './Clientes.css';
@@ -241,7 +250,10 @@ function montarPayload(form) {
 function ClienteFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const editando = Boolean(id);
+  const modoSecreto = location.pathname.startsWith('/clientes-secretos');
+  const rotaLista = modoSecreto ? '/clientes-secretos' : '/clientes';
 
   const [form, setForm] = useState(FORM_INICIAL);
   const [operadoras, setOperadoras] = useState([]);
@@ -276,7 +288,7 @@ function ClienteFormPage() {
       try {
         const [operadorasData, clienteData] = await Promise.all([
           listarOperadoras(),
-          editando ? buscarClientePorId(id) : Promise.resolve(null)
+          editando ? (modoSecreto ? buscarClienteSecretoPorId(id) : buscarClientePorId(id)) : Promise.resolve(null)
         ]);
 
         setOperadoras(operadorasData);
@@ -310,9 +322,12 @@ function ClienteFormPage() {
     }
 
     carregar();
-  }, [editando, id]);
+  }, [editando, id, modoSecreto]);
 
-  const titulo = useMemo(() => editando ? 'Editar cliente' : 'Novo cliente', [editando]);
+  const titulo = useMemo(() => {
+    if (modoSecreto) return editando ? 'Editar cliente próprio' : 'Novo cliente próprio';
+    return editando ? 'Editar cliente' : 'Novo cliente';
+  }, [editando, modoSecreto]);
 
   /**
    * Atualiza campo com os dados informados.
@@ -495,7 +510,9 @@ function ClienteFormPage() {
     setDocumentoStatus({ tipo: 'info', mensagem: tipoBusca === 'cpf' ? 'Verificando documento...' : 'Verificando CNPJ...' });
 
     try {
-      const resultado = await verificarDocumentoCliente(digitos, editando ? id : null);
+      const resultado = modoSecreto
+        ? await verificarDocumentoClienteSecreto(digitos, editando ? id : null)
+        : await verificarDocumentoCliente(digitos, editando ? id : null);
       const duplicado = resultado?.existe ? resultado.cliente : null;
       setDocumentoDuplicado(duplicado);
       setDocumentoStatus(duplicado
@@ -641,12 +658,20 @@ function ClienteFormPage() {
       const payload = montarPayload(form);
 
       if (editando) {
-        await atualizarCliente(id, payload);
+        if (modoSecreto) {
+          await atualizarClienteSecreto(id, payload);
+        } else {
+          await atualizarCliente(id, payload);
+        }
       } else {
-        await criarCliente(payload);
+        if (modoSecreto) {
+          await criarClienteSecreto(payload);
+        } else {
+          await criarCliente(payload);
+        }
       }
 
-      navigate('/clientes');
+      navigate(rotaLista);
     } catch (error) {
       setErro(error.message || 'Erro ao salvar cliente.');
     } finally {
@@ -663,14 +688,14 @@ function ClienteFormPage() {
               <button
                 className="btn btn-icon btn-ghost"
                 type="button"
-                onClick={() => navigate('/clientes')}
+                onClick={() => navigate(rotaLista)}
                 title="Voltar"
               >
                 <I.ArrowRight style={{ transform: 'rotate(180deg)' }} />
               </button>
               <div>
                 <h2>{titulo}</h2>
-                <p>Cadastre representantes de empresas para vincular as vendas.</p>
+                <p>{modoSecreto ? 'Cadastre registros próprios para rastrear novos clientes.' : 'Cadastre representantes de empresas para vincular as vendas.'}</p>
               </div>
             </div>
           </div>
@@ -892,7 +917,7 @@ function ClienteFormPage() {
                 </section>
 
                 <div className="cliente-form-actions">
-                  <button className="btn" type="button" onClick={() => navigate('/clientes')}>
+                  <button className="btn" type="button" onClick={() => navigate(rotaLista)}>
                     Cancelar
                   </button>
                   <button className="btn btn-primary" type="submit" disabled={salvando}>

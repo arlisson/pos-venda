@@ -18,6 +18,7 @@ import VendasAprovacoesPage from '../pages/VendasPage/VendasAprovacoesPage';
 import RetornosPage from '../pages/RetornosPage/RetornosPage';
 import Clientes from '../pages/Clientes/Clientes';
 import ClienteFormPage from '../pages/Clientes/ClienteFormPage';
+import ClientesSecretosPage from '../pages/Clientes/ClientesSecretosPage';
 import ClientesLixeiraPage from '../pages/Clientes/ClientesLixeiraPage';
 import AdminLeadsPage from '../pages/AdminLeadsPage/AdminLeadsPage';
 import CruzarVendasPage from '../pages/CruzarVendasPage/CruzarVendasPage';
@@ -124,6 +125,18 @@ function AppRoutes() {
       <Route
         path="/clientes"
         element={<PrivateRoute permission={['clientes_ver_proprios', 'clientes_ver_todos', 'clientes_criar', 'clientes_importar_planilhas', 'clientes_editar', 'clientes_excluir']}><Clientes /></PrivateRoute>}
+      />
+      <Route
+        path="/clientes-secretos"
+        element={<PrivateRoute permission="clientes_secretos_ver"><ClientesSecretosPage /></PrivateRoute>}
+      />
+      <Route
+        path="/clientes-secretos/novo"
+        element={<PrivateRoute permission="clientes_secretos_criar"><ClienteFormPage /></PrivateRoute>}
+      />
+      <Route
+        path="/clientes-secretos/:id/editar"
+        element={<PrivateRoute permission="clientes_secretos_editar"><ClienteFormPage /></PrivateRoute>}
       />
       <Route
         path="/clientes/lixeira"

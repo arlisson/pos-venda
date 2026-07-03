@@ -26,6 +26,10 @@ export async function listarClientes(filtros = {}) {
   return apiGet(`/clientes${montarQuery(filtros)}`);
 }
 
+export async function listarClientesSecretos(filtros = {}) {
+  return apiGet(`/clientes-secretos${montarQuery(filtros)}`);
+}
+
 /**
  * Baixa blob para o usuario.
  */
@@ -82,6 +86,10 @@ export async function buscarClientePorId(id) {
   return apiGet(`/clientes/${id}`);
 }
 
+export async function buscarClienteSecretoPorId(id) {
+  return apiGet(`/clientes-secretos/${id}`);
+}
+
 /**
  * Verifica se um CPF/CNPJ ja esta cadastrado para outro cliente.
  *
@@ -94,6 +102,11 @@ export async function verificarDocumentoCliente(documento, ignorarId = null) {
   return apiGet(`/clientes/documento/${encodeURIComponent(documento)}${query}`);
 }
 
+export async function verificarDocumentoClienteSecreto(documento, ignorarId = null) {
+  const query = ignorarId ? montarQuery({ ignorar_id: ignorarId }) : '';
+  return apiGet(`/clientes-secretos/documento/${encodeURIComponent(documento)}${query}`);
+}
+
 /**
  * Cria um cliente novo.
  *
@@ -102,6 +115,10 @@ export async function verificarDocumentoCliente(documento, ignorarId = null) {
  */
 export async function criarCliente(dados) {
   return apiPost('/clientes', dados);
+}
+
+export async function criarClienteSecreto(dados) {
+  return apiPost('/clientes-secretos', dados);
 }
 
 /**
@@ -165,6 +182,10 @@ export async function atualizarCliente(id, dados) {
   return apiPut(`/clientes/${id}`, dados);
 }
 
+export async function atualizarClienteSecreto(id, dados) {
+  return apiPut(`/clientes-secretos/${id}`, dados);
+}
+
 /**
  * Move um cliente para a lixeira.
  *
@@ -173,6 +194,10 @@ export async function atualizarCliente(id, dados) {
  */
 export async function excluirCliente(id) {
   return apiDelete(`/clientes/${id}`);
+}
+
+export async function excluirClienteSecreto(id) {
+  return apiDelete(`/clientes-secretos/${id}`);
 }
 
 /**

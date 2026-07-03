@@ -214,6 +214,31 @@ export const GRUPOS_PERMISSOES = [
             descricao: 'Permite enviar clientes para a lixeira e excluir definitivamente.'
           }
         ]
+      },
+      {
+        titulo: 'Clientes próprios',
+        itens: [
+          {
+            chave: 'clientes_secretos_ver',
+            nome: 'Visualizar próprios',
+            descricao: 'Permite acessar a lista de clientes próprios do proprio usuario.'
+          },
+          {
+            chave: 'clientes_secretos_criar',
+            nome: 'Criar próprios',
+            descricao: 'Permite cadastrar novos clientes próprios.'
+          },
+          {
+            chave: 'clientes_secretos_editar',
+            nome: 'Editar próprios',
+            descricao: 'Permite editar clientes próprios cadastrados pelo proprio usuario.'
+          },
+          {
+            chave: 'clientes_secretos_excluir',
+            nome: 'Excluir próprios',
+            descricao: 'Permite excluir clientes próprios cadastrados pelo proprio usuario.'
+          }
+        ]
       }
     ]
   },

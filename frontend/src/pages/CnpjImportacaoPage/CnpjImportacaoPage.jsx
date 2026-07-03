@@ -72,7 +72,7 @@ function CnpjImportacaoPage() {
   const [arquivo, setArquivo] = useState(null);
   const [preview, setPreview] = useState(null);
   const [colunaCnpj, setColunaCnpj] = useState('');
-  const [usarBuscaTelefoneFallback, setUsarBuscaTelefoneFallback] = useState(true);
+  const [modoBuscaTelefone, setModoBuscaTelefone] = useState('sem_telefone');
   const [resultado, setResultado] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
@@ -241,7 +241,7 @@ function CnpjImportacaoPage() {
         cnpj: colunaCnpj,
         inicio,
         limite: preview?.limite_linhas,
-        buscaTelefone: usarBuscaTelefoneFallback ? 'sem_telefone' : 'nao'
+        buscaTelefone: modoBuscaTelefone
       }, evento => {
         if (evento.tipo === 'inicio') {
           setResultado(prev => {
@@ -515,11 +515,12 @@ function CnpjImportacaoPage() {
             <div className="form-field">
               <label>Telefone extra</label>
               <select
-                value={usarBuscaTelefoneFallback ? 'sem_telefone' : 'nao'}
-                onChange={event => setUsarBuscaTelefoneFallback(event.target.value === 'sem_telefone')}
+                value={modoBuscaTelefone}
+                onChange={event => setModoBuscaTelefone(event.target.value)}
                 disabled={carregando || adicionando}
               >
                 <option value="sem_telefone">Google rotativo se faltar telefone</option>
+                <option value="somente_google">Buscar telefone somente no Google</option>
                 <option value="nao">Nao usar busca extra</option>
               </select>
             </div>
@@ -765,11 +766,13 @@ function CnpjImportacaoPage() {
                   <tbody>
                     {linhas.map(linha => (
                       <tr key={`${linha.row_index}:${linha.cnpj_digitos}`}>
-                        <td>
-                          <span className={`tag ${linha.status === 'erro' ? 'tag-danger' : linha.busca_realizada || linha.cache ? 'tag-info' : 'tag-success'}`}>
-                            {linha.status === 'erro' ? 'Erro' : linha.busca_realizada ? 'Ja buscado' : linha.cache ? 'Cache' : 'OK'}
-                          </span>
-                          {linha.message && <small>{linha.message}</small>}
+                        <td title={linha.message || undefined}>
+                          <div className="cnpj-import-status-cell">
+                            <span className={`tag ${linha.status === 'erro' ? 'tag-danger' : linha.busca_realizada || linha.cache ? 'tag-info' : 'tag-success'}`}>
+                              {linha.status === 'erro' ? 'Erro' : linha.busca_realizada ? 'Ja buscado' : linha.cache ? 'Cache' : 'OK'}
+                            </span>
+                            {linha.message && <small>{linha.message}</small>}
+                          </div>
                         </td>
                         {COLUNAS_TABELA.map(coluna => (
                           <td key={coluna.key} title={valorCelula(linha, coluna)}>
