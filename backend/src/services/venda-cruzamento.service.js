@@ -113,22 +113,24 @@ function detectarColunasValor(nomes = []) {
 }
 
 /**
- * Uma venda esta cancelada quando o STATUS comeca por "cancel" (CANCELADO/CANCELADA/
+ * Uma venda esta cancelada quando o STATUS comeca por "cancelad" (CANCELADO/CANCELADA/
  * CANCELADO <motivo>) ou menciona credito negado (inclui o erro comum "CREDIO NEGADO").
+ * "CANCELAMENTO" NAO cancela: e o pedido/processo, nao o fato consumado.
  */
 function vendaCancelada(valorStatus) {
   const texto = normalizarTexto(valorStatus);
-  return texto.startsWith('cancel') || texto.includes('negado');
+  return texto.startsWith('cancelad') || texto.includes('negado');
 }
 
 /**
  * Cancelamento comunicado em texto livre (OBS e afins). Usa palavra inteira para evitar falsos
- * positivos (ex.: "nao cancelar"): cancelado/cancelada/cancelamento ou credito negado.
+ * positivos (ex.: "nao cancelar"): cancelado/cancelada ou credito negado. A palavra
+ * "cancelamento" NAO conta (ex.: "pedido de cancelamento" e intencao, nao cancelamento feito).
  */
 function textoIndicaCancelamento(valor) {
   const texto = normalizarTexto(valor);
   if (!texto) return false;
-  return /\bcancelad[oa]\b|\bcancelamento\b/.test(texto) || /cred\w* negado/.test(texto);
+  return /\bcancelad[oa]\b/.test(texto) || /cred\w* negado/.test(texto);
 }
 
 /**
