@@ -192,39 +192,49 @@
 
 .cnpj-import-table .scroll {
   max-height: calc(100vh - 340px);
+  overflow: auto;
 }
 
 .cnpj-import-table table {
-  min-width: 2580px;
+  width: max-content;
+  min-width: 100%;
 }
 
 .cnpj-import-table th,
 .cnpj-import-table td {
-  vertical-align: top;
-}
-
-.cnpj-import-table td {
-  max-width: 190px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  vertical-align: middle;
   white-space: nowrap;
 }
 
+.cnpj-import-table td {
+  height: 52px;
+}
+
 .cnpj-import-table td:first-child {
-  max-width: 130px;
+  min-width: 130px;
+}
+
+.cnpj-import-status-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cnpj-import-status-cell .tag {
+  flex-shrink: 0;
 }
 
 .cnpj-import-table td:first-child small {
   display: block;
-  margin-top: 4px;
+  min-width: 0;
   color: var(--text-3);
   font-size: 11px;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .cnpj-import-table td:last-child {
-  max-width: 140px;
-  white-space: normal;
+  min-width: 140px;
 }
 
 @media (max-width: 900px) {

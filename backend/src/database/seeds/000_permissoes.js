@@ -195,6 +195,26 @@ const PERMISSOES = [
     descricao: 'Permite excluir clientes acessíveis pelo usuário.'
   },
   {
+    chave: 'clientes_secretos_ver',
+    nome: 'Clientes próprios: visualizar',
+    descricao: 'Permite acessar e visualizar os clientes próprios cadastrados pelo proprio usuario.'
+  },
+  {
+    chave: 'clientes_secretos_criar',
+    nome: 'Clientes próprios: criar',
+    descricao: 'Permite cadastrar novos clientes próprios.'
+  },
+  {
+    chave: 'clientes_secretos_editar',
+    nome: 'Clientes próprios: editar',
+    descricao: 'Permite editar clientes próprios cadastrados pelo proprio usuario.'
+  },
+  {
+    chave: 'clientes_secretos_excluir',
+    nome: 'Clientes próprios: excluir',
+    descricao: 'Permite excluir clientes próprios cadastrados pelo proprio usuario.'
+  },
+  {
     chave: 'notificacoes_visualizar',
     nome: 'Notificações: visualizar',
     descricao: 'Permite visualizar as próprias notificações do sistema.'

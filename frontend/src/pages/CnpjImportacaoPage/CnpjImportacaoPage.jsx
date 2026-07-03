@@ -766,11 +766,13 @@ function CnpjImportacaoPage() {
                   <tbody>
                     {linhas.map(linha => (
                       <tr key={`${linha.row_index}:${linha.cnpj_digitos}`}>
-                        <td>
-                          <span className={`tag ${linha.status === 'erro' ? 'tag-danger' : linha.busca_realizada || linha.cache ? 'tag-info' : 'tag-success'}`}>
-                            {linha.status === 'erro' ? 'Erro' : linha.busca_realizada ? 'Ja buscado' : linha.cache ? 'Cache' : 'OK'}
-                          </span>
-                          {linha.message && <small>{linha.message}</small>}
+                        <td title={linha.message || undefined}>
+                          <div className="cnpj-import-status-cell">
+                            <span className={`tag ${linha.status === 'erro' ? 'tag-danger' : linha.busca_realizada || linha.cache ? 'tag-info' : 'tag-success'}`}>
+                              {linha.status === 'erro' ? 'Erro' : linha.busca_realizada ? 'Ja buscado' : linha.cache ? 'Cache' : 'OK'}
+                            </span>
+                            {linha.message && <small>{linha.message}</small>}
+                          </div>
                         </td>
                         {COLUNAS_TABELA.map(coluna => (
                           <td key={coluna.key} title={valorCelula(linha, coluna)}>
