@@ -147,7 +147,8 @@
       "Bash(echo \"exit:$?\")",
       "Bash(node \"C:\\\\Users\\\\USERs\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-USERs-Documents-GitHub-pos-venda\\\\ea14da49-3ce1-45a4-af8f-9087fd4683fe\\\\scratchpad\\\\e2e-valor.js\")",
       "Bash(node \"C:\\\\Users\\\\USERs\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-USERs-Documents-GitHub-pos-venda\\\\ea14da49-3ce1-45a4-af8f-9087fd4683fe\\\\scratchpad\\\\check-pedro.js\")",
-      "Bash(node \"C:\\\\Users\\\\USERs\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-USERs-Documents-GitHub-pos-venda\\\\ea14da49-3ce1-45a4-af8f-9087fd4683fe\\\\scratchpad\\\\e2e-estilo.js\")"
+      "Bash(node \"C:\\\\Users\\\\USERs\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-USERs-Documents-GitHub-pos-venda\\\\ea14da49-3ce1-45a4-af8f-9087fd4683fe\\\\scratchpad\\\\e2e-estilo.js\")",
+      "Bash(node \"C:\\\\Users\\\\USERs\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-USERs-Documents-GitHub-pos-venda\\\\ea14da49-3ce1-45a4-af8f-9087fd4683fe\\\\scratchpad\\\\diff-cancel.js\")"
     ]
   }
 }

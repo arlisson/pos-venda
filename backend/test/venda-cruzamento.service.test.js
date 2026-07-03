@@ -107,7 +107,9 @@ test('vendas canceladas (STATUS ou OBS) saem do cruzamento e vao para canceladas
     { 'Razao Social': 'Empresa Cancela', Operadora: 'Claro', Cliente: 'C', STATUS: 'CANCELADA' },
     { 'Razao Social': 'Empresa Negado', Operadora: 'Claro', Cliente: 'D', STATUS: 'CRÉDITO NEGADO' },
     { 'Razao Social': 'Empresa Obs', Operadora: 'Claro', Cliente: 'E', STATUS: 'ATIVO', OBS: 'chip cancelado pelo cliente' },
-    { 'Razao Social': 'Empresa RL', Operadora: 'Claro', Cliente: 'F', STATUS: 'ATIVO', RL: 'cancelamento' }
+    // "cancelamento" (pedido/processo) NAO cancela: nem em texto livre, nem no STATUS.
+    { 'Razao Social': 'Empresa RL', Operadora: 'Claro', Cliente: 'F', STATUS: 'ATIVO', RL: 'cancelamento' },
+    { 'Razao Social': 'Empresa Pedido', Operadora: 'Claro', Cliente: 'G', STATUS: 'CANCELAMENTO' }
   ];
 
   const { concluidas, naoConcluidas, canceladas } = cruzarMultiplasPlanilhas(principal, indicesOperadoras, configMultipla);
@@ -115,13 +117,13 @@ test('vendas canceladas (STATUS ou OBS) saem do cruzamento e vao para canceladas
   // So a venda ATIVA com match (e OBS "nao cancelar", falso positivo evitado) entra em concluidas.
   assert.equal(concluidas.length, 1);
   assert.equal(concluidas[0].Cliente, 'A');
-  assert.equal(naoConcluidas.length, 0);
-  // As cinco canceladas (STATUS + OBS + RL) viram lixeira, preservando o motivo/origem.
-  assert.equal(canceladas.length, 5);
-  assert.deepEqual(canceladas.map(item => item.dados.Cliente).sort(), ['B', 'C', 'D', 'E', 'F']);
+  // F e G ("cancelamento") seguem no cruzamento; sem match, ficam nao concluidas.
+  assert.deepEqual(naoConcluidas.map(item => item.Cliente).sort(), ['F', 'G']);
+  // As quatro canceladas de fato (STATUS cancelado/negado + OBS) viram lixeira, com motivo/origem.
+  assert.equal(canceladas.length, 4);
+  assert.deepEqual(canceladas.map(item => item.dados.Cliente).sort(), ['B', 'C', 'D', 'E']);
   assert.equal(canceladas.find(item => item.dados.Cliente === 'B').status, 'CANCELADO POR DUPLICIDADE');
   assert.equal(canceladas.find(item => item.dados.Cliente === 'E').status, 'OBS: chip cancelado pelo cliente');
-  assert.equal(canceladas.find(item => item.dados.Cliente === 'F').status, 'RL: cancelamento');
 });
 
 test('cruza uma quantidade ilimitada de planilhas secundarias', () => {
