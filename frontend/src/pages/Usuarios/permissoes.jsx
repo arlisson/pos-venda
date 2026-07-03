@@ -8,6 +8,9 @@ export const PERMISSAO_POS_VENDA = {
   descricao: 'Permite editar vendas enviadas ao pós-venda e movimentar vendas no funil.'
 };
 export const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
+export const PERMISSOES_ADMIN_EXPLICITAS = new Set([
+  'clientes_secretos_ver_todos'
+]);
 
 /**
  * Garante permissao pos venda antes de continuar o fluxo.
@@ -222,6 +225,11 @@ export const GRUPOS_PERMISSOES = [
             chave: 'clientes_secretos_ver',
             nome: 'Visualizar próprios',
             descricao: 'Permite acessar a lista de clientes próprios do proprio usuario.'
+          },
+          {
+            chave: 'clientes_secretos_ver_todos',
+            nome: 'Visualizar todos',
+            descricao: 'Permite visualizar clientes próprios cadastrados por outros usuarios.'
           },
           {
             chave: 'clientes_secretos_criar',
@@ -660,7 +668,9 @@ export function getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis 
   const todasChaves = permissoesDisponiveis.map(permissao => permissao.chave);
 
   return todasChaves.filter(chave => (
-    permissoesUsuario[chave] !== false
+    PERMISSOES_ADMIN_EXPLICITAS.has(chave)
+      ? permissoesUsuario[chave] === true
+      : permissoesUsuario[chave] !== false
   ));
 }
 
@@ -669,7 +679,9 @@ export function getPermissoesSelecionadasUsuario(usuario, permissoesDisponiveis 
  */
 export function montarPermissoesAdminParaSalvar(selecionadas = [], permissoesDisponiveis = []) {
   return permissoesDisponiveis.map(permissao => permissao.chave).reduce((acc, chave) => {
-    if (!selecionadas.includes(chave)) {
+    if (PERMISSOES_ADMIN_EXPLICITAS.has(chave)) {
+      acc[chave] = selecionadas.includes(chave);
+    } else if (!selecionadas.includes(chave)) {
       acc[chave] = false;
     }
 

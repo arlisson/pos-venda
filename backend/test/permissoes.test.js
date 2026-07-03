@@ -13,6 +13,23 @@ test('admin possui todas as permissoes', () => {
   assert.equal(usuarioTemPermissaoLocal(usuario, 'clientes_excluir'), true);
 });
 
+test('admin precisa de permissao explicita para visualizar clientes proprios de todos', () => {
+  const usuario = {
+    ativo: true,
+    role: {
+      nome: 'admin',
+      permissoes: { clientes_secretos_ver_todos: true }
+    }
+  };
+
+  assert.equal(usuarioTemPermissaoLocal(usuario, 'clientes_criar'), true);
+  assert.equal(usuarioTemPermissaoLocal(usuario, 'clientes_secretos_ver_todos'), false);
+  assert.equal(usuarioTemPermissaoLocal({
+    ...usuario,
+    permissoes: { clientes_secretos_ver_todos: true }
+  }, 'clientes_secretos_ver_todos'), true);
+});
+
 test('admin pode ter qualquer permissao negada explicitamente', () => {
   const usuario = {
     ativo: true,

@@ -128,7 +128,7 @@ function AppRoutes() {
       />
       <Route
         path="/clientes-secretos"
-        element={<PrivateRoute permission="clientes_secretos_ver"><ClientesSecretosPage /></PrivateRoute>}
+        element={<PrivateRoute permission={['clientes_secretos_ver', 'clientes_secretos_ver_todos']}><ClientesSecretosPage /></PrivateRoute>}
       />
       <Route
         path="/clientes-secretos/novo"

@@ -5,6 +5,10 @@ function montarPermissoes(permissoes, permissoesLiberadas = []) {
   }, {});
 }
 
+const PERMISSOES_ADMIN_EXPLICITAS = new Set([
+  'clientes_secretos_ver_todos'
+]);
+
 async function upsertRole(knex, role) {
   const existente = await knex('roles')
     .where('nome', role.nome)
@@ -29,7 +33,9 @@ exports.seed = async function (knex) {
     .where('ativo', true)
     .orderBy('chave', 'asc');
 
-  const todasPermissoes = permissoes.map((permissao) => permissao.chave);
+  const todasPermissoes = permissoes
+    .map((permissao) => permissao.chave)
+    .filter(chave => !PERMISSOES_ADMIN_EXPLICITAS.has(chave));
   const permissoesUsuario = [];
 
   const roles = [

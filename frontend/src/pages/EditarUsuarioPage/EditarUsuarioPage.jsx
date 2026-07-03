@@ -17,6 +17,7 @@ import {
   getPermissoesSelecionadasUsuario,
   montarGruposPermissoes,
   montarPermissoesAdminParaSalvar,
+  PERMISSOES_ADMIN_EXPLICITAS,
   PermissaoGrupo
 } from '../Usuarios/permissoes';
 
@@ -401,7 +402,9 @@ function EditarUsuarioPage() {
                   setRoleId(novaRoleId);
 
                   if (novaRoleId === 1) {
-                    setPermissoesSelecionadas(permissoes.map(permissao => permissao.chave));
+                    setPermissoesSelecionadas(permissoes
+                      .map(permissao => permissao.chave)
+                      .filter(chave => !PERMISSOES_ADMIN_EXPLICITAS.has(chave)));
                   }
                 }}
               >

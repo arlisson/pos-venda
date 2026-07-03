@@ -3,6 +3,10 @@
  */
 import { apiGet, apiPost, apiPut } from './api';
 
+const PERMISSOES_ADMIN_EXPLICITAS = new Set([
+  'clientes_secretos_ver_todos'
+]);
+
 /**
  * Processa login conforme as regras do dominio.
  */
@@ -78,6 +82,10 @@ export function temPermissao(usuario, permissao) {
 
   if (usuario?.role?.nome === 'admin') {
     const permissoesUsuario = normalizarPermissoes(usuario?.permissoes);
+    if (PERMISSOES_ADMIN_EXPLICITAS.has(permissao)) {
+      return permissoesUsuario?.[permissao] === true;
+    }
+
     return permissoesUsuario?.[permissao] !== false;
   }
 

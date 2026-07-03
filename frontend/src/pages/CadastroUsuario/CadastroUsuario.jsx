@@ -8,6 +8,7 @@ import {
   garantirPermissaoPosVenda as garantirPermissaoPosVendaCompartilhada,
   montarGruposPermissoes as montarGruposPermissoesCompartilhados,
   montarPermissoesAdminParaSalvar,
+  PERMISSOES_ADMIN_EXPLICITAS,
   PermissaoGrupo as PermissaoGrupoCompartilhado,
   CopiarPermissoesSelect,
   getPermissoesCopiaveis
@@ -213,7 +214,9 @@ function CadastroUsuario() {
                         setRoleId(novaRoleId);
 
                         if (novaRoleId === 1) {
-                          setPermissoesSelecionadas(permissoes.map(permissao => permissao.chave));
+                          setPermissoesSelecionadas(permissoes
+                            .map(permissao => permissao.chave)
+                            .filter(chave => !PERMISSOES_ADMIN_EXPLICITAS.has(chave)));
                         }
                       }}
                     >

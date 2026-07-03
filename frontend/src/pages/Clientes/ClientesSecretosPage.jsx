@@ -222,6 +222,7 @@ function clienteCasaComBusca(cliente, campo, termo) {
 function ClientesSecretosPage() {
   const navigate = useNavigate();
   const usuario = getUsuarioLocal();
+  const usuarioId = Number(usuario?.id);
   const podeCriar = temPermissao(usuario, 'clientes_secretos_criar');
   const podeEditar = temPermissao(usuario, 'clientes_secretos_editar');
   const podeExcluir = temPermissao(usuario, 'clientes_secretos_excluir');
@@ -313,12 +314,25 @@ function ClientesSecretosPage() {
     setChipsMax('');
   }
 
+  function podeGerenciarCliente(cliente) {
+    return Number(cliente?.criado_por_id) === usuarioId;
+  }
+
+  function podeEditarCliente(cliente) {
+    return podeEditar && podeGerenciarCliente(cliente);
+  }
+
+  function podeExcluirCliente(cliente) {
+    return podeExcluir && podeGerenciarCliente(cliente);
+  }
+
   function abrirCliente(cliente) {
-    if (!podeEditar) return;
+    if (!podeEditarCliente(cliente)) return;
     navigate(`/clientes-secretos/${cliente.id}/editar`);
   }
 
   async function excluir(cliente) {
+    if (!podeExcluirCliente(cliente)) return;
     if (!window.confirm(`Excluir o registro próprio de ${cliente.nome}?`)) return;
     setExcluindoId(cliente.id);
     setErro('');
@@ -476,16 +490,18 @@ function ClientesSecretosPage() {
                     const contato = formatarContato(cliente);
                     const fidelidadeResumo = formatarFidelidade(cliente);
                     const resumoOperadoras = formatarResumoOperadoras(cliente);
+                    const podeEditarEsteCliente = podeEditarCliente(cliente);
+                    const podeExcluirEsteCliente = podeExcluirCliente(cliente);
 
                     return (
                       <tr
                         key={cliente.id}
-                        className={podeEditar ? 'clickable-row is-tappable' : ''}
-                        role={podeEditar ? 'button' : undefined}
-                        tabIndex={podeEditar ? 0 : undefined}
+                        className={podeEditarEsteCliente ? 'clickable-row is-tappable' : ''}
+                        role={podeEditarEsteCliente ? 'button' : undefined}
+                        tabIndex={podeEditarEsteCliente ? 0 : undefined}
                         onClick={() => abrirCliente(cliente)}
                         onKeyDown={(event) => {
-                          if (!podeEditar) return;
+                          if (!podeEditarEsteCliente) return;
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
                             abrirCliente(cliente);
@@ -518,7 +534,7 @@ function ClientesSecretosPage() {
                                 <dd>{formatarMoeda(cliente.valor_pago)}</dd>
                                 <dt>Chips</dt>
                                 <dd>{cliente.quantidade_chips ?? '-'}</dd>
-                                {podeExcluir && (
+                                {podeExcluirEsteCliente && (
                                   <>
                                     <dt>Ações</dt>
                                     <dd>
@@ -582,20 +598,22 @@ function ClientesSecretosPage() {
                         </td>
                         {podeExcluir && (
                           <td data-label="Excluir">
-                            <div className="clientes-actions">
-                              <button
-                                type="button"
-                                className="btn btn-icon btn-ghost btn-danger-icon"
-                                title="Excluir"
-                                disabled={excluindoId === cliente.id}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  excluir(cliente);
-                                }}
-                              >
-                                <I.Trash size={13} />
-                              </button>
-                            </div>
+                            {podeExcluirEsteCliente && (
+                              <div className="clientes-actions">
+                                <button
+                                  type="button"
+                                  className="btn btn-icon btn-ghost btn-danger-icon"
+                                  title="Excluir"
+                                  disabled={excluindoId === cliente.id}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    excluir(cliente);
+                                  }}
+                                >
+                                  <I.Trash size={13} />
+                                </button>
+                              </div>
+                            )}
                           </td>
                         )}
                       </tr>

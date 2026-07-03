@@ -200,6 +200,11 @@ const PERMISSOES = [
     descricao: 'Permite acessar e visualizar os clientes próprios cadastrados pelo proprio usuario.'
   },
   {
+    chave: 'clientes_secretos_ver_todos',
+    nome: 'Clientes próprios: visualizar todos',
+    descricao: 'Permite acessar e visualizar clientes próprios cadastrados por outros usuarios.'
+  },
+  {
     chave: 'clientes_secretos_criar',
     nome: 'Clientes próprios: criar',
     descricao: 'Permite cadastrar novos clientes próprios.'

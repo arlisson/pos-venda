@@ -1,5 +1,7 @@
 const ClienteSecreto = require('../models/ClienteSecreto');
 const ClienteSecretoOperadora = require('../models/ClienteSecretoOperadora');
+const Usuario = require('../models/Usuario');
+const { usuarioTemPermissaoLocal } = require('../utils/permissoes');
 
 const CAMPOS = [
   'nome',
@@ -105,6 +107,14 @@ function criarHttpError(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+}
+
+async function usuarioPodeVerTodosClientesSecretos(usuarioId) {
+  const usuario = await Usuario.query()
+    .findById(usuarioId)
+    .withGraphFetched('role');
+
+  return usuarioTemPermissaoLocal(usuario, 'clientes_secretos_ver_todos');
 }
 
 function normalizarDocumentoObrigatorio(valor) {
@@ -306,19 +316,27 @@ async function verificarDocumentoClienteSecreto(documento, usuarioId, opcoes = {
 async function listarClientesSecretos(filtros = {}, usuarioId) {
   const query = ClienteSecreto.query()
     .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora, criador]')
-    .where('criado_por_id', Number(usuarioId))
     .orderBy('created_at', 'desc')
     .orderBy('id', 'desc');
+
+  if (!(await usuarioPodeVerTodosClientesSecretos(usuarioId))) {
+    query.where('criado_por_id', Number(usuarioId));
+  }
 
   aplicarBusca(query, filtros.busca);
   return (await query).map(formatarCliente);
 }
 
 async function buscarClienteSecretoPorId(id, usuarioId) {
-  const cliente = await ClienteSecreto.query()
+  const query = ClienteSecreto.query()
     .findById(id)
-    .where('criado_por_id', Number(usuarioId))
     .withGraphFetched('[operadoraAtual, operadorasAtuais.operadora, criador]');
+
+  if (!(await usuarioPodeVerTodosClientesSecretos(usuarioId))) {
+    query.where('criado_por_id', Number(usuarioId));
+  }
+
+  const cliente = await query;
   return formatarCliente(cliente);
 }
 

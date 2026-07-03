@@ -8,6 +8,7 @@ const { exigirUmaPermissao } = require('../middlewares/permissao.middleware');
 
 const permissoesAcessarClientesSecretos = [
   'clientes_secretos_ver',
+  'clientes_secretos_ver_todos',
   'clientes_secretos_criar',
   'clientes_secretos_editar',
   'clientes_secretos_excluir'
@@ -15,7 +16,7 @@ const permissoesAcessarClientesSecretos = [
 
 router.use(authMiddleware);
 
-router.get('/', exigirUmaPermissao(['clientes_secretos_ver']), clienteSecretoController.index);
+router.get('/', exigirUmaPermissao(['clientes_secretos_ver', 'clientes_secretos_ver_todos']), clienteSecretoController.index);
 router.get('/documento/:documento', exigirUmaPermissao(['clientes_secretos_criar', 'clientes_secretos_editar']), clienteSecretoController.verificarDocumento);
 router.get('/:id', exigirUmaPermissao(permissoesAcessarClientesSecretos), clienteSecretoController.show);
 router.post(

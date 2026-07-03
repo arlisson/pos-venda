@@ -1,5 +1,9 @@
 const Permissao = require('../models/Permissao');
 
+const PERMISSOES_ADMIN_EXPLICITAS = new Set([
+  'clientes_secretos_ver_todos'
+]);
+
 /**
  * Converte permissoes em array de chaves ativas.
  *
@@ -66,6 +70,22 @@ function adminTemPermissaoNegada(usuario, permissao) {
 }
 
 /**
+ * Verifica permissoes que tambem precisam estar marcadas para usuarios admin.
+ *
+ * @param {Record<string, unknown>} usuario - Usuario com role e permissoes.
+ * @param {string} permissao - Chave da permissao.
+ * @returns {boolean} Verdadeiro quando a permissao esta explicitamente liberada.
+ */
+function adminTemPermissaoExplicita(usuario, permissao) {
+  if (usuario?.role?.nome !== 'admin') {
+    return false;
+  }
+
+  const permissoesUsuario = normalizarPermissoes(usuario.permissoes);
+  return permissoesUsuario[permissao] === true;
+}
+
+/**
  * Verifica permissao ja carregada no objeto do usuario, sem consultar o banco.
  *
  * @param {Record<string, unknown>} usuario - Usuario com role e permissoes.
@@ -75,7 +95,13 @@ function adminTemPermissaoNegada(usuario, permissao) {
 function usuarioTemPermissaoLocal(usuario, permissao) {
   if (!usuario || !usuario.ativo) return false;
 
-  if (usuario.role?.nome === 'admin') return !adminTemPermissaoNegada(usuario, permissao);
+  if (usuario.role?.nome === 'admin') {
+    if (PERMISSOES_ADMIN_EXPLICITAS.has(permissao)) {
+      return adminTemPermissaoExplicita(usuario, permissao);
+    }
+
+    return !adminTemPermissaoNegada(usuario, permissao);
+  }
 
   const permitidas = new Set([
     ...parsePermissoes(usuario.permissoes),
@@ -102,9 +128,14 @@ async function montarMapaPermissoesEfetivas(usuario) {
   ]);
 
   return todasPermissoes.reduce((acc, permissao) => {
-    acc[permissao.chave] = usuario?.role?.nome === 'admin'
-      ? !adminTemPermissaoNegada(usuario, permissao.chave)
-      : permitidas.has(permissao.chave);
+    if (usuario?.role?.nome === 'admin') {
+      acc[permissao.chave] = PERMISSOES_ADMIN_EXPLICITAS.has(permissao.chave)
+        ? adminTemPermissaoExplicita(usuario, permissao.chave)
+        : !adminTemPermissaoNegada(usuario, permissao.chave);
+    } else {
+      acc[permissao.chave] = permitidas.has(permissao.chave);
+    }
+
     return acc;
   }, {});
 }
@@ -123,7 +154,11 @@ async function listarPermissoesEfetivas(usuario) {
 
     return todasPermissoes
       .map(permissao => permissao.chave)
-      .filter(chave => !adminTemPermissaoNegada(usuario, chave));
+      .filter(chave => (
+        PERMISSOES_ADMIN_EXPLICITAS.has(chave)
+          ? adminTemPermissaoExplicita(usuario, chave)
+          : !adminTemPermissaoNegada(usuario, chave)
+      ));
   }
 
   return parsePermissoes([
@@ -135,6 +170,7 @@ async function listarPermissoesEfetivas(usuario) {
 module.exports = {
   parsePermissoes,
   normalizarPermissoes,
+  PERMISSOES_ADMIN_EXPLICITAS,
   usuarioTemPermissaoLocal,
   montarMapaPermissoesEfetivas,
   listarPermissoesEfetivas
