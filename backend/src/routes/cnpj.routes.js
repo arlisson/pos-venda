@@ -15,7 +15,7 @@ router.post('/planilha/preview', exigirUmaPermissao(['clientes_importar_planilha
 router.post('/planilha/consultar', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.consultarPlanilha);
 router.post('/planilha/consultar-stream', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.consultarPlanilhaStream);
 router.post('/planilha/exportar', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.exportarResultado);
-router.post('/planilha/clientes', exigirUmaPermissao(['clientes_criar']), cnpjController.adicionarClientes);
+router.post('/planilha/leads', exigirUmaPermissao(['clientes_secretos_criar']), cnpjController.adicionarLeads);
 router.get('/:cnpj', cnpjController.consultar);
 
 module.exports = router;

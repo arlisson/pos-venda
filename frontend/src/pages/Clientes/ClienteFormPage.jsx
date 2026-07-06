@@ -325,7 +325,7 @@ function ClienteFormPage() {
   }, [editando, id, modoSecreto]);
 
   const titulo = useMemo(() => {
-    if (modoSecreto) return editando ? 'Editar cliente próprio' : 'Novo cliente próprio';
+    if (modoSecreto) return editando ? 'Editar lead' : 'Novo lead';
     return editando ? 'Editar cliente' : 'Novo cliente';
   }, [editando, modoSecreto]);
 
@@ -695,7 +695,7 @@ function ClienteFormPage() {
               </button>
               <div>
                 <h2>{titulo}</h2>
-                <p>{modoSecreto ? 'Cadastre registros próprios para rastrear novos clientes.' : 'Cadastre representantes de empresas para vincular as vendas.'}</p>
+                <p>{modoSecreto ? 'Cadastre leads para qualificacao e acompanhamento.' : 'Cadastre representantes de empresas para vincular as vendas.'}</p>
               </div>
             </div>
           </div>

@@ -219,32 +219,32 @@ export const GRUPOS_PERMISSOES = [
         ]
       },
       {
-        titulo: 'Clientes próprios',
+        titulo: 'Qualificação de Leads',
         itens: [
           {
             chave: 'clientes_secretos_ver',
-            nome: 'Visualizar próprios',
-            descricao: 'Permite acessar a lista de clientes próprios do proprio usuario.'
+            nome: 'Visualizar leads próprios',
+            descricao: 'Permite acessar a lista de leads do proprio usuario.'
           },
           {
             chave: 'clientes_secretos_ver_todos',
             nome: 'Visualizar todos',
-            descricao: 'Permite visualizar clientes próprios cadastrados por outros usuarios.'
+            descricao: 'Permite visualizar leads cadastrados por outros usuarios.'
           },
           {
             chave: 'clientes_secretos_criar',
-            nome: 'Criar próprios',
-            descricao: 'Permite cadastrar novos clientes próprios.'
+            nome: 'Criar leads',
+            descricao: 'Permite cadastrar novos leads.'
           },
           {
             chave: 'clientes_secretos_editar',
-            nome: 'Editar próprios',
-            descricao: 'Permite editar clientes próprios cadastrados pelo proprio usuario.'
+            nome: 'Editar leads',
+            descricao: 'Permite editar leads cadastrados pelo proprio usuario.'
           },
           {
             chave: 'clientes_secretos_excluir',
-            nome: 'Excluir próprios',
-            descricao: 'Permite excluir clientes próprios cadastrados pelo proprio usuario.'
+            nome: 'Excluir leads',
+            descricao: 'Permite excluir leads cadastrados pelo proprio usuario.'
           }
         ]
       }

@@ -2,7 +2,7 @@ const Busboy = require('busboy');
 const ExcelJS = require('exceljs');
 const db = require('../database/connection');
 const cnpjService = require('./cnpj.service');
-const clienteService = require('./cliente.service');
+const clienteSecretoService = require('./cliente-secreto.service');
 const googlePlacesService = require('./google-places.service');
 
 const INTERVALO_CONSULTA_MS = Number(process.env.CNPJ_IMPORT_INTERVALO_MS || 21000);
@@ -341,7 +341,7 @@ function montarLinhaJaBuscada(item, registro) {
     cache: true,
     busca_realizada: true,
     ja_buscado_em: buscadoEm,
-    cliente_id: null,
+    lead_id: null,
     adicionado: false
   };
 }
@@ -443,7 +443,7 @@ function montarLinhaConsulta(item, dados) {
     google_places: dados.googlePlaces || null,
     cache: Boolean(dados.cache),
     consultado_em: dados.consultadoEm || null,
-    cliente_id: null,
+    lead_id: null,
     adicionado: false
   };
 }
@@ -871,7 +871,7 @@ function montarPayloadCliente(linha) {
   };
 }
 
-async function adicionarClientes(linhas = [], usuarioId) {
+async function adicionarLeads(linhas = [], usuarioId) {
   if (!Array.isArray(linhas) || linhas.length === 0) {
     throw criarHttpError(400, 'Selecione ao menos uma linha consultada.');
   }
@@ -880,7 +880,7 @@ async function adicionarClientes(linhas = [], usuarioId) {
     criados: 0,
     ignorados: 0,
     erros: [],
-    clientes: []
+    leads: []
   };
   const vistos = new Set();
 
@@ -893,16 +893,16 @@ async function adicionarClientes(linhas = [], usuarioId) {
     vistos.add(cnpj);
 
     try {
-      const criado = await clienteService.criarCliente(montarPayloadCliente({ ...linha, cnpj_digitos: cnpj }), usuarioId);
+      const criado = await clienteSecretoService.criarClienteSecreto(montarPayloadCliente({ ...linha, cnpj_digitos: cnpj }), usuarioId);
       resultado.criados += 1;
-      resultado.clientes.push({
+      resultado.leads.push({
         id: criado.id,
         cnpj_digitos: cnpj
       });
     } catch (error) {
       resultado.erros.push({
         cnpj: formatarCnpj(cnpj),
-        message: error.message || 'Erro ao adicionar cliente.'
+        message: error.message || 'Erro ao adicionar lead.'
       });
     }
   }
@@ -961,7 +961,7 @@ async function gerarXlsxResultado(linhas = [], opcoes = {}) {
 }
 
 module.exports = {
-  adicionarClientes,
+  adicionarLeads,
   adicionarGooglePlacesKey,
   atualizarGooglePlacesKey,
   consultarPlanilha,

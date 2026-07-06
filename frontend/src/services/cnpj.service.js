@@ -152,8 +152,8 @@ export async function consultarPlanilhaCnpjStream(arquivo, mapeamento, onEvent, 
   }, onEvent);
 }
 
-export async function adicionarClientesCnpj(linhas) {
-  return apiPost('/cnpj/planilha/clientes', { linhas });
+export async function adicionarLeadsCnpj(linhas) {
+  return apiPost('/cnpj/planilha/leads', { linhas });
 }
 
 function baixarBlob(blob, nomeArquivo) {

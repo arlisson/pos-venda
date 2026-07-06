@@ -288,7 +288,7 @@ function ClientesSecretosPage() {
       const dados = await listarClientesSecretos();
       setClientes(Array.isArray(dados) ? dados : []);
     } catch (error) {
-      setErro(error.message || 'Erro ao carregar clientes próprios.');
+      setErro(error.message || 'Erro ao carregar leads.');
     } finally {
       setCarregando(false);
     }
@@ -333,16 +333,16 @@ function ClientesSecretosPage() {
 
   async function excluir(cliente) {
     if (!podeExcluirCliente(cliente)) return;
-    if (!window.confirm(`Excluir o registro próprio de ${cliente.nome}?`)) return;
+    if (!window.confirm(`Excluir o lead ${cliente.nome}?`)) return;
     setExcluindoId(cliente.id);
     setErro('');
     setSucesso('');
     try {
       await excluirClienteSecreto(cliente.id);
       setClientes(prev => prev.filter(item => item.id !== cliente.id));
-      setSucesso('Cliente próprio excluído com sucesso.');
+      setSucesso('Lead excluído com sucesso.');
     } catch (error) {
-      setErro(error.message || 'Erro ao excluir cliente próprio.');
+      setErro(error.message || 'Erro ao excluir lead.');
     } finally {
       setExcluindoId(null);
     }
@@ -414,7 +414,7 @@ function ClientesSecretosPage() {
       <div className="clientes-page">
         <div className="clientes-toolbar">
           <div className="clientes-toolbar__meta">
-            {clientesFiltrados.length} de {clientes.length} clientes próprios
+            {clientesFiltrados.length} de {clientes.length} leads
             {filtrosAtivos > 0 ? ` - ${filtrosAtivos} filtro(s) ativo(s)` : ''}
           </div>
 
@@ -446,7 +446,7 @@ function ClientesSecretosPage() {
 
             {podeCriar && (
               <button type="button" className="btn btn-primary" onClick={() => navigate('/clientes-secretos/novo')}>
-                <I.Plus size={14} /> Novo cliente
+                <I.Plus size={14} /> Novo lead
               </button>
             )}
           </div>
@@ -476,13 +476,13 @@ function ClientesSecretosPage() {
                 {carregando ? (
                   <tr>
                     <td colSpan={colSpan} className="muted" style={{ textAlign: 'center', padding: 40 }}>
-                      Carregando clientes...
+                      Carregando leads...
                     </td>
                   </tr>
                 ) : clientesFiltrados.length === 0 ? (
                   <tr>
                     <td colSpan={colSpan} className="muted" style={{ textAlign: 'center', padding: 40 }}>
-                      Nenhum cliente encontrado.
+                      Nenhum lead encontrado.
                     </td>
                   </tr>
                 ) : (
@@ -514,7 +514,7 @@ function ClientesSecretosPage() {
                               <strong>{cliente.nome}</strong>
                             </div>
                             <div className="cliente-primary__badges">
-                              <span className="tag clientes-base-tag">Próprio</span>
+                              <span className="tag clientes-base-tag">Lead</span>
                             </div>
                             <span className="cliente-primary__document">{cliente.razao_social || 'Sem razao social'} - {cliente.cnpj || 'Sem CNPJ'}</span>
                             <details className="cliente-mobile-drawer" onClick={event => event.stopPropagation()}>

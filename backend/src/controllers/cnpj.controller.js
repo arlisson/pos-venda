@@ -96,14 +96,14 @@ async function consultarPlanilhaStream(req, res) {
   }
 }
 
-async function adicionarClientes(req, res) {
+async function adicionarLeads(req, res) {
   try {
-    const resultado = await cnpjImportacaoService.adicionarClientes(req.body?.linhas, req.usuario.id);
+    const resultado = await cnpjImportacaoService.adicionarLeads(req.body?.linhas, req.usuario.id);
     return res.json(resultado);
   } catch (error) {
     console.error(error);
     return res.status(error.statusCode || 400).json({
-      message: error.message || 'Erro ao adicionar clientes.'
+      message: error.message || 'Erro ao adicionar leads.'
     });
   }
 }
@@ -174,7 +174,7 @@ async function removerGooglePlacesKey(req, res) {
 }
 
 module.exports = {
-  adicionarClientes,
+  adicionarLeads,
   adicionarGooglePlacesKey,
   atualizarGooglePlacesKey,
   consultar,

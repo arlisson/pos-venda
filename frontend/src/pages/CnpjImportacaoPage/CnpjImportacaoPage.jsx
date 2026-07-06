@@ -3,7 +3,7 @@ import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
-  adicionarClientesCnpj,
+  adicionarLeadsCnpj,
   adicionarGooglePlacesKey,
   atualizarGooglePlacesKey,
   consultarPlanilhaCnpjStream,
@@ -68,7 +68,7 @@ function esperarCancelavel(ms, signal) {
  */
 function CnpjImportacaoPage() {
   const usuario = getUsuarioLocal();
-  const podeCriarCliente = temPermissao(usuario, 'clientes_criar');
+  const podeCriarLead = temPermissao(usuario, 'clientes_secretos_criar');
   const [arquivo, setArquivo] = useState(null);
   const [preview, setPreview] = useState(null);
   const [colunaCnpj, setColunaCnpj] = useState('');
@@ -377,31 +377,31 @@ function CnpjImportacaoPage() {
     await buscarTodosLotes();
   }
 
-  function marcarClientesCriados(resposta) {
-    const criados = new Set((resposta.clientes || []).map(item => item.cnpj_digitos));
+  function marcarLeadsCriados(resposta) {
+    const criados = new Set((resposta.leads || []).map(item => item.cnpj_digitos));
     if (criados.size === 0) return;
 
     setResultado(prev => ({
       ...prev,
       linhas: (prev?.linhas || []).map(linha => (
         criados.has(linha.cnpj_digitos)
-          ? { ...linha, adicionado: true, cliente_id: [...(resposta.clientes || [])].find(item => item.cnpj_digitos === linha.cnpj_digitos)?.id || linha.cliente_id }
+          ? { ...linha, adicionado: true, lead_id: [...(resposta.leads || [])].find(item => item.cnpj_digitos === linha.cnpj_digitos)?.id || linha.lead_id }
           : linha
       ))
     }));
   }
 
   async function adicionarLinhas(linhasSelecionadas) {
-    if (!podeCriarCliente || linhasSelecionadas.length === 0 || adicionando) return;
+    if (!podeCriarLead || linhasSelecionadas.length === 0 || adicionando) return;
 
     setAdicionando(true);
     setErro('');
     setSucesso('');
 
     try {
-      const data = await adicionarClientesCnpj(linhasSelecionadas);
-      marcarClientesCriados(data);
-      const partes = [`${data.criados || 0} cliente(s) criado(s)`];
+      const data = await adicionarLeadsCnpj(linhasSelecionadas);
+      marcarLeadsCriados(data);
+      const partes = [`${data.criados || 0} lead(s) criado(s)`];
       if (data.ignorados) partes.push(`${data.ignorados} ignorado(s)`);
       if (data.erros?.length) partes.push(`${data.erros.length} erro(s)`);
       setSucesso(partes.join(', ') + '.');
@@ -409,7 +409,7 @@ function CnpjImportacaoPage() {
         setErro(data.erros.slice(0, 3).map(item => `${item.cnpj}: ${item.message}`).join(' | '));
       }
     } catch (error) {
-      setErro(error.message || 'Erro ao adicionar clientes.');
+      setErro(error.message || 'Erro ao adicionar leads.');
     } finally {
       setAdicionando(false);
     }
@@ -451,7 +451,7 @@ function CnpjImportacaoPage() {
                 <I.Settings size={14} />
                 Chaves Google
               </button>
-              {resultado && podeCriarCliente && (
+              {resultado && podeCriarLead && (
                 <>
                 <button
                   type="button"
@@ -787,8 +787,8 @@ function CnpjImportacaoPage() {
                               type="button"
                               className="btn btn-sm"
                               onClick={() => adicionarLinhas([linha])}
-                              disabled={!podeCriarCliente || !linhaPodeAdicionar(linha) || adicionando}
-                              title={podeCriarCliente ? 'Adicionar cliente' : 'Sem permissao para cadastrar clientes'}
+                              disabled={!podeCriarLead || !linhaPodeAdicionar(linha) || adicionando}
+                              title={podeCriarLead ? 'Adicionar lead' : 'Sem permissao para cadastrar leads'}
                             >
                               <I.Plus size={13} />
                               Adicionar
