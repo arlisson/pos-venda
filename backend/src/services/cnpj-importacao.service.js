@@ -4,6 +4,7 @@ const db = require('../database/connection');
 const cnpjService = require('./cnpj.service');
 const clienteSecretoService = require('./cliente-secreto.service');
 const googlePlacesService = require('./google-places.service');
+const ClienteSecreto = require('../models/ClienteSecreto');
 
 const INTERVALO_CONSULTA_MS = Number(process.env.CNPJ_IMPORT_INTERVALO_MS || 21000);
 const LIMITE_LINHAS = Number(process.env.CNPJ_IMPORT_LIMITE_LINHAS || 50);
@@ -346,6 +347,115 @@ function montarLinhaJaBuscada(item, registro) {
   };
 }
 
+function montarLinhaBuscaRealizada(registro, index) {
+  const payload = parseJsonSeguro(registro.payload, {});
+  const cnpj = sanitizarCnpj(registro.cnpj || payload.cnpj_digitos || payload.cnpj);
+  const buscadoEm = registro.buscado_em || payload.consultado_em || null;
+
+  return {
+    ...payload,
+    row_index: payload.row_index || index + 1,
+    status: 'encontrado',
+    cnpj: formatarCnpj(cnpj),
+    cnpj_digitos: cnpj,
+    razao_social: payload.razao_social || registro.razao_social || '',
+    nome_fantasia: payload.nome_fantasia || registro.nome_fantasia || '',
+    email: payload.email || registro.email || '',
+    telefone: payload.telefone || registro.telefone || '',
+    cep: payload.cep || registro.cep || '',
+    endereco: payload.endereco || registro.endereco || '',
+    numero: payload.numero || registro.numero || '',
+    complemento: payload.complemento || registro.complemento || '',
+    bairro: payload.bairro || registro.bairro || '',
+    municipio: payload.municipio || registro.municipio || '',
+    uf: payload.uf || registro.uf || '',
+    telefone_fonte: payload.telefone_fonte || registro.telefone_fonte || '',
+    telefone_confianca: payload.telefone_confianca || registro.telefone_confianca || '',
+    google_status: payload.google_status || 'ja_buscado',
+    message: `CNPJ ja buscado${buscadoEm ? ` em ${formatarDataHoraCurta(buscadoEm)}` : ''}.`,
+    cache: true,
+    busca_realizada: true,
+    ja_buscado_em: buscadoEm,
+    lead_id: null,
+    adicionado: false
+  };
+}
+
+async function buscarLeadsExistentesPorCnpj(cnpjs = [], usuarioId) {
+  const documentos = [...new Set(cnpjs.map(sanitizarCnpj).filter(cnpj => cnpj.length === 14))];
+  if (documentos.length === 0 || !usuarioId) return new Map();
+
+  const leads = await ClienteSecreto.query()
+    .select('id', 'cnpj_digitos')
+    .where('criado_por_id', Number(usuarioId))
+    .whereIn('cnpj_digitos', documentos);
+
+  return new Map(leads.map(lead => [lead.cnpj_digitos, lead]));
+}
+
+function aplicarLeadExistente(linha, leadsPorCnpj) {
+  const cnpj = sanitizarCnpj(linha?.cnpj_digitos || linha?.cnpj);
+  const lead = leadsPorCnpj.get(cnpj);
+
+  if (!lead) return linha;
+
+  return {
+    ...linha,
+    lead_id: lead.id,
+    adicionado: true
+  };
+}
+
+async function listarBuscasRealizadas(usuarioId) {
+  if (!await tabelaBuscasRealizadasExiste()) {
+    return {
+      total_cnpjs: 0,
+      total_consultados: 0,
+      total_ja_buscados: 0,
+      requisicoes_externas: 0,
+      fontes: ['Open CNPJ', 'CNPJws', 'Minha Receita'],
+      linhas: []
+    };
+  }
+
+  const registros = await db(TABELA_BUSCAS_REALIZADAS)
+    .orderBy('buscado_em', 'desc')
+    .orderBy('id', 'desc');
+  const linhasBase = registros.map(montarLinhaBuscaRealizada);
+  const leadsPorCnpj = await buscarLeadsExistentesPorCnpj(linhasBase.map(linha => linha.cnpj_digitos), usuarioId);
+  const linhas = linhasBase.map(linha => aplicarLeadExistente(linha, leadsPorCnpj));
+
+  return {
+    arquivo: 'historico-cnpj',
+    aba: 'Buscas realizadas',
+    total_cnpjs: linhas.length,
+    total_consultados: linhas.length,
+    total_ja_buscados: linhas.length,
+    requisicoes_externas: 0,
+    fontes: ['Open CNPJ', 'CNPJws', 'Minha Receita'],
+    linhas
+  };
+}
+
+async function excluirBuscaRealizada(cnpj) {
+  if (!await tabelaBuscasRealizadasExiste()) return 0;
+
+  const cnpjDigitos = sanitizarCnpj(cnpj);
+  if (cnpjDigitos.length !== 14) {
+    throw criarHttpError(400, 'Informe um CNPJ valido para excluir.');
+  }
+
+  return db(TABELA_BUSCAS_REALIZADAS)
+    .where({ cnpj: cnpjDigitos })
+    .delete();
+}
+
+async function limparBuscasRealizadas() {
+  if (!await tabelaBuscasRealizadasExiste()) return 0;
+
+  return db(TABELA_BUSCAS_REALIZADAS).delete();
+}
+
 async function salvarCnpjBuscado(linha) {
   if (!linha || linha.status !== 'encontrado' || !linha.cnpj_digitos) return;
   if (!await tabelaBuscasRealizadasExiste()) return;
@@ -626,6 +736,7 @@ async function consultarPlanilha(req) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
   const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
+  const usuarioId = req.usuario?.id;
   const modoBuscaTelefone = ['sem_telefone', 'somente_google', 'nao'].includes(mapeamento.buscaTelefone)
     ? mapeamento.buscaTelefone
     : 'sem_telefone';
@@ -646,6 +757,7 @@ async function consultarPlanilha(req) {
 
   const linhas = [];
   const jaBuscados = [];
+  const leadsPorCnpj = await buscarLeadsExistentesPorCnpj(cnpjs.map(item => item.cnpj), usuarioId);
   let requisicoesExternas = 0;
   const proximoInicio = inicio + cnpjs.length;
 
@@ -653,7 +765,7 @@ async function consultarPlanilha(req) {
     try {
       const registroJaBuscado = await buscarCnpjJaBuscado(item.cnpj);
       if (registroJaBuscado) {
-        const linhaJaBuscada = montarLinhaJaBuscada(item, registroJaBuscado);
+        const linhaJaBuscada = aplicarLeadExistente(montarLinhaJaBuscada(item, registroJaBuscado), leadsPorCnpj);
         linhas.push(linhaJaBuscada);
         jaBuscados.push(linhaJaBuscada);
         continue;
@@ -661,7 +773,7 @@ async function consultarPlanilha(req) {
 
       const dados = await enriquecerTelefoneFallback(await cnpjService.consultarCnpj(item.cnpj), modoBuscaTelefone);
       if (!dados.cache) requisicoesExternas += 1;
-      const linha = montarLinhaConsulta(item, dados);
+      const linha = aplicarLeadExistente(montarLinhaConsulta(item, dados), leadsPorCnpj);
       linhas.push(linha);
       await salvarCnpjBuscado(linha);
       if (!dados.cache && index < cnpjs.length - 1) {
@@ -729,6 +841,7 @@ async function consultarPlanilhaStream(req, onEvento) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
   const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
+  const usuarioId = req.usuario?.id;
   const modoBuscaTelefone = ['sem_telefone', 'somente_google', 'nao'].includes(mapeamento.buscaTelefone)
     ? mapeamento.buscaTelefone
     : 'sem_telefone';
@@ -786,6 +899,7 @@ async function consultarPlanilhaStream(req, onEvento) {
   };
   let requisicoesExternas = 0;
   let totalJaBuscados = 0;
+  const leadsPorCnpj = await buscarLeadsExistentesPorCnpj(cnpjs.map(item => item.cnpj), usuarioId);
 
   await onEvento({ tipo: 'inicio', ...meta });
 
@@ -801,7 +915,7 @@ async function consultarPlanilhaStream(req, onEvento) {
     try {
       const registroJaBuscado = await buscarCnpjJaBuscado(item.cnpj);
       if (registroJaBuscado) {
-        const linhaJaBuscada = montarLinhaJaBuscada(item, registroJaBuscado);
+        const linhaJaBuscada = aplicarLeadExistente(montarLinhaJaBuscada(item, registroJaBuscado), leadsPorCnpj);
         totalJaBuscados += 1;
         await onEvento({
           tipo: 'linha',
@@ -814,7 +928,7 @@ async function consultarPlanilhaStream(req, onEvento) {
 
       const dados = await enriquecerTelefoneFallback(await cnpjService.consultarCnpj(item.cnpj), modoBuscaTelefone);
       if (!dados.cache) requisicoesExternas += 1;
-      const linha = montarLinhaConsulta(item, dados);
+      const linha = aplicarLeadExistente(montarLinhaConsulta(item, dados), leadsPorCnpj);
       await salvarCnpjBuscado(linha);
       await onEvento({
         tipo: 'linha',
@@ -883,6 +997,10 @@ async function adicionarLeads(linhas = [], usuarioId) {
     leads: []
   };
   const vistos = new Set();
+  const leadsPorCnpj = await buscarLeadsExistentesPorCnpj(
+    linhas.map(linha => linha?.cnpj_digitos || linha?.cnpj),
+    usuarioId
+  );
 
   for (const linha of linhas) {
     const cnpj = sanitizarCnpj(linha?.cnpj_digitos || linha?.cnpj);
@@ -891,6 +1009,17 @@ async function adicionarLeads(linhas = [], usuarioId) {
       continue;
     }
     vistos.add(cnpj);
+
+    const leadExistente = leadsPorCnpj.get(cnpj);
+    if (leadExistente) {
+      resultado.ignorados += 1;
+      resultado.leads.push({
+        id: leadExistente.id,
+        cnpj_digitos: cnpj,
+        existente: true
+      });
+      continue;
+    }
 
     try {
       const criado = await clienteSecretoService.criarClienteSecreto(montarPayloadCliente({ ...linha, cnpj_digitos: cnpj }), usuarioId);
@@ -966,7 +1095,10 @@ module.exports = {
   atualizarGooglePlacesKey,
   consultarPlanilha,
   consultarPlanilhaStream,
+  excluirBuscaRealizada,
   gerarXlsxResultado,
+  limparBuscasRealizadas,
+  listarBuscasRealizadas,
   listarGooglePlacesKeys,
   removerGooglePlacesKey,
   previewPlanilha

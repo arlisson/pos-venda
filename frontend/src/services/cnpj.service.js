@@ -152,6 +152,18 @@ export async function consultarPlanilhaCnpjStream(arquivo, mapeamento, onEvent, 
   }, onEvent);
 }
 
+export async function listarBuscasRealizadasCnpj() {
+  return apiGet('/cnpj/planilha/buscas-realizadas');
+}
+
+export async function excluirBuscaRealizadaCnpj(cnpj) {
+  return apiDelete(`/cnpj/planilha/buscas-realizadas/${sanitizarCnpj(cnpj)}`);
+}
+
+export async function limparBuscasRealizadasCnpj() {
+  return apiDelete('/cnpj/planilha/buscas-realizadas');
+}
+
 export async function adicionarLeadsCnpj(linhas) {
   return apiPost('/cnpj/planilha/leads', { linhas });
 }

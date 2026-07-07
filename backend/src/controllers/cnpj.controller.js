@@ -108,6 +108,42 @@ async function adicionarLeads(req, res) {
   }
 }
 
+async function listarBuscasRealizadas(req, res) {
+  try {
+    const resultado = await cnpjImportacaoService.listarBuscasRealizadas(req.usuario.id);
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao listar consultas de CNPJ.'
+    });
+  }
+}
+
+async function excluirBuscaRealizada(req, res) {
+  try {
+    const total = await cnpjImportacaoService.excluirBuscaRealizada(req.params.cnpj);
+    return res.json({ excluidos: total });
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao excluir consulta de CNPJ.'
+    });
+  }
+}
+
+async function limparBuscasRealizadas(req, res) {
+  try {
+    const total = await cnpjImportacaoService.limparBuscasRealizadas();
+    return res.json({ excluidos: total });
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao limpar consultas de CNPJ.'
+    });
+  }
+}
+
 async function exportarResultado(req, res) {
   try {
     const { buffer, nome } = await cnpjImportacaoService.gerarXlsxResultado(req.body?.linhas, {
@@ -180,7 +216,10 @@ module.exports = {
   consultar,
   consultarPlanilha,
   consultarPlanilhaStream,
+  excluirBuscaRealizada,
   exportarResultado,
+  limparBuscasRealizadas,
+  listarBuscasRealizadas,
   listarGooglePlacesKeys,
   removerGooglePlacesKey,
   previewPlanilha
