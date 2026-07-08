@@ -44,6 +44,7 @@ const routeConfigs = [
   { path: '/admin/leads', title: 'Planilha de Mailing', sub: 'Importe, filtre e distribua mailing para vendedores', id: 'leads' },
   { path: '/admin/cruzar-vendas', title: 'Cruzar Vendas', sub: 'Cruze a planilha principal com as concluídas das operadoras', id: 'cruzar-vendas' },
   { path: '/admin/consultar-cnpj', title: 'Consultar CNPJ', sub: 'Enriqueça planilhas com dados cadastrais de empresas', id: 'consultar-cnpj' },
+  { path: '/clientes-antigos', title: 'Busca de Clientes Antigos', sub: 'Consulte vendas antigas por CNPJ para revenda', id: 'clientes-antigos', end: true },
   { path: '/futuros-clientes', title: 'Futuros Clientes', sub: 'Mailing marcados para acompanhamento futuro', id: 'futuros-clientes', end: true },
   { path: '/mensagens', title: 'Mensagens', sub: 'Conversas internas entre usuários', id: 'mensagens', end: true },
 ];
@@ -133,6 +134,7 @@ function LayoutPrivado({ children }) {
       vendas: '/vendas',
       clientes: '/clientes',
       'clientes-secretos': '/clientes-secretos',
+      'clientes-antigos': '/clientes-antigos',
       'futuros-clientes': '/futuros-clientes',
       funil: '/funil',
       aprovacoes: '/vendas/aprovacoes',

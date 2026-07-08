@@ -172,6 +172,43 @@
   min-height: 38px;
 }
 
+/* Aba "Clientes antigos" (upload de planilha) */
+.clientes-antigos-config .cliente-import-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.clientes-antigos-config .cliente-import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.clientes-antigos-config .cliente-import-summary span {
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.clientes-antigos-config .cliente-import-mapeamento {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.clientes-antigos-abas-info {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
 .config-list-header {
   display: flex;
   align-items: flex-end;

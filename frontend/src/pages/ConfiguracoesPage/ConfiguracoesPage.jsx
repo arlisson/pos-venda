@@ -25,7 +25,18 @@ import {
   listarServicosAdmin,
   listarTiposVendaAdmin
 } from '../../services/config.service';
+import {
+  previewPlanilhaClientesAntigos,
+  importarPlanilhaClientesAntigos
+} from '../../services/cliente-antigo.service';
 import './ConfiguracoesPage.css';
+
+const MAPEAMENTO_CLIENTES_ANTIGOS = {
+  cnpj: '',
+  razao_social: '',
+  nome_fantasia: '',
+  data_venda: ''
+};
 
 const FORM_SIMPLES = {
   nome: '',
@@ -164,7 +175,8 @@ function ConfiguracoesPage() {
     tiposVenda: temPermissao(usuario, 'crud_tipos_venda'),
     servicos: temPermissao(usuario, 'crud_servicos'),
     links: temPermissao(usuario, 'crud_links'),
-    regrasComissao: temPermissao(usuario, 'crud_regras_comissao')
+    regrasComissao: temPermissao(usuario, 'crud_regras_comissao'),
+    clientesAntigos: temPermissao(usuario, 'clientes_antigos_gerenciar')
   };
 
   const abas = useMemo(() => [
@@ -172,13 +184,15 @@ function ConfiguracoesPage() {
     { id: 'tiposVenda', label: 'Tipos de venda', permitido: permissoes.tiposVenda },
     { id: 'servicos', label: 'Serviços', permitido: permissoes.servicos },
     { id: 'links', label: 'Links externos', permitido: permissoes.links },
-    { id: 'regrasComissao', label: 'Comissões', permitido: permissoes.regrasComissao }
+    { id: 'regrasComissao', label: 'Comissões', permitido: permissoes.regrasComissao },
+    { id: 'clientesAntigos', label: 'Clientes antigos', permitido: permissoes.clientesAntigos }
   ].filter(abaItem => abaItem.permitido), [
     permissoes.operadoras,
     permissoes.tiposVenda,
     permissoes.servicos,
     permissoes.links,
-    permissoes.regrasComissao
+    permissoes.regrasComissao,
+    permissoes.clientesAntigos
   ]);
 
   const [aba, setAba] = useState(abas[0]?.id || '');
@@ -198,6 +212,60 @@ function ConfiguracoesPage() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(true);
+
+  // Estado da aba "Clientes antigos" (upload de planilha).
+  const [caArquivo, setCaArquivo] = useState(null);
+  const [caPreview, setCaPreview] = useState(null);
+  const [caMapeamento, setCaMapeamento] = useState(MAPEAMENTO_CLIENTES_ANTIGOS);
+  const [caCarregandoPreview, setCaCarregandoPreview] = useState(false);
+  const [caImportando, setCaImportando] = useState(false);
+  const [caResultado, setCaResultado] = useState(null);
+
+  async function caCarregarPreview(file) {
+    setCaArquivo(file || null);
+    setCaPreview(null);
+    setCaResultado(null);
+    setCaMapeamento(MAPEAMENTO_CLIENTES_ANTIGOS);
+    setErro('');
+    setSucesso('');
+
+    if (!file) return;
+
+    setCaCarregandoPreview(true);
+    try {
+      const data = await previewPlanilhaClientesAntigos(file);
+      setCaPreview(data);
+      setCaMapeamento({
+        cnpj: data.sugestoes?.cnpj || '',
+        razao_social: data.sugestoes?.razao_social || '',
+        nome_fantasia: data.sugestoes?.nome_fantasia || '',
+        data_venda: data.sugestoes?.data_venda || ''
+      });
+    } catch (error) {
+      setErro(error.message || 'Erro ao ler planilha.');
+    } finally {
+      setCaCarregandoPreview(false);
+    }
+  }
+
+  async function caImportar() {
+    if (!caArquivo || !caMapeamento.cnpj || caImportando) return;
+
+    setCaImportando(true);
+    setErro('');
+    setSucesso('');
+    setCaResultado(null);
+
+    try {
+      const data = await importarPlanilhaClientesAntigos(caArquivo, caMapeamento);
+      setCaResultado(data);
+      setSucesso(`Importação concluída: ${data.inseridos} novo(s), ${data.atualizados} atualizado(s), ${data.ignorados} ignorado(s).`);
+    } catch (error) {
+      setErro(error.message || 'Erro ao importar planilha.');
+    } finally {
+      setCaImportando(false);
+    }
+  }
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -737,6 +805,98 @@ function ConfiguracoesPage() {
     );
   }
 
+  function renderClientesAntigos() {
+    const colunas = caPreview?.colunas || [];
+    const campos = [
+      { chave: 'cnpj', label: 'CNPJ', obrigatorio: true },
+      { chave: 'razao_social', label: 'Razão social', obrigatorio: false },
+      { chave: 'nome_fantasia', label: 'Nome fantasia', obrigatorio: false },
+      { chave: 'data_venda', label: 'Data da venda', obrigatorio: false }
+    ];
+
+    return (
+      <div className="clientes-antigos-config">
+        <div className="panel-header">
+          <div>
+            <h2>Base de clientes antigos</h2>
+            <p>Envie uma planilha .xlsx com vendas antigas (fora da fidelidade). Mapeie as colunas e importe. O CNPJ é usado como chave: registros existentes são atualizados.</p>
+          </div>
+        </div>
+
+        <div className="cliente-import-controls">
+          <div className="form-field">
+            <label>Arquivo .xlsx</label>
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={event => caCarregarPreview(event.target.files?.[0])}
+              disabled={caCarregandoPreview || caImportando}
+            />
+          </div>
+        </div>
+
+        {caCarregandoPreview && <div className="muted">Lendo planilha...</div>}
+
+        {caPreview && (
+          <>
+            <div className="cliente-import-summary">
+              <span>Arquivo: <strong>{caPreview.arquivo}</strong></span>
+              <span>Abas: <strong>{caPreview.total_abas || 1}</strong></span>
+              <span>Linhas (todas as abas): <strong>{caPreview.total_linhas}</strong></span>
+              <span>Colunas: <strong>{colunas.length}</strong></span>
+            </div>
+
+            {(caPreview.abas?.length || 0) > 1 && (
+              <p className="clientes-antigos-abas-info">
+                Todas as {caPreview.total_abas} abas serão importadas com o mesmo mapeamento:{' '}
+                {caPreview.abas.map(aba => `${aba.nome} (${aba.linhas})`).join(', ')}.
+              </p>
+            )}
+
+            <div className="cliente-import-mapeamento">
+              {campos.map(campo => (
+                <div className="form-field" key={campo.chave}>
+                  <label>{campo.label}{campo.obrigatorio ? ' *' : ''}</label>
+                  <select
+                    value={caMapeamento[campo.chave]}
+                    onChange={event => setCaMapeamento(prev => ({ ...prev, [campo.chave]: event.target.value }))}
+                    disabled={caImportando}
+                  >
+                    <option value="">{campo.obrigatorio ? 'Selecione' : 'Não importar'}</option>
+                    {colunas.map(coluna => (
+                      <option key={`${campo.chave}:${coluna.nome}:${coluna.index}`} value={coluna.nome}>{coluna.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            <div className="config-form-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={caImportar}
+                disabled={!caMapeamento.cnpj || caImportando}
+              >
+                <I.Upload size={14} />
+                {caImportando ? 'Importando...' : 'Importar base'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {caResultado && (
+          <div className="cliente-import-summary">
+            <span>Total de linhas: <strong>{caResultado.total}</strong></span>
+            <span>Novos: <strong>{caResultado.inseridos}</strong></span>
+            <span>Atualizados: <strong>{caResultado.atualizados}</strong></span>
+            <span>Ignorados: <strong>{caResultado.ignorados}</strong></span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const listaAtual = dados[aba] || [];
   const abaAtual = abas.find(item => item.id === aba);
 
@@ -771,14 +931,18 @@ function ConfiguracoesPage() {
                   </button>
                 ))}
               </div>
-              <div className="config-panel-summary">
-                <strong>{abaAtual?.label}</strong>
-                <span>{listaAtual.length} cadastrado(s)</span>
-              </div>
+              {aba !== 'clientesAntigos' && (
+                <div className="config-panel-summary">
+                  <strong>{abaAtual?.label}</strong>
+                  <span>{listaAtual.length} cadastrado(s)</span>
+                </div>
+              )}
             </div>
 
             <div className="panel-body">
-              {carregando ? (
+              {aba === 'clientesAntigos' ? (
+                renderClientesAntigos()
+              ) : carregando ? (
                 <div className="muted">Carregando...</div>
               ) : aba === 'links' ? (
                 renderLinks(listaAtual)

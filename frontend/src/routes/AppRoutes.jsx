@@ -23,6 +23,7 @@ import ClientesLixeiraPage from '../pages/Clientes/ClientesLixeiraPage';
 import AdminLeadsPage from '../pages/AdminLeadsPage/AdminLeadsPage';
 import CruzarVendasPage from '../pages/CruzarVendasPage/CruzarVendasPage';
 import CnpjImportacaoPage from '../pages/CnpjImportacaoPage/CnpjImportacaoPage';
+import ClientesAntigosPage from '../pages/ClientesAntigosPage/ClientesAntigosPage';
 import FuturosClientesPage from '../pages/FuturosClientesPage/FuturosClientesPage';
 import FechamentoMensalPage from '../pages/FechamentoMensalPage/FechamentoMensalPage';
 import MensagensPage from '../pages/MensagensPage/MensagensPage';
@@ -112,6 +113,11 @@ function AppRoutes() {
       />
 
       <Route
+        path="/clientes-antigos"
+        element={<PrivateRoute permission={['clientes_antigos_buscar', 'clientes_antigos_ver_historico']}><ClientesAntigosPage /></PrivateRoute>}
+      />
+
+      <Route
         path="/futuros-clientes"
         element={<PrivateRoute permission={['futuros_clientes_ver']}><FuturosClientesPage /></PrivateRoute>}
       />
@@ -152,7 +158,7 @@ function AppRoutes() {
       />
       <Route
         path="/configuracoes"
-        element={<PrivateRoute permission={['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos', 'crud_regras_comissao']}><ConfiguracoesPage /></PrivateRoute>}
+        element={<PrivateRoute permission={['crud_operadoras', 'crud_links', 'crud_tipos_venda', 'crud_servicos', 'crud_regras_comissao', 'clientes_antigos_gerenciar']}><ConfiguracoesPage /></PrivateRoute>}
       />
 
       <Route path="*" element={<Navigate to="/" replace />} />

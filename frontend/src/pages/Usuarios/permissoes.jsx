@@ -332,6 +332,38 @@ export const GRUPOS_PERMISSOES = [
     ]
   },
   {
+    id: 'clientes_antigos',
+    titulo: 'Clientes antigos',
+    descricao: 'Ferramenta de busca de vendas antigas (fora da fidelidade) por CNPJ para revenda.',
+    secoes: [
+      {
+        titulo: 'Busca e histórico',
+        itens: [
+          {
+            chave: 'clientes_antigos_buscar',
+            nome: 'Buscar clientes antigos',
+            descricao: 'Permite acessar a busca e consultar vendas antigas por CNPJ.'
+          },
+          {
+            chave: 'clientes_antigos_ver_historico',
+            nome: 'Ver histórico de buscas',
+            descricao: 'Permite visualizar o histórico de buscas de clientes antigos de todos os usuários.'
+          }
+        ]
+      },
+      {
+        titulo: 'Gestão da base',
+        itens: [
+          {
+            chave: 'clientes_antigos_gerenciar',
+            nome: 'Gerenciar base (upload)',
+            descricao: 'Permite subir planilhas de vendas antigas na aba de configurações.'
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'indicadores',
     titulo: 'Indicadores e histórico',
     descricao: 'Libera painéis, relatórios, histórico de movimentações e notificações.',
