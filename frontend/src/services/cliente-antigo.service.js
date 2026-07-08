@@ -13,6 +13,16 @@ export async function buscarClienteAntigo(cnpj) {
   return apiGet(`/clientes-antigos/buscar?cnpj=${digitos}`);
 }
 
+function normalizarValorFiltro(chave, valor) {
+  if (chave !== 'busca') return valor;
+
+  const texto = String(valor || '').trim();
+  const digitos = sanitizarCnpj(texto);
+  const contemApenasDocumento = digitos && texto.replace(/[0-9.\-/\s]/g, '') === '';
+
+  return contemApenasDocumento ? digitos : valor;
+}
+
 /**
  * Lista paginada do historico de buscas.
  */
@@ -20,18 +30,21 @@ export async function listarHistoricoClientesAntigos(filtros = {}) {
   const params = new URLSearchParams();
   Object.entries(filtros).forEach(([chave, valor]) => {
     if (valor !== undefined && valor !== null && valor !== '') {
-      params.append(chave, valor);
+      params.append(chave, normalizarValorFiltro(chave, valor));
     }
   });
   const query = params.toString();
   return apiGet(`/clientes-antigos/historico${query ? `?${query}` : ''}`);
 }
 
-function montarFormDataPlanilha(arquivo, mapeamento) {
+function montarFormDataPlanilha(arquivo, mapeamento, abas = null) {
   const formData = new FormData();
   formData.append('arquivo', arquivo);
   if (mapeamento) {
     formData.append('mapeamento', JSON.stringify(mapeamento));
+  }
+  if (Array.isArray(abas)) {
+    formData.append('abas', JSON.stringify(abas));
   }
   return formData;
 }
@@ -43,9 +56,9 @@ export async function previewPlanilhaClientesAntigos(arquivo) {
   });
 }
 
-export async function importarPlanilhaClientesAntigos(arquivo, mapeamento) {
+export async function importarPlanilhaClientesAntigos(arquivo, mapeamento, abas = null) {
   return apiRequest('/clientes-antigos/planilha/importar', {
     method: 'POST',
-    body: montarFormDataPlanilha(arquivo, mapeamento)
+    body: montarFormDataPlanilha(arquivo, mapeamento, abas)
   });
 }

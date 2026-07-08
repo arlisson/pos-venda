@@ -82,6 +82,47 @@ function valorForm(valor) {
   return fmtMoeda(valor);
 }
 
+function normalizarColunaImportacao(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function tokensBuscaColuna(valor) {
+  return normalizarColunaImportacao(valor)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function colunaCorrespondeBusca(coluna, busca) {
+  const termo = normalizarColunaImportacao(busca);
+  const nome = normalizarColunaImportacao(coluna?.nome);
+  if (!termo || !nome) return false;
+  if (nome === termo || nome.includes(termo)) return true;
+
+  const tokens = tokensBuscaColuna(busca);
+  return tokens.length > 0 && tokens.every(token => nome.includes(token));
+}
+
+function encontrarColunaImportacao(colunas, busca) {
+  if (!busca) return null;
+  return colunas.find(coluna => colunaCorrespondeBusca(coluna, busca)) || null;
+}
+
+function sugerirColunaImportacao(colunas, termos) {
+  return termos.map(termo => encontrarColunaImportacao(colunas, termo)).find(Boolean)?.nome || '';
+}
+function montarSugestoesClientesAntigos(colunas) {
+  return {
+    cnpj: sugerirColunaImportacao(colunas, ['cnpj', 'cpf/cnpj', 'documento']),
+    razao_social: sugerirColunaImportacao(colunas, ['razao', 'razao social', 'empresa']),
+    nome_fantasia: sugerirColunaImportacao(colunas, ['fantasia', 'nome fantasia']),
+    data_venda: sugerirColunaImportacao(colunas, ['data da venda', 'data venda', 'data'])
+  };
+}
+
 /**
  * Processa mascarar brl conforme as regras do dominio.
  */
@@ -220,12 +261,33 @@ function ConfiguracoesPage() {
   const [caCarregandoPreview, setCaCarregandoPreview] = useState(false);
   const [caImportando, setCaImportando] = useState(false);
   const [caResultado, setCaResultado] = useState(null);
+  const [caAbasSelecionadas, setCaAbasSelecionadas] = useState([]);
+
+  const caColunasSelecionadas = useMemo(() => {
+    const abasComColunas = caPreview?.abas?.filter(item => Array.isArray(item.colunas)) || [];
+    const selecionadas = new Set(caAbasSelecionadas);
+    const origem = abasComColunas.length > 0
+      ? abasComColunas.filter(item => selecionadas.has(item.nome)).flatMap(item => item.colunas || [])
+      : caPreview?.colunas || [];
+    const vistas = new Set();
+
+    return origem.filter(coluna => {
+      if (!coluna?.nome || vistas.has(coluna.nome)) return false;
+      vistas.add(coluna.nome);
+      return true;
+    });
+  }, [caPreview, caAbasSelecionadas]);
+
+  const caCnpjSelecionadoValido = useMemo(() => (
+    Boolean(caMapeamento.cnpj && encontrarColunaImportacao(caColunasSelecionadas, caMapeamento.cnpj))
+  ), [caMapeamento.cnpj, caColunasSelecionadas]);
 
   async function caCarregarPreview(file) {
     setCaArquivo(file || null);
     setCaPreview(null);
     setCaResultado(null);
     setCaMapeamento(MAPEAMENTO_CLIENTES_ANTIGOS);
+    setCaAbasSelecionadas([]);
     setErro('');
     setSucesso('');
 
@@ -235,6 +297,7 @@ function ConfiguracoesPage() {
     try {
       const data = await previewPlanilhaClientesAntigos(file);
       setCaPreview(data);
+      setCaAbasSelecionadas((data.abas || []).map(item => item.nome));
       setCaMapeamento({
         cnpj: data.sugestoes?.cnpj || '',
         razao_social: data.sugestoes?.razao_social || '',
@@ -249,7 +312,17 @@ function ConfiguracoesPage() {
   }
 
   async function caImportar() {
-    if (!caArquivo || !caMapeamento.cnpj || caImportando) return;
+    if (!caArquivo || caImportando) return;
+
+    if (caAbasSelecionadas.length === 0) {
+      setErro('Selecione ao menos uma aba para importar.');
+      return;
+    }
+
+    if (!caCnpjSelecionadoValido) {
+      setErro('Selecione a coluna que contem o CNPJ nas abas marcadas.');
+      return;
+    }
 
     setCaImportando(true);
     setErro('');
@@ -257,15 +330,50 @@ function ConfiguracoesPage() {
     setCaResultado(null);
 
     try {
-      const data = await importarPlanilhaClientesAntigos(caArquivo, caMapeamento);
+      const data = await importarPlanilhaClientesAntigos(caArquivo, caMapeamento, caAbasSelecionadas);
       setCaResultado(data);
-      setSucesso(`Importação concluída: ${data.inseridos} novo(s), ${data.atualizados} atualizado(s), ${data.ignorados} ignorado(s).`);
+      setSucesso(`Importacao concluida: ${data.inseridos} novo(s), ${data.atualizados} atualizado(s), ${data.duplicados || 0} duplicado(s) consolidado(s), ${data.invalidos || 0} invalido(s).`);
     } catch (error) {
       setErro(error.message || 'Erro ao importar planilha.');
     } finally {
       setCaImportando(false);
     }
   }
+
+
+  function caToggleTodasAbas(marcar) {
+    setCaAbasSelecionadas(marcar ? (caPreview?.abas || []).map(item => item.nome) : []);
+  }
+
+  function caToggleAba(nome) {
+    setCaAbasSelecionadas(prev => (
+      prev.includes(nome)
+        ? prev.filter(item => item !== nome)
+        : [...prev, nome]
+    ));
+  }
+
+  useEffect(() => {
+    if (!caPreview) return;
+
+    const sugestoes = montarSugestoesClientesAntigos(caColunasSelecionadas);
+
+    setCaMapeamento(prev => {
+      const proximo = { ...prev };
+
+      Object.keys(proximo).forEach(campo => {
+        if (proximo[campo] && !encontrarColunaImportacao(caColunasSelecionadas, proximo[campo])) {
+          proximo[campo] = sugestoes[campo] || '';
+        }
+      });
+
+      if (!proximo.cnpj && sugestoes.cnpj) {
+        proximo.cnpj = sugestoes.cnpj;
+      }
+
+      return Object.keys(proximo).some(campo => proximo[campo] !== prev[campo]) ? proximo : prev;
+    });
+  }, [caPreview, caColunasSelecionadas]);
 
   useEffect(() => {
     if (!sucesso) return undefined;
@@ -806,7 +914,12 @@ function ConfiguracoesPage() {
   }
 
   function renderClientesAntigos() {
-    const colunas = caPreview?.colunas || [];
+    const colunas = caColunasSelecionadas;
+    const abasPlanilha = caPreview?.abas || [];
+    const totalLinhasSelecionadas = abasPlanilha
+      .filter(item => caAbasSelecionadas.includes(item.nome))
+      .reduce((soma, item) => soma + Number(item.linhas || 0), 0);
+    const todasAbasSelecionadas = abasPlanilha.length > 0 && caAbasSelecionadas.length === abasPlanilha.length;
     const campos = [
       { chave: 'cnpj', label: 'CNPJ', obrigatorio: true },
       { chave: 'razao_social', label: 'Razão social', obrigatorio: false },
@@ -842,41 +955,77 @@ function ConfiguracoesPage() {
             <div className="cliente-import-summary">
               <span>Arquivo: <strong>{caPreview.arquivo}</strong></span>
               <span>Abas: <strong>{caPreview.total_abas || 1}</strong></span>
-              <span>Linhas (todas as abas): <strong>{caPreview.total_linhas}</strong></span>
+              <span>Linhas selecionadas: <strong>{totalLinhasSelecionadas}</strong></span>
               <span>Colunas: <strong>{colunas.length}</strong></span>
             </div>
 
-            {(caPreview.abas?.length || 0) > 1 && (
-              <p className="clientes-antigos-abas-info">
-                Todas as {caPreview.total_abas} abas serão importadas com o mesmo mapeamento:{' '}
-                {caPreview.abas.map(aba => `${aba.nome} (${aba.linhas})`).join(', ')}.
-              </p>
+            {abasPlanilha.length > 0 && (
+              <div className="clientes-antigos-abas">
+                <div className="clientes-antigos-abas-header">
+                  <div>
+                    <strong>Abas para importar</strong>
+                    <p>Escolha uma por uma ou marque todas de uma vez. O mesmo mapeamento sera usado nas abas selecionadas.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={() => caToggleTodasAbas(!todasAbasSelecionadas)}
+                    disabled={caImportando}
+                  >
+                    {todasAbasSelecionadas ? 'Desmarcar todas' : 'Selecionar todas'}
+                  </button>
+                </div>
+                <div className="clientes-antigos-abas-lista">
+                  {abasPlanilha.map(item => (
+                    <label key={item.nome} className="clientes-antigos-aba-option">
+                      <input
+                        type="checkbox"
+                        checked={caAbasSelecionadas.includes(item.nome)}
+                        onChange={() => caToggleAba(item.nome)}
+                        disabled={caImportando}
+                      />
+                      <span>{item.nome}</span>
+                      <small>{item.linhas} linha(s)</small>
+                    </label>
+                  ))}
+                </div>
+              </div>
             )}
 
             <div className="cliente-import-mapeamento">
               {campos.map(campo => (
                 <div className="form-field" key={campo.chave}>
                   <label>{campo.label}{campo.obrigatorio ? ' *' : ''}</label>
-                  <select
+                  <input
+                    type="text"
+                    list={`clientes-antigos-colunas-${campo.chave}`}
                     value={caMapeamento[campo.chave]}
                     onChange={event => setCaMapeamento(prev => ({ ...prev, [campo.chave]: event.target.value }))}
+                    placeholder={campo.obrigatorio ? 'Ex.: cnpj' : 'Ex.: data ativacao'}
                     disabled={caImportando}
-                  >
-                    <option value="">{campo.obrigatorio ? 'Selecione' : 'Não importar'}</option>
+                  />
+                  <datalist id={`clientes-antigos-colunas-${campo.chave}`}>
                     {colunas.map(coluna => (
-                      <option key={`${campo.chave}:${coluna.nome}:${coluna.index}`} value={coluna.nome}>{coluna.nome}</option>
+                      <option key={`${campo.chave}:${coluna.nome}:${coluna.index}`} value={coluna.nome} />
                     ))}
-                  </select>
+                  </datalist>
+                  {caMapeamento[campo.chave] && encontrarColunaImportacao(colunas, caMapeamento[campo.chave]) && (
+                    <small>Encontrada: {encontrarColunaImportacao(colunas, caMapeamento[campo.chave])?.nome}</small>
+                  )}
                 </div>
               ))}
             </div>
+
+            {erro && (
+              <div className="alert-error clientes-antigos-import-error">{erro}</div>
+            )}
 
             <div className="config-form-actions">
               <button
                 type="button"
                 className="btn btn-primary"
                 onClick={caImportar}
-                disabled={!caMapeamento.cnpj || caImportando}
+                disabled={!caCnpjSelecionadoValido || caImportando || caAbasSelecionadas.length === 0}
               >
                 <I.Upload size={14} />
                 {caImportando ? 'Importando...' : 'Importar base'}
@@ -888,9 +1037,11 @@ function ConfiguracoesPage() {
         {caResultado && (
           <div className="cliente-import-summary">
             <span>Total de linhas: <strong>{caResultado.total}</strong></span>
+            <span>CNPJs unicos: <strong>{caResultado.unicos ?? ((caResultado.inseridos || 0) + (caResultado.atualizados || 0))}</strong></span>
             <span>Novos: <strong>{caResultado.inseridos}</strong></span>
             <span>Atualizados: <strong>{caResultado.atualizados}</strong></span>
-            <span>Ignorados: <strong>{caResultado.ignorados}</strong></span>
+            <span>Duplicados consolidados: <strong>{caResultado.duplicados || 0}</strong></span>
+            <span>Invalidos ignorados: <strong>{caResultado.invalidos ?? caResultado.ignorados}</strong></span>
           </div>
         )}
       </div>

@@ -39,8 +39,8 @@ async function planilhaPreview(req, res) {
     return res.json(preview);
   } catch (error) {
     if (!error.statusCode) console.error(error);
-    return res.status(error.statusCode || 400).json({
-      message: error.message || 'Erro ao ler planilha.'
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : 'Erro ao ler planilha.'
     });
   }
 }
@@ -54,8 +54,8 @@ async function planilhaImportar(req, res) {
     return res.json(resultado);
   } catch (error) {
     if (!error.statusCode) console.error(error);
-    return res.status(error.statusCode || 400).json({
-      message: error.message || 'Erro ao importar planilha.'
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : 'Erro ao importar planilha.'
     });
   }
 }

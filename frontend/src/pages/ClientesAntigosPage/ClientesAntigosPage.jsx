@@ -136,6 +136,15 @@ function ClientesAntigosPage() {
     setErroHistorico('');
   }
 
+  function alterarBuscaHistorico(valor) {
+    const texto = String(valor || '');
+    const digitos = sanitizarCnpj(texto);
+    const apenasDocumento = digitos && texto.replace(/[0-9.\-/\s]/g, '') === '';
+
+    setPagina(1);
+    setBuscaHistorico(apenasDocumento ? formatarCnpj(digitos) : valor);
+  }
+
   return (
     <LayoutPrivado>
       <div className="clientes-antigos-page">
@@ -217,7 +226,7 @@ function ClientesAntigosPage() {
                     <I.Search size={14} />
                     <input
                       value={buscaHistorico}
-                      onChange={event => { setPagina(1); setBuscaHistorico(event.target.value); }}
+                      onChange={event => alterarBuscaHistorico(event.target.value)}
                       placeholder="Filtrar por usuário ou CNPJ"
                     />
                   </div>

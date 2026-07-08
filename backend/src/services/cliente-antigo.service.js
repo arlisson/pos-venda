@@ -7,20 +7,25 @@ const {
   lerArquivoMultipart,
   lerWorkbook,
   primeiraAbaComCabecalho,
-  obterCabecalhos,
+  detectarCabecalhos,
   montarAmostras,
+  normalizarTexto,
   sugerirColuna,
   textoCelula
 } = require('../utils/planilha-xlsx');
 
 const LIMITE_LINHAS = Number(process.env.VENDAS_ANTIGAS_LIMITE_LINHAS || 100000);
 const CHUNK = 500;
+const PALAVRAS_CABECALHO_CNPJ = ['cnpj', 'cpf/cnpj', 'documento'];
 
 /**
- * Remove tudo que nao for digito e limita a 14 caracteres.
+ * Remove tudo que nao for digito, recupera zeros a esquerda comuns em CNPJ
+ * numerico do Excel e limita a 14 caracteres.
  */
 function sanitizarCnpj(valor) {
-  return String(valor || '').replace(/\D/g, '').slice(0, 14);
+  const digitos = String(valor || '').replace(/\D/g, '');
+  if (digitos.length >= 12 && digitos.length < 14) return digitos.padStart(14, '0');
+  return digitos.slice(0, 14);
 }
 
 function cnpjRepetido(cnpj) {
@@ -55,6 +60,77 @@ function parseDataVenda(valor) {
   return null;
 }
 
+function normalizarNomeAba(valor) {
+  return String(valor || '').trim().toLowerCase();
+}
+
+function parseAbasSelecionadas(valor) {
+  if (!valor) return null;
+
+  try {
+    const abas = JSON.parse(valor);
+    if (!Array.isArray(abas)) {
+      throw new Error('Formato invalido');
+    }
+
+    return abas
+      .map(aba => String(aba || '').trim())
+      .filter(Boolean);
+  } catch {
+    throw criarHttpError(400, 'Selecao de abas invalida.');
+  }
+}
+
+function filtrarWorksheets(workbook, nomesSelecionados = null) {
+  if (!nomesSelecionados) return workbook.worksheets;
+
+  const selecionadas = new Set(nomesSelecionados.map(normalizarNomeAba).filter(Boolean));
+  const worksheets = workbook.worksheets.filter(worksheet => selecionadas.has(normalizarNomeAba(worksheet.name)));
+
+  if (selecionadas.size === 0 || worksheets.length === 0) {
+    throw criarHttpError(400, 'Selecione ao menos uma aba valida para importar.');
+  }
+
+  return worksheets;
+}
+
+function detectarCabecalhoCnpj(worksheet) {
+  return detectarCabecalhos(worksheet, { palavrasChave: PALAVRAS_CABECALHO_CNPJ });
+}
+
+function prepararAba(worksheet) {
+  const cabecalho = detectarCabecalhoCnpj(worksheet);
+  return {
+    worksheet,
+    colunas: cabecalho.colunas,
+    linhaCabecalho: cabecalho.linhaCabecalho,
+    linhas: Math.max(worksheet.rowCount - cabecalho.linhaCabecalho, 0)
+  };
+}
+
+function tokensBusca(valor) {
+  return normalizarTexto(valor)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function colunaCorrespondeBusca(coluna, busca) {
+  const termo = normalizarTexto(busca);
+  if (!termo) return false;
+
+  const nome = normalizarTexto(coluna?.nome);
+  if (!nome) return false;
+  if (nome === termo || nome.includes(termo)) return true;
+
+  const tokens = tokensBusca(busca);
+  return tokens.length > 0 && tokens.every(token => nome.includes(token));
+}
+
+function resolverColuna(colunas, busca) {
+  if (!busca) return null;
+  return colunas.find(coluna => colunaCorrespondeBusca(coluna, busca)) || null;
+}
+
 /**
  * Preview da planilha: cabecalhos, amostras e colunas sugeridas para o mapeamento.
  * Considera TODAS as abas (cada aba costuma representar um mes com as mesmas colunas):
@@ -63,17 +139,32 @@ function parseDataVenda(valor) {
 async function previewPlanilha(req) {
   const { arquivo } = await lerArquivoMultipart(req);
   const workbook = await lerWorkbook(arquivo.buffer);
-  const { worksheet, colunas } = primeiraAbaComCabecalho(workbook);
+  const { worksheet, colunas, linhaCabecalho } = primeiraAbaComCabecalho(workbook, { palavrasChave: PALAVRAS_CABECALHO_CNPJ });
 
-  const abas = workbook.worksheets.map(aba => ({
-    nome: aba.name,
-    linhas: Math.max(aba.rowCount - 1, 0)
-  }));
+  const abas = workbook.worksheets.map(aba => {
+    try {
+      const preparada = prepararAba(aba);
+      return {
+        nome: aba.name,
+        linhas: preparada.linhas,
+        linha_cabecalho: preparada.linhaCabecalho,
+        colunas: preparada.colunas
+      };
+    } catch {
+      return {
+        nome: aba.name,
+        linhas: 0,
+        linha_cabecalho: null,
+        colunas: []
+      };
+    }
+  });
   const totalLinhas = abas.reduce((soma, aba) => soma + aba.linhas, 0);
 
   return {
     arquivo: arquivo.filename,
     aba: worksheet.name,
+    linha_cabecalho: linhaCabecalho,
     abas,
     total_abas: abas.length,
     total_linhas: totalLinhas,
@@ -85,7 +176,7 @@ async function previewPlanilha(req) {
       nome_fantasia: sugerirColuna(colunas, ['fantasia', 'nome fantasia']),
       data_venda: sugerirColuna(colunas, ['data da venda', 'data venda', 'data'])
     },
-    amostras: montarAmostras(worksheet, colunas)
+    amostras: montarAmostras(worksheet, colunas, 5, linhaCabecalho)
   };
 }
 
@@ -108,42 +199,62 @@ async function importarPlanilha(req, usuarioId) {
   }
 
   const workbook = await lerWorkbook(arquivo.buffer);
+  const worksheets = filtrarWorksheets(workbook, parseAbasSelecionadas(campos.abas));
+  const abasPreparadas = worksheets
+    .map(worksheet => {
+      try {
+        return prepararAba(worksheet);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
 
-  // Todas as abas compartilham as mesmas colunas (cada aba = um mes).
-  const totalLinhas = workbook.worksheets.reduce((soma, aba) => soma + Math.max(aba.rowCount - 1, 0), 0);
+  if (abasPreparadas.length === 0) {
+    throw criarHttpError(400, 'Nenhuma aba selecionada possui cabecalho de CNPJ valido.');
+  }
+
+  // As abas selecionadas compartilham as mesmas colunas (cada aba = um mes).
+  const totalLinhas = abasPreparadas.reduce((soma, aba) => soma + aba.linhas, 0);
   if (totalLinhas > LIMITE_LINHAS) {
     throw criarHttpError(400, `A planilha excede o limite de ${LIMITE_LINHAS} linhas.`);
   }
 
-  const mapeados = new Set(Object.values(mapeamento).filter(Boolean));
   const lote = `${(arquivo.filename || 'planilha').replace(/\.xlsx$/i, '')}-${new Date().toISOString().slice(0, 19)}`;
 
   const registrosPorCnpj = new Map();
-  let ignorados = 0;
+  let invalidos = 0;
+  let duplicados = 0;
 
-  for (const worksheet of workbook.worksheets) {
-    let colunas;
-    try {
-      colunas = obterCabecalhos(worksheet);
-    } catch {
-      continue; // aba vazia/sem cabecalho
-    }
-
-    const indicePorNome = new Map(colunas.map(coluna => [coluna.nome, coluna.index]));
-    const valorColuna = (row, nomeColuna) => {
-      if (!nomeColuna) return '';
-      const idx = indicePorNome.get(nomeColuna);
-      if (!idx) return '';
-      return textoCelula(row.getCell(idx).value);
+  for (const { worksheet, colunas, linhaCabecalho } of abasPreparadas) {
+    const colunasResolvidas = {
+      cnpj: resolverColuna(colunas, mapeamento.cnpj),
+      razao_social: resolverColuna(colunas, mapeamento.razao_social),
+      nome_fantasia: resolverColuna(colunas, mapeamento.nome_fantasia),
+      data_venda: resolverColuna(colunas, mapeamento.data_venda)
     };
 
-    for (let rowIndex = 2; rowIndex <= worksheet.rowCount; rowIndex += 1) {
+    if (!colunasResolvidas.cnpj) {
+      throw criarHttpError(400, `Nao foi encontrada coluna de CNPJ na aba "${worksheet.name}" usando o texto "${mapeamento.cnpj}".`);
+    }
+
+    const mapeados = new Set(Object.values(colunasResolvidas).filter(Boolean).map(coluna => coluna.nome));
+    const valorColuna = (row, coluna) => {
+      if (!coluna) return '';
+      return textoCelula(row.getCell(coluna.index).value);
+    };
+
+    for (let rowIndex = linhaCabecalho + 1; rowIndex <= worksheet.rowCount; rowIndex += 1) {
       const row = worksheet.getRow(rowIndex);
-      const digitos = sanitizarCnpj(valorColuna(row, mapeamento.cnpj));
+      const digitos = sanitizarCnpj(valorColuna(row, colunasResolvidas.cnpj));
 
       if (digitos.length !== 14 || cnpjRepetido(digitos)) {
-        ignorados += 1;
+        invalidos += 1;
         continue;
+      }
+
+      if (registrosPorCnpj.has(digitos)) {
+        duplicados += 1;
       }
 
       const extras = { Aba: worksheet.name };
@@ -156,9 +267,9 @@ async function importarPlanilha(req, usuarioId) {
       registrosPorCnpj.set(digitos, {
         cnpj: formatarCnpj(digitos),
         cnpj_digitos: digitos,
-        razao_social: valorColuna(row, mapeamento.razao_social) || null,
-        nome_fantasia: valorColuna(row, mapeamento.nome_fantasia) || null,
-        data_venda: parseDataVenda(valorColuna(row, mapeamento.data_venda)),
+        razao_social: valorColuna(row, colunasResolvidas.razao_social) || null,
+        nome_fantasia: valorColuna(row, colunasResolvidas.nome_fantasia) || null,
+        data_venda: parseDataVenda(valorColuna(row, colunasResolvidas.data_venda)),
         dados_extras: JSON.stringify(extras),
         lote,
         importado_por_id: usuarioId || null,
@@ -170,9 +281,19 @@ async function importarPlanilha(req, usuarioId) {
 
   const registros = Array.from(registrosPorCnpj.values());
   const unicos = registros.length;
+  const ignorados = invalidos + duplicados;
 
   if (unicos === 0) {
-    return { total: totalLinhas, inseridos: 0, atualizados: 0, ignorados, lote };
+    return {
+      total: totalLinhas,
+      unicos,
+      inseridos: 0,
+      atualizados: 0,
+      ignorados,
+      invalidos,
+      duplicados,
+      lote
+    };
   }
 
   // Descobre quantos ja existem para separar inseridos de atualizados.
@@ -197,9 +318,12 @@ async function importarPlanilha(req, usuarioId) {
   const atualizados = jaExistentes.size;
   return {
     total: totalLinhas,
+    unicos,
     inseridos: unicos - atualizados,
     atualizados,
     ignorados,
+    invalidos,
+    duplicados,
     lote
   };
 }

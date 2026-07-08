@@ -15,7 +15,7 @@ function criarHttpError(statusCode, message) {
 
 function textoCelula(valor) {
   if (valor === null || valor === undefined) return '';
-  if (valor instanceof Date) return valor.toISOString().slice(0, 10);
+  if (valor instanceof Date) return Number.isNaN(valor.getTime()) ? '' : valor.toISOString().slice(0, 10);
   if (typeof valor !== 'object') return String(valor).trim();
   if (Array.isArray(valor.richText)) return valor.richText.map(item => item.text || '').join('').trim();
   if (valor.text) return String(valor.text).trim();
@@ -26,7 +26,7 @@ function textoCelula(valor) {
 function normalizarTexto(valor) {
   return String(valor || '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
 }
@@ -100,27 +100,8 @@ async function lerWorkbook(buffer) {
   return workbook;
 }
 
-/**
- * Retorna a primeira aba cuja primeira linha possui cabecalhos (para servir de
- * referencia ao mapeamento quando ha varias abas com as mesmas colunas).
- */
-function primeiraAbaComCabecalho(workbook) {
-  for (const worksheet of workbook.worksheets) {
-    try {
-      const colunas = obterCabecalhos(worksheet);
-      if (colunas.length) return { worksheet, colunas };
-    } catch {
-      // aba sem cabecalho valido: tenta a proxima
-    }
-  }
-  throw criarHttpError(400, 'Nenhuma aba com cabecalhos foi encontrada na planilha.');
-}
-
-/**
- * Retorna os cabecalhos da primeira linha como [{ nome, index }].
- */
-function obterCabecalhos(worksheet) {
-  const header = worksheet.getRow(1);
+function obterCabecalhos(worksheet, linhaCabecalho = 1) {
+  const header = worksheet.getRow(linhaCabecalho);
   const colunas = [];
 
   for (let col = 1; col <= worksheet.columnCount; col += 1) {
@@ -129,20 +110,76 @@ function obterCabecalhos(worksheet) {
   }
 
   if (colunas.length === 0) {
-    throw criarHttpError(400, 'Nao foi possivel identificar cabecalhos na primeira linha.');
+    throw criarHttpError(400, `Nao foi possivel identificar cabecalhos na linha ${linhaCabecalho}.`);
   }
 
   return colunas;
 }
 
+function colunaCombinaPalavraChave(nome, palavrasChave) {
+  const normalizado = normalizarTexto(nome);
+  return palavrasChave.some(palavra => {
+    const chave = normalizarTexto(palavra);
+    if (!chave) return false;
+    if (normalizado === chave) return true;
+    // Evita aceitar avisos longos como cabecalho so porque citam "CNPJ" no texto.
+    return normalizado.includes(chave) && normalizado.length <= 30;
+  });
+}
+
+/**
+ * Procura a linha de cabecalho nas primeiras linhas da aba.
+ * Quando palavrasChave sao informadas, exige uma coluna compativel (ex.: CNPJ).
+ */
+function detectarCabecalhos(worksheet, opcoes = {}) {
+  const maxLinhas = Math.min(Number(opcoes.maxLinhas) || 12, worksheet.rowCount || 0);
+  const palavrasChave = Array.isArray(opcoes.palavrasChave) ? opcoes.palavrasChave : [];
+
+  for (let linha = 1; linha <= maxLinhas; linha += 1) {
+    let colunas;
+    try {
+      colunas = obterCabecalhos(worksheet, linha);
+    } catch {
+      continue;
+    }
+
+    if (palavrasChave.length === 0) {
+      return { linhaCabecalho: linha, colunas };
+    }
+
+    const temColunaChave = colunas.some(coluna => colunaCombinaPalavraChave(coluna.nome, palavrasChave));
+    if (temColunaChave && colunas.length >= 2) {
+      return { linhaCabecalho: linha, colunas };
+    }
+  }
+
+  throw criarHttpError(400, 'Nao foi possivel identificar cabecalhos validos na planilha.');
+}
+
+/**
+ * Retorna a primeira aba cuja area inicial possui cabecalhos validos.
+ */
+function primeiraAbaComCabecalho(workbook, opcoes = {}) {
+  for (const worksheet of workbook.worksheets) {
+    try {
+      const resultado = detectarCabecalhos(worksheet, opcoes);
+      if (resultado.colunas.length) return { worksheet, ...resultado };
+    } catch {
+      // aba sem cabecalho valido: tenta a proxima
+    }
+  }
+  throw criarHttpError(400, 'Nenhuma aba com cabecalhos foi encontrada na planilha.');
+}
+
 /**
  * Retorna algumas linhas de amostra para preview no frontend.
  */
-function montarAmostras(worksheet, colunas, limiteLinhas = 5) {
+function montarAmostras(worksheet, colunas, limiteLinhas = 5, linhaCabecalho = 1) {
   const amostras = [];
-  const limite = Math.min(worksheet.rowCount, limiteLinhas + 1);
+  const primeiraLinhaDados = linhaCabecalho + 1;
+  const limite = Math.min(worksheet.rowCount, linhaCabecalho + limiteLinhas);
 
-  for (let rowIndex = 2; rowIndex <= limite; rowIndex += 1) {
+  for (let rowIndex = primeiraLinhaDados; rowIndex <= limite; rowIndex += 1) {
     const row = worksheet.getRow(rowIndex);
     const dados = {};
     colunas.forEach(coluna => {
@@ -174,6 +211,7 @@ module.exports = {
   lerWorksheet,
   lerWorkbook,
   primeiraAbaComCabecalho,
+  detectarCabecalhos,
   obterCabecalhos,
   montarAmostras,
   sugerirColuna
