@@ -70,10 +70,14 @@ export async function apiRequest(endpoint, options = {}) {
  */
 export async function apiBlob(endpoint, options = {}) {
   const token = localStorage.getItem('token');
+  const isFormData = options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
     ...(options.headers || {})
   };
+
+  if (!isFormData) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -207,3 +211,4 @@ export function apiPut(endpoint, body) {
 export function apiDelete(endpoint) {
   return apiRequest(endpoint, { method: 'DELETE' });
 }
+

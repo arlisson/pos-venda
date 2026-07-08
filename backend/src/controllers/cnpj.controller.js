@@ -144,11 +144,29 @@ async function limparBuscasRealizadas(req, res) {
   }
 }
 
+async function reconsultarBuscasRealizadas(req, res) {
+  try {
+    const resultado = await cnpjImportacaoService.reconsultarBuscasRealizadas(
+      req.body?.cnpjs,
+      req.usuario.id,
+      { buscaTelefone: req.body?.buscaTelefone }
+    );
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao buscar CNPJs novamente.'
+    });
+  }
+}
 async function exportarResultado(req, res) {
   try {
-    const { buffer, nome } = await cnpjImportacaoService.gerarXlsxResultado(req.body?.linhas, {
-      nome: req.body?.nome
-    });
+    const isMultipart = String(req.headers['content-type'] || '').includes('multipart/form-data');
+    const { buffer, nome } = isMultipart
+      ? await cnpjImportacaoService.gerarXlsxResultadoUpload(req)
+      : await cnpjImportacaoService.gerarXlsxResultado(req.body?.linhas, {
+          nome: req.body?.nome
+        });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
@@ -222,5 +240,7 @@ module.exports = {
   listarBuscasRealizadas,
   listarGooglePlacesKeys,
   removerGooglePlacesKey,
-  previewPlanilha
+  previewPlanilha,
+  reconsultarBuscasRealizadas
 };
+

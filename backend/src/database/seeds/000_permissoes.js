@@ -15,6 +15,11 @@ const PERMISSOES = [
     descricao: 'Permite ver todas as vendas cadastradas.'
   },
   {
+    chave: 'vendas_limitar_ultimos_6_meses',
+    nome: 'Vendas: limitar aos ultimos 6 meses',
+    descricao: 'Limita a listagem, busca e exportacao de vendas as vendas dos ultimos 6 meses.'
+  },
+  {
     chave: 'vendas_criar',
     nome: 'Vendas: criar',
     descricao: 'Permite registrar novas vendas.'

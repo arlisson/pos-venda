@@ -13,6 +13,7 @@ router.put('/google-places/keys/:id', exigirUmaPermissao(['clientes_importar_pla
 router.delete('/google-places/keys/:id', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.removerGooglePlacesKey);
 router.post('/planilha/preview', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.previewPlanilha);
 router.get('/planilha/buscas-realizadas', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.listarBuscasRealizadas);
+router.post('/planilha/buscas-realizadas/reconsultar', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.reconsultarBuscasRealizadas);
 router.delete('/planilha/buscas-realizadas', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.limparBuscasRealizadas);
 router.delete('/planilha/buscas-realizadas/:cnpj', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.excluirBuscaRealizada);
 router.post('/planilha/consultar', exigirUmaPermissao(['clientes_importar_planilhas']), cnpjController.consultarPlanilha);
