@@ -56,6 +56,16 @@ export const GRUPOS_PERMISSOES = [
         ]
       },
       {
+        titulo: 'Limitacoes',
+        itens: [
+          {
+            chave: 'vendas_limitar_ultimos_6_meses',
+            nome: 'Ultimos 6 meses',
+            descricao: 'Limita a listagem, busca e exportacao de vendas as vendas dos ultimos 6 meses.'
+          }
+        ]
+      },
+      {
         titulo: 'Cadastro e manutenção',
         itens: [
           {

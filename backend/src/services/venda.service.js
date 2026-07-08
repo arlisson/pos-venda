@@ -126,6 +126,8 @@ const FUNIL_STATUS_LABELS = {
 };
 
 const PERMISSAO_AUTO_POS_VENDA = 'vendas_auto_pos_venda';
+const PERMISSAO_LIMITAR_VENDAS_ULTIMOS_6_MESES = 'vendas_limitar_ultimos_6_meses';
+const MESES_LIMITE_VENDAS_RECENTES = 6;
 const DIAS_OCULTAR_CONCLUIDAS_FUNIL = 14;
 const FUNIL_PRIORIDADES = ['alta', 'media', 'baixa'];
 const PROMESSA_CUMPRIDA_OPCOES = ['pendente', 'sim', 'nao'];
@@ -1073,7 +1075,8 @@ async function buscarEscopoVendas(usuarioId) {
   return {
     podeVerTodas: usuarioTemPermissaoLocal(usuario, 'vendas_ver_todas'),
     podeVerProprias: usuarioTemPermissaoLocal(usuario, 'vendas_ver_proprias'),
-    podeVerCompartilhadas: usuarioTemPermissaoLocal(usuario, 'ver_vendas_compartilhadas')
+    podeVerCompartilhadas: usuarioTemPermissaoLocal(usuario, 'ver_vendas_compartilhadas'),
+    limitarUltimos6Meses: usuarioTemPermissaoLocal(usuario, PERMISSAO_LIMITAR_VENDAS_ULTIMOS_6_MESES)
   };
 }
 
@@ -1253,6 +1256,14 @@ function adicionarMesesDataISO(dataISO, meses) {
   destino.setDate(Math.min(diaOriginal, ultimoDiaMes));
 
   return formatarDataISO(destino);
+}
+
+/**
+ * Obtem data minima para usuarios limitados a vendas recentes.
+ */
+function obterDataLimiteVendasRecentes(referencia = new Date()) {
+  const dataReferencia = parseUtcDateTime(referencia) || new Date();
+  return adicionarMesesDataISO(formatarDataISO(dataReferencia), -MESES_LIMITE_VENDAS_RECENTES);
 }
 
 /**
@@ -1953,6 +1964,10 @@ async function listarVendas(filtros = {}, usuarioId) {
 
   if (filtros.data_fim) {
     query.where('data_venda', '<=', normalizarData(filtros.data_fim));
+  }
+
+  if (escopo.limitarUltimos6Meses) {
+    query.where('data_venda', '>=', obterDataLimiteVendasRecentes());
   }
 
   if (filtros.valor_min) {
