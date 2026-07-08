@@ -130,10 +130,10 @@ function montarFormDataPlanilha(arquivo, mapeamento) {
   return formData;
 }
 
-export async function previewPlanilhaCnpj(arquivo) {
+export async function previewPlanilhaCnpj(arquivo, mapeamento) {
   return apiRequest('/cnpj/planilha/preview', {
     method: 'POST',
-    body: montarFormDataPlanilha(arquivo)
+    body: montarFormDataPlanilha(arquivo, mapeamento)
   });
 }
 
@@ -193,6 +193,7 @@ export async function exportarResultadoCnpj(linhas, nome = '', opcoes = {}) {
     formData.append('arquivo', arquivo);
     formData.append('linhas', JSON.stringify(linhas));
     formData.append('nome', nome || arquivo.name || 'consulta-cnpj');
+    if (opcoes.aba) formData.append('aba', opcoes.aba);
     return formData;
   })() : JSON.stringify({ linhas, nome });
 

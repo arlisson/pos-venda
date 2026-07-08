@@ -309,6 +309,7 @@ function CnpjImportacaoPage() {
   const podeCriarLead = temPermissao(usuario, 'clientes_secretos_criar');
   const [arquivo, setArquivo] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [abaSelecionada, setAbaSelecionada] = useState('');
   const [colunaBusca, setColunaBusca] = useState('');
   const [colunaCnpjTexto, setColunaCnpjTexto] = useState('');
   const [tipoBuscaPlanilha, setTipoBuscaPlanilha] = useState('cnpj');
@@ -340,6 +341,7 @@ function CnpjImportacaoPage() {
   const cancelControllerRef = useRef(null);
 
   const colunas = preview?.colunas || [];
+  const abasPlanilha = preview?.abas || [];
   const linhas = useMemo(() => resultado?.linhas || [], [resultado]);
   const linhasFiltradas = useMemo(() => {
     const termo = normalizarTextoBusca(buscaTexto);
@@ -500,9 +502,10 @@ function CnpjImportacaoPage() {
     return 'tag tag-success';
   }
 
-  async function carregarPreview(file) {
+  async function carregarPreview(file, aba = '') {
     setArquivo(file || null);
     setPreview(null);
+    setAbaSelecionada(aba || '');
     setColunaBusca('');
     setColunaCnpjTexto('');
     setTipoBuscaPlanilha('cnpj');
@@ -516,9 +519,10 @@ function CnpjImportacaoPage() {
 
     setCarregando(true);
     try {
-      const data = await previewPlanilhaCnpj(file);
+      const data = await previewPlanilhaCnpj(file, aba ? { aba } : null);
       const tipoSugerido = data.sugestoes?.tipo_busca || (data.sugestoes?.cnpj ? 'cnpj' : 'texto');
       setPreview(data);
+      setAbaSelecionada(data.aba || aba || '');
       setColunaBusca(data.sugestoes?.busca || data.sugestoes?.cnpj || '');
       setColunaCnpjTexto(data.sugestoes?.cnpj || '');
       setTipoBuscaPlanilha(tipoSugerido);
@@ -537,6 +541,7 @@ function CnpjImportacaoPage() {
         colunaBusca,
         colunaCnpjTexto: buscaPorTexto ? colunaCnpjTexto : '',
         tipoBusca: tipoBuscaPlanilha,
+        aba: preview?.aba || abaSelecionada,
         inicio,
         limite: preview?.limite_linhas,
         buscaTelefone: buscaPorTexto ? 'somente_google' : modoBuscaTelefone
@@ -825,7 +830,7 @@ function CnpjImportacaoPage() {
     setSucesso('');
 
     try {
-      await exportarResultadoCnpj(linhasFiltradas, preview?.arquivo || 'consulta-cnpj', { arquivo });
+      await exportarResultadoCnpj(linhasFiltradas, preview?.arquivo || 'consulta-cnpj', { arquivo, aba: preview?.aba || abaSelecionada });
       setSucesso(arquivo ? 'Planilha original exportada com a coluna de telefone encontrado.' : 'Resultado exportado em Excel.');
     } catch (error) {
       setErro(error.message || 'Erro ao exportar resultado.');
@@ -899,6 +904,23 @@ function CnpjImportacaoPage() {
               />
             </div>
 
+            {abasPlanilha.length > 1 && (
+              <div className="form-field">
+                <label>Aba da planilha</label>
+                <select
+                  value={abaSelecionada}
+                  onChange={event => carregarPreview(arquivo, event.target.value)}
+                  disabled={!arquivo || carregando || adicionando}
+                  required
+                >
+                  {abasPlanilha.map(aba => (
+                    <option key={`${aba.nome}:${aba.index}`} value={aba.nome}>
+                      {aba.nome} ({aba.total_linhas} linhas)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="form-field">
               <label>Coluna de busca</label>
               <select

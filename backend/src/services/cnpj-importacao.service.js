@@ -156,12 +156,38 @@ function lerArquivoMultipart(req) {
   });
 }
 
-async function lerWorksheet(buffer) {
+async function carregarWorkbook(buffer) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
-  const worksheet = workbook.worksheets[0];
-  if (!worksheet) throw criarHttpError(400, 'A planilha nao possui abas.');
-  return worksheet;
+  if (!workbook.worksheets[0]) throw criarHttpError(400, 'A planilha nao possui abas.');
+  return workbook;
+}
+
+function listarAbasWorkbook(workbook) {
+  return workbook.worksheets.map((worksheet, index) => ({
+    nome: worksheet.name,
+    index,
+    total_linhas: Math.max(worksheet.rowCount - 1, 0)
+  }));
+}
+
+function selecionarWorksheet(workbook, nomeAba = '') {
+  const abas = listarAbasWorkbook(workbook);
+  const nomeNormalizado = String(nomeAba || '').trim();
+  const worksheet = nomeNormalizado
+    ? workbook.worksheets.find(item => item.name === nomeNormalizado)
+    : workbook.worksheets[0];
+
+  if (!worksheet) {
+    throw criarHttpError(400, 'Selecione uma aba valida da planilha.');
+  }
+
+  return { worksheet, abas };
+}
+
+async function lerWorksheet(buffer, nomeAba = '') {
+  const workbook = await carregarWorkbook(buffer);
+  return selecionarWorksheet(workbook, nomeAba).worksheet;
 }
 
 function obterCabecalhos(worksheet) {
@@ -208,13 +234,16 @@ function montarAmostras(worksheet, colunas) {
 }
 
 async function previewPlanilha(req) {
-  const { arquivo } = await lerArquivoMultipart(req);
-  const worksheet = await lerWorksheet(arquivo.buffer);
+  const { arquivo, campos } = await lerArquivoMultipart(req);
+  const mapeamento = parseMapeamento(campos.mapeamento);
+  const workbook = await carregarWorkbook(arquivo.buffer);
+  const { worksheet, abas } = selecionarWorksheet(workbook, mapeamento.aba || mapeamento.nomeAba);
   const colunas = obterCabecalhos(worksheet);
 
   return {
     arquivo: arquivo.filename,
     aba: worksheet.name,
+    abas,
     total_linhas: Math.max(worksheet.rowCount - 1, 0),
     limite_linhas: LIMITE_LINHAS,
     colunas,
@@ -1026,8 +1055,8 @@ async function enriquecerTelefoneFallback(dados, modoBusca = 'sem_telefone') {
 
 async function consultarPlanilha(req) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
-  const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
+  const worksheet = await lerWorksheet(arquivo.buffer, mapeamento.aba || mapeamento.nomeAba);
   const usuarioId = req.usuario?.id;
   const modoBuscaTelefone = ['sem_telefone', 'somente_google', 'nao'].includes(mapeamento.buscaTelefone)
     ? mapeamento.buscaTelefone
@@ -1150,8 +1179,8 @@ async function consultarPlanilha(req) {
 
 async function consultarPlanilhaStream(req, onEvento) {
   const { arquivo, campos } = await lerArquivoMultipart(req);
-  const worksheet = await lerWorksheet(arquivo.buffer);
   const mapeamento = parseMapeamento(campos.mapeamento);
+  const worksheet = await lerWorksheet(arquivo.buffer, mapeamento.aba || mapeamento.nomeAba);
   const usuarioId = req.usuario?.id;
   const modoBuscaTelefone = ['sem_telefone', 'somente_google', 'nao'].includes(mapeamento.buscaTelefone)
     ? mapeamento.buscaTelefone
@@ -1440,8 +1469,7 @@ async function gerarXlsxOriginalComTelefones(linhas = [], opcoes = {}) {
   workbook.creator = workbook.creator || 'Pos-venda';
   workbook.modified = new Date();
 
-  const worksheet = workbook.worksheets[0];
-  if (!worksheet) throw criarHttpError(400, 'A planilha original nao possui abas.');
+  const { worksheet } = selecionarWorksheet(workbook, opcoes.aba || opcoes.nomeAba);
 
   const telefonesPorLinha = montarTelefonesPorLinhaOriginal(linhas);
   const colunaTelefone = obterColunaTelefoneEncontrado(worksheet);
@@ -1472,7 +1500,8 @@ async function gerarXlsxResultadoUpload(req) {
 
   return gerarXlsxResultado(linhas, {
     nome: campos.nome || arquivo.filename,
-    arquivoOriginal: arquivo.buffer
+    arquivoOriginal: arquivo.buffer,
+    aba: campos.aba || campos.nomeAba || ''
   });
 }
 async function gerarXlsxResultado(linhas = [], opcoes = {}) {
