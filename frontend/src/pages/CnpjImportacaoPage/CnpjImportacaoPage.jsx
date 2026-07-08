@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
@@ -11,6 +11,7 @@ import {
   exportarResultadoCnpj,
   limparBuscasRealizadasCnpj,
   listarBuscasRealizadasCnpj,
+  reconsultarBuscasRealizadasCnpj,
   listarGooglePlacesKeys,
   removerGooglePlacesKey,
   previewPlanilhaCnpj
@@ -31,6 +32,7 @@ const COLUNAS_TABELA = [
   { key: 'telefone_google_places', label: 'Tel. Google' },
   { key: 'google_status', label: 'Google status' },
   { key: 'google_detalhe', label: 'Google detalhe' },
+  { key: 'google_resultados', label: 'Resultados Google' },
   { key: 'avisos', label: 'Avisos' },
   { key: 'telefone_fonte', label: 'Fonte telefone' },
   { key: 'telefone_confianca', label: 'Conf. telefone' },
@@ -43,10 +45,131 @@ const COLUNAS_TABELA = [
   { key: 'fontes', label: 'Fontes' }
 ];
 
+const COLUNAS_MOBILE_RESUMO = new Set(['cnpj', 'razao_social', 'nome_fantasia', 'situacao_cadastral']);
+const COLUNAS_MOBILE_DETALHES = COLUNAS_TABELA.filter(coluna => !COLUNAS_MOBILE_RESUMO.has(coluna.key));
+const COLUNAS_TELEFONE_POR_FONTE = [
+  'telefone_open_cnpj',
+  'telefone_cnpjws',
+  'telefone_minha_receita',
+  'telefone_google_places'
+];
+
+function obterResultadosGoogle(linha) {
+  const google = linha?.google_places || {};
+  const resultados = Array.isArray(google.empresas)
+    ? google.empresas
+    : Array.isArray(google.candidatos)
+      ? google.candidatos
+      : google.place
+        ? [google.place]
+        : [];
+  const vistos = new Set();
+
+  return resultados.filter(item => {
+    const chave = item?.id || `${item?.nome || ''}:${item?.endereco || ''}:${item?.telefone || ''}`;
+    if (!chave || vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
+}
+
+function resumirResultadoGoogle(item, index) {
+  const partes = [
+    `${index + 1}. ${item?.nome || 'Sem nome'}`,
+    item?.telefone,
+    item?.endereco,
+    Number.isFinite(Number(item?.score)) ? `score ${item.score}` : ''
+  ].filter(Boolean);
+
+  return partes.join(' - ');
+}
+
 function valorCelula(linha, coluna) {
+  if (coluna.key === 'google_resultados') {
+    const resultados = obterResultadosGoogle(linha);
+    return resultados.length ? resultados.map(resumirResultadoGoogle).join(' | ') : '-';
+  }
+
   const valor = linha[coluna.key];
   if (Array.isArray(valor)) return valor.join(', ');
   return valor || '-';
+}
+function normalizarTelefoneComparacao(valor) {
+  return String(valor || '').replace(/\D/g, '');
+}
+
+function obterResumoDivergenciaTelefone(linha) {
+  const telefones = COLUNAS_TELEFONE_POR_FONTE
+    .map(campo => ({
+      campo,
+      valor: linha?.[campo],
+      normalizado: normalizarTelefoneComparacao(linha?.[campo])
+    }))
+    .filter(item => item.normalizado);
+  const distintos = [...new Set(telefones.map(item => item.normalizado))];
+
+  if (distintos.length <= 1) {
+    return { divergente: false, referencia: distintos[0] || '' };
+  }
+
+  const telefonePrincipal = normalizarTelefoneComparacao(linha?.telefone);
+  if (telefonePrincipal && distintos.includes(telefonePrincipal)) {
+    return { divergente: true, referencia: telefonePrincipal };
+  }
+
+  const contagem = telefones.reduce((acc, item) => ({
+    ...acc,
+    [item.normalizado]: (acc[item.normalizado] || 0) + 1
+  }), {});
+  const maioria = Object.entries(contagem).sort((a, b) => b[1] - a[1])[0];
+  const referencia = maioria?.[1] > 1 ? maioria[0] : '';
+
+  return { divergente: true, referencia };
+}
+
+function telefoneFonteDivergente(linha, coluna) {
+  if (!COLUNAS_TELEFONE_POR_FONTE.includes(coluna.key)) return false;
+
+  const valorNormalizado = normalizarTelefoneComparacao(linha?.[coluna.key]);
+  if (!valorNormalizado) return false;
+
+  const resumo = obterResumoDivergenciaTelefone(linha);
+  return resumo.divergente && (!resumo.referencia || valorNormalizado !== resumo.referencia);
+}
+
+function renderValorCelula(linha, coluna) {
+  const valor = valorCelula(linha, coluna);
+
+  if (coluna.key === 'google_resultados') {
+    const resultados = obterResultadosGoogle(linha);
+    if (resultados.length === 0) return valor;
+
+    return (
+      <div className="cnpj-import-google-results">
+        <strong>{resultados.length} resultado(s)</strong>
+        {resultados.slice(0, 5).map((item, index) => (
+          <span key={item.id || `${item.nome}:${item.endereco}:${index}`}>
+            {resumirResultadoGoogle(item, index)}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (!telefoneFonteDivergente(linha, coluna)) return valor;
+
+  return (
+    <span className="cnpj-import-value--divergent" title="Telefone divergente entre as APIs consultadas">
+      {valor}
+    </span>
+  );
+}
+
+function statusLinha(linha) {
+  if (linha.status === 'erro') return { label: 'Erro', className: 'tag-danger' };
+  if (linha.busca_realizada) return { label: 'Ja buscado', className: 'tag-info' };
+  if (linha.cache) return { label: 'Cache', className: 'tag-info' };
+  return { label: 'OK', className: 'tag-success' };
 }
 
 function normalizarTextoBusca(valor) {
@@ -78,6 +201,18 @@ function obterTimestampLinha(linha) {
   return Number.isNaN(data.getTime()) ? 0 : data.getTime();
 }
 
+function chaveResultadoLinha(linha) {
+  if (linha?.busca_por_texto) {
+    const placeId = linha?.google_places?.place?.id || linha?.google_places?.place?.nome || linha?.google_detalhe || linha?.nome_fantasia || '';
+    return `texto:${linha?.row_index || ''}:${placeId}`;
+  }
+
+  const cnpj = String(linha?.cnpj_digitos || linha?.cnpj || '').replace(/\D/g, '');
+  if (cnpj) return `cnpj:${cnpj}`;
+
+  const placeId = linha?.google_places?.place?.id || linha?.google_places?.place?.nome || linha?.google_detalhe || linha?.nome_fantasia || '';
+  return `linha:${linha?.row_index || ''}:${placeId}`;
+}
 function textoBuscaLinha(linha) {
   const valores = [
     linha.status,
@@ -85,14 +220,16 @@ function textoBuscaLinha(linha) {
     linha.cnpj,
     linha.cnpj_digitos,
     linha.adicionado ? 'adicionado ja adicionado' : 'nao adicionado',
-    ...COLUNAS_TABELA.map(coluna => valorCelula(linha, coluna))
+    ...COLUNAS_TABELA.map(coluna => valorCelula(linha, coluna)),
+    ...obterResultadosGoogle(linha).map((item, index) => resumirResultadoGoogle(item, index))
   ];
 
   return normalizarTextoBusca(valores.join(' '));
 }
 
 function linhaPodeAdicionar(linha) {
-  return linha.status === 'encontrado' && !linha.adicionado;
+  const cnpj = String(linha?.cnpj_digitos || linha?.cnpj || '').replace(/\D/g, '');
+  return linha.status === 'encontrado' && !linha.adicionado && cnpj.length === 14;
 }
 
 function esperarCancelavel(ms, signal) {
@@ -172,13 +309,16 @@ function CnpjImportacaoPage() {
   const podeCriarLead = temPermissao(usuario, 'clientes_secretos_criar');
   const [arquivo, setArquivo] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [colunaCnpj, setColunaCnpj] = useState('');
+  const [colunaBusca, setColunaBusca] = useState('');
+  const [colunaCnpjTexto, setColunaCnpjTexto] = useState('');
+  const [tipoBuscaPlanilha, setTipoBuscaPlanilha] = useState('cnpj');
   const [modoBuscaTelefone, setModoBuscaTelefone] = useState('sem_telefone');
   const [resultado, setResultado] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
   const [excluindoCnpj, setExcluindoCnpj] = useState('');
   const [limpandoResultados, setLimpandoResultados] = useState(false);
+  const [reconsultandoCnpjs, setReconsultandoCnpjs] = useState([]);
   const [confirmacaoExclusao, setConfirmacaoExclusao] = useState(null);
   const [exportando, setExportando] = useState(false);
   const [buscaTexto, setBuscaTexto] = useState('');
@@ -225,17 +365,25 @@ function CnpjImportacaoPage() {
     });
   }, [buscaTexto, dataFim, dataInicio, filtroAdicionado, linhas, ordenacao]);
   const linhasAdicionaveis = useMemo(() => linhasFiltradas.filter(linhaPodeAdicionar), [linhasFiltradas]);
+  const reconsultandoSet = useMemo(() => new Set(reconsultandoCnpjs), [reconsultandoCnpjs]);
   const totalEncontrados = linhasFiltradas.filter(linha => linha.status === 'encontrado').length;
   const totalErros = linhasFiltradas.filter(linha => linha.status === 'erro').length;
   const filtrosAtivos = Boolean(buscaTexto || filtroAdicionado !== 'todos' || ordenacao !== 'recentes' || dataInicio || dataFim);
-  const podeBuscar = Boolean(arquivo && colunaCnpj && !carregando);
+  const podeBuscar = Boolean(arquivo && colunaBusca && !carregando);
   const totalCnpjs = Number(resultado?.total_cnpjs || 0);
   const totalConsultadosAcumulado = linhas.length;
+  const buscaPorTexto = tipoBuscaPlanilha === 'texto';
 
   useEffect(() => {
     carregarGoogleKeys();
     carregarBuscasRealizadas();
   }, []);
+
+  useEffect(() => {
+    if (buscaPorTexto && modoBuscaTelefone !== 'somente_google') {
+      setModoBuscaTelefone('somente_google');
+    }
+  }, [buscaPorTexto, modoBuscaTelefone]);
 
   async function carregarGoogleKeys() {
     setCarregandoGoogleKeys(true);
@@ -355,7 +503,9 @@ function CnpjImportacaoPage() {
   async function carregarPreview(file) {
     setArquivo(file || null);
     setPreview(null);
-    setColunaCnpj('');
+    setColunaBusca('');
+    setColunaCnpjTexto('');
+    setTipoBuscaPlanilha('cnpj');
     setErro('');
     setSucesso('');
     setProgresso(null);
@@ -367,8 +517,12 @@ function CnpjImportacaoPage() {
     setCarregando(true);
     try {
       const data = await previewPlanilhaCnpj(file);
+      const tipoSugerido = data.sugestoes?.tipo_busca || (data.sugestoes?.cnpj ? 'cnpj' : 'texto');
       setPreview(data);
-      setColunaCnpj(data.sugestoes?.cnpj || '');
+      setColunaBusca(data.sugestoes?.busca || data.sugestoes?.cnpj || '');
+      setColunaCnpjTexto(data.sugestoes?.cnpj || '');
+      setTipoBuscaPlanilha(tipoSugerido);
+      if (tipoSugerido === 'texto') setModoBuscaTelefone('somente_google');
     } catch (error) {
       setErro(error.message || 'Erro ao ler planilha.');
     } finally {
@@ -380,10 +534,12 @@ function CnpjImportacaoPage() {
     let fimLote = null;
 
       await consultarPlanilhaCnpjStream(arquivo, {
-        cnpj: colunaCnpj,
+        colunaBusca,
+        colunaCnpjTexto: buscaPorTexto ? colunaCnpjTexto : '',
+        tipoBusca: tipoBuscaPlanilha,
         inicio,
         limite: preview?.limite_linhas,
-        buscaTelefone: modoBuscaTelefone
+        buscaTelefone: buscaPorTexto ? 'somente_google' : modoBuscaTelefone
       }, evento => {
         if (evento.tipo === 'inicio') {
           setResultado(prev => {
@@ -419,7 +575,8 @@ function CnpjImportacaoPage() {
         if (evento.tipo === 'linha') {
           setResultado(prev => {
             const linhasAtuais = prev?.linhas || [];
-            const indiceExistente = linhasAtuais.findIndex(linha => linha.cnpj_digitos === evento.linha?.cnpj_digitos);
+            const chaveLinhaAtualizada = chaveResultadoLinha(evento.linha);
+            const indiceExistente = linhasAtuais.findIndex(linha => chaveResultadoLinha(linha) === chaveLinhaAtualizada);
             const linhaAtualizada = indiceExistente >= 0
               ? {
                   ...evento.linha,
@@ -476,10 +633,12 @@ function CnpjImportacaoPage() {
     setSucesso('');
     setProgresso(null);
 
+    
+    const buscaAtualPorTexto = buscaPorTexto;
     let inicio = 0;
     let acumular = false;
     let requisicoesBase = 0;
-    let preservarLinhasIniciais = Boolean(resultado?.linhas?.length);
+    let preservarLinhasIniciais = !buscaAtualPorTexto && Boolean(resultado?.linhas?.length);
 
     try {
       while (!controller.signal.aborted) {
@@ -491,7 +650,7 @@ function CnpjImportacaoPage() {
         requisicoesBase += Number(fim.requisicoes_externas || 0);
 
         if (!fim.tem_proximo_lote || fim.proximo_inicio === null || fim.proximo_inicio === undefined) {
-          setSucesso(`Busca concluida: ${fim.total_cnpjs || inicio + Number(fim.total_consultados || 0)} CNPJ(s) processado(s).`);
+          setSucesso(`Busca concluida: ${fim.total_cnpjs || inicio + Number(fim.total_consultados || 0)} ${buscaAtualPorTexto ? 'item(ns)' : 'CNPJ(s)'} processado(s).`);
           break;
         }
 
@@ -517,7 +676,9 @@ function CnpjImportacaoPage() {
       }
       setProgresso(null);
       setCarregando(false);
-      await carregarBuscasRealizadas();
+      if (!buscaAtualPorTexto) {
+        await carregarBuscasRealizadas();
+      }
     }
   }
 
@@ -606,6 +767,31 @@ function CnpjImportacaoPage() {
     }
   }
 
+  async function reconsultarResultados(linhasSelecionadas = linhasFiltradas) {
+    const cnpjs = [...new Set((linhasSelecionadas || [])
+      .map(linha => String(linha?.cnpj_digitos || linha?.cnpj || '').replace(/\D/g, ''))
+      .filter(cnpj => cnpj.length === 14))];
+
+    if (cnpjs.length === 0 || carregando || limpandoResultados || reconsultandoCnpjs.length > 0) return;
+
+    setReconsultandoCnpjs(cnpjs);
+    setErro('');
+    setSucesso('');
+
+    try {
+      const data = await reconsultarBuscasRealizadasCnpj(cnpjs, { buscaTelefone: buscaPorTexto ? 'somente_google' : modoBuscaTelefone });
+      await carregarBuscasRealizadas();
+      const totalErrosReconsulta = (data?.linhas || []).filter(linha => linha.status === 'erro').length;
+      const partes = [`${data?.total_consultados || cnpjs.length} CNPJ(s) buscado(s) novamente`];
+      if (data?.requisicoes_externas) partes.push(`${data.requisicoes_externas} consulta(s) externa(s)`);
+      if (totalErrosReconsulta) partes.push(`${totalErrosReconsulta} com erro`);
+      setSucesso(`${partes.join(', ')}.`);
+    } catch (error) {
+      setErro(error.message || 'Erro ao buscar CNPJs novamente.');
+    } finally {
+      setReconsultandoCnpjs([]);
+    }
+  }
   async function limparResultados() {
     if (linhas.length === 0 || limpandoResultados) return;
 
@@ -639,8 +825,8 @@ function CnpjImportacaoPage() {
     setSucesso('');
 
     try {
-      await exportarResultadoCnpj(linhasFiltradas, preview?.arquivo || 'consulta-cnpj');
-      setSucesso('Resultado exportado em Excel.');
+      await exportarResultadoCnpj(linhasFiltradas, preview?.arquivo || 'consulta-cnpj', { arquivo });
+      setSucesso(arquivo ? 'Planilha original exportada com a coluna de telefone encontrado.' : 'Resultado exportado em Excel.');
     } catch (error) {
       setErro(error.message || 'Erro ao exportar resultado.');
     } finally {
@@ -714,10 +900,10 @@ function CnpjImportacaoPage() {
             </div>
 
             <div className="form-field">
-              <label>Coluna do CNPJ</label>
+              <label>Coluna de busca</label>
               <select
-                value={colunaCnpj}
-                onChange={event => setColunaCnpj(event.target.value)}
+                value={colunaBusca}
+                onChange={event => setColunaBusca(event.target.value)}
                 disabled={!preview || carregando || adicionando}
                 required
               >
@@ -729,11 +915,41 @@ function CnpjImportacaoPage() {
             </div>
 
             <div className="form-field">
+              <label>Tipo da busca</label>
+              <select
+                value={tipoBuscaPlanilha}
+                onChange={event => {
+                  const proximoTipo = event.target.value;
+                  setTipoBuscaPlanilha(proximoTipo);
+                  if (proximoTipo === 'texto') setModoBuscaTelefone('somente_google');
+                }}
+                disabled={!preview || carregando || adicionando}
+              >
+                <option value="cnpj">CNPJ</option>
+                <option value="texto">Texto / nome</option>
+              </select>
+            </div>
+            {buscaPorTexto && (
+              <div className="form-field">
+                <label>Coluna do CNPJ</label>
+                <select
+                  value={colunaCnpjTexto}
+                  onChange={event => setColunaCnpjTexto(event.target.value)}
+                  disabled={!preview || carregando || adicionando}
+                >
+                  <option value="">Nao informar</option>
+                  {colunas.map(coluna => (
+                    <option key={`cnpj-texto-${coluna.nome}:${coluna.index}`} value={coluna.nome}>{coluna.nome}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="form-field">
               <label>Telefone extra</label>
               <select
-                value={modoBuscaTelefone}
+                value={buscaPorTexto ? 'somente_google' : modoBuscaTelefone}
                 onChange={event => setModoBuscaTelefone(event.target.value)}
-                disabled={carregando || adicionando}
+                disabled={buscaPorTexto || carregando || adicionando}
               >
                 <option value="sem_telefone">Google rotativo se faltar telefone</option>
                 <option value="somente_google">Buscar telefone somente no Google</option>
@@ -752,7 +968,6 @@ function CnpjImportacaoPage() {
               </button>
             )}
           </div>
-
           {preview && (
             <div className="cliente-import-summary">
               <span>Aba: <strong>{preview.aba}</strong></span>
@@ -780,7 +995,7 @@ function CnpjImportacaoPage() {
             <div className="cnpj-import-samples">
               {(preview.amostras || []).map(amostra => (
                 <span key={amostra.row_index}>
-                  Linha {amostra.row_index}: <strong>{amostra.dados?.[colunaCnpj] || '-'}</strong>
+                  Linha {amostra.row_index}: <strong>{amostra.dados?.[colunaBusca] || '-'}</strong> <small>({tipoBuscaPlanilha === 'cnpj' ? 'CNPJ' : 'Texto'})</small>
                 </span>
               ))}
             </div>
@@ -972,9 +1187,18 @@ function CnpjImportacaoPage() {
                   </button>
                   <button
                     type="button"
+                    className="btn"
+                    onClick={() => reconsultarResultados(linhasFiltradas)}
+                    disabled={adicionando || exportando || limpandoResultados || reconsultandoCnpjs.length > 0 || linhasFiltradas.length === 0}
+                  >
+                    <I.Refresh size={14} />
+                    {reconsultandoCnpjs.length > 0 ? 'Buscando...' : 'Buscar novamente exibidos'}
+                  </button>
+                  <button
+                    type="button"
                     className="btn btn-ghost btn-danger-icon"
                     onClick={() => setConfirmacaoExclusao({ tipo: 'todos' })}
-                    disabled={limpandoResultados || adicionando || exportando}
+                    disabled={limpandoResultados || adicionando || exportando || reconsultandoCnpjs.length > 0}
                   >
                     <I.Trash size={14} />
                     {limpandoResultados ? 'Limpando...' : 'Limpar resultados'}
@@ -1045,20 +1269,36 @@ function CnpjImportacaoPage() {
                       </tr>
                     ) : linhasFiltradas.map(linha => (
                       <tr key={`${linha.row_index}:${linha.cnpj_digitos}`}>
-                        <td title={linha.message || undefined}>
-                          <div className="cnpj-import-status-cell">
-                            <span className={`tag ${linha.status === 'erro' ? 'tag-danger' : linha.busca_realizada || linha.cache ? 'tag-info' : 'tag-success'}`}>
-                              {linha.status === 'erro' ? 'Erro' : linha.busca_realizada ? 'Ja buscado' : linha.cache ? 'Cache' : 'OK'}
-                            </span>
+                        <td data-label="Status" className="m-primary" title={linha.message || undefined}>
+                          <div className="cnpj-import-primary">
+                            <div className="cnpj-import-primary__title">
+                              <span className={`tag ${statusLinha(linha).className}`}>
+                                {statusLinha(linha).label}
+                              </span>
+                              <strong>{valorCelula(linha, { key: 'cnpj' })}</strong>
+                            </div>
                             {linha.message && <small>{linha.message}</small>}
+                            <span>{valorCelula(linha, { key: 'razao_social' })}</span>
+                            <span>{valorCelula(linha, { key: 'nome_fantasia' })}</span>
+                            <details className="cnpj-import-mobile-drawer">
+                              <summary>Ver detalhes</summary>
+                              <dl>
+                                <dt>Situacao</dt>
+                                <dd>{valorCelula(linha, { key: 'situacao_cadastral' })}</dd>
+                                {COLUNAS_MOBILE_DETALHES.flatMap(coluna => [
+                                  <dt key={`${coluna.key}-label`}>{coluna.label}</dt>,
+                                  <dd key={`${coluna.key}-value`}>{renderValorCelula(linha, coluna)}</dd>
+                                ])}
+                              </dl>
+                            </details>
                           </div>
                         </td>
                         {COLUNAS_TABELA.map(coluna => (
                           <td key={coluna.key} title={valorCelula(linha, coluna)}>
-                            {valorCelula(linha, coluna)}
+                            {renderValorCelula(linha, coluna)}
                           </td>
                         ))}
-                        <td>
+                        <td data-label="Acoes" className="m-actions">
                           <div className="cnpj-import-row-actions">
                             {linha.adicionado ? (
                               <button
@@ -1075,7 +1315,7 @@ function CnpjImportacaoPage() {
                                 type="button"
                                 className="btn btn-sm"
                                 onClick={() => adicionarLinhas([linha])}
-                                disabled={!podeCriarLead || !linhaPodeAdicionar(linha) || adicionando || limpandoResultados}
+                                disabled={!podeCriarLead || !linhaPodeAdicionar(linha) || adicionando || limpandoResultados || reconsultandoCnpjs.length > 0}
                                 title={podeCriarLead ? 'Adicionar lead' : 'Sem permissao para cadastrar leads'}
                               >
                                 <I.Plus size={13} />
@@ -1084,9 +1324,19 @@ function CnpjImportacaoPage() {
                             )}
                             <button
                               type="button"
+                              className="btn btn-sm"
+                              onClick={() => reconsultarResultados([linha])}
+                              disabled={carregando || limpandoResultados || adicionando || reconsultandoCnpjs.length > 0}
+                              title="Buscar este CNPJ novamente"
+                            >
+                              <I.Refresh size={13} />
+                              {reconsultandoSet.has(String(linha.cnpj_digitos || linha.cnpj || '').replace(/\D/g, '')) ? 'Buscando...' : 'Buscar novamente'}
+                            </button>
+                            <button
+                              type="button"
                               className="btn btn-sm btn-ghost btn-danger-icon"
                               onClick={() => setConfirmacaoExclusao({ tipo: 'linha', linha })}
-                              disabled={carregando || limpandoResultados || excluindoCnpj === String(linha.cnpj_digitos || linha.cnpj || '').replace(/\D/g, '')}
+                              disabled={carregando || limpandoResultados || reconsultandoCnpjs.length > 0 || excluindoCnpj === String(linha.cnpj_digitos || linha.cnpj || '').replace(/\D/g, '')}
                               title="Excluir resultado"
                             >
                               <I.Trash size={13} />

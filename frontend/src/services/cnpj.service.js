@@ -156,6 +156,13 @@ export async function listarBuscasRealizadasCnpj() {
   return apiGet('/cnpj/planilha/buscas-realizadas');
 }
 
+export async function reconsultarBuscasRealizadasCnpj(cnpjs, opcoes = {}) {
+  return apiPost('/cnpj/planilha/buscas-realizadas/reconsultar', {
+    cnpjs,
+    ...opcoes
+  });
+}
+
 export async function excluirBuscaRealizadaCnpj(cnpj) {
   return apiDelete(`/cnpj/planilha/buscas-realizadas/${sanitizarCnpj(cnpj)}`);
 }
@@ -179,11 +186,22 @@ function baixarBlob(blob, nomeArquivo) {
   URL.revokeObjectURL(url);
 }
 
-export async function exportarResultadoCnpj(linhas, nome = '') {
+export async function exportarResultadoCnpj(linhas, nome = '', opcoes = {}) {
+  const arquivo = opcoes.arquivo || null;
+  const body = arquivo ? (() => {
+    const formData = new FormData();
+    formData.append('arquivo', arquivo);
+    formData.append('linhas', JSON.stringify(linhas));
+    formData.append('nome', nome || arquivo.name || 'consulta-cnpj');
+    return formData;
+  })() : JSON.stringify({ linhas, nome });
+
   const blob = await apiBlob('/cnpj/planilha/exportar', {
     method: 'POST',
-    body: JSON.stringify({ linhas, nome })
+    body
   });
   const data = new Date().toISOString().slice(0, 10);
-  baixarBlob(blob, `consulta-cnpj-${data}.xlsx`);
+  const base = arquivo?.name?.replace(/\.xlsx$/i, '') || 'consulta-cnpj';
+  baixarBlob(blob, `${base}-telefones-${data}.xlsx`);
 }
+

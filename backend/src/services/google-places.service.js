@@ -322,6 +322,20 @@ async function buscarDetalhesPlace(placeId, apiKey) {
   return response.data || {};
 }
 
+function resumirCandidatoPlace(item, detalhes = {}) {
+  return {
+    id: detalhes.id || item.place?.id || '',
+    nome: detalhes.displayName?.text || item.place?.displayName?.text || '',
+    endereco: detalhes.formattedAddress || item.place?.formattedAddress || '',
+    telefone: normalizarTelefone(primeiroValor(
+      detalhes.nationalPhoneNumber,
+      detalhes.internationalPhoneNumber
+    )),
+    site: detalhes.websiteUri || '',
+    score: item.score
+  };
+}
+
 async function buscarTelefoneEmpresaComChave(dados, query, apiKey, keyIndex, env) {
   try {
     const places = await buscarPlacesPorTexto(query, apiKey);
@@ -340,11 +354,7 @@ async function buscarTelefoneEmpresaComChave(dados, query, apiKey, keyIndex, env
         query,
         google_key_index: keyIndex,
         google_key_env: env,
-        candidatos: candidatos.slice(0, 3).map(item => ({
-          nome: item.place.displayName?.text || '',
-          endereco: item.place.formattedAddress || '',
-          score: item.score
-        }))
+        candidatos: candidatos.slice(0, 5).map(item => resumirCandidatoPlace(item))
       };
     }
 
@@ -354,6 +364,14 @@ async function buscarTelefoneEmpresaComChave(dados, query, apiKey, keyIndex, env
       detalhes.internationalPhoneNumber
     ));
 
+    const candidatoPrincipal = resumirCandidatoPlace(melhor, detalhes);
+    const candidatosResumo = [
+      candidatoPrincipal,
+      ...candidatos
+        .filter(item => item.place?.id !== melhor.place?.id)
+        .map(item => resumirCandidatoPlace(item))
+    ];
+
     if (!telefone) {
       return {
         encontrado: false,
@@ -361,12 +379,8 @@ async function buscarTelefoneEmpresaComChave(dados, query, apiKey, keyIndex, env
         query,
         google_key_index: keyIndex,
         google_key_env: env,
-        place: {
-          id: detalhes.id || melhor.place.id,
-          nome: detalhes.displayName?.text || melhor.place.displayName?.text || '',
-          endereco: detalhes.formattedAddress || melhor.place.formattedAddress || '',
-          score: melhor.score
-        }
+        place: candidatoPrincipal,
+        candidatos: candidatosResumo
       };
     }
 
@@ -378,13 +392,8 @@ async function buscarTelefoneEmpresaComChave(dados, query, apiKey, keyIndex, env
       query,
       google_key_index: keyIndex,
       google_key_env: env,
-      place: {
-        id: detalhes.id || melhor.place.id,
-        nome: detalhes.displayName?.text || melhor.place.displayName?.text || '',
-        endereco: detalhes.formattedAddress || melhor.place.formattedAddress || '',
-        site: detalhes.websiteUri || '',
-        score: melhor.score
-      }
+      place: candidatoPrincipal,
+      candidatos: candidatosResumo
     };
   } catch (error) {
     const status = error.response?.status || null;
@@ -426,6 +435,160 @@ function montarTentativa(resultado = {}) {
   };
 }
 
+async function buscarEmpresasPorTextoComChave(dados, query, apiKey, keyIndex, env) {
+  try {
+    const places = await buscarPlacesPorTexto(query, apiKey);
+    const candidatos = places
+      .map(place => ({
+        place,
+        score: calcularScore(dados, place)
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    if (candidatos.length === 0) {
+      return {
+        encontrado: false,
+        motivo: 'sem_match',
+        query,
+        google_key_index: keyIndex,
+        google_key_env: env,
+        candidatos: []
+      };
+    }
+
+    const empresas = await Promise.all(candidatos.map(async item => {
+      const detalhes = item.place?.id
+        ? await buscarDetalhesPlace(item.place.id, apiKey)
+        : {};
+      return resumirCandidatoPlace(item, detalhes);
+    }));
+
+    return {
+      encontrado: true,
+      fonte: 'Google Places',
+      query,
+      google_key_index: keyIndex,
+      google_key_env: env,
+      empresas
+    };
+  } catch (error) {
+    const status = error.response?.status || null;
+    const mensagemGoogle = error.response?.data?.error?.message || error.message;
+    const statusGoogle = error.response?.data?.error?.status || '';
+    const motivo = status === 429 || statusGoogle === 'RESOURCE_EXHAUSTED'
+      ? 'limite'
+      : status === 403 || statusGoogle === 'PERMISSION_DENIED'
+        ? 'permissao'
+        : status === 401 || statusGoogle === 'UNAUTHENTICATED'
+          ? 'autenticacao'
+          : 'erro';
+
+    return {
+      encontrado: false,
+      motivo,
+      status,
+      google_status: statusGoogle,
+      google_key_index: keyIndex,
+      google_key_env: env,
+      message: mensagemGoogle
+    };
+  }
+}
+
+async function buscarEmpresasPorTexto(dados = {}) {
+  const keys = await obterApiKeysGoogle();
+  const agora = Date.now();
+
+  if (keys.length === 0) {
+    return {
+      encontrado: false,
+      motivo: 'sem_chave',
+      message: 'Nenhuma chave do Google Places cadastrada. Adicione uma chave na tela de consulta de CNPJ.'
+    };
+  }
+
+  const query = montarQueryEmpresa(dados);
+  if (!query) {
+    return {
+      encontrado: false,
+      motivo: 'sem_query'
+    };
+  }
+
+  const tentativas = [];
+  let ultimoResultado = null;
+
+  for (const [index, item] of keys.entries()) {
+    const keyIndex = index + 1;
+    const pausadoAteMemoria = pausadoPorChave.get(item.chave) || 0;
+    const pausadoAteBanco = item.esgotadaAte?.getTime?.() || 0;
+    const pausadoAte = Math.max(pausadoAteMemoria, pausadoAteBanco);
+
+    if (pausadoAte > agora) {
+      tentativas.push({
+        env: item.env,
+        origem: item.origem,
+        index: keyIndex,
+        motivo: 'pausado',
+        status: null,
+        google_status: '',
+        message: item.origem === 'banco'
+          ? 'Chave esgotada hoje. Ela sera usada novamente amanha.'
+          : 'Chave pausada temporariamente apos erro de limite/permissao/autenticacao.'
+      });
+      continue;
+    }
+
+    const resultado = await buscarEmpresasPorTextoComChave(dados, query, item.chave, keyIndex, item.env);
+    resultado.google_key_origem = item.origem;
+    ultimoResultado = resultado;
+
+    if (resultado.encontrado || !deveTentarProximaChave(resultado)) {
+      if (resultado.encontrado) {
+        await marcarKeyUsada(item);
+      }
+
+      return {
+        ...resultado,
+        tentativas_google: tentativas
+      };
+    }
+
+    tentativas.push(montarTentativa(resultado));
+    if (['limite', 'permissao', 'autenticacao'].includes(resultado.motivo)) {
+      pausadoPorChave.set(item.chave, proximaMeiaNoite().getTime());
+      await marcarKeyEsgotada(item, resultado);
+    }
+  }
+
+  const todasCredenciaisEsgotadas = tentativas.length === keys.length
+    && tentativas.every(tentativa => ['limite', 'pausado'].includes(tentativa.motivo));
+
+  if (todasCredenciaisEsgotadas) {
+    return {
+      encontrado: false,
+      motivo: 'credenciais_esgotadas',
+      query,
+      message: 'Todas as credenciais do Google Places cadastradas esgotaram hoje. Volte amanha para continuar usando a busca extra.',
+      tentativas_google: tentativas
+    };
+  }
+
+  if (ultimoResultado) {
+    return {
+      ...ultimoResultado,
+      tentativas_google: tentativas
+    };
+  }
+
+  return {
+    encontrado: false,
+    motivo: 'pausado',
+    query,
+    message: 'Todas as chaves do Google Places estao pausadas temporariamente.',
+    tentativas_google: tentativas
+  };
+}
 async function buscarTelefoneEmpresa(dados = {}) {
   const keys = await obterApiKeysGoogle();
   const agora = Date.now();
@@ -526,6 +689,7 @@ async function buscarTelefoneEmpresa(dados = {}) {
 }
 
 module.exports = {
+  buscarEmpresasPorTexto,
   buscarTelefoneEmpresa,
   calcularScore,
   montarQueryEmpresa,
