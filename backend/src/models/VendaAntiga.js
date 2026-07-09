@@ -17,12 +17,15 @@ class VendaAntiga extends Model {
   static get jsonSchema() {
     return {
       type: 'object',
-      required: ['cnpj_digitos'],
+      required: ['chave_dedup'],
 
       properties: {
         id: { type: 'integer' },
         cnpj: { type: ['string', 'null'], maxLength: 18 },
-        cnpj_digitos: { type: 'string', minLength: 1, maxLength: 14 },
+        cnpj_digitos: { type: ['string', 'null'], maxLength: 14 },
+        documento_digitos: { type: ['string', 'null'], maxLength: 14 },
+        documento_tipo: { type: ['string', 'null'], maxLength: 12 },
+        chave_dedup: { type: 'string', minLength: 1, maxLength: 191 },
         razao_social: { type: ['string', 'null'], maxLength: 255 },
         nome_fantasia: { type: ['string', 'null'], maxLength: 255 },
         data_venda: { type: ['string', 'object', 'null'] },

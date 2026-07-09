@@ -2,7 +2,8 @@ const { Model } = require('objection');
 
 /**
  * Modelo Objection para o historico de buscas de clientes antigos.
- * Uma linha por consulta ("Usuario X buscou CNPJ Y em DD/MM/AA as HH:MM").
+ * Uma linha por consulta ("Usuario X buscou <termo> em DD/MM/AA as HH:MM").
+ * O termo pode ser um CNPJ, um CPF ou um trecho de razao social (`tipo_busca`).
  */
 class VendaAntigaBusca extends Model {
   static get tableName() {
@@ -16,14 +17,16 @@ class VendaAntigaBusca extends Model {
   static get jsonSchema() {
     return {
       type: 'object',
-      required: ['cnpj_digitos'],
+      required: [],
 
       properties: {
         id: { type: 'integer' },
         usuario_id: { type: ['integer', 'null'] },
         usuario_nome: { type: ['string', 'null'], maxLength: 160 },
-        cnpj_digitos: { type: 'string', minLength: 1, maxLength: 14 },
+        cnpj_digitos: { type: ['string', 'null'], maxLength: 14 },
         cnpj_formatado: { type: ['string', 'null'], maxLength: 18 },
+        termo: { type: ['string', 'null'], maxLength: 255 },
+        tipo_busca: { type: 'string', maxLength: 12 },
         encontrou: { type: ['boolean', 'integer'] },
         buscado_em: { type: ['string', 'object', 'null'] },
         created_at: { type: ['string', 'object'] },

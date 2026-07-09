@@ -154,7 +154,10 @@
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('RAIZ:', JSON.stringify\\(p.scripts,null,2\\)\\)\")",
       "Bash(node --check src/utils/planilha-xlsx.js)",
       "Bash(node --check src/services/cliente-antigo.service.js)",
-      "Bash(echo \"EXIT $?\")"
+      "Bash(echo \"EXIT $?\")",
+      "Bash(node scripts/diagnosticar-invalidos-clientes-antigos.js \"../planilhasParaCruzamento/VENDAS BASARI GLOBAL ATE 23-06.xlsx\")",
+      "Bash(git checkout *)",
+      "Bash(node \"C:/Users/USERs/AppData/Local/Temp/claude/c--Users-USERs-Documents-GitHub-pos-venda/b7967c9c-fe7b-4a6d-af06-47d2f459eb4a/scratchpad/exercitar-importacao.js\")"
     ]
   }
 }

@@ -332,7 +332,7 @@ function ConfiguracoesPage() {
     try {
       const data = await importarPlanilhaClientesAntigos(caArquivo, caMapeamento, caAbasSelecionadas);
       setCaResultado(data);
-      setSucesso(`Importacao concluida: ${data.inseridos} novo(s), ${data.atualizados} atualizado(s), ${data.duplicados || 0} duplicado(s) consolidado(s), ${data.invalidos || 0} invalido(s).`);
+      setSucesso(`Importacao concluida: ${data.inseridos} novo(s), ${data.atualizados} atualizado(s), ${data.duplicados || 0} duplicado(s) consolidado(s), ${data.sem_cnpj || 0} sem CNPJ, ${data.invalidos || 0} invalido(s).`);
     } catch (error) {
       setErro(error.message || 'Erro ao importar planilha.');
     } finally {
@@ -1035,14 +1035,50 @@ function ConfiguracoesPage() {
         )}
 
         {caResultado && (
-          <div className="cliente-import-summary">
-            <span>Total de linhas: <strong>{caResultado.total}</strong></span>
-            <span>CNPJs unicos: <strong>{caResultado.unicos ?? ((caResultado.inseridos || 0) + (caResultado.atualizados || 0))}</strong></span>
-            <span>Novos: <strong>{caResultado.inseridos}</strong></span>
-            <span>Atualizados: <strong>{caResultado.atualizados}</strong></span>
-            <span>Duplicados consolidados: <strong>{caResultado.duplicados || 0}</strong></span>
-            <span>Invalidos ignorados: <strong>{caResultado.invalidos ?? caResultado.ignorados}</strong></span>
-          </div>
+          <>
+            <div className="cliente-import-summary">
+              <span>Total de linhas: <strong>{caResultado.total}</strong></span>
+              <span>CNPJs unicos: <strong>{caResultado.unicos ?? ((caResultado.inseridos || 0) + (caResultado.atualizados || 0))}</strong></span>
+              <span>Novos: <strong>{caResultado.inseridos}</strong></span>
+              <span>Atualizados: <strong>{caResultado.atualizados}</strong></span>
+              <span>Duplicados consolidados: <strong>{caResultado.duplicados || 0}</strong></span>
+              <span>Importados sem CNPJ: <strong>{caResultado.sem_cnpj || 0}</strong></span>
+              <span>Invalidos ignorados: <strong>{caResultado.invalidos ?? caResultado.ignorados}</strong></span>
+            </div>
+
+            {caResultado.invalidos_detalhes?.length > 0 && (
+              <div className="cliente-import-invalidos">
+                <h4>Linhas ignoradas</h4>
+                {caResultado.invalidos > caResultado.invalidos_detalhes.length && (
+                  <p className="cliente-import-invalidos-aviso">
+                    Mostrando as primeiras {caResultado.invalidos_detalhes.length} de {caResultado.invalidos} linhas ignoradas.
+                  </p>
+                )}
+                <div className="cliente-import-invalidos-tabela">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Aba</th>
+                        <th>Linha</th>
+                        <th>Valor lido</th>
+                        <th>Motivo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {caResultado.invalidos_detalhes.map(item => (
+                        <tr key={`${item.aba}:${item.linha}`}>
+                          <td>{item.aba}</td>
+                          <td>{item.linha}</td>
+                          <td>{item.valor || <em>(célula vazia)</em>}</td>
+                          <td>{item.motivo}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     );

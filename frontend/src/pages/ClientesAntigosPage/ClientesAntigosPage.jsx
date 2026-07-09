@@ -63,33 +63,46 @@ function ClientesAntigosPage() {
   const [aba, setAba] = useState(abas[0]?.id || '');
 
   // --- Busca ---
-  const [cnpjInput, setCnpjInput] = useState('');
+  const [termoInput, setTermoInput] = useState('');
   const [buscando, setBuscando] = useState(false);
-  const [resultado, setResultado] = useState(null);
-  const [buscou, setBuscou] = useState(false);
+  const [resposta, setResposta] = useState(null);
+  const [paginaBusca, setPaginaBusca] = useState(1);
   const [erro, setErro] = useState('');
 
-  const cnpjDigitos = sanitizarCnpj(cnpjInput);
+  const cnpjDigitos = sanitizarCnpj(termoInput);
   const cnpjValido = cnpjDigitos.length === 14 && validarDigitosCnpj(cnpjDigitos);
+  const termoBuscavel = cnpjValido || termoInput.trim().length >= 3;
 
-  async function buscar(event) {
-    event.preventDefault();
-    if (!cnpjValido || buscando) return;
+  /**
+   * Mascara de CNPJ so quando o texto ainda pode ser um documento; nomes de
+   * empresa passam crus.
+   */
+  function alterarTermo(valor) {
+    const texto = String(valor || '');
+    const apenasDocumento = texto.replace(/[0-9.\-/\s]/g, '') === '';
+    setTermoInput(apenasDocumento && sanitizarCnpj(texto).length > 11 ? formatarCnpj(texto) : texto);
+  }
 
+  async function executarBusca(pagina) {
     setBuscando(true);
     setErro('');
-    setResultado(null);
 
     try {
-      const data = await buscarClienteAntigo(cnpjDigitos);
-      setResultado(data?.encontrado ? data.venda : null);
-      setBuscou(true);
+      const data = await buscarClienteAntigo(termoInput, { page: pagina, per_page: 20 });
+      setResposta(data);
+      setPaginaBusca(pagina);
     } catch (error) {
+      setResposta(null);
       setErro(error.message || 'Erro ao buscar cliente antigo.');
-      setBuscou(false);
     } finally {
       setBuscando(false);
     }
+  }
+
+  async function buscar(event) {
+    event.preventDefault();
+    if (!termoBuscavel || buscando) return;
+    await executarBusca(1);
   }
 
   // --- Historico ---
@@ -172,18 +185,17 @@ function ClientesAntigosPage() {
                 <div className="clientes-antigos-buscar">
                   <form className="clientes-antigos-form" onSubmit={buscar}>
                     <div className="form-field">
-                      <label>CNPJ da venda antiga</label>
+                      <label>CNPJ, CPF ou razão social</label>
                       <input
                         type="text"
-                        inputMode="numeric"
-                        maxLength={18}
-                        value={cnpjInput}
-                        onChange={event => setCnpjInput(formatarCnpj(event.target.value))}
-                        placeholder="00.000.000/0000-00"
+                        maxLength={255}
+                        value={termoInput}
+                        onChange={event => alterarTermo(event.target.value)}
+                        placeholder="00.000.000/0000-00 ou nome da empresa"
                         autoFocus
                       />
                     </div>
-                    <button type="submit" className="btn btn-primary" disabled={!cnpjValido || buscando}>
+                    <button type="submit" className="btn btn-primary" disabled={!termoBuscavel || buscando}>
                       <I.Search size={14} />
                       {buscando ? 'Buscando...' : 'Buscar'}
                     </button>
@@ -191,30 +203,72 @@ function ClientesAntigosPage() {
 
                   {erro && <div className="alert-error">{erro}</div>}
 
-                  {buscou && !erro && (
-                    resultado ? (
+                  {resposta && !erro && resposta.tipo === 'documento' && (
+                    resposta.encontrado ? (
                       <div className="clientes-antigos-resultado">
                         <div className="clientes-antigos-card">
                           <div className="clientes-antigos-card__linha">
-                            <span className="clientes-antigos-card__label">CNPJ</span>
-                            <strong>{resultado.cnpj || formatarCnpj(cnpjDigitos)}</strong>
+                            <span className="clientes-antigos-card__label">
+                              {resposta.venda.documento_tipo === 'cpf' ? 'CPF' : 'CNPJ'}
+                            </span>
+                            <strong>{resposta.venda.cnpj || '-'}</strong>
                           </div>
                           <div className="clientes-antigos-card__linha">
                             <span className="clientes-antigos-card__label">Razão social</span>
-                            <strong>{resultado.razao_social || '-'}</strong>
+                            <strong>{resposta.venda.razao_social || '-'}</strong>
                           </div>
                           <div className="clientes-antigos-card__linha">
                             <span className="clientes-antigos-card__label">Nome fantasia</span>
-                            <strong>{resultado.nome_fantasia || '-'}</strong>
+                            <strong>{resposta.venda.nome_fantasia || '-'}</strong>
                           </div>
                           <div className="clientes-antigos-card__linha">
                             <span className="clientes-antigos-card__label">Data da venda</span>
-                            <strong>{formatarData(resultado.data_venda)}</strong>
+                            <strong>{formatarData(resposta.venda.data_venda)}</strong>
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="empty">Nenhuma venda antiga encontrada para este CNPJ.</div>
+                      <div className="empty">Nenhuma venda antiga encontrada para este documento.</div>
+                    )
+                  )}
+
+                  {resposta && !erro && resposta.tipo === 'nome' && (
+                    resposta.encontrado ? (
+                      <div className="clientes-antigos-resultado">
+                        <div className="list-table">
+                          <div className="scroll">
+                            <table>
+                              <thead>
+                                <tr>
+                                  <th>Razão social</th>
+                                  <th>Nome fantasia</th>
+                                  <th>Documento</th>
+                                  <th>Data da venda</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {resposta.resultados.map((item, indice) => (
+                                  <tr key={`${item.cnpj || item.razao_social}:${indice}`}>
+                                    <td>{item.razao_social || '-'}</td>
+                                    <td>{item.nome_fantasia || '-'}</td>
+                                    <td>{item.cnpj || <em>sem documento</em>}</td>
+                                    <td>{formatarData(item.data_venda)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        <Paginacao
+                          total={resposta.total}
+                          paginaAtual={paginaBusca}
+                          itensPorPagina={resposta.per_page}
+                          onPagina={executarBusca}
+                        />
+                      </div>
+                    ) : (
+                      <div className="empty">Nenhuma venda antiga encontrada para esta razão social.</div>
                     )
                   )}
                 </div>
@@ -227,7 +281,7 @@ function ClientesAntigosPage() {
                     <input
                       value={buscaHistorico}
                       onChange={event => alterarBuscaHistorico(event.target.value)}
-                      placeholder="Filtrar por usuário ou CNPJ"
+                      placeholder="Filtrar por usuário ou termo buscado"
                     />
                   </div>
 
@@ -239,7 +293,7 @@ function ClientesAntigosPage() {
                         <thead>
                           <tr>
                             <th>Usuário</th>
-                            <th>CNPJ</th>
+                            <th>Termo buscado</th>
                             <th>Data e hora</th>
                             <th>Resultado</th>
                           </tr>
@@ -252,7 +306,7 @@ function ClientesAntigosPage() {
                           ) : historico.map(item => (
                             <tr key={item.id}>
                               <td>{item.usuario_nome || '—'}</td>
-                              <td>{item.cnpj_formatado || formatarCnpj(item.cnpj_digitos)}</td>
+                              <td>{item.termo || item.cnpj_formatado || formatarCnpj(item.cnpj_digitos)}</td>
                               <td>{formatarDataHora(item.buscado_em)}</td>
                               <td>
                                 <span className={`tag ${item.encontrou ? 'tag-success' : 'tag-danger'}`}>

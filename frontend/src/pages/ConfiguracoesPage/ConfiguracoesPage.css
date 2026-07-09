@@ -196,6 +196,58 @@
   font-size: 12px;
 }
 
+.clientes-antigos-config .cliente-import-invalidos {
+  margin: 14px 0;
+}
+
+.clientes-antigos-config .cliente-import-invalidos h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.clientes-antigos-config .cliente-import-invalidos-aviso {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.clientes-antigos-config .cliente-import-invalidos-tabela {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.clientes-antigos-config .cliente-import-invalidos-tabela table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.clientes-antigos-config .cliente-import-invalidos-tabela th,
+.clientes-antigos-config .cliente-import-invalidos-tabela td {
+  padding: 6px 9px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.clientes-antigos-config .cliente-import-invalidos-tabela th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+.clientes-antigos-config .cliente-import-invalidos-tabela tr:last-child td {
+  border-bottom: none;
+}
+
+.clientes-antigos-config .cliente-import-invalidos-tabela em {
+  color: var(--text-2);
+}
+
 .clientes-antigos-config .cliente-import-mapeamento {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

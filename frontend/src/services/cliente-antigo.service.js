@@ -5,12 +5,15 @@ import { apiGet, apiRequest } from './api';
 import { sanitizarCnpj } from './cnpj.service';
 
 /**
- * Busca uma venda antiga pelo CNPJ informado.
- * @returns {Promise<{ encontrado: boolean, venda: object|null }>}
+ * Busca vendas antigas por CNPJ, CPF ou razao social.
+ * O termo vai cru: pode ser um documento ou um trecho de nome.
+ * @returns {Promise<{ tipo: 'documento'|'nome', encontrado: boolean, venda: object|null, resultados: object[], total: number }>}
  */
-export async function buscarClienteAntigo(cnpj) {
-  const digitos = sanitizarCnpj(cnpj);
-  return apiGet(`/clientes-antigos/buscar?cnpj=${digitos}`);
+export async function buscarClienteAntigo(termo, paginacao = {}) {
+  const params = new URLSearchParams({ termo: String(termo || '').trim() });
+  if (paginacao.page) params.append('page', paginacao.page);
+  if (paginacao.per_page) params.append('per_page', paginacao.per_page);
+  return apiGet(`/clientes-antigos/buscar?${params.toString()}`);
 }
 
 function normalizarValorFiltro(chave, valor) {

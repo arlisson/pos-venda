@@ -1,12 +1,15 @@
 const clienteAntigoService = require('../services/cliente-antigo.service');
 
 /**
- * Busca uma venda antiga por CNPJ (retorno enxuto) e registra o historico.
+ * Busca vendas antigas por CNPJ, CPF ou razao social e registra o historico.
  */
 async function buscar(req, res) {
   try {
-    const resultado = await clienteAntigoService.buscarPorCnpj(req.query.cnpj, req.usuario);
-    return res.json({ encontrado: !!resultado, venda: resultado });
+    const resultado = await clienteAntigoService.buscar(req.query.termo, req.usuario, {
+      page: req.query.page,
+      per_page: req.query.per_page
+    });
+    return res.json(resultado);
   } catch (error) {
     if (!error.statusCode) console.error(error);
     return res.status(error.statusCode || 500).json({

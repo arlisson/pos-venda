@@ -373,29 +373,38 @@ async function salvarNotificacaoRetornoNota(nota, etapa, agora) {
     updated_at: agora
   };
 
-  const existente = await Notificacao.query()
+  // Upsert pelo unique de source_key: duas requisicoes concorrentes de
+  // GET /notificacoes sincronizam a mesma nota ao mesmo tempo.
+  await db('notificacoes')
+    .insert(payload)
+    .onConflict('source_key')
+    .merge({
+      tipo: payload.tipo,
+      titulo: payload.titulo,
+      mensagem: payload.mensagem,
+      nivel: payload.nivel,
+      entidade: payload.entidade,
+      entidade_id: payload.entidade_id,
+      dados: payload.dados,
+      ativa: payload.ativa,
+      updated_at: payload.updated_at
+    });
+
+  const notificacao = await Notificacao.query()
     .where('source_key', sourceKey)
     .first();
-
-  const notificacao = existente
-    ? await Notificacao.query().patchAndFetchById(existente.id, payload)
-    : await Notificacao.query().insertAndFetch(payload);
 
   const adminsIds = await listarAdminsAtivos();
   const destinatariosIds = Array.from(new Set([Number(nota.usuario_id), ...adminsIds].filter(Boolean)));
 
   for (const usuarioId of destinatariosIds) {
-    const existente = await NotificacaoDestinatario.query()
-      .where('notificacao_id', notificacao.id)
-      .where('usuario_id', usuarioId)
-      .first();
-
-    if (!existente) {
-      await NotificacaoDestinatario.query().insert({
+    await db('notificacao_destinatarios')
+      .insert({
         notificacao_id: notificacao.id,
         usuario_id: usuarioId
-      });
-    }
+      })
+      .onConflict(['notificacao_id', 'usuario_id'])
+      .ignore();
   }
 
   notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
