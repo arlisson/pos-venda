@@ -1256,6 +1256,19 @@ function linhaContemColunaLead(valores, busca) {
   return valores.some(valor => colunaCombinaBuscaLead(valor, busca));
 }
 
+function colunaPareceCabecalhoLead(nomeColuna, busca) {
+  const termo = normalizarBuscaColunaLead(busca);
+  const nome = normalizarBuscaColunaLead(nomeColuna);
+  if (!termo || !nome) return false;
+  if (nome === termo) return true;
+  return nome.includes(termo) && nome.length <= 40;
+}
+
+function linhaContemCabecalhoLead(valores, busca) {
+  if (!busca) return false;
+  return valores.some(valor => colunaPareceCabecalhoLead(valor, busca));
+}
+
 function pontuarLinhaCabecalhoMailing(valores, buscaCnpj = null) {
   const preenchidos = valores.filter(valor => String(valor || '').trim());
   if (preenchidos.length < 2) return 0;
@@ -1263,13 +1276,13 @@ function pontuarLinhaCabecalhoMailing(valores, buscaCnpj = null) {
   const termosEncontrados = new Set();
   for (const valor of preenchidos) {
     TERMOS_CABECALHO_MAILING.forEach(termo => {
-      if (colunaCombinaBuscaLead(valor, termo)) termosEncontrados.add(termo);
+      if (colunaPareceCabecalhoLead(valor, termo)) termosEncontrados.add(termo);
     });
   }
 
   let score = termosEncontrados.size;
-  if (buscaCnpj && linhaContemColunaLead(preenchidos, buscaCnpj)) score += 3;
-  if (linhaContemColunaLead(preenchidos, 'cnpj') || linhaContemColunaLead(preenchidos, 'cpf/cnpj')) score += 2;
+  if (buscaCnpj && linhaContemCabecalhoLead(preenchidos, buscaCnpj)) score += 3;
+  if (linhaContemCabecalhoLead(preenchidos, 'cnpj') || linhaContemCabecalhoLead(preenchidos, 'cpf/cnpj')) score += 2;
   if (preenchidos.length >= 4) score += 1;
 
   return score;
@@ -1279,7 +1292,7 @@ function escolherLinhaCabecalhoMailing(linhasCandidatas, opcoes = {}) {
   if (!linhasCandidatas.length) return null;
 
   if (opcoes.cnpj) {
-    const linhaMapeada = linhasCandidatas.find(candidata => linhaContemColunaLead(candidata.valores, opcoes.cnpj));
+    const linhaMapeada = linhasCandidatas.find(candidata => linhaContemCabecalhoLead(candidata.valores, opcoes.cnpj));
     if (linhaMapeada) return linhaMapeada;
   }
 
@@ -1386,6 +1399,15 @@ function detectDelimiterLead(line) {
   ), ';');
 }
 
+function detectDelimiterLinhasLead(linhasTexto) {
+  const amostra = linhasTexto.slice(0, 20);
+  return [';', ',', '\t'].reduce((best, delimiter) => {
+    const melhorAtual = Math.max(...amostra.map(linha => parseCsvLineLead(linha, best).length));
+    const melhorCandidato = Math.max(...amostra.map(linha => parseCsvLineLead(linha, delimiter).length));
+    return melhorCandidato > melhorAtual ? delimiter : best;
+  }, ';');
+}
+
 function lerUploadPlanilhaMailing(req) {
   return new Promise((resolve, reject) => {
     const busboy = Busboy({ headers: req.headers, limits: { files: 1, fileSize: EXCEL_IMPORT_MAX_BYTES } });
@@ -1432,12 +1454,18 @@ function montarColecaoCsv(nomeOriginal, buffer) {
   const linhasTexto = texto.split(/\r?\n/).filter(linha => linha.trim());
   if (!linhasTexto.length) throw new Error('CSV sem cabecalho valido.');
 
-  const delimiter = detectDelimiterLead(linhasTexto[0]);
-  const colunasNomes = normalizarColunasDuplicadas(parseCsvLineLead(linhasTexto[0], delimiter));
+  const delimiter = detectDelimiterLinhasLead(linhasTexto);
+  const linhasCandidatas = linhasTexto.slice(0, 20).map((linha, index) => ({
+    rowNumber: index + 1,
+    valores: parseCsvLineLead(linha.replace(/^\uFEFF/, ''), delimiter)
+  }));
+  const cabecalho = escolherLinhaCabecalhoMailing(linhasCandidatas);
+  const headerIndex = Math.max((cabecalho?.rowNumber || 1) - 1, 0);
+  const colunasNomes = normalizarColunasDuplicadas(cabecalho?.valores || parseCsvLineLead(linhasTexto[0], delimiter));
   const colunas = colunasNomes.map((nome, index) => ({ nome, index: index + 1 }));
   const linhas = [];
 
-  for (let i = 1; i < linhasTexto.length; i += 1) {
+  for (let i = headerIndex + 1; i < linhasTexto.length; i += 1) {
     const values = parseCsvLineLead(linhasTexto[i], delimiter);
     const dados = { __rowIndex: i + 1 };
     let vazia = true;
@@ -1451,7 +1479,6 @@ function montarColecaoCsv(nomeOriginal, buffer) {
 
   return [{ nome: nomeOriginal, colunas, linhas }];
 }
-
 function montarColecoesExcel(nomeOriginal, workbook, abasSelecionadas = null, opcoes = {}) {
   const selecionadas = Array.isArray(abasSelecionadas) && abasSelecionadas.length > 0
     ? new Set(abasSelecionadas.map(normalizarNomeAbaLead))

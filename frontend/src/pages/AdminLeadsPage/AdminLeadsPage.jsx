@@ -101,7 +101,7 @@ function montarSugestoesClientesAntigos(colunas) {
     data_venda: sugerirColunaImportacao(colunas, ['data da venda', 'data venda', 'data']),
     operadora: sugerirColunaImportacao(colunas, ['operadora', 'operadoras']),
     responsavel_nome: sugerirColunaImportacao(colunas, ['responsavel', 'nome responsavel', 'nome do responsavel', 'contato']),
-    telefone: sugerirColunaImportacao(colunas, ['telefone', 'fone', 'celular', 'whatsapp', 'contato telefone']),
+    telefone: sugerirColunaImportacao(colunas, ['terminal', 'telefone', 'fone', 'celular', 'whatsapp', 'contato telefone']),
     quantidade_chips: sugerirColunaImportacao(colunas, ['quantidade de chips', 'qtd chips', 'chips', 'quantidade', 'qtd', 'ctns'])
   };
 }
@@ -1166,7 +1166,7 @@ function AdminLeadsPage() {
       { chave: 'data_venda', label: 'Data da venda', obrigatorio: false },
       { chave: 'operadora', label: 'Operadora', obrigatorio: false },
       { chave: 'responsavel_nome', label: 'Nome do responsavel', obrigatorio: false },
-      { chave: 'telefone', label: 'Telefone', obrigatorio: false },
+      { chave: 'telefone', label: 'Terminal', obrigatorio: false },
       { chave: 'quantidade_chips', label: 'Quantidade de chips', obrigatorio: false }
     ];
 

@@ -290,7 +290,7 @@ async function previewPlanilha(req) {
       data_venda: sugerirColuna(colunas, ['data da venda', 'data venda', 'data']),
       operadora: sugerirColuna(colunas, ['operadora', 'operadoras']),
       responsavel_nome: sugerirColuna(colunas, ['responsavel', 'nome responsavel', 'nome do responsavel', 'contato']),
-      telefone: sugerirColuna(colunas, ['telefone', 'fone', 'celular', 'whatsapp', 'contato telefone']),
+      telefone: sugerirColuna(colunas, ['terminal', 'telefone', 'fone', 'celular', 'whatsapp', 'contato telefone']),
       quantidade_chips: sugerirColuna(colunas, ['quantidade de chips', 'qtd chips', 'chips', 'quantidade', 'qtd', 'ctns'])
     },
     amostras: montarAmostras(worksheet, colunas, 5, linhaCabecalho)
@@ -490,7 +490,7 @@ function montarMapeamentoAutomaticoClientesAntigos(colunas) {
     data_venda: sugerirColuna(colunas, ['data da venda', 'data venda', 'data']),
     operadora: sugerirColuna(colunas, ['operadora', 'operadoras']),
     responsavel_nome: sugerirColuna(colunas, ['responsavel', 'nome responsavel', 'nome do responsavel', 'contato']),
-    telefone: sugerirColuna(colunas, ['telefone', 'fone', 'celular', 'whatsapp', 'contato telefone']),
+    telefone: sugerirColuna(colunas, ['terminal', 'telefone', 'fone', 'celular', 'whatsapp', 'contato telefone']),
     quantidade_chips: sugerirColuna(colunas, ['quantidade de chips', 'qtd chips', 'chips', 'quantidade', 'qtd', 'ctns'])
   };
 }
@@ -801,7 +801,15 @@ async function buscarVendasClientesNormais({ termo, page, perPage }) {
 
   const pagina = await Venda.query()
     .select('id', 'cliente_id', 'nome', 'razao_social', 'cnpj', 'data_venda', 'operadora_id', 'nome_representante_legal', 'telefone', 'quantidade_linhas', 'valores_unitarios_chips')
-    .whereNull('excluido_em')
+    .whereNull('vendas.excluido_em')
+    .whereNotNull('vendas.cliente_id')
+    .whereExists(
+      Venda.knex()
+        .select(1)
+        .from('clientes as cliente_busca')
+        .whereRaw('cliente_busca.id = vendas.cliente_id')
+        .whereNull('cliente_busca.excluido_em')
+    )
     .where(builder => {
       if (clienteIds.length > 0) builder.whereIn('cliente_id', clienteIds);
 

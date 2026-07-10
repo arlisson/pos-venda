@@ -2,6 +2,34 @@ const BATCH_MAX_ROWS = 5000;
 const BATCH_MAX_BYTES = 2 * 1024 * 1024;
 const ROW_MAX_BYTES = 300000;
 const SAMPLE_SIZE = 200;
+const HEADER_LOOKAHEAD = 20;
+const HEADER_TERMS = [
+  'cnpj',
+  'cpf/cnpj',
+  'documento',
+  'razao social',
+  'empresa',
+  'nome fantasia',
+  'acessos',
+  'consultor',
+  'data de ativacao',
+  'terminal',
+  'status',
+  'operadora',
+  'telefone',
+  'whatsapp',
+  'contato',
+  'responsavel',
+  'quantidade de chips',
+  'qtd chips',
+  'chips',
+  'data da venda',
+  'data venda',
+  'email',
+  'e-mail',
+  'cidade',
+  'uf'
+];
 
 /**
  * Detecta encoding a partir do conteudo recebido.
@@ -76,6 +104,15 @@ function detectDelimiter(line) {
   ), ';');
 }
 
+function detectDelimiterLines(lines) {
+  const sample = lines.slice(0, HEADER_LOOKAHEAD);
+  return [';', ',', '\t'].reduce((best, delimiter) => {
+    const bestCount = Math.max(...sample.map(line => parseCsvLine(line, best).length));
+    const candidateCount = Math.max(...sample.map(line => parseCsvLine(line, delimiter).length));
+    return candidateCount > bestCount ? delimiter : best;
+  }, ';');
+}
+
 /**
  * Normaliza duplicate columns para uso interno.
  */
@@ -89,6 +126,54 @@ function normalizeDuplicateColumns(columns) {
   });
 }
 
+function normalizeHeaderText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function cellLooksLikeHeader(cell, term) {
+  const name = normalizeHeaderText(cell);
+  const needle = normalizeHeaderText(term);
+  if (!name || !needle) return false;
+  if (name === needle) return true;
+  return name.includes(needle) && name.length <= 40;
+}
+
+function rowContainsHeader(values, term) {
+  return values.some(value => cellLooksLikeHeader(value, term));
+}
+
+function scoreHeaderRow(values) {
+  const filled = values.filter(value => String(value || '').trim());
+  if (filled.length < 2) return 0;
+
+  const found = new Set();
+  for (const value of filled) {
+    HEADER_TERMS.forEach(term => {
+      if (cellLooksLikeHeader(value, term)) found.add(term);
+    });
+  }
+
+  let score = found.size;
+  if (rowContainsHeader(filled, 'cnpj') || rowContainsHeader(filled, 'cpf/cnpj')) score += 2;
+  if (filled.length >= 4) score += 1;
+  return score;
+}
+
+function chooseHeaderCandidate(candidates) {
+  if (!candidates.length) return null;
+
+  let best = null;
+  for (const candidate of candidates) {
+    const score = scoreHeaderRow(candidate.values);
+    if (!best || score > best.score) best = { ...candidate, score };
+  }
+
+  return best?.score >= 3 ? best : candidates[0];
+}
 /**
  * Converte number para o formato interno esperado.
  */
@@ -169,6 +254,7 @@ self.onmessage = async (event) => {
     let rowIndex = 0;
     let parsedBytes = 0;
     const sample = [];
+    const headerLines = [];
 
     /**
      * Envia o lote acumulado e reinicia o buffer.
@@ -187,20 +273,7 @@ self.onmessage = async (event) => {
       batchBytes = 0;
     }
 
-    /**
-     * Adiciona line ao lote atual.
-     */
-    function addLine(line) {
-      if (!line.trim()) return;
-      const cleanLine = line.replace(/^\uFEFF/, '');
-
-      if (!columns) {
-        delimiter = detectDelimiter(cleanLine);
-        columns = normalizeDuplicateColumns(parseCsvLine(cleanLine, delimiter));
-        self.postMessage({ type: 'schema', colunas: columns });
-        return;
-      }
-
+    function processDataLine(line) {
       const values = parseCsvLine(line, delimiter);
       const data = {};
       columns.forEach((column, index) => {
@@ -224,6 +297,44 @@ self.onmessage = async (event) => {
       rowIndex += 1;
     }
 
+    function resolveHeader(force = false) {
+      if (columns || headerLines.length === 0) return false;
+
+      delimiter = detectDelimiterLines(headerLines);
+      const candidates = headerLines.map((line, index) => ({
+        index,
+        values: parseCsvLine(line, delimiter)
+      }));
+      const best = chooseHeaderCandidate(candidates);
+      const shouldResolve = force || best?.score >= 3 || headerLines.length >= HEADER_LOOKAHEAD;
+      if (!shouldResolve) return false;
+
+      const headerIndex = best?.index ?? 0;
+      columns = normalizeDuplicateColumns(best?.values || parseCsvLine(headerLines[0], delimiter));
+      self.postMessage({ type: 'schema', colunas: columns });
+
+      for (let index = headerIndex + 1; index < headerLines.length; index += 1) {
+        processDataLine(headerLines[index]);
+      }
+      headerLines.length = 0;
+      return true;
+    }
+
+    /**
+     * Adiciona line ao lote atual.
+     */
+    function addLine(line) {
+      if (!line.trim()) return;
+      const cleanLine = line.replace(/^\uFEFF/, '');
+
+      if (!columns) {
+        headerLines.push(cleanLine);
+        resolveHeader(false);
+        return;
+      }
+
+      processDataLine(line);
+    }
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -240,6 +351,7 @@ self.onmessage = async (event) => {
     const finalText = decoder ? decoder.decode() : '';
     if (finalText) remainder += finalText;
     if (remainder.trim()) addLine(remainder);
+    resolveHeader(true);
     flushBatch();
 
     if (!columns || columns.length === 0) {

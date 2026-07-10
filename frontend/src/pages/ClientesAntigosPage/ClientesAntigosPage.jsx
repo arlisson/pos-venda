@@ -590,9 +590,9 @@ function ClientesAntigosPage() {
                           onPagina={executarBusca}
                         />
                       </div>
-                    ) : (
+                    ) : (!temVendasClientes ? (
                       <div className="empty">Nenhuma venda antiga encontrada para esta busca.</div>
-                    )
+                    ) : null)
                   )}
                 </div>
               )}
