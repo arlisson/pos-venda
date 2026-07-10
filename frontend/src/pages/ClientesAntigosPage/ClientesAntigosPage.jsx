@@ -159,7 +159,7 @@ function ClienteAntigoEditModal({ venda, salvando, excluindo, erro, onClose, onS
                 <input value={form.operadora} onChange={event => alterar('operadora', event.target.value)} maxLength={255} />
               </div>
               <div className="form-field">
-                <label>Responsavel</label>
+                <label>Responsável</label>
                 <input value={form.responsavel_nome} onChange={event => alterar('responsavel_nome', event.target.value)} maxLength={255} />
               </div>
               <div className="form-field">
@@ -465,11 +465,11 @@ function ClientesAntigosPage() {
                             <thead>
                               <tr>
                                 <th>Nome</th>
-                                <th>Razao social</th>
+                                <th>Razão social</th>
                                 <th>Documento</th>
                                 <th>Operadora</th>
-                                <th>Responsavel</th>
-                                <th>Telefone</th>
+                                <th>Responsável</th>
+                                <th>Terminal</th>
                                 <th>Data da venda</th>
                                 <th>Fidelidade</th>
                                 <th>Chips</th>
@@ -503,11 +503,11 @@ function ClientesAntigosPage() {
                             <table>
                               <thead>
                                 <tr>
-                                  <th>Razao social</th>
+                                  <th>Razão social</th>
                                   <th>Documento</th>
                                   <th>Operadora</th>
-                                  <th>Responsavel</th>
-                                <th>Telefone</th>
+                                  <th>Responsável</th>
+                                <th>Terminal</th>
                                 <th>Data da venda</th>
                                   <th>Fidelidade</th>
                                   <th>Chips</th>
@@ -556,8 +556,8 @@ function ClientesAntigosPage() {
                                   <th>Razão social</th>
                                   <th>Documento</th>
                                   <th>Operadora</th>
-                                  <th>Responsavel</th>
-                                <th>Telefone</th>
+                                  <th>Responsável</th>
+                                <th>Terminal</th>
                                 <th>Data da venda</th>
                                   <th>Fidelidade</th>
                                   <th>Chips</th>
