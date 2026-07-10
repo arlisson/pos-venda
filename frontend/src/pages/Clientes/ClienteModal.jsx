@@ -368,7 +368,8 @@ function ClienteModal({
   const draftKey = draftKeyProp || (isLead ? 'lead_novo' : 'cliente_novo');
   const entidadeLabel = isLead ? 'lead' : 'cliente';
   const entidadeLabelCapitalizada = isLead ? 'Lead' : 'Cliente';
-  const podeMostrarNotas = !isLead;
+  const tipoNotas = isLead ? 'lead' : 'cliente';
+  const podeMostrarNotas = true;
 
   const [form, setForm] = useState(() => {
     const base = normalizarClienteForm(cliente);
@@ -866,7 +867,7 @@ function ClienteModal({
         saved = await criarFn(payload);
         if (podeMostrarNotas) for (const nota of pendingNotas) {
           try {
-            await criarNotaEntidade('cliente', saved.id, nota);
+            await criarNotaEntidade(tipoNotas, saved.id, nota);
           } catch {
             // best effort
           }
@@ -938,7 +939,7 @@ function ClienteModal({
           {erro && <div className="alert-error" style={{ marginBottom: 12 }}>{erro}</div>}
           {abaAtiva === 'notas' ? (
             <NotasEntidadeTab
-              tipo="cliente"
+              tipo={tipoNotas}
               entidadeId={cliente?.id}
               pendingNotas={pendingNotas}
               onPendingNotasChange={setPendingNotas}

@@ -684,6 +684,9 @@ function getNotificationTarget(notificacao) {
     return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
   }
 
+  if (notificacao.entidade === 'clientes-secretos') {
+    return '/clientes-secretos';
+  }
   if (notificacao.entidade === 'vendas') {
     const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id;
     if (!vendaId) return '/vendas';
@@ -1195,6 +1198,11 @@ function DashboardPage() {
     if (notificacao.tipo === 'cliente_fidelidade' || notificacao.entidade === 'clientes') {
       const aba = TIPOS_RETORNO_NOTA.includes(notificacao.tipo) ? 'notas' : 'cliente';
       await abrirClienteNoDashboard(notificacao.entidade_id || notificacao.dados?.entidade_id, aba);
+      return;
+    }
+
+    if (notificacao.entidade === 'clientes-secretos') {
+      navigate('/clientes-secretos');
       return;
     }
 

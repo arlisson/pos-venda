@@ -348,7 +348,7 @@ async function salvarNotificacaoRetornoNota(nota, etapa, agora) {
 
   const sourceKey = `${etapa}:${nota.id}`;
   const tituloNota = nota.titulo || 'Sem titulo';
-  const destino = nota.entidade_tipo === 'cliente' ? 'clientes' : 'vendas';
+  const destino = nota.entidade_tipo === 'cliente' ? 'clientes' : nota.entidade_tipo === 'lead' ? 'clientes-secretos' : 'vendas';
   const retornoFormatado = formatarDataHoraBR(nota.retorno_agendado_para);
   const isDue = etapa === TIPO_NOTA_RETORNO_DUE;
   const payload = {

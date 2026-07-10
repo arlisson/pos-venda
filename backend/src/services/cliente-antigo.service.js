@@ -35,18 +35,35 @@ function digitosRepetidos(valor) {
   return /^(\d)\1+$/.test(valor);
 }
 
+function validarDigitosCpf(cpf) {
+  if (!/^\d{11}$/.test(cpf) || digitosRepetidos(cpf)) return false;
+
+  const calcularDigito = tamanho => {
+    let soma = 0;
+    for (let index = 0; index < tamanho - 1; index += 1) {
+      soma += Number(cpf[index]) * (tamanho - index);
+    }
+    const digito = (soma * 10) % 11;
+    return digito === 10 ? 0 : digito;
+  };
+
+  return calcularDigito(10) === Number(cpf[9]) && calcularDigito(11) === Number(cpf[10]);
+}
+
 /**
  * Descobre que documento a celula contem. CPF entra como documento proprio
- * porque `sanitizarCnpj` nao recupera 11 digitos (so completa 12 e 13).
+ * e CNPJ numerico vindo do Excel pode perder zeros a esquerda.
  */
 function classificarDocumento(valor) {
   const crus = String(valor || '').replace(/\D/g, '');
 
-  if (crus.length === 11 && !digitosRepetidos(crus)) {
+  if (crus.length === 11 && validarDigitosCpf(crus)) {
     return { tipo: 'cpf', digitos: crus };
   }
 
-  const cnpj = sanitizarCnpj(valor);
+  const cnpj = crus.length >= 11 && crus.length <= 13
+    ? crus.padStart(14, '0')
+    : sanitizarCnpj(valor);
   if (cnpj.length === 14 && !cnpjRepetido(cnpj)) {
     return { tipo: 'cnpj', digitos: cnpj };
   }
@@ -986,6 +1003,7 @@ module.exports = {
   excluir,
   listarHistorico,
   _internals: {
+    classificarDocumento,
     montarChaveLinha,
     parseQuantidadeChips,
     adicionarMesesDataISO,

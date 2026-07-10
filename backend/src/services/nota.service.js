@@ -3,10 +3,11 @@
  */
 const db = require('../database/connection');
 const clienteService = require('./cliente.service');
+const clienteSecretoService = require('./cliente-secreto.service');
 const vendaService = require('./venda.service');
 const notificacaoService = require('./notificacao.service');
 
-const TIPOS_VALIDOS = ['cliente', 'venda'];
+const TIPOS_VALIDOS = ['cliente', 'lead', 'venda'];
 
 /**
  * Valida tipo e retorna o resultado esperado.
@@ -79,6 +80,11 @@ async function usuarioPodeAcessarEntidade(tipo, entidadeId, usuarioId) {
 
   if (tipo === 'cliente') {
     return clienteService.usuarioPodeAcessarCliente(entidadeId, usuarioId);
+  }
+
+  if (tipo === 'lead') {
+    const lead = await clienteSecretoService.buscarClienteSecretoPorId(entidadeId, usuarioId);
+    return Boolean(lead);
   }
 
   const venda = await vendaService.buscarVendaPorId(entidadeId, usuarioId);

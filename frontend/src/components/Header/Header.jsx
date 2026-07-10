@@ -60,6 +60,9 @@ function getNotificationTarget(notification) {
     return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
   }
 
+  if (notification.entidade === 'clientes-secretos') {
+    return '/clientes-secretos';
+  }
   if (notification.entidade === 'vendas') {
     const vendaId = notification.entidade_id || notification.dados?.venda_id;
     if (!vendaId) return '/vendas';

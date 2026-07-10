@@ -473,11 +473,15 @@ function LayoutPrivado({ children }) {
         return clienteId ? `/clientes/${clienteId}/editar` : '/clientes';
       case 'nota_retorno_pre':
       case 'nota_retorno_due':
+        if (notificacao.entidade === 'clientes-secretos') {
+          return '/clientes-secretos';
+        }
         if (notificacao.entidade === 'clientes') {
           return clienteId ? `/clientes/${clienteId}/editar` : '/clientes';
         }
         return vendaId ? `/vendas?venda_id=${vendaId}` : '/vendas';
       default:
+        if (notificacao.entidade === 'clientes-secretos') return '/clientes-secretos';
         if (notificacao.entidade === 'clientes') return clienteId ? `/clientes/${clienteId}/editar` : '/clientes';
         if (notificacao.entidade === 'vendas') return vendaId ? `/vendas?venda_id=${vendaId}` : '/vendas';
         return '/';

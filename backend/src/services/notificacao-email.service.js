@@ -197,12 +197,15 @@ function montarAcao(notificacao) {
     case 'nota_retorno_pre':
     case 'nota_retorno_due': {
       const isCliente = dados.entidade_tipo === 'cliente' || notificacao.entidade === 'clientes';
+      const isLead = dados.entidade_tipo === 'lead' || notificacao.entidade === 'clientes-secretos';
       const id = dados.entidade_id || notificacao.entidade_id;
       return {
         label: 'Abrir retorno',
-        path: isCliente
-          ? (id ? `/clientes?cliente_id=${encodeURIComponent(id)}&highlight=${encodeURIComponent(id)}` : '/clientes')
-          : (id ? `/vendas?venda_id=${encodeURIComponent(id)}&aba=notas` : '/vendas'),
+        path: isLead
+          ? '/clientes-secretos'
+          : isCliente
+            ? (id ? `/clientes?cliente_id=${encodeURIComponent(id)}&highlight=${encodeURIComponent(id)}` : '/clientes')
+            : (id ? `/vendas?venda_id=${encodeURIComponent(id)}&aba=notas` : '/vendas'),
         detalhes: detalhesFromEntries([
           ['Titulo', dados.titulo_nota],
           ['Retorno agendado', dados.retorno_agendado_para]
