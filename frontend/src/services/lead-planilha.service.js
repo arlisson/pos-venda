@@ -76,6 +76,80 @@ export function uploadLeadPlanilha(file, onProgress) {
 }
 
 /**
+ * Importa uma planilha Excel de mailing no backend.
+ */
+export function importarLeadPlanilhaExcel(file, onProgress, opcoes = {}) {
+  return new Promise((resolve, reject) => {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', file);
+    if (opcoes.baseAntiga) formData.append('base_antiga', 'true');
+    if (opcoes.mapeamento) formData.append('mapeamento', JSON.stringify(opcoes.mapeamento));
+    if (Array.isArray(opcoes.abas)) formData.append('abas', JSON.stringify(opcoes.abas));
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_URL}/lead-planilhas/importar-excel`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch { reject(new Error('Resposta invalida do servidor.')); }
+      } else {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          reject(new Error(data?.message || data?.error || 'Erro ao importar XLSX.'));
+        } catch { reject(new Error('Erro ao importar XLSX.')); }
+      }
+    });
+
+    xhr.addEventListener('error', () => reject(new Error('Erro de rede ao importar XLSX.')));
+    xhr.addEventListener('abort', () => reject(new Error('Importacao cancelada.')));
+
+    xhr.send(formData);
+  });
+}
+export function importarBaseAntigaMailing(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_URL}/lead-planilhas/importar-base-antiga`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch { reject(new Error('Resposta invalida do servidor.')); }
+      } else {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          reject(new Error(data?.message || data?.error || 'Erro ao importar base antiga.'));
+        } catch { reject(new Error('Erro ao importar base antiga.')); }
+      }
+    });
+
+    xhr.addEventListener('error', () => reject(new Error('Erro de rede ao importar base antiga.')));
+    xhr.addEventListener('abort', () => reject(new Error('Importacao cancelada.')));
+
+    xhr.send(formData);
+  });
+}
+/**
  * Busca lead planilha status conforme os parametros informados.
  */
 export function buscarLeadPlanilhaStatus(id) {

@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import * as I from '../../components/Icons';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { listarVendedoras } from '../../services/venda.service';
@@ -9,13 +9,24 @@ import {
   excluirLeadPlanilha,
   exportarLeadLinhas,
   finalizarLeadPlanilha,
+  importarLeadPlanilhaExcel,
   listarLeadLinhas,
   listarLeadPlanilhas,
   marcarErroLeadPlanilha,
   salvarLeadLinhas
 } from '../../services/lead-planilha.service';
+import { previewPlanilhaClientesAntigos } from '../../services/cliente-antigo.service';
 import './AdminLeadsPage.css';
 
+const MAPEAMENTO_CLIENTES_ANTIGOS = {
+  cnpj: '',
+  razao_social: '',
+  data_venda: '',
+  operadora: '',
+  responsavel_nome: '',
+  telefone: '',
+  quantidade_chips: ''
+};
 const PAGE_SIZE = 200;
 const OPS = {
   string: [
@@ -50,6 +61,50 @@ function normalizarTexto(valor) {
 /**
  * Retorna valor coluna a partir dos dados informados.
  */
+function normalizarColunaImportacao(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function tokensBuscaColuna(valor) {
+  return normalizarColunaImportacao(valor)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function colunaCorrespondeBusca(coluna, busca) {
+  const termo = normalizarColunaImportacao(busca);
+  const nome = normalizarColunaImportacao(coluna?.nome);
+  if (!termo || !nome) return false;
+  if (nome === termo || nome.includes(termo)) return true;
+
+  const tokens = tokensBuscaColuna(busca);
+  return tokens.length > 0 && tokens.every(token => nome.includes(token));
+}
+
+function encontrarColunaImportacao(colunas, busca) {
+  if (!busca) return null;
+  return colunas.find(coluna => colunaCorrespondeBusca(coluna, busca)) || null;
+}
+
+function sugerirColunaImportacao(colunas, termos) {
+  return termos.map(termo => encontrarColunaImportacao(colunas, termo)).find(Boolean)?.nome || '';
+}
+
+function montarSugestoesClientesAntigos(colunas) {
+  return {
+    cnpj: sugerirColunaImportacao(colunas, ['cnpj', 'cpf/cnpj', 'documento']),
+    razao_social: sugerirColunaImportacao(colunas, ['razao', 'razao social', 'empresa']),
+    data_venda: sugerirColunaImportacao(colunas, ['data da venda', 'data venda', 'data']),
+    operadora: sugerirColunaImportacao(colunas, ['operadora', 'operadoras']),
+    responsavel_nome: sugerirColunaImportacao(colunas, ['responsavel', 'nome responsavel', 'nome do responsavel', 'contato']),
+    telefone: sugerirColunaImportacao(colunas, ['telefone', 'fone', 'celular', 'whatsapp', 'contato telefone']),
+    quantidade_chips: sugerirColunaImportacao(colunas, ['quantidade de chips', 'qtd chips', 'chips', 'quantidade', 'qtd', 'ctns'])
+  };
+}
 function getValorColuna(linha, coluna) {
   if (!coluna) return '';
   if (coluna.planilhaId && Number(linha.planilha_id) !== Number(coluna.planilhaId)) return '';
@@ -499,6 +554,14 @@ function AdminLeadsPage() {
   const [modalExcluir, setModalExcluir] = useState(null);
   const [excluindoId, setExcluindoId] = useState(null);
   const [erroExclusao, setErroExclusao] = useState('');
+  const [caArquivo, setCaArquivo] = useState(null);
+  const [caPreview, setCaPreview] = useState(null);
+  const [caMapeamento, setCaMapeamento] = useState(MAPEAMENTO_CLIENTES_ANTIGOS);
+  const [caCarregandoPreview, setCaCarregandoPreview] = useState(false);
+  const [caImportando, setCaImportando] = useState(false);
+  const [caResultado, setCaResultado] = useState(null);
+  const [caAbasSelecionadas, setCaAbasSelecionadas] = useState([]);
+  const [abaMailing, setAbaMailing] = useState('mailing');
 
   /**
    * Carrega base e atualiza o estado relacionado.
@@ -639,14 +702,143 @@ function AdminLeadsPage() {
     ? Math.round((Number(resumoLeads.enviados || 0) / Number(resumoLeads.total || 1)) * 100)
     : 0;
 
+  const caColunasSelecionadas = useMemo(() => {
+    const abasComColunas = caPreview?.abas?.filter(item => Array.isArray(item.colunas)) || [];
+    const selecionadasSet = new Set(caAbasSelecionadas);
+    const origem = abasComColunas.length > 0
+      ? abasComColunas.filter(item => selecionadasSet.has(item.nome)).flatMap(item => item.colunas || [])
+      : caPreview?.colunas || [];
+    const vistas = new Set();
+
+    return origem.filter(coluna => {
+      if (!coluna?.nome || vistas.has(coluna.nome)) return false;
+      vistas.add(coluna.nome);
+      return true;
+    });
+  }, [caPreview, caAbasSelecionadas]);
+
+  const caCnpjSelecionadoValido = useMemo(() => (
+    Boolean(caMapeamento.cnpj && encontrarColunaImportacao(caColunasSelecionadas, caMapeamento.cnpj))
+  ), [caMapeamento.cnpj, caColunasSelecionadas]);
+
+  async function caCarregarPreview(file) {
+    setCaArquivo(file || null);
+    setCaPreview(null);
+    setCaResultado(null);
+    setCaMapeamento(MAPEAMENTO_CLIENTES_ANTIGOS);
+    setCaAbasSelecionadas([]);
+    setErro('');
+    setSucesso('');
+
+    if (!file) return;
+
+    setCaCarregandoPreview(true);
+    try {
+      const data = await previewPlanilhaClientesAntigos(file);
+      setCaPreview(data);
+      setCaAbasSelecionadas((data.abas || []).map(item => item.nome));
+      setCaMapeamento({
+        cnpj: data.sugestoes?.cnpj || '',
+        razao_social: data.sugestoes?.razao_social || '',
+        data_venda: data.sugestoes?.data_venda || '',
+        operadora: data.sugestoes?.operadora || '',
+        responsavel_nome: data.sugestoes?.responsavel_nome || '',
+        telefone: data.sugestoes?.telefone || '',
+        quantidade_chips: data.sugestoes?.quantidade_chips || ''
+      });
+    } catch (error) {
+      setErro(error.message || 'Erro ao ler planilha.');
+    } finally {
+      setCaCarregandoPreview(false);
+    }
+  }
+
+  function caToggleTodasAbas(marcar) {
+    setCaAbasSelecionadas(marcar ? (caPreview?.abas || []).map(item => item.nome) : []);
+  }
+
+  function caToggleAba(nome) {
+    setCaAbasSelecionadas(prev => (
+      prev.includes(nome)
+        ? prev.filter(item => item !== nome)
+        : [...prev, nome]
+    ));
+  }
+
+  useEffect(() => {
+    if (!caPreview) return;
+
+    const sugestoes = montarSugestoesClientesAntigos(caColunasSelecionadas);
+    setCaMapeamento(prev => {
+      const proximo = { ...prev };
+      Object.keys(proximo).forEach(campo => {
+        if (proximo[campo] && !encontrarColunaImportacao(caColunasSelecionadas, proximo[campo])) {
+          proximo[campo] = sugestoes[campo] || '';
+        }
+      });
+      if (!proximo.cnpj && sugestoes.cnpj) proximo.cnpj = sugestoes.cnpj;
+      return proximo;
+    });
+  }, [caPreview, caColunasSelecionadas]);
+
+  async function caImportar() {
+    if (!caArquivo || caImportando) return;
+    if (caAbasSelecionadas.length === 0) {
+      setErro('Selecione ao menos uma aba para importar.');
+      return;
+    }
+    if (!caCnpjSelecionadoValido) {
+      setErro('Selecione a coluna que contem o CNPJ nas abas marcadas.');
+      return;
+    }
+
+    setCaImportando(true);
+    setProcessando(`Importando mailing e base antiga ${caArquivo.name}`);
+    setErro('');
+    setSucesso('');
+    setCaResultado(null);
+
+    try {
+      const data = await importarLeadPlanilhaExcel(caArquivo, progresso => {
+        setProcessando(`Importando mailing e base antiga ${caArquivo.name}: ${progresso}%`);
+      }, {
+        baseAntiga: true,
+        mapeamento: caMapeamento,
+        abas: caAbasSelecionadas
+      });
+      setCaResultado(data.base_antiga || null);
+      await carregarBase();
+      const totalPlanilhas = data.planilhas?.length || caAbasSelecionadas.length;
+      const base = data.base_antiga;
+      setSucesso(`Importacao concluida: ${totalPlanilhas} planilha(s) de mailing e ${base?.inseridos || 0} novo(s) na base antiga.`);
+    } catch (error) {
+      setErro(error.message || 'Erro ao importar planilha.');
+    } finally {
+      setCaImportando(false);
+      setProcessando('');
+    }
+  }
   /**
    * Importa arquivo a partir dos dados recebidos.
    */
   async function importarArquivo(file) {
-    if (!file.name.toLowerCase().endsWith('.csv')) return;
+    const nome = file.name.toLowerCase();
+    const ehCsv = nome.endsWith('.csv');
+    const ehXlsx = nome.endsWith('.xlsx');
+
+    if (!ehCsv && !ehXlsx) {
+      throw new Error('Envie arquivos .csv ou .xlsx.');
+    }
 
     setProcessando(`Preparando ${file.name}`);
     setErro('');
+
+    if (ehXlsx) {
+      await importarLeadPlanilhaExcel(file, progresso => {
+        setProcessando(`Enviando ${file.name}: ${progresso}%`);
+      });
+      return;
+    }
 
     const planilha = await criarLeadPlanilha({
       nome: file.name,
@@ -783,6 +975,7 @@ function AdminLeadsPage() {
 
       worker.postMessage({ file });
     });
+
   }
 
   /**
@@ -960,6 +1153,174 @@ function AdminLeadsPage() {
     sources: coluna.sources
   }));
 
+  function renderClientesAntigosMailing() {
+    const colunasAntigas = caColunasSelecionadas;
+    const abasPlanilha = caPreview?.abas || [];
+    const totalLinhasSelecionadas = abasPlanilha
+      .filter(item => caAbasSelecionadas.includes(item.nome))
+      .reduce((soma, item) => soma + Number(item.linhas || 0), 0);
+    const todasAbasSelecionadas = abasPlanilha.length > 0 && caAbasSelecionadas.length === abasPlanilha.length;
+    const campos = [
+      { chave: 'cnpj', label: 'CNPJ', obrigatorio: true },
+      { chave: 'razao_social', label: 'Razao social', obrigatorio: false },
+      { chave: 'data_venda', label: 'Data da venda', obrigatorio: false },
+      { chave: 'operadora', label: 'Operadora', obrigatorio: false },
+      { chave: 'responsavel_nome', label: 'Nome do responsavel', obrigatorio: false },
+      { chave: 'telefone', label: 'Telefone', obrigatorio: false },
+      { chave: 'quantidade_chips', label: 'Quantidade de chips', obrigatorio: false }
+    ];
+
+    return (
+      <div className="clientes-antigos-config lead-old-import-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Base de clientes antigos + mailing</h2>
+            <p>Envie uma planilha .xlsx, escolha as abas, mapeie as colunas e importe. Cada aba selecionada vira uma planilha de mailing separada e tambem alimenta a base de clientes antigos.</p>
+          </div>
+        </div>
+
+        <div className="cliente-import-controls">
+          <div className="form-field">
+            <label>Arquivo .xlsx</label>
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={event => caCarregarPreview(event.target.files?.[0])}
+              disabled={caCarregandoPreview || caImportando || Boolean(processando)}
+            />
+          </div>
+        </div>
+
+        {caCarregandoPreview && <div className="muted">Lendo planilha...</div>}
+
+        {caPreview && (
+          <>
+            <div className="cliente-import-summary">
+              <span>Arquivo: <strong>{caPreview.arquivo}</strong></span>
+              <span>Abas: <strong>{caPreview.total_abas || 1}</strong></span>
+              <span>Linhas selecionadas: <strong>{totalLinhasSelecionadas}</strong></span>
+              <span>Colunas: <strong>{colunasAntigas.length}</strong></span>
+            </div>
+
+            {abasPlanilha.length > 0 && (
+              <div className="clientes-antigos-abas">
+                <div className="clientes-antigos-abas-header">
+                  <div>
+                    <strong>Abas para importar</strong>
+                    <p>O mesmo mapeamento sera usado nas abas selecionadas. No mailing, cada aba marcada vira uma planilha separada.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={() => caToggleTodasAbas(!todasAbasSelecionadas)}
+                    disabled={caImportando}
+                  >
+                    {todasAbasSelecionadas ? 'Desmarcar todas' : 'Selecionar todas'}
+                  </button>
+                </div>
+                <div className="clientes-antigos-abas-lista">
+                  {abasPlanilha.map(item => (
+                    <label key={item.nome} className="clientes-antigos-aba-option">
+                      <input
+                        type="checkbox"
+                        checked={caAbasSelecionadas.includes(item.nome)}
+                        onChange={() => caToggleAba(item.nome)}
+                        disabled={caImportando}
+                      />
+                      <span>{item.nome}</span>
+                      <small>{item.linhas} linha(s)</small>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="cliente-import-mapeamento">
+              {campos.map(campo => (
+                <div className="form-field" key={campo.chave}>
+                  <label>{campo.label}{campo.obrigatorio ? ' *' : ''}</label>
+                  <input
+                    type="text"
+                    list={`mailing-clientes-antigos-colunas-${campo.chave}`}
+                    value={caMapeamento[campo.chave]}
+                    onChange={event => setCaMapeamento(prev => ({ ...prev, [campo.chave]: event.target.value }))}
+                    placeholder={campo.chave === 'operadora' ? 'Ex.: operadora ou Claro' : (campo.obrigatorio ? 'Ex.: cnpj' : 'Ex.: data ativacao')}
+                    disabled={caImportando}
+                  />
+                  <datalist id={`mailing-clientes-antigos-colunas-${campo.chave}`}>
+                    {colunasAntigas.map(coluna => (
+                      <option key={`${campo.chave}:${coluna.nome}:${coluna.index}`} value={coluna.nome} />
+                    ))}
+                  </datalist>
+                  {caMapeamento[campo.chave] && encontrarColunaImportacao(colunasAntigas, caMapeamento[campo.chave]) && (
+                    <small>Encontrada: {encontrarColunaImportacao(colunasAntigas, caMapeamento[campo.chave])?.nome}</small>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="config-form-actions lead-old-import-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={caImportar}
+                disabled={!caCnpjSelecionadoValido || caImportando || caAbasSelecionadas.length === 0}
+              >
+                <I.Upload size={14} />
+                {caImportando ? 'Importando...' : 'Importar mailing e base antiga'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {caResultado && (
+          <>
+            <div className="cliente-import-summary">
+              <span>Total de linhas: <strong>{caResultado.total}</strong></span>
+              <span>Vendas validas: <strong>{caResultado.unicos ?? ((caResultado.inseridos || 0) + (caResultado.atualizados || 0))}</strong></span>
+              <span>Novos: <strong>{caResultado.inseridos}</strong></span>
+              <span>Atualizados: <strong>{caResultado.atualizados}</strong></span>
+              <span>Importados sem CNPJ: <strong>{caResultado.sem_cnpj || 0}</strong></span>
+              <span>Invalidos ignorados: <strong>{caResultado.invalidos ?? caResultado.ignorados}</strong></span>
+            </div>
+
+            {caResultado.invalidos_detalhes?.length > 0 && (
+              <div className="cliente-import-invalidos">
+                <h4>Linhas ignoradas</h4>
+                {caResultado.invalidos > caResultado.invalidos_detalhes.length && (
+                  <p className="cliente-import-invalidos-aviso">
+                    Mostrando as primeiras {caResultado.invalidos_detalhes.length} de {caResultado.invalidos} linhas ignoradas.
+                  </p>
+                )}
+                <div className="cliente-import-invalidos-tabela">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Aba</th>
+                        <th>Linha</th>
+                        <th>Valor lido</th>
+                        <th>Motivo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {caResultado.invalidos_detalhes.map(item => (
+                        <tr key={`${item.aba}:${item.linha}`}>
+                          <td>{item.aba}</td>
+                          <td>{item.linha}</td>
+                          <td>{item.valor || <em>(celula vazia)</em>}</td>
+                          <td>{item.motivo}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
   return (
     <LayoutPrivado>
       {modalMesclar && (
@@ -1001,14 +1362,35 @@ function AdminLeadsPage() {
         />
       )}
 
-      <div className="admin-leads-page">
-        <input ref={inputRef} type="file" accept=".csv" multiple hidden onChange={handleUpload} />
+      <div className={`admin-leads-page is-${abaMailing}-tab`}>
+                <input ref={inputRef} type="file" accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple hidden onChange={handleUpload} />
+
+        <div className="lead-page-tabs" role="tablist" aria-label="Secoes de mailing">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={abaMailing === 'mailing'}
+            className={abaMailing === 'mailing' ? 'active' : ''}
+            onClick={() => setAbaMailing('mailing')}
+          >
+            Mailing
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={abaMailing === 'antigos'}
+            className={abaMailing === 'antigos' ? 'active' : ''}
+            onClick={() => setAbaMailing('antigos')}
+          >
+            Clientes antigos
+          </button>
+        </div>
 
         <div className="lead-doc-strip">
           <div className="lead-doc-strip__title">
             <span>Planilhas</span>
-            <button className="btn btn-primary" type="button" onClick={() => inputRef.current?.click()}>
-              <I.Plus size={14} /> Importar planilha
+            <button className="btn btn-primary" type="button" onClick={() => inputRef.current?.click()} disabled={Boolean(processando)}>
+              <I.Plus size={14} /> Importar somente mailing
             </button>
           </div>
 
@@ -1057,6 +1439,8 @@ function AdminLeadsPage() {
             )}
           </div>
         </div>
+
+        {renderClientesAntigosMailing()}
 
         <div className="admin-leads-toolbar">
           <div className="search-box">

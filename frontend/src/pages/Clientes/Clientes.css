@@ -1642,3 +1642,24 @@
     height: 42px;
   }
 }
+.cliente-phone-field {
+  gap: 8px;
+}
+
+.cliente-phone-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cliente-phone-check input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--primary);
+}

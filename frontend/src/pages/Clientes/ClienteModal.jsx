@@ -22,6 +22,10 @@ const FORM_INICIAL = {
   email: '',
   whatsapp: '',
   fixo: '',
+  telefone_receita: '',
+  telefone_receita_contatavel: false,
+  telefone_google: '',
+  telefone_google_contatavel: false,
   fidelidade_fim: '',
   operadora_atual_id: '',
   valor_pago: '',
@@ -116,6 +120,10 @@ function formatarTelefoneComDdd(valor, celular = false) {
  */
 function juntarTelefone(ddd, numero, celular = false) {
   return formatarTelefoneComDdd(`${ddd || ''}${numero || ''}`, celular);
+}
+function formatarTelefoneOrigem(valor) {
+  const digitos = apenasDigitos(valor, 11);
+  return formatarTelefoneComDdd(digitos, digitos.length > 10);
 }
 
 /**
@@ -226,6 +234,10 @@ function montarPayloadCliente(form) {
     whatsapp_numero: whatsapp.numero,
     fixo_ddd: fixo.ddd,
     fixo_numero: fixo.numero,
+    telefone_receita: apenasDigitos(form.telefone_receita, 11) || null,
+    telefone_receita_contatavel: Boolean(form.telefone_receita_contatavel),
+    telefone_google: apenasDigitos(form.telefone_google, 11) || null,
+    telefone_google_contatavel: Boolean(form.telefone_google_contatavel),
     operadoras_atuais: operadorasAtuais,
     fidelidade_fim: operadorasAtuais[0]?.fidelidade_fim || null,
     operadora_atual_id: operadorasAtuais[0]?.operadora_id || null,
@@ -249,6 +261,10 @@ function normalizarClienteForm(cliente) {
     email: cliente.email || '',
     whatsapp: juntarTelefone(cliente.whatsapp_ddd, cliente.whatsapp_numero, true),
     fixo: juntarTelefone(cliente.fixo_ddd, cliente.fixo_numero),
+    telefone_receita: formatarTelefoneOrigem(cliente.telefone_receita),
+    telefone_receita_contatavel: Boolean(cliente.telefone_receita_contatavel),
+    telefone_google: formatarTelefoneOrigem(cliente.telefone_google),
+    telefone_google_contatavel: Boolean(cliente.telefone_google_contatavel),
     fidelidade_fim: normalizarDataInput(cliente.fidelidade_fim),
     operadora_atual_id: cliente.operadora_atual_id || '',
     valor_pago: formatarValorPagoInput(cliente.valor_pago),
@@ -331,9 +347,28 @@ function obterResponsaveisVenda(venda) {
 /**
  * Renderiza cliente modal.
  */
-function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'cliente', initialDraft = null, onDraftChange, notesOnly = false, onOpenVenda }) {
+function ClienteModal({
+  cliente,
+  operadoras,
+  onClose,
+  onSave,
+  initialTab = 'cliente',
+  initialDraft = null,
+  onDraftChange,
+  notesOnly = false,
+  onOpenVenda,
+  entidade = 'cliente',
+  draftKey: draftKeyProp,
+  criarFn = criarCliente,
+  atualizarFn = atualizarCliente,
+  verificarDocumentoFn = verificarDocumentoCliente
+}) {
   const editando = Boolean(cliente);
-  const draftKey = 'cliente_novo';
+  const isLead = entidade === 'lead';
+  const draftKey = draftKeyProp || (isLead ? 'lead_novo' : 'cliente_novo');
+  const entidadeLabel = isLead ? 'lead' : 'cliente';
+  const entidadeLabelCapitalizada = isLead ? 'Lead' : 'Cliente';
+  const podeMostrarNotas = !isLead;
 
   const [form, setForm] = useState(() => {
     const base = normalizarClienteForm(cliente);
@@ -482,6 +517,10 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
    */
   function atualizarCampo(campo, valor) {
     setForm(prev => ({ ...prev, [campo]: valor }));
+  }
+
+  function atualizarCheckbox(campo, valor) {
+    setForm(prev => ({ ...prev, [campo]: Boolean(valor) }));
   }
 
   /**
@@ -655,7 +694,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
     setDocumentoStatus({ tipo: 'info', mensagem: tipoBusca === 'cpf' ? 'Verificando documento...' : 'Verificando CNPJ...' });
 
     try {
-      const resultado = await verificarDocumentoCliente(digitos, cliente?.id);
+      const resultado = await verificarDocumentoFn(digitos, cliente?.id);
       const duplicado = resultado?.existe ? resultado.cliente : null;
       setDocumentoDuplicado(duplicado);
       setDocumentoStatus(duplicado
@@ -715,7 +754,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
 
       const timeout = setTimeout(() => {
         verificarDuplicidadeDocumento(cnpj).then(duplicado => {
-          if (!duplicado) buscarDadosCnpj(false);
+          if (!duplicado && !isLead) buscarDadosCnpj(false);
         });
       }, 450);
 
@@ -756,7 +795,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
     setErro('');
 
     if (!form.nome.trim()) {
-      setErro('Preencha o nome do cliente.');
+      setErro(`Preencha o nome do ${entidadeLabel}.`);
       setAbaAtiva('cliente');
       return;
     }
@@ -811,13 +850,21 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
 
     try {
       const payload = montarPayloadCliente(form);
+      if (isLead) {
+        payload.whatsapp = '';
+        payload.fixo = '';
+        payload.whatsapp_ddd = null;
+        payload.whatsapp_numero = null;
+        payload.fixo_ddd = null;
+        payload.fixo_numero = null;
+      }
       let saved;
 
       if (cliente?.id) {
-        saved = await atualizarCliente(cliente.id, payload);
+        saved = await atualizarFn(cliente.id, payload);
       } else {
-        saved = await criarCliente(payload);
-        for (const nota of pendingNotas) {
+        saved = await criarFn(payload);
+        if (podeMostrarNotas) for (const nota of pendingNotas) {
           try {
             await criarNotaEntidade('cliente', saved.id, nota);
           } catch {
@@ -833,7 +880,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
 
       await onSave(saved);
     } catch (error) {
-      setErro(error.message || 'Erro ao salvar cliente.');
+      setErro(error.message || `Erro ao salvar ${entidadeLabel}.`);
       setSalvando(false);
     }
   }
@@ -844,10 +891,10 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
         <div className="modal-header">
           <div className="modal-header-row">
             <div>
-              <div className="modal-client">{notesOnly ? 'Notas do cliente' : editando ? 'Editar cliente' : 'Novo cliente'}</div>
+              <div className="modal-client">{notesOnly ? `Notas do ${entidadeLabel}` : editando ? `Editar ${entidadeLabel}` : `Novo ${entidadeLabel}`}</div>
               <div className="modal-sub">
                 {notesOnly
-                  ? (cliente?.nome || cliente?.razao_social || `Cliente #${cliente?.id}`)
+                  ? (cliente?.nome || cliente?.razao_social || `${entidadeLabelCapitalizada} #${cliente?.id}`)
                   : 'Atualize representantes, contatos e dados de fidelidade.'}
               </div>
             </div>
@@ -864,15 +911,17 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
             className={`modal-tab ${abaAtiva === 'cliente' ? 'active' : ''}`}
             onClick={() => setAbaAtiva('cliente')}
           >
-            <I.User size={14} /> Cliente
+            <I.User size={14} /> {entidadeLabelCapitalizada}
           </button>
-          <button
-            type="button"
-            className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
-            onClick={() => setAbaAtiva('notas')}
-          >
-            <I.Note size={14} /> Notas{!cliente?.id && pendingNotas.length > 0 && ` (${pendingNotas.length})`}
-          </button>
+          {podeMostrarNotas && (
+            <button
+              type="button"
+              className={`modal-tab ${abaAtiva === 'notas' ? 'active' : ''}`}
+              onClick={() => setAbaAtiva('notas')}
+            >
+              <I.Note size={14} /> Notas{!cliente?.id && pendingNotas.length > 0 && ` (${pendingNotas.length})`}
+            </button>
+          )}
           {podeMostrarHistoricoVendas && (
             <button
               type="button"
@@ -992,14 +1041,16 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
                       maxLength={18}
                       required
                     />
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-ghost"
-                      onClick={() => buscarDadosCnpj(true)}
-                      disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
-                    >
-                      {consultandoCnpj ? 'Buscando...' : 'Buscar dados do CNPJ'}
-                    </button>
+                    {!isLead && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => buscarDadosCnpj(true)}
+                        disabled={consultandoCnpj || sanitizarCnpj(form.cnpj).length !== 14}
+                      >
+                        {consultandoCnpj ? 'Buscando...' : 'Buscar dados do CNPJ'}
+                      </button>
+                    )}
                     {cnpjStatus.mensagem && (
                       <span className={`field-hint cnpj-lookup-status ${cnpjStatus.tipo}`}>
                         {cnpjStatus.mensagem}
@@ -1044,27 +1095,71 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
               <input type="email" value={form.email} onChange={event => atualizarCampo('email', event.target.value)} />
             </div>
 
-            <div className="form-field">
-              <label>WhatsApp com DDD</label>
-              <input
-                value={form.whatsapp}
-                onChange={event => atualizarCampo('whatsapp', formatarTelefoneComDdd(event.target.value, true))}
-                placeholder="(11) 99999-9999"
-                inputMode="numeric"
-                maxLength={15}
-              />
-            </div>
+            {isLead ? (
+              <>
+                <div className="form-field cliente-phone-field">
+                  <label>Telefone Receita</label>
+                  <input
+                    value={form.telefone_receita}
+                    onChange={event => atualizarCampo('telefone_receita', formatarTelefoneOrigem(event.target.value))}
+                    placeholder="(11) 99999-9999"
+                    inputMode="numeric"
+                    maxLength={15}
+                  />
+                  <label className="checkbox-inline cliente-phone-check">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.telefone_receita_contatavel)}
+                      onChange={event => atualizarCheckbox('telefone_receita_contatavel', event.target.checked)}
+                    />
+                    Pode falar
+                  </label>
+                </div>
 
-            <div className="form-field">
-              <label>Fixo com DDD</label>
-              <input
-                value={form.fixo}
-                onChange={event => atualizarCampo('fixo', formatarTelefoneComDdd(event.target.value))}
-                placeholder="(11) 9999-9999"
-                inputMode="numeric"
-                maxLength={14}
-              />
-            </div>
+                <div className="form-field cliente-phone-field">
+                  <label>Telefone Google</label>
+                  <input
+                    value={form.telefone_google}
+                    onChange={event => atualizarCampo('telefone_google', formatarTelefoneOrigem(event.target.value))}
+                    placeholder="(11) 99999-9999"
+                    inputMode="numeric"
+                    maxLength={15}
+                  />
+                  <label className="checkbox-inline cliente-phone-check">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.telefone_google_contatavel)}
+                      onChange={event => atualizarCheckbox('telefone_google_contatavel', event.target.checked)}
+                    />
+                    Pode falar
+                  </label>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-field">
+                  <label>WhatsApp com DDD</label>
+                  <input
+                    value={form.whatsapp}
+                    onChange={event => atualizarCampo('whatsapp', formatarTelefoneComDdd(event.target.value, true))}
+                    placeholder="(11) 99999-9999"
+                    inputMode="numeric"
+                    maxLength={15}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Fixo com DDD</label>
+                  <input
+                    value={form.fixo}
+                    onChange={event => atualizarCampo('fixo', formatarTelefoneComDdd(event.target.value))}
+                    placeholder="(11) 9999-9999"
+                    inputMode="numeric"
+                    maxLength={14}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="form-field span-2 cliente-operadoras-field">
               <div className="cliente-operadoras-head">
@@ -1130,13 +1225,15 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
             </div>
           </div>
 
-          <CnpjSugestoes
-            dados={cnpjDados}
-            sugestoes={cnpjSugestoes}
-            labels={CNPJ_LABELS_CLIENTE}
-            onAceitar={aceitarSugestaoCnpj}
-            onRecusar={recusarSugestaoCnpj}
-          />
+          {!isLead && (
+            <CnpjSugestoes
+              dados={cnpjDados}
+              sugestoes={cnpjSugestoes}
+              labels={CNPJ_LABELS_CLIENTE}
+              onAceitar={aceitarSugestaoCnpj}
+              onRecusar={recusarSugestaoCnpj}
+            />
+          )}
 
           {erro && <div className="alert-error" style={{ marginTop: 16 }}>{erro}</div>}
           </>
@@ -1155,7 +1252,7 @@ function ClienteModal({ cliente, operadoras, onClose, onSave, initialTab = 'clie
               )}
               <button type="button" className="btn" onClick={handleClose} disabled={salvando}>Cancelar</button>
               <button type="submit" className="btn btn-primary" disabled={salvando}>
-                {salvando ? 'Salvando...' : 'Salvar cliente'}
+                {salvando ? 'Salvando...' : `Salvar ${entidadeLabel}`}
               </button>
             </>
           )}

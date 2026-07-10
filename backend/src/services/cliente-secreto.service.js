@@ -14,6 +14,10 @@ const CAMPOS = [
   'whatsapp_numero',
   'fixo_ddd',
   'fixo_numero',
+  'telefone_receita',
+  'telefone_receita_contatavel',
+  'telefone_google',
+  'telefone_google_contatavel',
   'fidelidade_fim',
   'operadora_atual_id',
   'valor_pago',
@@ -66,6 +70,15 @@ function normalizarInteiroOpcional(valor) {
   const numero = Number(valor);
   if (!Number.isFinite(numero)) return null;
   return Math.max(Math.trunc(numero), 0);
+}
+
+function normalizarBooleano(valor) {
+  return valor === true || valor === 1 || valor === '1' || valor === 'true' || valor === 'on';
+}
+
+function normalizarTelefoneOrigem(valor) {
+  const digitos = apenasDigitos(valor).slice(0, 11);
+  return digitos || null;
 }
 
 function validarDigitosCnpj(cnpj) {
@@ -235,6 +248,10 @@ function montarPayload(dados) {
   if (payload.operadora_atual_id !== undefined && payload.operadora_atual_id !== null) payload.operadora_atual_id = Number(payload.operadora_atual_id);
   if (payload.quantidade_chips !== undefined && payload.quantidade_chips !== null) payload.quantidade_chips = Number(payload.quantidade_chips);
   if (payload.valor_pago !== undefined) payload.valor_pago = normalizarValorMonetario(payload.valor_pago);
+  if (payload.telefone_receita !== undefined) payload.telefone_receita = normalizarTelefoneOrigem(payload.telefone_receita);
+  if (payload.telefone_google !== undefined) payload.telefone_google = normalizarTelefoneOrigem(payload.telefone_google);
+  if (payload.telefone_receita_contatavel !== undefined) payload.telefone_receita_contatavel = normalizarBooleano(payload.telefone_receita_contatavel);
+  if (payload.telefone_google_contatavel !== undefined) payload.telefone_google_contatavel = normalizarBooleano(payload.telefone_google_contatavel);
   if (payload.fidelidade_fim !== undefined) payload.fidelidade_fim = normalizarData(payload.fidelidade_fim);
   return payload;
 }
@@ -267,6 +284,10 @@ function formatarCliente(cliente) {
     whatsapp_numero: cliente.whatsapp_numero,
     fixo_ddd: cliente.fixo_ddd,
     fixo_numero: cliente.fixo_numero,
+    telefone_receita: cliente.telefone_receita,
+    telefone_receita_contatavel: Boolean(cliente.telefone_receita_contatavel),
+    telefone_google: cliente.telefone_google,
+    telefone_google_contatavel: Boolean(cliente.telefone_google_contatavel),
     fidelidade_fim: cliente.fidelidade_fim,
     operadora_atual_id: cliente.operadora_atual_id,
     operadoraAtual: cliente.operadoraAtual || null,
@@ -293,7 +314,14 @@ function aplicarBusca(query, busca) {
       .orWhere('email', 'like', like)
       .orWhere('responsavel_nome', 'like', like)
       .orWhere('cnpj', 'like', like);
-    if (digitos) builder.orWhere('cnpj_digitos', 'like', `%${digitos}%`);
+    if (digitos) {
+      builder
+        .orWhere('cnpj_digitos', 'like', `%${digitos}%`)
+        .orWhere('telefone_receita', 'like', `%${digitos}%`)
+        .orWhere('telefone_google', 'like', `%${digitos}%`)
+        .orWhereRaw("CONCAT(COALESCE(whatsapp_ddd, ''), COALESCE(whatsapp_numero, '')) like ?", [`%${digitos}%`])
+        .orWhereRaw("CONCAT(COALESCE(fixo_ddd, ''), COALESCE(fixo_numero, '')) like ?", [`%${digitos}%`]);
+    }
   });
 }
 

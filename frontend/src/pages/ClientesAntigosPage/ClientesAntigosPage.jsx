@@ -4,7 +4,7 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import Paginacao from '../../components/Paginacao/Paginacao';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
-import { buscarClienteAntigo, listarHistoricoClientesAntigos } from '../../services/cliente-antigo.service';
+import { atualizarClienteAntigo, buscarClienteAntigo, excluirClienteAntigo, listarHistoricoClientesAntigos } from '../../services/cliente-antigo.service';
 import '../Clientes/Clientes.css';
 import './ClientesAntigosPage.css';
 
@@ -18,6 +18,15 @@ function formatarCnpj(valor) {
   if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
   if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
   return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
+
+/**
+ * Formata a quantidade de chips para exibicao.
+ */
+function formatarQuantidadeChips(valor) {
+  if (valor === null || valor === undefined || valor === '') return '-';
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero.toLocaleString('pt-BR') : '-';
 }
 
 /**
@@ -47,6 +56,141 @@ function formatarDataHora(valor) {
   return `${dd}/${mm}/${aa} às ${hh}:${min}`;
 }
 
+function valorDataInput(valor) {
+  if (!valor) return '';
+  const match = String(valor).match(/(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : '';
+}
+
+function tituloVendaAntiga(venda) {
+  return venda?.razao_social || venda?.cnpj || `Registro #${venda?.id}`;
+}
+
+function ConfirmarExclusaoClienteAntigoModal({ venda, excluindo, onClose, onConfirm }) {
+  if (!venda) return null;
+
+  return (
+    <div className="modal-overlay cliente-antigo-modal-overlay" onClick={event => !excluindo && event.target === event.currentTarget && onClose()}>
+      <div className="modal cliente-antigo-confirm-delete-modal" role="dialog" aria-modal="true" aria-labelledby="cliente-antigo-delete-title">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div>
+              <div id="cliente-antigo-delete-title" className="modal-client">Excluir cliente antigo?</div>
+              <div className="modal-sub">{tituloVendaAntiga(venda)}</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={excluindo} title="Fechar">
+              <I.Close size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="modal-body">
+          <div className="cliente-antigo-delete-warning">
+            <div className="cliente-antigo-delete-warning__icon">
+              <I.AlertTriangle size={22} />
+            </div>
+            <div>
+              <strong>Essa acao remove o registro da base de clientes antigos.</strong>
+              <p>
+                {venda.cnpj ? `Documento ${venda.cnpj}. ` : ''}
+                {venda.data_venda ? `Venda de ${formatarData(venda.data_venda)}. ` : ''}
+                Depois da exclusao, ele deixa de aparecer nas buscas e sera necessario importar ou cadastrar novamente para recuperar.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={excluindo}>Cancelar</button>
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={excluindo}>
+            <I.Trash size={13} /> {excluindo ? 'Excluindo...' : 'Excluir registro'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function ClienteAntigoEditModal({ venda, salvando, excluindo, erro, onClose, onSave, onDelete }) {
+  const [form, setForm] = useState(() => ({
+    razao_social: venda?.razao_social || '',
+    cnpj: venda?.cnpj || '',
+    operadora: venda?.operadora || '',
+    responsavel_nome: venda?.responsavel_nome || '',
+    telefone: venda?.telefone || '',
+    data_venda: valorDataInput(venda?.data_venda),
+    quantidade_chips: venda?.quantidade_chips ?? ''
+  }));
+
+  function alterar(campo, valor) {
+    setForm(prev => ({ ...prev, [campo]: valor }));
+  }
+
+  function enviar(event) {
+    event.preventDefault();
+    onSave(form);
+  }
+
+
+  return (
+    <div className="modal-overlay cliente-antigo-modal-overlay">
+      <div className="modal cliente-antigo-modal">
+        <form onSubmit={enviar}>
+          <div className="modal-header">
+            <div>
+              <div className="modal-client">Editar cliente antigo</div>
+              <h2>{venda?.razao_social || venda?.cnpj || 'Registro antigo'}</h2>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={salvando || excluindo}>
+              <I.Close size={16} />
+            </button>
+          </div>
+
+          <div className="modal-body">
+            {erro && <div className="alert-error">{erro}</div>}
+            <div className="cliente-antigo-form-grid">
+              <div className="form-field span-2">
+                <label>Razao social</label>
+                <input value={form.razao_social} onChange={event => alterar('razao_social', event.target.value)} maxLength={255} />
+              </div>
+              <div className="form-field">
+                <label>Documento</label>
+                <input value={form.cnpj} onChange={event => alterar('cnpj', event.target.value)} maxLength={18} placeholder="CPF ou CNPJ" />
+              </div>
+              <div className="form-field">
+                <label>Operadora</label>
+                <input value={form.operadora} onChange={event => alterar('operadora', event.target.value)} maxLength={255} />
+              </div>
+              <div className="form-field">
+                <label>Responsavel</label>
+                <input value={form.responsavel_nome} onChange={event => alterar('responsavel_nome', event.target.value)} maxLength={255} />
+              </div>
+              <div className="form-field">
+                <label>Telefone</label>
+                <input value={form.telefone} onChange={event => alterar('telefone', event.target.value)} maxLength={80} />
+              </div>
+              <div className="form-field">
+                <label>Data da venda</label>
+                <input type="date" value={form.data_venda} onChange={event => alterar('data_venda', event.target.value)} />
+              </div>
+              <div className="form-field">
+                <label>Chips</label>
+                <input type="number" min="0" step="1" value={form.quantidade_chips} onChange={event => alterar('quantidade_chips', event.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-footer cliente-antigo-modal-footer">
+            <button type="button" className="btn btn-danger cliente-antigo-delete-btn" onClick={onDelete} disabled={salvando || excluindo}>
+              <I.Trash size={13} /> {excluindo ? 'Excluindo...' : 'Excluir'}
+            </button>
+            <button type="button" className="btn" onClick={onClose} disabled={salvando || excluindo}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" disabled={salvando || excluindo}>
+              {salvando ? 'Salvando...' : 'Salvar alteracoes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 /**
  * Pagina de busca de clientes antigos (vendas fora da fidelidade) e historico de buscas.
  */
@@ -54,6 +198,7 @@ function ClientesAntigosPage() {
   const usuario = getUsuarioLocal();
   const podeBuscar = temPermissao(usuario, 'clientes_antigos_buscar');
   const podeHistorico = temPermissao(usuario, 'clientes_antigos_ver_historico');
+  const podeEditarAntigos = temPermissao(usuario, 'clientes_antigos_editar');
 
   const abas = useMemo(() => [
     { id: 'buscar', label: 'Buscar', permitido: podeBuscar },
@@ -70,6 +215,9 @@ function ClientesAntigosPage() {
   const [erro, setErro] = useState('');
 
   const cnpjDigitos = sanitizarCnpj(termoInput);
+  const vendasClientes = resposta?.vendas_clientes || [];
+  const temVendasClientes = vendasClientes.length > 0;
+  const temVendasAntigas = (resposta?.resultados || []).length > 0;
   const cnpjValido = cnpjDigitos.length === 14 && validarDigitosCnpj(cnpjDigitos);
   const termoBuscavel = cnpjValido || termoInput.trim().length >= 3;
 
@@ -113,6 +261,11 @@ function ClientesAntigosPage() {
   const [buscaHistorico, setBuscaHistorico] = useState('');
   const [carregandoHistorico, setCarregandoHistorico] = useState(false);
   const [erroHistorico, setErroHistorico] = useState('');
+  const [vendaEditando, setVendaEditando] = useState(null);
+  const [vendaParaExcluir, setVendaParaExcluir] = useState(null);
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  const [excluindoEdicao, setExcluindoEdicao] = useState(false);
+  const [erroEdicao, setErroEdicao] = useState('');
 
   useEffect(() => {
     if (aba !== 'historico' || !podeHistorico) return;
@@ -158,6 +311,101 @@ function ClientesAntigosPage() {
     setBuscaHistorico(apenasDocumento ? formatarCnpj(digitos) : valor);
   }
 
+  function substituirVendaAntiga(vendaAtualizada) {
+    setResposta(prev => {
+      if (!prev) return prev;
+
+      const atualizarLista = lista => (lista || []).map(item => (
+        Number(item.id) === Number(vendaAtualizada.id) ? vendaAtualizada : item
+      ));
+
+      return {
+        ...prev,
+        venda: Number(prev.venda?.id) === Number(vendaAtualizada.id) ? vendaAtualizada : prev.venda,
+        resultados: atualizarLista(prev.resultados)
+      };
+    });
+  }
+
+  function removerVendaAntiga(id) {
+    setResposta(prev => {
+      if (!prev) return prev;
+
+      const removida = Number(id);
+      const resultados = (prev.resultados || []).filter(item => Number(item.id) !== removida);
+
+      return {
+        ...prev,
+        venda: Number(prev.venda?.id) === removida ? (resultados[0] || null) : prev.venda,
+        resultados,
+        total: Math.max(Number(prev.total || 0) - 1, 0)
+      };
+    });
+  }
+
+  function abrirEdicaoVendaAntiga(venda) {
+    setVendaEditando(venda);
+    setVendaParaExcluir(null);
+    setErroEdicao('');
+  }
+
+  function solicitarExclusaoVendaAntiga() {
+    if (!vendaEditando?.id || salvandoEdicao || excluindoEdicao) return;
+    setErroEdicao('');
+    setVendaParaExcluir(vendaEditando);
+  }
+
+  async function salvarVendaAntiga(dados) {
+    if (!vendaEditando?.id || salvandoEdicao || excluindoEdicao) return;
+    setSalvandoEdicao(true);
+    setErroEdicao('');
+
+    try {
+      const atualizada = await atualizarClienteAntigo(vendaEditando.id, dados);
+      substituirVendaAntiga(atualizada);
+      setVendaEditando(null);
+    } catch (error) {
+      setErroEdicao(error.message || 'Erro ao salvar cliente antigo.');
+    } finally {
+      setSalvandoEdicao(false);
+    }
+  }
+  async function excluirVendaAntiga() {
+    const vendaAlvo = vendaParaExcluir || vendaEditando;
+    if (!vendaAlvo?.id || salvandoEdicao || excluindoEdicao) return;
+    setExcluindoEdicao(true);
+    setErroEdicao('');
+
+    try {
+      await excluirClienteAntigo(vendaAlvo.id);
+      removerVendaAntiga(vendaAlvo.id);
+      setVendaParaExcluir(null);
+      if (Number(vendaEditando?.id) === Number(vendaAlvo.id)) {
+        setVendaEditando(null);
+      }
+    } catch (error) {
+      setErroEdicao(error.message || 'Erro ao excluir cliente antigo.');
+    } finally {
+      setExcluindoEdicao(false);
+    }
+  }
+  function renderAcoesVendaAntiga(item) {
+    if (!podeEditarAntigos) return null;
+
+    return (
+      <td className="row-actions">
+        <button
+          type="button"
+          className="btn btn-icon btn-ghost"
+          title="Editar registro"
+          onClick={() => abrirEdicaoVendaAntiga(item)}
+          disabled={!item.id}
+        >
+          <I.Edit size={13} />
+        </button>
+      </td>
+    );
+  }
   return (
     <LayoutPrivado>
       <div className="clientes-antigos-page">
@@ -185,13 +433,13 @@ function ClientesAntigosPage() {
                 <div className="clientes-antigos-buscar">
                   <form className="clientes-antigos-form" onSubmit={buscar}>
                     <div className="form-field">
-                      <label>CNPJ, CPF ou razão social</label>
+                      <label>Buscar correspondencia</label>
                       <input
                         type="text"
                         maxLength={255}
                         value={termoInput}
                         onChange={event => alterarTermo(event.target.value)}
-                        placeholder="00.000.000/0000-00 ou nome da empresa"
+                        placeholder="CNPJ, CPF, telefone, razao social, responsavel..."
                         autoFocus
                       />
                     </div>
@@ -201,39 +449,104 @@ function ClientesAntigosPage() {
                     </button>
                   </form>
 
-                  {erro && <div className="alert-error">{erro}</div>}
 
-                  {resposta && !erro && resposta.tipo === 'documento' && (
-                    resposta.encontrado ? (
-                      <div className="clientes-antigos-resultado">
-                        <div className="clientes-antigos-card">
-                          <div className="clientes-antigos-card__linha">
-                            <span className="clientes-antigos-card__label">
-                              {resposta.venda.documento_tipo === 'cpf' ? 'CPF' : 'CNPJ'}
-                            </span>
-                            <strong>{resposta.venda.cnpj || '-'}</strong>
-                          </div>
-                          <div className="clientes-antigos-card__linha">
-                            <span className="clientes-antigos-card__label">Razão social</span>
-                            <strong>{resposta.venda.razao_social || '-'}</strong>
-                          </div>
-                          <div className="clientes-antigos-card__linha">
-                            <span className="clientes-antigos-card__label">Nome fantasia</span>
-                            <strong>{resposta.venda.nome_fantasia || '-'}</strong>
-                          </div>
-                          <div className="clientes-antigos-card__linha">
-                            <span className="clientes-antigos-card__label">Data da venda</span>
-                            <strong>{formatarData(resposta.venda.data_venda)}</strong>
-                          </div>
+                  {erro && <div className="alert-error">{erro}</div>}
+                  {resposta && !erro && temVendasClientes && (
+                    <div className="clientes-antigos-resultado">
+                      <div className="config-list-header">
+                        <div>
+                          <h3>Vendas de clientes cadastrados</h3>
+                          <p>{resposta.total_vendas_clientes || vendasClientes.length} venda(s) encontrada(s)</p>
                         </div>
                       </div>
-                    ) : (
-                      <div className="empty">Nenhuma venda antiga encontrada para este documento.</div>
-                    )
+                      <div className="list-table">
+                        <div className="scroll">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Nome</th>
+                                <th>Razao social</th>
+                                <th>Documento</th>
+                                <th>Operadora</th>
+                                <th>Responsavel</th>
+                                <th>Telefone</th>
+                                <th>Data da venda</th>
+                                <th>Fidelidade</th>
+                                <th>Chips</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {vendasClientes.map(item => (
+                                <tr key={`cliente:${item.id}`}>
+                                  <td>{item.nome || '-'}</td>
+                                  <td>{item.razao_social || '-'}</td>
+                                  <td>{item.cnpj || <em>sem documento</em>}</td>
+                                  <td>{item.operadora || '-'}</td>
+                                  <td>{item.responsavel_nome || '-'}</td>
+                                  <td>{item.telefone || '-'}</td>
+                                  <td>{formatarData(item.data_venda)}</td>
+                                  <td>{formatarData(item.fidelidade_fim)}</td>
+                                  <td>{formatarQuantidadeChips(item.quantidade_chips)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {resposta && !erro && resposta.tipo === 'documento' && (
+                    temVendasAntigas ? (
+                      <div className="clientes-antigos-resultado">
+                        <div className="list-table">
+                          <div className="scroll">
+                            <table>
+                              <thead>
+                                <tr>
+                                  <th>Razao social</th>
+                                  <th>Documento</th>
+                                  <th>Operadora</th>
+                                  <th>Responsavel</th>
+                                <th>Telefone</th>
+                                <th>Data da venda</th>
+                                  <th>Fidelidade</th>
+                                  <th>Chips</th>
+                                  {podeEditarAntigos && <th>Acoes</th>}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(resposta.resultados || [resposta.venda]).map((item, indice) => (
+                                  <tr key={`${item.cnpj || item.razao_social}:${item.data_venda || ''}:${indice}`}>
+                                    <td>{item.razao_social || '-'}</td>
+                                    <td>{item.cnpj || <em>sem documento</em>}</td>
+                                    <td>{item.operadora || '-'}</td>
+                                    <td>{item.responsavel_nome || '-'}</td>
+                                  <td>{item.telefone || '-'}</td>
+                                  <td>{formatarData(item.data_venda)}</td>
+                                    <td>{formatarData(item.fidelidade_fim)}</td>
+                                    <td>{formatarQuantidadeChips(item.quantidade_chips)}</td>
+                                    {renderAcoesVendaAntiga(item)}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        <Paginacao
+                          total={resposta.total}
+                          paginaAtual={paginaBusca}
+                          itensPorPagina={resposta.per_page}
+                          onPagina={executarBusca}
+                        />
+                      </div>
+                    ) : (!temVendasClientes ? (
+                      <div className="empty">Nenhuma venda antiga encontrada para esta busca.</div>
+                    ) : null)
                   )}
 
                   {resposta && !erro && resposta.tipo === 'nome' && (
-                    resposta.encontrado ? (
+                    temVendasAntigas ? (
                       <div className="clientes-antigos-resultado">
                         <div className="list-table">
                           <div className="scroll">
@@ -241,18 +554,28 @@ function ClientesAntigosPage() {
                               <thead>
                                 <tr>
                                   <th>Razão social</th>
-                                  <th>Nome fantasia</th>
                                   <th>Documento</th>
-                                  <th>Data da venda</th>
+                                  <th>Operadora</th>
+                                  <th>Responsavel</th>
+                                <th>Telefone</th>
+                                <th>Data da venda</th>
+                                  <th>Fidelidade</th>
+                                  <th>Chips</th>
+                                  {podeEditarAntigos && <th>Acoes</th>}
                                 </tr>
                               </thead>
                               <tbody>
                                 {resposta.resultados.map((item, indice) => (
                                   <tr key={`${item.cnpj || item.razao_social}:${indice}`}>
                                     <td>{item.razao_social || '-'}</td>
-                                    <td>{item.nome_fantasia || '-'}</td>
                                     <td>{item.cnpj || <em>sem documento</em>}</td>
-                                    <td>{formatarData(item.data_venda)}</td>
+                                    <td>{item.operadora || '-'}</td>
+                                    <td>{item.responsavel_nome || '-'}</td>
+                                  <td>{item.telefone || '-'}</td>
+                                  <td>{formatarData(item.data_venda)}</td>
+                                    <td>{formatarData(item.fidelidade_fim)}</td>
+                                    <td>{formatarQuantidadeChips(item.quantidade_chips)}</td>
+                                    {renderAcoesVendaAntiga(item)}
                                   </tr>
                                 ))}
                               </tbody>
@@ -268,7 +591,7 @@ function ClientesAntigosPage() {
                         />
                       </div>
                     ) : (
-                      <div className="empty">Nenhuma venda antiga encontrada para esta razão social.</div>
+                      <div className="empty">Nenhuma venda antiga encontrada para esta busca.</div>
                     )
                   )}
                 </div>
@@ -333,6 +656,23 @@ function ClientesAntigosPage() {
           </div>
         )}
       </div>
+        {vendaEditando && (
+          <ClienteAntigoEditModal
+            venda={vendaEditando}
+            salvando={salvandoEdicao}
+            excluindo={excluindoEdicao}
+            erro={erroEdicao}
+            onClose={() => { if (!salvandoEdicao && !excluindoEdicao) setVendaEditando(null); }}
+            onSave={salvarVendaAntiga}
+            onDelete={solicitarExclusaoVendaAntiga}
+          />
+        )}
+        <ConfirmarExclusaoClienteAntigoModal
+          venda={vendaParaExcluir}
+          excluindo={excluindoEdicao}
+          onClose={() => { if (!excluindoEdicao) setVendaParaExcluir(null); }}
+          onConfirm={excluirVendaAntiga}
+        />
     </LayoutPrivado>
   );
 }

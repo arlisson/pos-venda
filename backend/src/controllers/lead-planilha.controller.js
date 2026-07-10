@@ -45,6 +45,30 @@ async function upload(req, res) {
 }
 
 /**
+ * Importa uma planilha Excel de mailing.
+ */
+async function importarExcel(req, res) {
+  try {
+    const planilha = await leadPlanilhaService.importarExcel(req, req.usuario.id);
+    return res.status(201).json(planilha);
+  } catch (error) {
+    console.error(error);
+    return res.status(400).json({ message: error.message || 'Erro ao importar XLSX.' });
+  }
+}
+/**
+ * Importa o arquivo enviado somente para a base de clientes antigos.
+ */
+async function importarBaseAntiga(req, res) {
+  try {
+    const resultado = await leadPlanilhaService.importarBaseAntigaArquivo(req, req.usuario.id);
+    return res.status(201).json(resultado);
+  } catch (error) {
+    console.error(error);
+    return res.status(400).json({ message: error.message || 'Erro ao importar base antiga.' });
+  }
+}
+/**
  * Retorna status no formato esperado pelo fluxo.
  */
 async function status(req, res) {
@@ -338,6 +362,8 @@ module.exports = {
   index,
   store,
   upload,
+  importarExcel,
+  importarBaseAntiga,
   status,
   storeLinhas,
   finalizar,

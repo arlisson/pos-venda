@@ -225,6 +225,26 @@ const PERMISSOES = [
     descricao: 'Permite excluir clientes próprios cadastrados pelo proprio usuario.'
   },
   {
+    chave: 'clientes_antigos_buscar',
+    nome: 'Clientes antigos: buscar',
+    descricao: 'Permite acessar a busca de clientes antigos e consultar vendas antigas por CNPJ, CPF ou razao social.'
+  },
+  {
+    chave: 'clientes_antigos_ver_historico',
+    nome: 'Clientes antigos: ver historico',
+    descricao: 'Permite visualizar o historico de buscas de clientes antigos de todos os usuarios.'
+  },
+  {
+    chave: 'clientes_antigos_editar',
+    nome: 'Clientes antigos: editar',
+    descricao: 'Permite editar vendas antigas encontradas na tela de busca.'
+  },
+  {
+    chave: 'clientes_antigos_gerenciar'
+    nome: 'Clientes antigos: gerenciar base',
+    descricao: 'Permite fazer upload das planilhas de vendas antigas na aba de configuracoes.'
+  },
+  {
     chave: 'notificacoes_visualizar',
     nome: 'Notificações: visualizar',
     descricao: 'Permite visualizar as próprias notificações do sistema.'

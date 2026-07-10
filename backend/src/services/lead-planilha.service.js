@@ -3,6 +3,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const Busboy = require('busboy');
+const ExcelJS = require('exceljs');
 /**
  * Servico de importacao, distribuicao e acompanhamento de planilhas de leads.
  */
@@ -12,6 +13,7 @@ const LeadEnvio = require('../models/LeadEnvio');
 const LeadEnvioUsuario = require('../models/LeadEnvioUsuario');
 const db = require('../database/connection');
 const { parseUtcDateTime } = require('../utils/datetime');
+const clienteAntigoService = require('./cliente-antigo.service');
 
 const IMPORT_DIR = process.env.LEAD_IMPORT_DIR
   ? path.resolve(process.env.LEAD_IMPORT_DIR)
@@ -23,6 +25,35 @@ const SELECT_BATCH_SIZE = 2000;
 const DB_RETRY_ATTEMPTS = 2;
 const USAR_LOAD_INFILE = process.env.LEAD_IMPORT_USE_LOAD_INFILE === 'true';
 const UPDATED_COLUMN_SUFFIX = ' (atualizado)';
+const EXCEL_IMPORT_BATCH_SIZE = 5000;
+const EXCEL_IMPORT_MAX_BYTES = Number(process.env.LEAD_EXCEL_IMPORT_MAX_BYTES || 50 * 1024 * 1024);
+const TERMOS_CABECALHO_MAILING = [
+  'cnpj',
+  'cpf/cnpj',
+  'documento',
+  'razao social',
+  'empresa',
+  'nome fantasia',
+  'acessos',
+  'consultor',
+  'data de ativacao',
+  'terminal',
+  'status',
+  'operadora',
+  'telefone',
+  'whatsapp',
+  'contato',
+  'responsavel',
+  'quantidade de chips',
+  'qtd chips',
+  'chips',
+  'data da venda',
+  'data venda',
+  'email',
+  'e-mail',
+  'cidade',
+  'uf'
+];
 
 const TRANSIENT_DB_ERRORS = [
   'closed state',
@@ -1168,6 +1199,409 @@ async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes)
 }
 
 /**
+ * Normaliza colunas duplicadas para manter compatibilidade com o importador CSV.
+ */
+function normalizarColunasDuplicadas(colunas) {
+  const contadores = {};
+  return colunas.map((coluna, index) => {
+    const base = String(coluna || '').trim() || `Coluna ${index + 1}`;
+    const chave = base.toLowerCase();
+    contadores[chave] = (contadores[chave] || 0) + 1;
+    return contadores[chave] === 1 ? base : `${base} (${contadores[chave]})`;
+  });
+}
+
+/**
+ * Converte valores de celula do Excel para texto simples importavel.
+ */
+function valorCelulaExcel(celula) {
+  const valor = celula?.value;
+  if (valor === null || valor === undefined) return '';
+  if (valor instanceof Date) return Number.isNaN(valor.getTime()) ? '' : valor.toISOString().slice(0, 10);
+  if (Array.isArray(valor?.richText)) return valor.richText.map(item => item.text || '').join('');
+  if (valor && typeof valor === 'object') {
+    if (valor.result !== undefined) return String(valor.result ?? '').trim();
+    if (valor.text !== undefined) return String(valor.text ?? '').trim();
+    if (valor.hyperlink !== undefined) return String(valor.hyperlink ?? '').trim();
+  }
+  return String(valor ?? '').trim();
+}
+
+function normalizarBuscaColunaLead(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function tokensBuscaColunaLead(valor) {
+  return normalizarBuscaColunaLead(valor)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function colunaCombinaBuscaLead(nomeColuna, busca) {
+  const termo = normalizarBuscaColunaLead(busca);
+  const nome = normalizarBuscaColunaLead(nomeColuna);
+  if (!termo || !nome) return false;
+  if (nome === termo || nome.includes(termo)) return true;
+
+  const tokens = tokensBuscaColunaLead(busca);
+  return tokens.length > 0 && tokens.every(token => nome.includes(token));
+}
+
+function linhaContemColunaLead(valores, busca) {
+  if (!busca) return false;
+  return valores.some(valor => colunaCombinaBuscaLead(valor, busca));
+}
+
+function pontuarLinhaCabecalhoMailing(valores, buscaCnpj = null) {
+  const preenchidos = valores.filter(valor => String(valor || '').trim());
+  if (preenchidos.length < 2) return 0;
+
+  const termosEncontrados = new Set();
+  for (const valor of preenchidos) {
+    TERMOS_CABECALHO_MAILING.forEach(termo => {
+      if (colunaCombinaBuscaLead(valor, termo)) termosEncontrados.add(termo);
+    });
+  }
+
+  let score = termosEncontrados.size;
+  if (buscaCnpj && linhaContemColunaLead(preenchidos, buscaCnpj)) score += 3;
+  if (linhaContemColunaLead(preenchidos, 'cnpj') || linhaContemColunaLead(preenchidos, 'cpf/cnpj')) score += 2;
+  if (preenchidos.length >= 4) score += 1;
+
+  return score;
+}
+
+function escolherLinhaCabecalhoMailing(linhasCandidatas, opcoes = {}) {
+  if (!linhasCandidatas.length) return null;
+
+  if (opcoes.cnpj) {
+    const linhaMapeada = linhasCandidatas.find(candidata => linhaContemColunaLead(candidata.valores, opcoes.cnpj));
+    if (linhaMapeada) return linhaMapeada;
+  }
+
+  let melhor = null;
+  for (const candidata of linhasCandidatas) {
+    const score = pontuarLinhaCabecalhoMailing(candidata.valores, opcoes.cnpj);
+    if (!melhor || score > melhor.score) melhor = { ...candidata, score };
+  }
+
+  return melhor?.score >= 3 ? melhor : linhasCandidatas[0];
+}
+function parseNumeroLead(valor) {
+  const texto = String(valor || '').trim();
+  if (!texto) return null;
+  const limpo = texto.replace(/\s/g, '').replace(/^R\$/i, '');
+  const temVirgula = limpo.includes(',');
+  const temPonto = limpo.includes('.');
+  let normalizado = limpo;
+
+  if (temVirgula && temPonto) {
+    normalizado = limpo.lastIndexOf(',') > limpo.lastIndexOf('.')
+      ? limpo.replace(/\./g, '').replace(',', '.')
+      : limpo.replace(/,/g, '');
+  } else if (temVirgula) {
+    normalizado = limpo.replace(',', '.');
+  }
+
+  if (!/^-?\d+(\.\d+)?$/.test(normalizado)) return null;
+  const numero = Number(normalizado);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function parseDataLead(valor) {
+  const texto = String(valor || '').trim();
+  if (!texto) return null;
+  const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const br = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (!br) return null;
+  const [, dia, mes, ano] = br;
+  const anoCompleto = ano.length === 2 ? `20${ano}` : ano;
+  return `${anoCompleto}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+}
+
+function inferirSchemaLead(colunas, amostra) {
+  return colunas.reduce((acc, coluna) => {
+    const valores = amostra.map(linha => linha[coluna]).filter(valor => String(valor || '').trim() !== '');
+    const total = valores.length || 1;
+    const numeros = valores.filter(valor => parseNumeroLead(valor) !== null).length;
+    const datas = valores.filter(valor => parseDataLead(valor) !== null).length;
+    acc[coluna] = datas / total >= 0.75 ? 'date' : (numeros / total >= 0.75 ? 'number' : 'string');
+    return acc;
+  }, {});
+}
+
+function parseBooleanCampo(valor) {
+  return valor === true || valor === 'true' || valor === '1' || valor === 1 || valor === 'sim';
+}
+
+function normalizarNomeAbaLead(valor) {
+  return String(valor || '').trim().toLowerCase();
+}
+
+function parseJsonArrayCampo(valor) {
+  if (!valor) return null;
+  const parsed = JSON.parse(valor);
+  return Array.isArray(parsed) ? parsed.map(item => String(item || '').trim()).filter(Boolean) : null;
+}
+
+function parseJsonObjectCampo(valor) {
+  if (!valor) return null;
+  const parsed = JSON.parse(valor);
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+}
+
+function parseCsvLineLead(line, delimiter) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && inQuotes && next === '"') {
+      current += '"';
+      i += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === delimiter && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+function detectDelimiterLead(line) {
+  return [';', ',', '\t'].reduce((best, delimiter) => (
+    parseCsvLineLead(line, delimiter).length > parseCsvLineLead(line, best).length ? delimiter : best
+  ), ';');
+}
+
+function lerUploadPlanilhaMailing(req) {
+  return new Promise((resolve, reject) => {
+    const busboy = Busboy({ headers: req.headers, limits: { files: 1, fileSize: EXCEL_IMPORT_MAX_BYTES } });
+    const campos = {};
+    let chunks = [];
+    let nomeOriginal = '';
+    let recebeuArquivo = false;
+    let erroLimite = null;
+
+    busboy.on('field', (name, value) => {
+      campos[name] = value;
+    });
+
+    busboy.on('file', (field, file, info) => {
+      recebeuArquivo = true;
+      nomeOriginal = info.filename || 'leads.xlsx';
+      const filename = String(nomeOriginal).toLowerCase();
+      if (!filename.endsWith('.xlsx') && !filename.endsWith('.csv')) {
+        erroLimite = new Error('Envie um arquivo .csv ou .xlsx.');
+        file.resume();
+        return;
+      }
+
+      file.on('data', chunk => chunks.push(chunk));
+      file.on('limit', () => {
+        erroLimite = new Error('Arquivo excede o limite permitido.');
+        chunks = [];
+      });
+      file.on('error', reject);
+    });
+
+    busboy.on('finish', () => {
+      if (erroLimite) return reject(erroLimite);
+      if (!recebeuArquivo) return reject(new Error('Arquivo nao enviado.'));
+      return resolve({ nomeOriginal, buffer: Buffer.concat(chunks), campos });
+    });
+    busboy.on('error', reject);
+    req.pipe(busboy);
+  });
+}
+
+function montarColecaoCsv(nomeOriginal, buffer) {
+  const texto = buffer.toString('utf8').replace(/^\uFEFF/, '');
+  const linhasTexto = texto.split(/\r?\n/).filter(linha => linha.trim());
+  if (!linhasTexto.length) throw new Error('CSV sem cabecalho valido.');
+
+  const delimiter = detectDelimiterLead(linhasTexto[0]);
+  const colunasNomes = normalizarColunasDuplicadas(parseCsvLineLead(linhasTexto[0], delimiter));
+  const colunas = colunasNomes.map((nome, index) => ({ nome, index: index + 1 }));
+  const linhas = [];
+
+  for (let i = 1; i < linhasTexto.length; i += 1) {
+    const values = parseCsvLineLead(linhasTexto[i], delimiter);
+    const dados = { __rowIndex: i + 1 };
+    let vazia = true;
+    colunasNomes.forEach((coluna, index) => {
+      const valor = values[index] ?? '';
+      if (String(valor || '').trim()) vazia = false;
+      dados[coluna] = valor;
+    });
+    if (!vazia) linhas.push(dados);
+  }
+
+  return [{ nome: nomeOriginal, colunas, linhas }];
+}
+
+function montarColecoesExcel(nomeOriginal, workbook, abasSelecionadas = null, opcoes = {}) {
+  const selecionadas = Array.isArray(abasSelecionadas) && abasSelecionadas.length > 0
+    ? new Set(abasSelecionadas.map(normalizarNomeAbaLead))
+    : null;
+
+  return workbook.worksheets
+    .filter(worksheet => !selecionadas || selecionadas.has(normalizarNomeAbaLead(worksheet.name)))
+    .map(worksheet => {
+    const linhasCandidatas = [];
+    for (let rowNumber = 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+      const row = worksheet.getRow(rowNumber);
+      const valores = [];
+      for (let colNumber = 1; colNumber <= row.cellCount; colNumber += 1) {
+        valores.push(valorCelulaExcel(row.getCell(colNumber)));
+      }
+      if (!valores.some(valor => String(valor || '').trim() !== '')) continue;
+
+      linhasCandidatas.push({ rowNumber, valores });
+    }
+
+    const cabecalho = escolherLinhaCabecalhoMailing(linhasCandidatas, opcoes);
+    const headerRowNumber = cabecalho?.rowNumber || 0;
+    const colunasNomes = cabecalho ? normalizarColunasDuplicadas(cabecalho.valores) : [];
+    if (!headerRowNumber || colunasNomes.length === 0) {
+      return null;
+    }
+
+    const linhas = [];
+    for (let rowNumber = headerRowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+      const row = worksheet.getRow(rowNumber);
+      const dados = { __rowIndex: rowNumber };
+      let vazia = true;
+
+      colunasNomes.forEach((coluna, index) => {
+        const valor = valorCelulaExcel(row.getCell(index + 1));
+        if (String(valor || '').trim() !== '') vazia = false;
+        dados[coluna] = valor;
+      });
+
+      if (!vazia) linhas.push(dados);
+    }
+
+    return {
+      nome: worksheet.name,
+      nomePlanilha: String(worksheet.name || '').trim() || nomeOriginal,
+      colunas: colunasNomes.map((nome, index) => ({ nome, index: index + 1 })),
+      linhas
+    };
+  }).filter(Boolean);
+}
+
+async function salvarColecaoMailing(colecao, usuarioId) {
+  const colunas = colecao.colunas.map(coluna => coluna.nome);
+  const planilha = await criarPlanilha({
+    nome: colecao.nomePlanilha || colecao.nome,
+    colunas: [],
+    schema_colunas: {},
+    total_linhas: 0,
+    streaming: true
+  }, usuarioId);
+
+  let lote = [];
+  const amostra = [];
+
+  async function flush() {
+    if (!lote.length) return;
+    await salvarLinhasLote(planilha.id, lote);
+    lote = [];
+  }
+
+  try {
+    for (let index = 0; index < colecao.linhas.length; index += 1) {
+      const linha = colecao.linhas[index];
+      const dados = {};
+      colunas.forEach(coluna => {
+        dados[coluna] = linha[coluna] ?? '';
+      });
+      if (amostra.length < 200) amostra.push(dados);
+      lote.push({ row_index: index, dados_json: dados });
+      if (lote.length >= EXCEL_IMPORT_BATCH_SIZE) await flush();
+    }
+
+    await flush();
+    return finalizarPlanilha(planilha.id, {
+      colunas,
+      schema_colunas: inferirSchemaLead(colunas, amostra)
+    });
+  } catch (error) {
+    await marcarErroPlanilha(planilha.id, error.message || 'Erro ao importar planilha.').catch(() => {});
+    throw error;
+  }
+}
+
+async function importarColecoesMailing(nomeOriginal, colecoes, usuarioId, opcoes = {}) {
+  if (!colecoes.length) throw new Error('Planilha sem cabecalho valido.');
+
+  const planilhas = [];
+  for (const colecao of colecoes) {
+    planilhas.push(await salvarColecaoMailing(colecao, usuarioId));
+  }
+
+  let baseAntiga = null;
+  if (opcoes.baseAntiga) {
+    baseAntiga = await clienteAntigoService.importarColecaoPlanilhas(colecoes, {
+      usuarioId,
+      arquivoNome: nomeOriginal,
+      mapeamento: opcoes.mapeamento || null
+    });
+  }
+
+  return { planilhas, base_antiga: baseAntiga };
+}
+
+/**
+ * Importa uma planilha Excel de mailing preservando o formato de linhas do CSV.
+ */
+async function importarExcel(req, usuarioId) {
+  const { nomeOriginal, buffer, campos } = await lerUploadPlanilhaMailing(req);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  if (!workbook.worksheets.length) throw new Error('A planilha XLSX nao possui abas.');
+  const abas = parseJsonArrayCampo(campos.abas);
+  const mapeamento = parseJsonObjectCampo(campos.mapeamento);
+  const colecoes = montarColecoesExcel(nomeOriginal, workbook, abas, { cnpj: mapeamento?.cnpj });
+  return importarColecoesMailing(nomeOriginal, colecoes, usuarioId, {
+    baseAntiga: parseBooleanCampo(campos.base_antiga),
+    mapeamento
+  });
+}
+
+async function importarBaseAntigaArquivo(req, usuarioId) {
+  const { nomeOriginal, buffer, campos } = await lerUploadPlanilhaMailing(req);
+  const lower = String(nomeOriginal || '').toLowerCase();
+  let colecoes;
+
+  if (lower.endsWith('.csv')) {
+    colecoes = montarColecaoCsv(nomeOriginal, buffer);
+  } else {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    colecoes = montarColecoesExcel(nomeOriginal, workbook, parseJsonArrayCampo(campos.abas), { cnpj: campos.mapeamento ? JSON.parse(campos.mapeamento)?.cnpj : null });
+  }
+
+  return clienteAntigoService.importarColecaoPlanilhas(colecoes, {
+    usuarioId,
+    arquivoNome: nomeOriginal,
+    mapeamento: campos.mapeamento ? JSON.parse(campos.mapeamento) : null
+  });
+}
+/**
  * Executa a acao de iniciar upload mantendo o estado da tela consistente.
  */
 function iniciarUpload(req, usuarioId) {
@@ -1496,6 +1930,8 @@ module.exports = {
   listarPlanilhas,
   buscarStatus,
   iniciarUpload,
+  importarExcel,
+  importarBaseAntigaArquivo,
   criarPlanilha,
   salvarLinhasLote,
   finalizarPlanilha,

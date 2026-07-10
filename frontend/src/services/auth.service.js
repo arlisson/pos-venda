@@ -4,7 +4,8 @@
 import { apiGet, apiPost, apiPut } from './api';
 
 const PERMISSOES_ADMIN_EXPLICITAS = new Set([
-  'clientes_secretos_ver_todos'
+  'clientes_secretos_ver_todos',
+  'clientes_antigos_ver_historico'
 ]);
 
 /**

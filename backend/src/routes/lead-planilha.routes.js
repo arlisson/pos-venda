@@ -79,6 +79,8 @@ router.put(
 
 router.get('/', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.index);
 router.post('/uploads', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.upload);
+router.post('/importar-excel', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.importarExcel);
+router.post('/importar-base-antiga', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.importarBaseAntiga);
 router.post(
   '/',
   exigirUmaPermissao(['gerenciar_leads']),

@@ -34,8 +34,11 @@ import './ConfiguracoesPage.css';
 const MAPEAMENTO_CLIENTES_ANTIGOS = {
   cnpj: '',
   razao_social: '',
-  nome_fantasia: '',
-  data_venda: ''
+  data_venda: '',
+  operadora: '',
+  responsavel_nome: '',
+  telefone: '',
+  quantidade_chips: ''
 };
 
 const FORM_SIMPLES = {
@@ -118,8 +121,11 @@ function montarSugestoesClientesAntigos(colunas) {
   return {
     cnpj: sugerirColunaImportacao(colunas, ['cnpj', 'cpf/cnpj', 'documento']),
     razao_social: sugerirColunaImportacao(colunas, ['razao', 'razao social', 'empresa']),
-    nome_fantasia: sugerirColunaImportacao(colunas, ['fantasia', 'nome fantasia']),
-    data_venda: sugerirColunaImportacao(colunas, ['data da venda', 'data venda', 'data'])
+    data_venda: sugerirColunaImportacao(colunas, ['data da venda', 'data venda', 'data']),
+    operadora: sugerirColunaImportacao(colunas, ['operadora', 'operadoras']),
+    responsavel_nome: sugerirColunaImportacao(colunas, ['responsavel', 'nome responsavel', 'nome do responsavel', 'contato']),
+    telefone: sugerirColunaImportacao(colunas, ['telefone', 'fone', 'celular', 'whatsapp', 'contato telefone']),
+    quantidade_chips: sugerirColunaImportacao(colunas, ['quantidade de chips', 'qtd chips', 'chips', 'quantidade', 'qtd', 'ctns'])
   };
 }
 
@@ -216,8 +222,7 @@ function ConfiguracoesPage() {
     tiposVenda: temPermissao(usuario, 'crud_tipos_venda'),
     servicos: temPermissao(usuario, 'crud_servicos'),
     links: temPermissao(usuario, 'crud_links'),
-    regrasComissao: temPermissao(usuario, 'crud_regras_comissao'),
-    clientesAntigos: temPermissao(usuario, 'clientes_antigos_gerenciar')
+    regrasComissao: temPermissao(usuario, 'crud_regras_comissao')
   };
 
   const abas = useMemo(() => [
@@ -226,14 +231,12 @@ function ConfiguracoesPage() {
     { id: 'servicos', label: 'Serviços', permitido: permissoes.servicos },
     { id: 'links', label: 'Links externos', permitido: permissoes.links },
     { id: 'regrasComissao', label: 'Comissões', permitido: permissoes.regrasComissao },
-    { id: 'clientesAntigos', label: 'Clientes antigos', permitido: permissoes.clientesAntigos }
   ].filter(abaItem => abaItem.permitido), [
     permissoes.operadoras,
     permissoes.tiposVenda,
     permissoes.servicos,
     permissoes.links,
-    permissoes.regrasComissao,
-    permissoes.clientesAntigos
+    permissoes.regrasComissao
   ]);
 
   const [aba, setAba] = useState(abas[0]?.id || '');
@@ -301,8 +304,11 @@ function ConfiguracoesPage() {
       setCaMapeamento({
         cnpj: data.sugestoes?.cnpj || '',
         razao_social: data.sugestoes?.razao_social || '',
-        nome_fantasia: data.sugestoes?.nome_fantasia || '',
-        data_venda: data.sugestoes?.data_venda || ''
+        data_venda: data.sugestoes?.data_venda || '',
+        operadora: data.sugestoes?.operadora || '',
+        responsavel_nome: data.sugestoes?.responsavel_nome || '',
+        telefone: data.sugestoes?.telefone || '',
+        quantidade_chips: data.sugestoes?.quantidade_chips || ''
       });
     } catch (error) {
       setErro(error.message || 'Erro ao ler planilha.');
@@ -332,7 +338,7 @@ function ConfiguracoesPage() {
     try {
       const data = await importarPlanilhaClientesAntigos(caArquivo, caMapeamento, caAbasSelecionadas);
       setCaResultado(data);
-      setSucesso(`Importacao concluida: ${data.inseridos} novo(s), ${data.atualizados} atualizado(s), ${data.duplicados || 0} duplicado(s) consolidado(s), ${data.sem_cnpj || 0} sem CNPJ, ${data.invalidos || 0} invalido(s).`);
+      setSucesso(`Importacao concluida: ${data.inseridos} novo(s), ${data.atualizados} atualizado(s), ${data.sem_cnpj || 0} sem CNPJ, ${data.invalidos || 0} invalido(s).`);
     } catch (error) {
       setErro(error.message || 'Erro ao importar planilha.');
     } finally {
@@ -923,8 +929,11 @@ function ConfiguracoesPage() {
     const campos = [
       { chave: 'cnpj', label: 'CNPJ', obrigatorio: true },
       { chave: 'razao_social', label: 'Razão social', obrigatorio: false },
-      { chave: 'nome_fantasia', label: 'Nome fantasia', obrigatorio: false },
-      { chave: 'data_venda', label: 'Data da venda', obrigatorio: false }
+      { chave: 'data_venda', label: 'Data da venda', obrigatorio: false },
+      { chave: 'operadora', label: 'Operadora', obrigatorio: false },
+      { chave: 'responsavel_nome', label: 'Nome do responsavel', obrigatorio: false },
+      { chave: 'telefone', label: 'Telefone', obrigatorio: false },
+      { chave: 'quantidade_chips', label: 'Quantidade de chips', obrigatorio: false }
     ];
 
     return (
@@ -932,7 +941,7 @@ function ConfiguracoesPage() {
         <div className="panel-header">
           <div>
             <h2>Base de clientes antigos</h2>
-            <p>Envie uma planilha .xlsx com vendas antigas (fora da fidelidade). Mapeie as colunas e importe. O CNPJ é usado como chave: registros existentes são atualizados.</p>
+            <p>Envie uma planilha .xlsx com vendas antigas (fora da fidelidade). Mapeie as colunas e importe. Cada linha da planilha vira uma venda antiga; CNPJs repetidos sao mantidos como vendas separadas.</p>
           </div>
         </div>
 
@@ -1001,7 +1010,7 @@ function ConfiguracoesPage() {
                     list={`clientes-antigos-colunas-${campo.chave}`}
                     value={caMapeamento[campo.chave]}
                     onChange={event => setCaMapeamento(prev => ({ ...prev, [campo.chave]: event.target.value }))}
-                    placeholder={campo.obrigatorio ? 'Ex.: cnpj' : 'Ex.: data ativacao'}
+                    placeholder={campo.chave === 'operadora' ? 'Ex.: operadora ou Claro' : (campo.obrigatorio ? 'Ex.: cnpj' : 'Ex.: data ativacao')}
                     disabled={caImportando}
                   />
                   <datalist id={`clientes-antigos-colunas-${campo.chave}`}>
@@ -1038,10 +1047,9 @@ function ConfiguracoesPage() {
           <>
             <div className="cliente-import-summary">
               <span>Total de linhas: <strong>{caResultado.total}</strong></span>
-              <span>CNPJs unicos: <strong>{caResultado.unicos ?? ((caResultado.inseridos || 0) + (caResultado.atualizados || 0))}</strong></span>
+              <span>Vendas validas: <strong>{caResultado.unicos ?? ((caResultado.inseridos || 0) + (caResultado.atualizados || 0))}</strong></span>
               <span>Novos: <strong>{caResultado.inseridos}</strong></span>
               <span>Atualizados: <strong>{caResultado.atualizados}</strong></span>
-              <span>Duplicados consolidados: <strong>{caResultado.duplicados || 0}</strong></span>
               <span>Importados sem CNPJ: <strong>{caResultado.sem_cnpj || 0}</strong></span>
               <span>Invalidos ignorados: <strong>{caResultado.invalidos ?? caResultado.ignorados}</strong></span>
             </div>
