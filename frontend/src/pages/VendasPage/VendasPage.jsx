@@ -34,7 +34,7 @@ import {
 import { consultarCnpj, sanitizarCnpj, validarDigitosCnpj } from '../../services/cnpj.service';
 import { criarNotaEntidade } from '../../services/nota.service';
 import { listarEtapasFunil, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
-import { listarClientesSelect } from '../../services/cliente.service';
+import { criarCliente as criarClientePrincipal, listarClientesSelect, verificarDocumentoCliente } from '../../services/cliente.service';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import { formatUtcDateTime } from '../../utils/datetime';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
@@ -2648,6 +2648,7 @@ function VendasPage() {
   const [clienteRapidoDraft, setClienteRapidoDraft] = useState(null);
   const [, setResolverClienteRapido] = useState(null);
   const [clientePreenchidoLead] = useState(() => location.state?.clientePreenchido || null);
+  const [clientesCarregados, setClientesCarregados] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(20);
   const [totalVendas, setTotalVendas] = useState(0);
@@ -2746,6 +2747,7 @@ function VendasPage() {
 
       setReferenciasClientes(referenciasClientesData || []);
       setClientes(clientesData);
+      setClientesCarregados(true);
       setVendedoras(vendedorasData);
       setOperadoras(operadorasData);
       setTiposVenda(tiposVendaData);
@@ -2754,6 +2756,7 @@ function VendasPage() {
       setEtapasFunil(etapasFunilData || []);
       setUsuariosProblema(usuariosProblemaData || []);
     } catch (error) {
+      setClientesCarregados(true);
       setErro(error.message || 'Erro ao carregar dados.');
     }
   }
@@ -2833,6 +2836,49 @@ function VendasPage() {
     fecharClienteRapido(clienteCriado);
     setSucesso('Cliente cadastrado com sucesso.');
     return clienteCriado;
+  }
+
+  async function resolverClienteLead(dadosCliente = {}) {
+    const cnpjDigitos = String(dadosCliente.cnpj || '').replace(/\D/g, '');
+    if (cnpjDigitos.length !== 14) return null;
+
+    const verificacao = await verificarDocumentoCliente(cnpjDigitos);
+    if (verificacao?.existe) {
+      if (verificacao.cliente?.excluido) {
+        throw new Error('O cliente deste CNPJ esta na lixeira. Restaure-o antes de registrar a venda.');
+      }
+      return clientes.find(cliente => Number(cliente.id) === Number(verificacao.cliente?.id)) || verificacao.cliente;
+    }
+
+    const nome = String(dadosCliente.nome || dadosCliente.razao_social || '').trim();
+    if (!nome) return null;
+
+    try {
+      const criado = await criarClientePrincipal({
+        nome,
+        razao_social: dadosCliente.razao_social || nome,
+        cnpj: cnpjDigitos,
+        responsavel_nome: dadosCliente.responsavel_nome || '',
+        responsavel_tipo: dadosCliente.responsavel_tipo || 'rl',
+        whatsapp: dadosCliente.whatsapp || dadosCliente.telefone || '',
+        email: dadosCliente.email || '',
+        operadora_atual_id: dadosCliente.operadora_atual_id || null,
+        quantidade_chips: dadosCliente.quantidade_chips || dadosCliente.quantidade_linhas || null,
+        valor_pago: dadosCliente.valor_pago || dadosCliente.valor_mensal_estimado || null
+      });
+      const clientesAtualizados = podeListarClientes ? await listarClientesSelect() : [criado];
+      setClientes(clientesAtualizados);
+      setSucesso('Cliente cadastrado e vinculado a venda.');
+      return criado;
+    } catch (error) {
+      const clientesAtualizados = podeListarClientes ? await listarClientesSelect() : [];
+      const criadoEmParalelo = clientesAtualizados.find(cliente => String(cliente.cnpj || '').replace(/\D/g, '') === cnpjDigitos);
+      if (criadoEmParalelo) {
+        setClientes(clientesAtualizados);
+        return criadoEmParalelo;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -2925,7 +2971,11 @@ function VendasPage() {
     if (modalVenda) {
       vendaSalva = await atualizarVenda(modalVenda.id, dados);
     } else {
-      vendaSalva = await criarVenda(dados);
+      const origemLeadLinhaId = Number(location.state?.origemLead?.linha_id || 0);
+      vendaSalva = await criarVenda({
+        ...dados,
+        ...(origemLeadLinhaId > 0 ? { origem_lead_linha_id: origemLeadLinhaId } : {})
+      });
       if (vendaSalva?.id && Array.isArray(notasPendentes) && notasPendentes.length > 0) {
         for (const nota of notasPendentes) {
           try {
@@ -3219,7 +3269,9 @@ function VendasPage() {
           onDraftChange={setVendaCadastroDraft}
           onSendToPosVenda={enviarPosVenda}
           onCreateClient={abrirClienteRapido}
+          onResolveClient={resolverClienteLead}
           clientePreenchido={clientePreenchidoLead}
+          clientesCarregados={clientesCarregados}
         />
       )}
 

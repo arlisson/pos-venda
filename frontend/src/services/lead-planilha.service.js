@@ -260,6 +260,18 @@ export function marcarFuturoClienteLead(linhaId, dados) {
   return apiPost(`/lead-planilhas/me/linhas/${linhaId}/futuro-cliente`, dados);
 }
 
+export function vincularVendaLead(linhaId, vendaId) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/venda`, { venda_id: vendaId });
+}
+
+export function listarQuadroFuturosClientes(filtros = {}) {
+  return apiGet(`/lead-planilhas/futuros-clientes${montarQuery(filtros)}`);
+}
+
+export function listarMetricasFuturosClientes(filtros = {}) {
+  return apiGet(`/lead-planilhas/futuros-clientes/metricas${montarQuery(filtros)}`);
+}
+
 /**
  * Lista futuros clientes leads conforme os filtros e parametros informados.
  */

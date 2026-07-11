@@ -11,6 +11,8 @@ const LeadPlanilha = require('../models/LeadPlanilha');
 const LeadLinha = require('../models/LeadLinha');
 const LeadEnvio = require('../models/LeadEnvio');
 const LeadEnvioUsuario = require('../models/LeadEnvioUsuario');
+const LeadAtribuicao = require('../models/LeadAtribuicao');
+const LeadSondagem = require('../models/LeadSondagem');
 const db = require('../database/connection');
 const { parseUtcDateTime } = require('../utils/datetime');
 const clienteAntigoService = require('./cliente-antigo.service');
@@ -766,6 +768,13 @@ function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
   if (planilhaIds.length > 0) query.whereIn('planilha_id', planilhaIds);
   if (envioIds.length > 0) query.whereIn('envio_id', envioIds);
   if (opcoes.usuarioId) query.where('atribuido_para_id', Number(opcoes.usuarioId));
+  if (filtros.etapa) query.where('etapa_atual', String(filtros.etapa));
+  if (filtros.somente_qualificados === true || filtros.somente_qualificados === 'true') {
+    query.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em');
+  }
+  if (filtros.disponivel_venda === true || filtros.disponivel_venda === 'true') {
+    query.where('status_operacional', 'qualificado');
+  }
 
   if (filtros.busca) {
     query.whereRaw('LOWER(CAST(dados_json AS CHAR)) LIKE ?', [`%${String(filtros.busca).toLowerCase()}%`]);
@@ -813,6 +822,10 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
       builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id');
     })
     .resultSize();
+  const qualificados = await baseQuery.clone()
+    .where('futuro_cliente', true)
+    .whereNull('futuro_cliente_excluido_em')
+    .resultSize();
   const linhas = await baseQuery
     .withGraphFetched('[planilha, envio, atribuidoPara]')
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'))
@@ -827,6 +840,7 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
     resumo: {
       total,
       enviados,
+      qualificados,
       nao_enviados: Math.max(0, total - enviados)
     },
     page,
@@ -943,7 +957,16 @@ function montarAlocacoes(usuarioIds, quantidadeTotal, alocacaoManual = {}) {
  */
 async function buscarIdsPorCriterios(dados, quantidadeTotal) {
   if (Array.isArray(dados.linha_ids) && dados.linha_ids.length > 0) {
-    return dados.linha_ids.map(Number).filter(Boolean).slice(0, quantidadeTotal);
+    const ids = dados.linha_ids.map(Number).filter(Boolean).slice(0, quantidadeTotal);
+    if (dados.etapa !== 'venda') return ids;
+    const qualificados = await LeadLinha.query()
+      .whereIn('id', ids)
+      .where('futuro_cliente', true)
+      .whereNull('futuro_cliente_excluido_em')
+      .where('status_operacional', 'qualificado')
+      .select('id');
+    const permitidos = new Set(qualificados.map(item => Number(item.id)));
+    return ids.filter(id => permitidos.has(Number(id)));
   }
 
   const incluirEnviados = dados.incluir_enviados === true;
@@ -969,6 +992,7 @@ async function dividirLeads(dados, usuarioId) {
     ? dados.usuario_ids.map(Number).filter(Boolean)
     : [];
   const quantidadeTotal = Number(dados.quantidade_total || 0);
+  const etapa = dados.etapa === 'venda' ? 'venda' : 'sondagem';
 
   if (!String(dados.nome || '').trim()) throw new Error('Informe um nome para o envio.');
   if (usuarioIds.length === 0) throw new Error('Selecione ao menos um vendedor.');
@@ -976,6 +1000,9 @@ async function dividirLeads(dados, usuarioId) {
 
   const linhaIds = await buscarIdsPorCriterios(dados, quantidadeTotal);
   if (linhaIds.length < quantidadeTotal) {
+    if (etapa === 'venda') {
+      throw new Error(`Ha somente ${linhaIds.length} futuro(s) cliente(s) qualificado(s) e disponivel(is) para venda.`);
+    }
     if (dados.incluir_enviados === true) {
       throw new Error('Não há mailing suficiente para a quantidade solicitada.');
     }
@@ -1027,8 +1054,24 @@ async function dividirLeads(dados, usuarioId) {
           .patch({
             atribuido_para_id: usuarioAlvoId,
             envio_id: envio.id,
+            etapa_atual: etapa,
+            status_operacional: etapa === 'venda' ? 'distribuido_venda' : 'pendente',
             updated_at: new Date()
           });
+      }
+
+      if (idsUsuario.length) {
+        const atribuicoes = idsUsuario.map(leadLinhaId => ({
+          lead_linha_id: leadLinhaId,
+          envio_id: envio.id,
+          usuario_id: usuarioAlvoId,
+          etapa,
+          status: 'atribuido',
+          criado_por_id: usuarioId
+        }));
+        for (let i = 0; i < atribuicoes.length; i += 500) {
+          await trx('lead_atribuicoes').insert(atribuicoes.slice(i, i + 500));
+        }
       }
     }
 
@@ -1775,22 +1818,66 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
     throw criarHttpError(403, 'Você não pode atualizar este lead.');
   }
 
-  const notas = String(dados.notas || '').trim() || null;
+  const contatoNome = String(dados.contato_nome || '').trim();
+  const contatoTipo = String(dados.contato_tipo || '').trim().toLowerCase();
+  const operadoraAtualId = Number(dados.operadora_atual_id || 0);
+  const quantidadeChips = Number(dados.quantidade_chips || 0);
+  const precoPorChip = Number(dados.preco_por_chip);
+  const telefoneDigitos = String(dados.whatsapp || `${dados.whatsapp_ddd || ''}${dados.whatsapp_numero || ''}`).replace(/\D/g, '');
+  const whatsapp = telefoneDigitos.startsWith('55') && telefoneDigitos.length > 11 ? telefoneDigitos.slice(2) : telefoneDigitos;
+  const whatsappDdd = whatsapp.slice(0, 2);
+  const whatsappNumero = whatsapp.slice(2);
+
+  if (!contatoNome) throw criarHttpError(400, 'Informe o nome de quem falou.');
+  if (!['adm', 'rl'].includes(contatoTipo)) throw criarHttpError(400, 'Informe se o contato e ADM ou RL.');
+  if (!Number.isInteger(operadoraAtualId) || operadoraAtualId <= 0) throw criarHttpError(400, 'Informe a operadora atual.');
+  if (!Number.isInteger(quantidadeChips) || quantidadeChips <= 0) throw criarHttpError(400, 'Informe uma quantidade de chips valida.');
+  if (!Number.isFinite(precoPorChip) || precoPorChip <= 0) throw criarHttpError(400, 'Informe um preco por chip valido.');
+  if (whatsappDdd.length !== 2 || whatsappNumero.length < 8 || whatsappNumero.length > 9) {
+    throw criarHttpError(400, 'Informe um WhatsApp com DDD valido.');
+  }
+
+  const valorMensalEstimado = Math.round(quantidadeChips * precoPorChip * 100) / 100;
+  const notas = String(dados.notas || dados.observacoes || '').trim() || null;
   const retorno = parseDataHoraRetorno(dados.retorno);
 
-  await db('lead_linhas')
-    .where({ id: Number(linhaId) })
-    .update({
-      futuro_cliente: true,
-      futuro_cliente_notas: notas,
-      futuro_cliente_retorno: retorno,
-      futuro_cliente_marcado_em: formatarDateTimeSQL(),
-      futuro_cliente_marcado_por_id: usuarioId
+  await LeadLinha.transaction(async trx => {
+    let atribuicao = await LeadAtribuicao.query(trx)
+      .where({ lead_linha_id: Number(linhaId), usuario_id: Number(usuarioId), etapa: 'sondagem' })
+      .orderBy('id', 'desc').first();
+    if (!atribuicao) {
+      atribuicao = await LeadAtribuicao.query(trx).insertAndFetch({
+        lead_linha_id: Number(linhaId), envio_id: linha.envio_id, usuario_id: usuarioId,
+        etapa: 'sondagem', status: 'atribuido', criado_por_id: usuarioId
+      });
+    }
+
+    await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
+      status: 'qualificado', finalizado_em: formatarDateTimeSQL()
     });
+
+    const sondagem = {
+      lead_linha_id: Number(linhaId), atribuicao_id: atribuicao.id, usuario_id: usuarioId,
+      contato_nome: contatoNome, contato_tipo: contatoTipo, operadora_atual_id: operadoraAtualId,
+      quantidade_chips: quantidadeChips, preco_por_chip: precoPorChip,
+      valor_mensal_estimado: valorMensalEstimado, whatsapp_ddd: whatsappDdd,
+      whatsapp_numero: whatsappNumero, observacoes: notas, retorno_em: retorno,
+      respondido_em: formatarDateTimeSQL()
+    };
+    const existente = await LeadSondagem.query(trx).where('lead_linha_id', Number(linhaId)).first();
+    if (existente) await LeadSondagem.query(trx).patchAndFetchById(existente.id, sondagem);
+    else await LeadSondagem.query(trx).insert(sondagem);
+
+    await LeadLinha.query(trx).patchAndFetchById(Number(linhaId), {
+      futuro_cliente: true, futuro_cliente_notas: notas, futuro_cliente_retorno: retorno,
+      futuro_cliente_marcado_em: formatarDateTimeSQL(), futuro_cliente_marcado_por_id: usuarioId,
+      etapa_atual: 'sondagem', status_operacional: 'qualificado'
+    });
+  });
 
   const atualizada = await LeadLinha.query()
     .findById(linhaId)
-    .withGraphFetched('[planilha, envio, atribuidoPara]')
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, usuario]]')
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
 
   return { linha: formatarLinha(atualizada) };
@@ -1806,15 +1893,15 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
   const pageSize = Math.min(500, Math.max(1, Number(filtros.page_size || 50)));
 
   let query = LeadLinha.query()
-    .where('atribuido_para_id', usuarioId)
     .where('futuro_cliente', true)
     .whereNull('futuro_cliente_excluido_em');
+  if (usuarioId) query.where('futuro_cliente_marcado_por_id', usuarioId);
 
   query = aplicarBuscaFuturosClientes(query, filtros.busca);
 
   const total = await query.clone().resultSize();
   const linhas = await query
-    .withGraphFetched('[planilha, envio]')
+    .withGraphFetched('[planilha, envio, sondagem.[operadoraAtual, usuario]]')
     .orderBy('futuro_cliente_marcado_em', 'desc')
     .orderBy('id', 'desc')
     .offset((page - 1) * pageSize)
@@ -1826,6 +1913,49 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
     page,
     page_size: pageSize
   };
+}
+
+async function obterMetricasFuturosClientes(filtros = {}) {
+  const query = db('lead_linhas as ll')
+    .leftJoin('lead_sondagens as ls', 'ls.lead_linha_id', 'll.id')
+    .leftJoin('usuarios as u', 'u.id', 'll.futuro_cliente_marcado_por_id')
+    .where('ll.futuro_cliente', true)
+    .whereNull('ll.futuro_cliente_excluido_em');
+  if (filtros.usuario_id) query.where('ll.futuro_cliente_marcado_por_id', Number(filtros.usuario_id));
+  return query
+    .groupBy('ll.futuro_cliente_marcado_por_id', 'u.nome')
+    .select('ll.futuro_cliente_marcado_por_id as usuario_id', 'u.nome as usuario_nome')
+    .count({ qualificados: 'll.id' })
+    .sum({ potencial_mensal: 'ls.valor_mensal_estimado' })
+    .sum({ distribuidos_venda: db.raw("CASE WHEN ll.status_operacional IN ('distribuido_venda', 'vendido', 'perdido') THEN 1 ELSE 0 END") })
+    .sum({ vendidos: db.raw("CASE WHEN ll.status_operacional = 'vendido' OR ll.venda_id IS NOT NULL THEN 1 ELSE 0 END") });
+}
+
+async function vincularVendaAoLead(linhaId, vendaId, usuarioId) {
+  const venda = await db('vendas').where('id', Number(vendaId)).first();
+  if (!venda) throw criarHttpError(404, 'Venda nao encontrada.');
+  if (Number(venda.criado_por_id) !== Number(usuarioId) && Number(venda.vendedora_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Voce nao pode vincular esta venda ao lead.');
+  }
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
+  }
+  await LeadLinha.transaction(async trx => {
+    await LeadLinha.query(trx).patchAndFetchById(linha.id, {
+      venda_id: Number(vendaId), cliente_id: venda.cliente_id || null,
+      etapa_atual: 'venda', status_operacional: 'vendido'
+    });
+    const atribuicao = await LeadAtribuicao.query(trx)
+      .where({ lead_linha_id: linha.id, usuario_id: usuarioId, etapa: 'venda' })
+      .orderBy('id', 'desc').first();
+    if (atribuicao) {
+      await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
+        status: 'vendido', finalizado_em: formatarDateTimeSQL()
+      });
+    }
+  });
+  return { linha_id: Number(linhaId), venda_id: Number(vendaId), cliente_id: venda.cliente_id || null };
 }
 
 /**
@@ -1973,6 +2103,8 @@ module.exports = {
   exportarCsv,
   marcarComoFuturoCliente,
   listarFuturosClientes,
+  obterMetricasFuturosClientes,
+  vincularVendaAoLead,
   listarFuturosClientesLixeira,
   enviarFuturoClienteParaLixeira,
   restaurarFuturoCliente,

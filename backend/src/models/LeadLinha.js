@@ -24,6 +24,10 @@ class LeadLinha extends Model {
         futuro_cliente_retorno: { type: ['string', 'object', 'null'] },
         futuro_cliente_marcado_em: { type: ['string', 'object', 'null'] },
         futuro_cliente_marcado_por_id: { type: ['integer', 'null'] },
+        etapa_atual: { type: ['string', 'null'] },
+        status_operacional: { type: ['string', 'null'] },
+        cliente_id: { type: ['integer', 'null'] },
+        venda_id: { type: ['integer', 'null'] },
         futuro_cliente_excluido_em: { type: ['string', 'object', 'null'] },
         futuro_cliente_excluir_definitivo_em: { type: ['string', 'object', 'null'] },
         futuro_cliente_excluido_por_id: { type: ['integer', 'null'] },
@@ -37,6 +41,7 @@ class LeadLinha extends Model {
     const LeadPlanilha = require('./LeadPlanilha');
     const LeadEnvio = require('./LeadEnvio');
     const Usuario = require('./Usuario');
+    const LeadSondagem = require('./LeadSondagem');
 
     return {
       planilha: {
@@ -61,6 +66,14 @@ class LeadLinha extends Model {
         join: {
           from: 'lead_linhas.atribuido_para_id',
           to: 'usuarios.id'
+        }
+      },
+      sondagem: {
+        relation: Model.HasOneRelation,
+        modelClass: LeadSondagem,
+        join: {
+          from: 'lead_linhas.id',
+          to: 'lead_sondagens.lead_linha_id'
         }
       },
       futuroClienteExcluidoPor: {

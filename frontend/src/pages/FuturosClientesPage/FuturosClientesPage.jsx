@@ -9,12 +9,15 @@ import {
   excluirFuturoClienteDefinitivo,
   listarFuturosClientesLeads,
   listarFuturosClientesLixeira,
+  listarQuadroFuturosClientes,
+  listarMetricasFuturosClientes,
   listarMeusLeadEnvios,
   listarMinhasLeadLinhas,
   marcarFuturoClienteLead,
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
 import { formatDateValue, formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
+import { listarOperadoras } from '../../services/config.service';
 import './FuturosClientesPage.css';
 
 // ─── Helpers de colunas de lead ──────────────────────────────────────────────
@@ -179,6 +182,11 @@ function montarClientePreenchido(vendaPreenchida) {
     razao_social: vendaPreenchida.razao_social || '',
     whatsapp: vendaPreenchida.telefone || '',
     email: vendaPreenchida.email || '',
+    responsavel_nome: vendaPreenchida.responsavel_nome || '',
+    responsavel_tipo: vendaPreenchida.responsavel_tipo || 'rl',
+    operadora_atual_id: vendaPreenchida.operadora_atual_id || '',
+    quantidade_chips: vendaPreenchida.quantidade_linhas || '',
+    valor_pago: vendaPreenchida.valor_mensal_estimado || '',
   };
 }
 
@@ -186,7 +194,16 @@ function montarClientePreenchido(vendaPreenchida) {
  * Monta venda preenchida do lead a partir dos dados informados.
  */
 function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
-  const payload = usuario?.id ? { vendedora_id: String(usuario.id) } : {};
+  const sondagem = linha?.sondagem || {};
+  const payload = {
+    ...(usuario?.id ? { vendedora_id: String(usuario.id) } : {}),
+    ...(sondagem.contato_nome ? { responsavel_nome: sondagem.contato_nome } : {}),
+    ...(sondagem.contato_tipo ? { responsavel_tipo: sondagem.contato_tipo } : {}),
+    ...(sondagem.operadora_atual_id ? { operadora_atual_id: String(sondagem.operadora_atual_id) } : {}),
+    ...(sondagem.quantidade_chips ? { quantidade_linhas: Number(sondagem.quantidade_chips) } : {}),
+    ...(sondagem.valor_mensal_estimado ? { valor_mensal_estimado: Number(sondagem.valor_mensal_estimado) } : {}),
+    ...(sondagem.whatsapp_ddd ? { telefone: `${sondagem.whatsapp_ddd}${sondagem.whatsapp_numero || ''}` } : {})
+  };
 
   CAMPOS_VENDA_LEAD.forEach(campo => {
     const coluna = mapeamento?.[campo.name];
@@ -431,6 +448,18 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [retorno, setRetorno] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [operadoras, setOperadoras] = useState([]);
+  const [contatoNome, setContatoNome] = useState('');
+  const [contatoTipo, setContatoTipo] = useState('');
+  const [operadoraAtualId, setOperadoraAtualId] = useState('');
+  const [quantidadeChips, setQuantidadeChips] = useState('');
+  const [precoPorChip, setPrecoPorChip] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const valorMensalEstimado = (Number(quantidadeChips) || 0) * (Number(String(precoPorChip).replace(',', '.')) || 0);
+
+  useEffect(() => {
+    listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
+  }, []);
 
   const camposLead = useMemo(() => {
     const dados = linha.dados_json || {};
@@ -460,7 +489,13 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 
       const resultado = await marcarFuturoClienteLead(linha.id, {
         notas,
-        retorno: retornoIso
+        retorno: retornoIso,
+        contato_nome: contatoNome,
+        contato_tipo: contatoTipo,
+        operadora_atual_id: Number(operadoraAtualId),
+        quantidade_chips: Number(quantidadeChips),
+        preco_por_chip: Number(String(precoPorChip).replace(',', '.')),
+        whatsapp
       });
       onFuturoClienteSalvo(resultado.linha);
     } catch (error) {
@@ -522,6 +557,43 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 
           {etapa === 'futuro' && (
             <form className="futuro-cliente-form" onSubmit={salvarFuturoCliente}>
+              <div className="form-field">
+                <label>Nome de quem falou</label>
+                <input value={contatoNome} onChange={event => setContatoNome(event.target.value)} required disabled={salvando} />
+              </div>
+              <div className="form-field">
+                <label>Perfil do contato</label>
+                <select value={contatoTipo} onChange={event => setContatoTipo(event.target.value)} required disabled={salvando}>
+                  <option value="">Selecione</option>
+                  <option value="adm">ADM</option>
+                  <option value="rl">RL</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Operadora atual</label>
+                <select value={operadoraAtualId} onChange={event => setOperadoraAtualId(event.target.value)} required disabled={salvando}>
+                  <option value="">Selecione</option>
+                  {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
+                </select>
+              </div>
+              <div className="futuro-cliente-form__grid">
+                <div className="form-field">
+                  <label>Quantidade de chips</label>
+                  <input type="number" min="1" step="1" value={quantidadeChips} onChange={event => setQuantidadeChips(event.target.value)} required disabled={salvando} />
+                </div>
+                <div className="form-field">
+                  <label>Preco por chip</label>
+                  <input type="number" min="0.01" step="0.01" value={precoPorChip} onChange={event => setPrecoPorChip(event.target.value)} required disabled={salvando} />
+                </div>
+              </div>
+              <div className="futuro-cliente-estimativa">
+                <span>Media mensal estimada</span>
+                <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+              </div>
+              <div className="form-field">
+                <label>WhatsApp com DDD</label>
+                <input type="tel" inputMode="numeric" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(event.target.value)} required disabled={salvando} />
+              </div>
               <div className="form-field">
                 <label>Notas sobre este cliente</label>
                 <textarea
@@ -933,7 +1005,14 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
 
       const resultado = await marcarFuturoClienteLead(linha.id, {
         notas,
-        retorno: retornoIso
+        retorno: retornoIso,
+        contato_nome: linha.sondagem?.contato_nome,
+        contato_tipo: linha.sondagem?.contato_tipo,
+        operadora_atual_id: linha.sondagem?.operadora_atual_id,
+        quantidade_chips: linha.sondagem?.quantidade_chips,
+        preco_por_chip: linha.sondagem?.preco_por_chip,
+        whatsapp_ddd: linha.sondagem?.whatsapp_ddd,
+        whatsapp_numero: linha.sondagem?.whatsapp_numero
       });
       onAtualizado(resultado.linha);
     } catch (error) {
@@ -978,6 +1057,17 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
                   <span className="adicionar-lead-campo__valor">{valor || '-'}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {linha.sondagem && (
+            <div className="adicionar-lead-dados">
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Pessoa contatada</span><span className="adicionar-lead-campo__valor">{linha.sondagem.contato_nome} ({String(linha.sondagem.contato_tipo || '').toUpperCase()})</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Operadora atual</span><span className="adicionar-lead-campo__valor">{linha.sondagem.operadoraAtual?.nome || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Chips / preco</span><span className="adicionar-lead-campo__valor">{linha.sondagem.quantidade_chips} × {Number(linha.sondagem.preco_por_chip).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Media mensal</span><span className="adicionar-lead-campo__valor">{Number(linha.sondagem.valor_mensal_estimado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">WhatsApp</span><span className="adicionar-lead-campo__valor">({linha.sondagem.whatsapp_ddd}) {linha.sondagem.whatsapp_numero}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Sondagem feita por</span><span className="adicionar-lead-campo__valor">{linha.sondagem.usuario?.nome || '-'}</span></div>
             </div>
           )}
 
@@ -1088,15 +1178,19 @@ function FuturosClientesMainView() {
   const [modoLixeira, setModoLixeira] = useState(false);
   const [processandoId, setProcessandoId] = useState(null);
   const [confirmacaoLixeira, setConfirmacaoLixeira] = useState(null);
+  const [metricas, setMetricas] = useState([]);
 
   const usuario = useMemo(() => getUsuarioLocal(), []);
   const podeGerenciar = temPermissao(usuario, 'futuros_clientes_registrar');
+  const podeVerQuadroGeral = temPermissao(usuario, 'gerenciar_leads');
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     let cancelado = false;
     setCarregando(true);
-    const listar = modoLixeira ? listarFuturosClientesLixeira : listarFuturosClientesLeads;
+    const listar = modoLixeira
+      ? listarFuturosClientesLixeira
+      : (podeVerQuadroGeral ? listarQuadroFuturosClientes : listarFuturosClientesLeads);
     listar({ page: pagina, page_size: 50, busca: buscaDeferred })
       .then(data => {
         if (!cancelado) {
@@ -1109,6 +1203,20 @@ function FuturosClientesMainView() {
     return () => { cancelado = true; };
   }, [pagina, buscaDeferred, modoLixeira]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (!podeVerQuadroGeral || modoLixeira) return;
+    listarMetricasFuturosClientes()
+      .then(data => setMetricas(Array.isArray(data) ? data : []))
+      .catch(() => setMetricas([]));
+  }, [podeVerQuadroGeral, modoLixeira, linhas]);
+
+  const resumoMetricas = useMemo(() => metricas.reduce((acc, item) => ({
+    qualificados: acc.qualificados + Number(item.qualificados || 0),
+    distribuidos: acc.distribuidos + Number(item.distribuidos_venda || 0),
+    vendidos: acc.vendidos + Number(item.vendidos || 0),
+    potencial: acc.potencial + Number(item.potencial_mensal || 0)
+  }), { qualificados: 0, distribuidos: 0, vendidos: 0, potencial: 0 }), [metricas]);
 
   useEffect(() => {
     if (!erro) return undefined;
@@ -1255,6 +1363,49 @@ function FuturosClientesMainView() {
           onAtualizado={handleAtualizado}
           onRegistrarVenda={handleRegistrarVenda}
         />
+      )}
+
+      {podeVerQuadroGeral && !modoLixeira && (
+        <section className="conversao-sondagem-module">
+          <div className="conversao-sondagem-header">
+            <div>
+              <h2>Conversao da primeira ligacao</h2>
+              <p>A venda e atribuida ao consultor que qualificou o futuro cliente, mesmo quando outro consultor fecha.</p>
+            </div>
+          </div>
+          <div className="futuros-clientes-metricas">
+            <div><span>Qualificados</span><strong>{resumoMetricas.qualificados}</strong></div>
+            <div><span>Distribuidos para venda</span><strong>{resumoMetricas.distribuidos}</strong></div>
+            <div><span>Vendas originadas</span><strong>{resumoMetricas.vendidos}</strong></div>
+            <div><span>Conversao dos qualificados</span><strong>{resumoMetricas.qualificados ? `${((resumoMetricas.vendidos / resumoMetricas.qualificados) * 100).toFixed(1)}%` : '0%'}</strong></div>
+            <div><span>Potencial mensal</span><strong>{resumoMetricas.potencial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></div>
+          </div>
+          <div className="list-table conversao-sondagem-table">
+            <div className="scroll">
+              <table>
+                <thead><tr><th>Consultor da primeira ligacao</th><th>Qualificados</th><th>Enviados para venda</th><th>Vendas originadas</th><th>Conversao</th><th>Potencial mensal</th></tr></thead>
+                <tbody>
+                  {metricas.length === 0 ? (
+                    <tr><td colSpan="6" className="muted">Ainda nao existem qualificacoes para calcular a conversao.</td></tr>
+                  ) : metricas.map(item => {
+                    const qualificados = Number(item.qualificados || 0);
+                    const vendidos = Number(item.vendidos || 0);
+                    return (
+                      <tr key={item.usuario_id || item.usuario_nome}>
+                        <td><strong>{item.usuario_nome || 'Usuario removido'}</strong></td>
+                        <td>{qualificados}</td>
+                        <td>{Number(item.distribuidos_venda || 0)}</td>
+                        <td>{vendidos}</td>
+                        <td><span className="pill success">{qualificados ? `${((vendidos / qualificados) * 100).toFixed(1)}%` : '0%'}</span></td>
+                        <td>{Number(item.potencial_mensal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       )}
       <div className="clientes-leads-toolbar">
         <form className="clientes-search" onSubmit={event => event.preventDefault()}>

@@ -3085,7 +3085,9 @@ function VendaModal({
   onSendToPosVenda,
   sendToPosVendaLabel = 'Enviar para o pós-venda',
   onCreateClient,
+  onResolveClient,
   clientePreenchido = null,
+  clientesCarregados = true,
   initialDraft = null,
   onDraftChange
 }) {
@@ -3152,6 +3154,7 @@ function VendaModal({
   const [abaAtiva, setAbaAtiva] = useState(abaInicial);
   const [pendingNotas, setPendingNotas] = useState([]);
   const [pendingArquivos, setPendingArquivos] = useState([]);
+  const clienteLeadResolvidoRef = useRef(false);
 
   useEffect(() => {
     let ativo = true;
@@ -3524,14 +3527,20 @@ function VendaModal({
   }
 
   useEffect(() => {
-    if (!clientePreenchido?.cnpj || clientesDisponiveis.length === 0) return;
+    if (!clientesCarregados || editando || form.cliente_id || clienteLeadResolvidoRef.current || !clientePreenchido?.cnpj) return;
     const cnpjDigitos = String(clientePreenchido.cnpj).replace(/\D/g, '');
-    if (!cnpjDigitos) return;
+    if (cnpjDigitos.length !== 14) return;
+
     const clienteExistente = clientesDisponiveis.find(c => String(c.cnpj || '').replace(/\D/g, '') === cnpjDigitos);
-    if (clienteExistente && !form.cliente_id) {
-      atualizarClienteVenda(String(clienteExistente.id));
+    if (clienteExistente) {
+      clienteLeadResolvidoRef.current = true;
+      atualizarClienteVenda(String(clienteExistente.id), clienteExistente);
+      return;
     }
-  }, [clientesDisponiveis]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Quando nao existe na lista, a resolucao/criacao ocorre no submit para nao
+    // cadastrar um cliente caso o usuario desista da venda.
+  }, [clientesCarregados, clientesDisponiveis, clientePreenchido, editando, form.cliente_id, onCreateClient, onResolveClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Atualiza vendedoras venda com os dados informados.
@@ -4003,8 +4012,24 @@ function VendaModal({
         return;
       }
 
-      if (!form.cliente_id) {
-        setErro('Selecione um cliente para cadastrar a venda.');
+      let clienteIdResolvido = form.cliente_id;
+      if (!clienteIdResolvido && clientePreenchido?.cnpj && typeof onResolveClient === 'function') {
+        const clienteResolvido = await onResolveClient({
+          ...clientePreenchido,
+          nome: form.nome || clientePreenchido.nome,
+          razao_social: form.razao_social || clientePreenchido.razao_social,
+          cnpj: form.cnpj || clientePreenchido.cnpj,
+          telefone: form.telefone || clientePreenchido.telefone,
+          email: form.email || clientePreenchido.email,
+          operadora_atual_id: form.operadora_atual_id || clientePreenchido.operadora_atual_id,
+          quantidade_linhas: form.quantidade_linhas || clientePreenchido.quantidade_linhas
+        });
+        clienteIdResolvido = clienteResolvido?.id || '';
+        if (clienteIdResolvido) atualizarClienteVenda(String(clienteIdResolvido), clienteResolvido);
+      }
+
+      if (!clienteIdResolvido) {
+        setErro('Selecione ou cadastre o cliente deste CNPJ antes de registrar a venda.');
         setSalvando(false);
         return;
       }
@@ -4179,6 +4204,7 @@ function VendaModal({
 
       const payload = {
         ...form,
+        cliente_id: clienteIdResolvido,
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
         data_ativacao: vendaEmEtapaFinal ? dataAtivacaoPayload : undefined,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,

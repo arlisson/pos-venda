@@ -190,6 +190,34 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [incluirEnviados, setIncluirEnviados] = useState(false);
+  const [etapa, setEtapa] = useState('sondagem');
+  const [disponiveisVenda, setDisponiveisVenda] = useState(null);
+  const [carregandoDisponiveis, setCarregandoDisponiveis] = useState(false);
+
+  useEffect(() => {
+    if (etapa !== 'venda') return;
+    let cancelado = false;
+    setCarregandoDisponiveis(true);
+    listarLeadLinhas({
+      ...filtrosDivisao,
+      filters: JSON.stringify(filtrosDivisao?.filters || []),
+      somente_qualificados: true,
+      disponivel_venda: true,
+      page: 1,
+      page_size: 1
+    })
+      .then(resultado => {
+        if (cancelado) return;
+        const total = Number(resultado?.total || 0);
+        setDisponiveisVenda(total);
+        setQuantidade(String(total));
+      })
+      .catch(error => {
+        if (!cancelado) setErro(error.message || 'Erro ao contar futuros clientes disponiveis.');
+      })
+      .finally(() => { if (!cancelado) setCarregandoDisponiveis(false); });
+    return () => { cancelado = true; };
+  }, [etapa, filtrosDivisao]);
 
   /**
    * Alterna usuario no estado atual.
@@ -223,9 +251,12 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
         nome,
         quantidade_total: Number(quantidade),
         usuario_ids: usuarios,
-        filtros: filtrosDivisao,
+        filtros: etapa === 'venda'
+          ? { ...filtrosDivisao, somente_qualificados: true, disponivel_venda: true }
+          : filtrosDivisao,
         colunas_visiveis: colunasVisiveis,
         incluir_enviados: incluirEnviados,
+        etapa,
         alocacao_manual: manual?.valores || {}
       });
 
@@ -253,7 +284,9 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   const disponiveisPadrao = Number(resumoLeads?.nao_enviados || 0);
   const jaEnviados = Number(resumoLeads?.enviados || 0);
   const totalResumo = Number(resumoLeads?.total || totalLinhas || 0);
-  const capacidadeAtual = incluirEnviados ? totalResumo : disponiveisPadrao;
+  const capacidadeAtual = etapa === 'venda'
+    ? Number(disponiveisVenda || 0)
+    : (incluirEnviados ? totalResumo : disponiveisPadrao);
   const vaiTransferir = incluirEnviados
     ? Math.max(0, quantidadeNumerica - disponiveisPadrao)
     : 0;
@@ -280,8 +313,18 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
               <input value={nome} onChange={event => setNome(event.target.value)} required />
             </div>
             <div className="form-field">
+              <label>Etapa do envio</label>
+              <select value={etapa} onChange={event => {
+                setEtapa(event.target.value);
+                if (event.target.value === 'venda') setIncluirEnviados(true);
+              }}>
+                <option value="sondagem">Primeira ligacao / sondagem</option>
+                <option value="venda">Futuros clientes / venda</option>
+              </select>
+            </div>
+            <div className="form-field">
               <label>Quantidade</label>
-              <input type="number" min="1" max={totalLinhas} value={quantidade} onChange={event => setQuantidade(event.target.value)} required />
+              <input type="number" min="1" max={capacidadeAtual || 1} value={quantidade} onChange={event => setQuantidade(event.target.value)} required disabled={carregandoDisponiveis} />
             </div>
           </div>
 
@@ -305,7 +348,11 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
           </div>
 
           <div className="leads-divide-help">
-            {incluirEnviados
+            {etapa === 'venda'
+              ? (carregandoDisponiveis
+                ? 'Contando futuros clientes qualificados e disponiveis...'
+                : `${formatarNumero(capacidadeAtual)} futuro(s) cliente(s) qualificado(s) estao disponiveis para esta distribuicao.`)
+              : incluirEnviados
               ? `Este envio pode usar mailing novo e transferir até ${formatarNumero(Math.min(vaiTransferir, jaEnviados))} registro(s) já enviados.`
               : 'O envio automático começa no próximo registro ainda não enviado e ignora os mailing já distribuídos.'}
           </div>
@@ -315,6 +362,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
               type="checkbox"
               checked={incluirEnviados}
               onChange={event => setIncluirEnviados(event.target.checked)}
+              disabled={etapa === 'venda'}
             />
             <span>
               <strong>Incluir mailing já enviados</strong>
@@ -383,7 +431,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
 
         <div className="modal-footer">
           <button type="button" className="btn" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="btn btn-primary" disabled={salvando || usuarios.length === 0 || colunasVisiveis.length === 0}>
+          <button type="submit" className="btn btn-primary" disabled={salvando || carregandoDisponiveis || quantidadeNumerica <= 0 || quantidadeNumerica > capacidadeAtual || usuarios.length === 0 || colunasVisiveis.length === 0}>
             {salvando ? 'Enviando...' : 'Enviar mailing'}
           </button>
         </div>
@@ -536,7 +584,7 @@ function AdminLeadsPage() {
   const [selecionadas, setSelecionadas] = useState([]);
   const [linhas, setLinhas] = useState([]);
   const [totalLinhas, setTotalLinhas] = useState(0);
-  const [resumoLeads, setResumoLeads] = useState({ total: 0, enviados: 0, nao_enviados: 0 });
+  const [resumoLeads, setResumoLeads] = useState({ total: 0, enviados: 0, qualificados: 0, nao_enviados: 0 });
   const [vendedoras, setVendedoras] = useState([]);
   const [busca, setBusca] = useState('');
   const buscaDeferred = useDeferredValue(busca);
@@ -656,7 +704,7 @@ function AdminLeadsPage() {
     if (selecionadas.length === 0) {
       setLinhas([]);
       setTotalLinhas(0);
-      setResumoLeads({ total: 0, enviados: 0, nao_enviados: 0 });
+      setResumoLeads({ total: 0, enviados: 0, qualificados: 0, nao_enviados: 0 });
       return;
     }
 
@@ -676,6 +724,7 @@ function AdminLeadsPage() {
           setResumoLeads(data.resumo || {
             total: data.total || 0,
             enviados: 0,
+            qualificados: 0,
             nao_enviados: data.total || 0
           });
         }
@@ -1535,6 +1584,10 @@ function AdminLeadsPage() {
               <span>Mailing enviado</span>
               <strong>{formatarNumero(resumoLeads.enviados)}</strong>
             </div>
+            <div className="lead-summary-card qualified">
+              <span>Qualificados</span>
+              <strong>{formatarNumero(resumoLeads.qualificados)}</strong>
+            </div>
             <div className="lead-summary-card pending">
               <span>A enviar</span>
               <strong>{formatarNumero(resumoLeads.nao_enviados)}</strong>
@@ -1573,9 +1626,14 @@ function AdminLeadsPage() {
                     <tr key={linha.id}>
                       <td><span className="tag">{linha.planilha?.nome || '-'}</span></td>
                       <td>
-                        <span className={`lead-send-status ${getStatusDistribuicao(linha) === 'Enviado' ? 'sent' : 'pending'}`}>
-                          {getStatusDistribuicao(linha)}
-                        </span>
+                        <div className="lead-status-stack">
+                          <span className={`lead-send-status ${getStatusDistribuicao(linha) === 'Enviado' ? 'sent' : 'pending'}`}>
+                            {getStatusDistribuicao(linha)}
+                          </span>
+                          {linha.futuro_cliente && !linha.futuro_cliente_excluido_em && (
+                            <span className="lead-send-status qualified" title="Qualificado para futuro cliente">Qualificado</span>
+                          )}
+                        </div>
                       </td>
                       <td>{linha.atribuidoPara?.nome || '-'}</td>
                       <td>{linha.envio?.nome || '-'}</td>

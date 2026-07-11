@@ -2728,6 +2728,7 @@ async function gerarEmailTemplateVenda(id, usuarioId) {
  */
 async function criarVenda(dados, usuarioId) {
   const agora = formatarDateTimeSQL();
+  const origemLeadLinhaId = Number(dados.origem_lead_linha_id || 0) || null;
   const vendedorasIds = normalizarIdsVendedoras(dados.vendedoras);
   let payload = montarPayload(dados);
   const deveEnviarAutomaticamente = await usuarioTemPermissao(usuarioId, PERMISSAO_AUTO_POS_VENDA);
@@ -2765,6 +2766,18 @@ async function criarVenda(dados, usuarioId) {
   await validarProtocoloCliente(payload, usuarioId);
 
   return Venda.transaction(async trx => {
+    let leadOrigem = null;
+    if (origemLeadLinhaId) {
+      leadOrigem = await trx('lead_linhas')
+        .where({ id: origemLeadLinhaId, atribuido_para_id: Number(usuarioId) })
+        .where('futuro_cliente', true)
+        .whereNull('futuro_cliente_excluido_em')
+        .first();
+      if (!leadOrigem) {
+        throw new Error('Futuro cliente nao encontrado, nao qualificado ou atribuido a outro consultor.');
+      }
+    }
+
     const venda = await Venda.query(trx).insertAndFetch({
       ...payload,
       status_funil: null,
@@ -2798,6 +2811,21 @@ async function criarVenda(dados, usuarioId) {
         createdAt: agora,
         trx
       });
+    }
+
+    if (leadOrigem) {
+      await trx('lead_linhas').where('id', leadOrigem.id).update({
+        venda_id: venda.id,
+        cliente_id: payload.cliente_id || null,
+        etapa_atual: 'venda',
+        status_operacional: 'vendido',
+        updated_at: new Date()
+      });
+      await trx('lead_atribuicoes')
+        .where({ lead_linha_id: leadOrigem.id, usuario_id: Number(usuarioId), etapa: 'venda' })
+        .orderBy('id', 'desc')
+        .limit(1)
+        .update({ status: 'vendido', finalizado_em: agora, updated_at: new Date() });
     }
 
     if (deveEnviarAutomaticamente) {

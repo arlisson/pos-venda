@@ -289,6 +289,33 @@ async function listarFuturosClientes(req, res) {
   }
 }
 
+async function listarTodosFuturosClientes(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.listarFuturosClientes(req.query, null));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar o quadro de futuros clientes.' });
+  }
+}
+
+async function metricasFuturosClientes(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.obterMetricasFuturosClientes(req.query));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao calcular metricas de futuros clientes.' });
+  }
+}
+
+async function vincularVenda(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.vincularVendaAoLead(req.params.id, req.body?.venda_id, req.usuario.id));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao vincular venda ao lead.' });
+  }
+}
+
 /**
  * Lista futuros clientes lixeira conforme os filtros e parametros informados.
  */
@@ -380,6 +407,9 @@ module.exports = {
   exportarMinhas,
   marcarFuturoCliente,
   listarFuturosClientes,
+  listarTodosFuturosClientes,
+  metricasFuturosClientes,
+  vincularVenda,
   listarFuturosClientesLixeira,
   excluirFuturoCliente,
   restaurarFuturoCliente,
