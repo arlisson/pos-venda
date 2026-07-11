@@ -247,6 +247,10 @@ function isFuturoClienteAtivo(linha) {
   return Boolean(linha?.futuro_cliente && !linha?.futuro_cliente_excluido_em);
 }
 
+function isFuturoClienteVendido(linha) {
+  return Boolean(isFuturoClienteAtivo(linha) && (linha?.venda_id || linha?.status_operacional === 'vendido'));
+}
+
 /**
  * Renderiza lead status no fluxo da tela.
  */
@@ -262,6 +266,12 @@ function renderLeadStatus(linha) {
   if (isFuturoClienteAtivo(linha)) {
     return (
       <span className="lead-status-cell">
+        {isFuturoClienteVendido(linha) && (
+          <span className="pill lead-status-pill sold">
+            <span className="pill-dot"></span>
+            Venda registrada
+          </span>
+        )}
         <span className="pill success lead-status-pill">
           <span className="pill-dot"></span>
           Futuro cliente
@@ -546,12 +556,19 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 
           {etapa === 'opcoes' && (
             <div className="adicionar-lead-acoes">
+              {linha.futuro_cliente && (
+                <div className="lead-already-qualified-notice">
+                  Este contato ja foi qualificado na primeira ligacao. Nesta etapa ele esta disponivel somente para registro de venda.
+                </div>
+              )}
               <button type="button" className="btn btn-primary" onClick={() => setEtapa('venda')}>
                 <I.Chart size={14} /> Registrar venda
               </button>
-              <button type="button" className="btn" onClick={() => setEtapa('futuro')}>
-                <I.Calendar size={14} /> Registrar futuro cliente
-              </button>
+              {!linha.futuro_cliente && (
+                <button type="button" className="btn" onClick={() => setEtapa('futuro')}>
+                  <I.Calendar size={14} /> Registrar futuro cliente
+                </button>
+              )}
             </div>
           )}
 
@@ -724,6 +741,7 @@ function LeadsRecebidosView() {
   const totalPaginas = Math.max(1, Math.ceil(totalLinhas / 200));
   const totalColunasTabela = colunas.length + 2 + ((podeRegistrarVenda || podeRegistrarFuturo) ? 1 : 0);
   const totalFuturosClientesAtivos = linhas.filter(isFuturoClienteAtivo).length;
+  const totalFuturosClientesVendidos = linhas.filter(isFuturoClienteVendido).length;
 
   /**
    * Alterna envio no estado atual.
@@ -864,6 +882,11 @@ function LeadsRecebidosView() {
           <span className="clientes-toolbar__meta-secondary">
             {totalFuturosClientesAtivos} futuro(s) cliente(s)
           </span>
+          {totalFuturosClientesVendidos > 0 && (
+            <span className="clientes-toolbar__meta-sold">
+              {totalFuturosClientesVendidos} com venda
+            </span>
+          )}
         </div>
         <div className="clientes-leads-actions">
           <form className="clientes-search" onSubmit={event => event.preventDefault()}>
@@ -894,7 +917,7 @@ function LeadsRecebidosView() {
                 <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
               ) : (
                 linhas.map(linha => (
-                  <tr key={linha.id} className={isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : ''}>
+                  <tr key={linha.id} className={isFuturoClienteVendido(linha) ? 'lead-row-vendido' : (isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : '')}>
                     <td data-label="Envio" className="m-primary">
                       <span className="tag">{linha.envio?.nome || '-'}</span>
                       <details className="mobile-row-drawer">
@@ -975,6 +998,18 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   const [retorno, setRetorno] = useState(formatarParaDatetimeLocal(linha.futuro_cliente_retorno));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [operadoras, setOperadoras] = useState([]);
+  const [contatoNome, setContatoNome] = useState(linha.sondagem?.contato_nome || '');
+  const [contatoTipo, setContatoTipo] = useState(linha.sondagem?.contato_tipo || '');
+  const [operadoraAtualId, setOperadoraAtualId] = useState(String(linha.sondagem?.operadora_atual_id || ''));
+  const [quantidadeChips, setQuantidadeChips] = useState(String(linha.sondagem?.quantidade_chips || ''));
+  const [precoPorChip, setPrecoPorChip] = useState(String(linha.sondagem?.preco_por_chip || ''));
+  const [whatsapp, setWhatsapp] = useState(linha.sondagem ? `${linha.sondagem.whatsapp_ddd || ''}${linha.sondagem.whatsapp_numero || ''}` : '');
+  const valorMensalEstimado = (Number(quantidadeChips) || 0) * (Number(String(precoPorChip).replace(',', '.')) || 0);
+
+  useEffect(() => {
+    listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
+  }, []);
 
   const usuario = useMemo(() => getUsuarioLocal(), []);
 
@@ -1006,13 +1041,12 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
       const resultado = await marcarFuturoClienteLead(linha.id, {
         notas,
         retorno: retornoIso,
-        contato_nome: linha.sondagem?.contato_nome,
-        contato_tipo: linha.sondagem?.contato_tipo,
-        operadora_atual_id: linha.sondagem?.operadora_atual_id,
-        quantidade_chips: linha.sondagem?.quantidade_chips,
-        preco_por_chip: linha.sondagem?.preco_por_chip,
-        whatsapp_ddd: linha.sondagem?.whatsapp_ddd,
-        whatsapp_numero: linha.sondagem?.whatsapp_numero
+        contato_nome: contatoNome,
+        contato_tipo: contatoTipo,
+        operadora_atual_id: Number(operadoraAtualId),
+        quantidade_chips: Number(quantidadeChips),
+        preco_por_chip: Number(String(precoPorChip).replace(',', '.')),
+        whatsapp
       });
       onAtualizado(resultado.linha);
     } catch (error) {
@@ -1072,6 +1106,43 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
           )}
 
           <div className="futuro-cliente-form">
+            <div className="form-field">
+              <label>Nome de quem falou</label>
+              <input value={contatoNome} onChange={event => setContatoNome(event.target.value)} required disabled={salvando} />
+            </div>
+            <div className="form-field">
+              <label>ADM ou RL</label>
+              <select value={contatoTipo} onChange={event => setContatoTipo(event.target.value)} required disabled={salvando}>
+                <option value="">Selecione</option>
+                <option value="adm">ADM</option>
+                <option value="rl">RL</option>
+              </select>
+            </div>
+            <div className="form-field">
+              <label>Operadora atual</label>
+              <select value={operadoraAtualId} onChange={event => setOperadoraAtualId(event.target.value)} required disabled={salvando}>
+                <option value="">Selecione</option>
+                {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
+              </select>
+            </div>
+            <div className="futuro-cliente-form__grid">
+              <div className="form-field">
+                <label>Quantidade de chips</label>
+                <input type="number" min="1" step="1" value={quantidadeChips} onChange={event => setQuantidadeChips(event.target.value)} required disabled={salvando} />
+              </div>
+              <div className="form-field">
+                <label>Preco por chip</label>
+                <input type="number" min="0.01" step="0.01" value={precoPorChip} onChange={event => setPrecoPorChip(event.target.value)} required disabled={salvando} />
+              </div>
+            </div>
+            <div className="futuro-cliente-estimativa">
+              <span>Media mensal estimada</span>
+              <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+            </div>
+            <div className="form-field">
+              <label>WhatsApp com DDD</label>
+              <input type="tel" inputMode="numeric" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(event.target.value)} required disabled={salvando} />
+            </div>
             <div className="form-field">
               <label>Observações</label>
               <textarea

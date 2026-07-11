@@ -1812,6 +1812,9 @@ async function exportarCsv(filtros, res, opcoes = {}) {
  */
 async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
+  if (linha?.futuro_cliente && Number(linha.futuro_cliente_marcado_por_id) !== Number(usuarioId)) {
+    throw criarHttpError(409, 'Este lead ja foi qualificado na primeira ligacao e nao pode ser qualificado novamente.');
+  }
   if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
 
   if (Number(linha.atribuido_para_id) !== Number(usuarioId)) {
@@ -1916,6 +1919,7 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
 }
 
 async function obterMetricasFuturosClientes(filtros = {}) {
+  await reconciliarVendasFuturosClientesSemOrigem();
   const query = db('lead_linhas as ll')
     .leftJoin('lead_sondagens as ls', 'ls.lead_linha_id', 'll.id')
     .leftJoin('usuarios as u', 'u.id', 'll.futuro_cliente_marcado_por_id')
@@ -1929,6 +1933,80 @@ async function obterMetricasFuturosClientes(filtros = {}) {
     .sum({ potencial_mensal: 'ls.valor_mensal_estimado' })
     .sum({ distribuidos_venda: db.raw("CASE WHEN ll.status_operacional IN ('distribuido_venda', 'vendido', 'perdido') THEN 1 ELSE 0 END") })
     .sum({ vendidos: db.raw("CASE WHEN ll.status_operacional = 'vendido' OR ll.venda_id IS NOT NULL THEN 1 ELSE 0 END") });
+}
+
+function extrairCnpjsLinha(linha) {
+  const dados = parseJson(linha?.dados_json, {});
+  return Object.entries(dados).reduce((acc, [chave, valor]) => {
+    const nome = String(chave || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (!nome.includes('cnpj') && !nome.includes('documento')) return acc;
+    const digitos = String(valor || '').replace(/\D/g, '');
+    if (digitos.length === 14) acc.add(digitos);
+    return acc;
+  }, new Set());
+}
+
+async function reconciliarVendasFuturosClientesSemOrigem() {
+  const vendas = await db('vendas')
+    .whereNull('origem_lead_linha_id')
+    .whereNull('excluido_em')
+    .whereNotNull('cnpj')
+    .select('id', 'cliente_id', 'cnpj', 'vendedora_id', 'criado_por_id', 'created_at')
+    .orderBy('id', 'desc')
+    .limit(500);
+  if (!vendas.length) return 0;
+
+  const linhas = await db('lead_linhas')
+    .where('futuro_cliente', true)
+    .whereNull('futuro_cliente_excluido_em')
+    .whereNull('venda_id')
+    .select('id', 'dados_json', 'atribuido_para_id', 'futuro_cliente_marcado_por_id', 'futuro_cliente_marcado_em');
+  const index = new Map();
+  linhas.forEach(linha => extrairCnpjsLinha(linha).forEach(cnpj => {
+    const lista = index.get(cnpj) || [];
+    lista.push(linha);
+    index.set(cnpj, lista);
+  }));
+
+  let total = 0;
+  for (const venda of vendas) {
+    const cnpj = String(venda.cnpj || '').replace(/\D/g, '');
+    const candidatos = (index.get(cnpj) || []).filter(linha => {
+      const vendedorCorresponde = Number(linha.atribuido_para_id) === Number(venda.vendedora_id)
+        || Number(linha.atribuido_para_id) === Number(venda.criado_por_id);
+      return vendedorCorresponde && (!linha.futuro_cliente_marcado_em || !venda.created_at
+        || new Date(linha.futuro_cliente_marcado_em) <= new Date(venda.created_at));
+    });
+    if (candidatos.length !== 1) continue;
+    const linha = candidatos[0];
+    await db.transaction(async trx => {
+      await trx('vendas').where('id', venda.id).whereNull('origem_lead_linha_id').update({
+        origem_lead_linha_id: linha.id,
+        origem_sondador_id: linha.futuro_cliente_marcado_por_id
+      });
+      await trx('lead_linhas').where('id', linha.id).whereNull('venda_id').update({
+        venda_id: venda.id,
+        cliente_id: venda.cliente_id || null,
+        etapa_atual: 'venda',
+        status_operacional: 'vendido',
+        updated_at: new Date()
+      });
+      if (venda.cliente_id) {
+        await trx('clientes').where('id', venda.cliente_id).update({
+          origem_lead_linha_id: linha.id,
+          origem_sondador_id: linha.futuro_cliente_marcado_por_id,
+          updated_at: new Date()
+        });
+      }
+      await trx('lead_atribuicoes')
+        .where({ lead_linha_id: linha.id, etapa: 'venda' })
+        .orderBy('id', 'desc').limit(1)
+        .update({ status: 'vendido', finalizado_em: venda.created_at || new Date(), updated_at: new Date() });
+    });
+    total += 1;
+    index.delete(cnpj);
+  }
+  return total;
 }
 
 async function vincularVendaAoLead(linhaId, vendaId, usuarioId) {

@@ -101,6 +101,8 @@ class Venda extends Model {
         operadora_id: { type: ['integer', 'null'] },
         operadora_atual_id: { type: ['integer', 'null'] },
         cliente_id: { type: ['integer', 'null'] },
+        origem_lead_linha_id: { type: ['integer', 'null'] },
+        origem_sondador_id: { type: ['integer', 'null'] },
         origem_importacao: { type: ['string', 'null'], maxLength: 80 },
         chave_importacao: { type: ['string', 'null'], maxLength: 80 },
         arquivo_importacao: { type: ['string', 'null'], maxLength: 255 },

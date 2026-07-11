@@ -2777,9 +2777,17 @@ async function criarVenda(dados, usuarioId) {
         throw new Error('Futuro cliente nao encontrado, nao qualificado ou atribuido a outro consultor.');
       }
     }
+    if (!leadOrigem && payload.cliente_id) {
+      const clienteOrigem = await trx('clientes').where('id', payload.cliente_id).first('origem_lead_linha_id');
+      if (clienteOrigem?.origem_lead_linha_id) {
+        leadOrigem = await trx('lead_linhas').where('id', clienteOrigem.origem_lead_linha_id).first();
+      }
+    }
 
     const venda = await Venda.query(trx).insertAndFetch({
       ...payload,
+      origem_lead_linha_id: leadOrigem?.id || null,
+      origem_sondador_id: leadOrigem?.futuro_cliente_marcado_por_id || null,
       status_funil: null,
       criado_por_id: usuarioId,
       criado_em: agora,
@@ -2814,6 +2822,13 @@ async function criarVenda(dados, usuarioId) {
     }
 
     if (leadOrigem) {
+      if (payload.cliente_id) {
+        await trx('clientes').where('id', payload.cliente_id).update({
+          origem_lead_linha_id: leadOrigem.id,
+          origem_sondador_id: leadOrigem.futuro_cliente_marcado_por_id,
+          updated_at: new Date()
+        });
+      }
       await trx('lead_linhas').where('id', leadOrigem.id).update({
         venda_id: venda.id,
         cliente_id: payload.cliente_id || null,

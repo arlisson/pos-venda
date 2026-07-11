@@ -2648,6 +2648,7 @@ function VendasPage() {
   const [clienteRapidoDraft, setClienteRapidoDraft] = useState(null);
   const [, setResolverClienteRapido] = useState(null);
   const [clientePreenchidoLead] = useState(() => location.state?.clientePreenchido || null);
+  const [origemLeadCadastro] = useState(() => location.state?.origemLead || null);
   const [clientesCarregados, setClientesCarregados] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(20);
@@ -2971,7 +2972,7 @@ function VendasPage() {
     if (modalVenda) {
       vendaSalva = await atualizarVenda(modalVenda.id, dados);
     } else {
-      const origemLeadLinhaId = Number(location.state?.origemLead?.linha_id || 0);
+      const origemLeadLinhaId = Number(origemLeadCadastro?.linha_id || 0);
       vendaSalva = await criarVenda({
         ...dados,
         ...(origemLeadLinhaId > 0 ? { origem_lead_linha_id: origemLeadLinhaId } : {})
