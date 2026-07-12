@@ -1623,15 +1623,18 @@ function AdminLeadsPage() {
                   <tr><td colSpan={colunas.length + 4} className="muted">Selecione uma planilha para visualizar o mailing.</td></tr>
                 ) : (
                   linhasPagina.map(linha => (
-                    <tr key={linha.id}>
+                    <tr key={linha.id} className={linha.venda_id || linha.status_operacional === 'vendido' || linha.possui_venda_cliente ? 'lead-admin-row-sold' : ''}>
                       <td><span className="tag">{linha.planilha?.nome || '-'}</span></td>
                       <td>
                         <div className="lead-status-stack">
                           <span className={`lead-send-status ${getStatusDistribuicao(linha) === 'Enviado' ? 'sent' : 'pending'}`}>
                             {getStatusDistribuicao(linha)}
                           </span>
-                          {linha.futuro_cliente && !linha.futuro_cliente_excluido_em && (
+                          {Boolean(linha.futuro_cliente) && !linha.futuro_cliente_excluido_em && (
                             <span className="lead-send-status qualified" title="Qualificado para futuro cliente">Qualificado</span>
+                          )}
+                          {(Boolean(linha.venda_id) || linha.status_operacional === 'vendido' || linha.possui_venda_cliente) && (
+                            <span className="lead-send-status sold" title="Este futuro cliente possui uma venda vinculada">Venda registrada</span>
                           )}
                         </div>
                       </td>

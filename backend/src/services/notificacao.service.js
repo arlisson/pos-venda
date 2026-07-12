@@ -20,6 +20,9 @@ const PERMISSAO_RECEBER_TODAS = 'notificacoes_receber_todas';
 const TIPO_FIDELIDADE_CLIENTE = 'cliente_fidelidade';
 const TIPO_NOTA_RETORNO_PRE = 'nota_retorno_pre';
 const TIPO_NOTA_RETORNO_DUE = 'nota_retorno_due';
+const TIPO_FUTURO_RETORNO_PRE = 'futuro_cliente_retorno_pre';
+const TIPO_FUTURO_RETORNO_DUE = 'futuro_cliente_retorno_due';
+const TIPOS_FUTURO_RETORNO = [TIPO_FUTURO_RETORNO_PRE, TIPO_FUTURO_RETORNO_DUE];
 const TIPOS_PROBLEMA_VENDA = [
   'venda_problema_aberto',
   'venda_problema_resolvido',
@@ -447,6 +450,91 @@ async function sincronizarRetornosNotas(usuarioId = null) {
   }
 }
 
+function tituloFuturoCliente(dadosJson, linhaId) {
+  const dados = parseDados(dadosJson);
+  const entrada = Object.entries(dados).find(([chave, valor]) => {
+    const nome = String(chave || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return valor && ['razao social', 'empresa', 'nome fantasia', 'nome'].some(termo => nome.includes(termo));
+  });
+  return String(entrada?.[1] || `Futuro cliente #${linhaId}`);
+}
+
+async function salvarNotificacaoRetornoFuturoCliente(linha, etapa, agora) {
+  const retorno = parseDataHora(linha.retorno_em);
+  if (!retorno) return null;
+  const isDue = etapa === TIPO_FUTURO_RETORNO_DUE;
+  const sourceKey = `${etapa}:${linha.lead_linha_id}`;
+  const nome = tituloFuturoCliente(linha.dados_json, linha.lead_linha_id);
+  const retornoFormatado = formatarDataHoraBR(linha.retorno_em);
+  const payload = {
+    tipo: etapa,
+    titulo: isDue ? 'Retorno de futuro cliente vencido' : 'Retorno de futuro cliente em breve',
+    mensagem: isDue
+      ? `Retorne a ligacao de "${nome}" marcada para ${retornoFormatado}.`
+      : `Retorno de "${nome}" marcado para ${retornoFormatado}.`,
+    nivel: isDue ? 'danger' : 'warn',
+    entidade: 'lead_linhas',
+    entidade_id: linha.lead_linha_id,
+    source_key: sourceKey,
+    dados: JSON.stringify({
+      lead_linha_id: linha.lead_linha_id,
+      retorno_agendado_para: linha.retorno_em,
+      retorno_etapa: isDue ? 'due' : 'pre',
+      titulo_nota: nome
+    }),
+    ativa: true,
+    updated_at: agora
+  };
+  await db('notificacoes').insert(payload).onConflict('source_key').merge(payload);
+  const notificacao = await Notificacao.query().where('source_key', sourceKey).first();
+  const adminsIds = await listarAdminsAtivos();
+  const destinatarios = Array.from(new Set([Number(linha.usuario_id), ...adminsIds].filter(Boolean)));
+  for (const destinatarioId of destinatarios) {
+    await db('notificacao_destinatarios').insert({ notificacao_id: notificacao.id, usuario_id: destinatarioId })
+      .onConflict(['notificacao_id', 'usuario_id']).ignore();
+  }
+  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
+  return notificacao;
+}
+
+async function sincronizarRetornosFuturosClientes() {
+  const agora = new Date();
+  const linhas = await db('lead_sondagens as ls')
+    .join('lead_linhas as ll', 'll.id', 'ls.lead_linha_id')
+    .where('ll.futuro_cliente', true)
+    .whereNull('ll.futuro_cliente_excluido_em')
+    .whereNotNull('ls.retorno_em')
+    .select('ls.lead_linha_id', 'ls.usuario_id', 'ls.retorno_em', 'll.dados_json');
+
+  for (const linha of linhas) {
+    const retorno = parseDataHora(linha.retorno_em);
+    if (!retorno) continue;
+    if (retorno <= agora) {
+      await Notificacao.query().where('source_key', `${TIPO_FUTURO_RETORNO_PRE}:${linha.lead_linha_id}`)
+        .patch({ ativa: false, updated_at: agora });
+      await salvarNotificacaoRetornoFuturoCliente(linha, TIPO_FUTURO_RETORNO_DUE, agora);
+    } else {
+      await Notificacao.query().where('source_key', `${TIPO_FUTURO_RETORNO_DUE}:${linha.lead_linha_id}`)
+        .patch({ ativa: false, updated_at: agora });
+      await salvarNotificacaoRetornoFuturoCliente(linha, TIPO_FUTURO_RETORNO_PRE, agora);
+    }
+  }
+
+  const notificacoesObsoletas = await db('notificacoes as n')
+    .leftJoin('lead_sondagens as ls', 'ls.lead_linha_id', 'n.entidade_id')
+    .leftJoin('lead_linhas as ll', 'll.id', 'n.entidade_id')
+    .whereIn('n.tipo', TIPOS_FUTURO_RETORNO)
+    .where(builder => builder.whereNull('ls.retorno_em').orWhereNull('ll.id').orWhere('ll.futuro_cliente', false).orWhereNotNull('ll.futuro_cliente_excluido_em'))
+    .distinct('n.id');
+
+  const notificacoesObsoletasIds = notificacoesObsoletas.map(notificacao => notificacao.id);
+  if (notificacoesObsoletasIds.length > 0) {
+    await db('notificacoes')
+      .whereIn('id', notificacoesObsoletasIds)
+      .update({ ativa: false, updated_at: agora });
+  }
+}
+
 /**
  * Converte dados para o formato interno esperado.
  */
@@ -484,6 +572,9 @@ function aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, pode
 
   if (!podeVerTudo) {
     query.whereIn('n.tipo', [
+      TIPO_NOTA_RETORNO_PRE,
+      TIPO_NOTA_RETORNO_DUE,
+      ...TIPOS_FUTURO_RETORNO,
       ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
       ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
     ]);
@@ -564,6 +655,7 @@ async function limparNotificacoesSemObjetoReferente() {
 async function listarNotificacoes(usuarioId, filtros = {}) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
+  await sincronizarRetornosFuturosClientes();
   await vendaNotificacaoParadaService.sincronizarVendasParadas();
   await limparNotificacoesSemObjetoReferente();
 
@@ -628,6 +720,7 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
 async function listarUrgentes(usuarioId) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
+  await sincronizarRetornosFuturosClientes();
   await vendaNotificacaoParadaService.sincronizarVendasParadas();
   await limparNotificacoesSemObjetoReferente();
 
@@ -819,5 +912,6 @@ module.exports = {
   sincronizarNotificacoesFidelidade,
   desativarNotificacoesRetornoNota,
   sincronizarRetornosNotas,
+  sincronizarRetornosFuturosClientes,
   limparNotificacoesSemObjetoReferente
 };

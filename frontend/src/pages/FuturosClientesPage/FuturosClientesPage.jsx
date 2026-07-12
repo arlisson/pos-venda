@@ -16,7 +16,7 @@ import {
   marcarFuturoClienteLead,
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
-import { formatDateValue, formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
+import { formatDateValue, formatUtcDateTime, parseUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
 import { listarOperadoras } from '../../services/config.service';
 import './FuturosClientesPage.css';
 
@@ -247,14 +247,46 @@ function isFuturoClienteAtivo(linha) {
   return Boolean(linha?.futuro_cliente && !linha?.futuro_cliente_excluido_em);
 }
 
+function formatarWhatsappInput(valor) {
+  let digitos = String(valor || '').replace(/\D/g, '');
+  if (digitos.startsWith('55') && digitos.length > 11) digitos = digitos.slice(2);
+  digitos = digitos.slice(0, 11);
+  if (!digitos) return '';
+  if (digitos.length <= 2) return `(${digitos}`;
+  const ddd = digitos.slice(0, 2);
+  const numero = digitos.slice(2);
+  if (numero.length <= 4) return `(${ddd}) ${numero}`;
+  if (numero.length <= 8) return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
+  return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+}
+
+function encontrarTelefoneLead(linha) {
+  const dados = linha?.dados_json || {};
+  const prioridades = ['celular', 'whatsapp', 'telefone', 'fone', 'terminal'];
+  for (const prioridade of prioridades) {
+    const chave = Object.keys(dados)
+      .filter(nome => !nome.endsWith(' (atualizado)'))
+      .find(nome => normalizarTextoLead(nome) === prioridade);
+    if (!chave) continue;
+    const valor = dados[`${chave} (atualizado)`] ?? dados[chave];
+    if (String(valor || '').replace(/\D/g, '')) return valor;
+  }
+  return '';
+}
+
 function isFuturoClienteVendido(linha) {
   return Boolean(isFuturoClienteAtivo(linha) && (linha?.venda_id || linha?.status_operacional === 'vendido'));
+}
+
+function isRetornoFuturoClienteVencido(valor, agora = Date.now()) {
+  const retorno = parseUtcDateTime(valor);
+  return Boolean(retorno && retorno.getTime() < agora);
 }
 
 /**
  * Renderiza lead status no fluxo da tela.
  */
-function renderLeadStatus(linha) {
+function renderLeadStatus(linha, agora = Date.now()) {
   if (isFuturoClienteNaLixeira(linha)) {
     return (
       <span className="lead-status-cell">
@@ -277,7 +309,9 @@ function renderLeadStatus(linha) {
           Futuro cliente
         </span>
         {linha.futuro_cliente_retorno && (
-          <span className="lead-status-return">Retorno: {formatarDataHora(linha.futuro_cliente_retorno)}</span>
+          <span className={`lead-status-return ${isRetornoFuturoClienteVencido(linha.futuro_cliente_retorno, agora) ? 'is-overdue' : ''}`}>
+            Retorno: {formatarDataHora(linha.futuro_cliente_retorno)}
+          </span>
         )}
       </span>
     );
@@ -301,6 +335,47 @@ function datetimeRetornoParaIso(valor) {
 
   const data = new Date(valor);
   return isNaN(data.getTime()) ? null : data.toISOString();
+}
+
+function criarChipsItensSondagem(sondagem = null) {
+  const itens = Array.isArray(sondagem?.chips_itens) ? sondagem.chips_itens : [];
+  if (itens.length) return itens.map(item => ({ quantidade: String(item.quantidade || ''), preco_por_chip: String(item.preco_por_chip || '') }));
+  if (sondagem?.quantidade_chips || sondagem?.preco_por_chip) {
+    return [{ quantidade: String(sondagem.quantidade_chips || ''), preco_por_chip: String(sondagem.preco_por_chip || '') }];
+  }
+  return [{ quantidade: '', preco_por_chip: '' }];
+}
+
+function ChipsItensSondagem({ itens, onChange, disabled }) {
+  function atualizar(index, campo, valor) {
+    onChange(itens.map((item, itemIndex) => itemIndex === index ? { ...item, [campo]: valor } : item));
+  }
+  function remover(index) {
+    if (itens.length <= 1) return;
+    onChange(itens.filter((_, itemIndex) => itemIndex !== index));
+  }
+  return (
+    <div className="chips-sondagem-editor">
+      {itens.map((item, index) => (
+        <div className="chips-sondagem-row" key={index}>
+          <div className="form-field">
+            <label>Quantidade de chips</label>
+            <input type="number" min="1" step="1" value={item.quantidade} onChange={event => atualizar(index, 'quantidade', event.target.value)} required disabled={disabled} />
+          </div>
+          <div className="form-field">
+            <label>Preco por chip</label>
+            <input type="number" min="0.01" step="0.01" value={item.preco_por_chip} onChange={event => atualizar(index, 'preco_por_chip', event.target.value)} required disabled={disabled} />
+          </div>
+          {itens.length > 1 && (
+            <button type="button" className="btn btn-icon btn-ghost chips-sondagem-remove" title="Remover faixa" onClick={() => remover(index)} disabled={disabled}><I.Trash size={14} /></button>
+          )}
+        </div>
+      ))}
+      <button type="button" className="btn btn-sm chips-sondagem-add" onClick={() => onChange([...itens, { quantidade: '', preco_por_chip: '' }])} disabled={disabled}>
+        <I.Plus size={14} /> Adicionar outro valor de chip
+      </button>
+    </div>
+  );
 }
 
 // ─── Modal: registrar venda ───────────────────────────────────────────────────
@@ -462,10 +537,10 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [contatoNome, setContatoNome] = useState('');
   const [contatoTipo, setContatoTipo] = useState('');
   const [operadoraAtualId, setOperadoraAtualId] = useState('');
-  const [quantidadeChips, setQuantidadeChips] = useState('');
-  const [precoPorChip, setPrecoPorChip] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const valorMensalEstimado = (Number(quantidadeChips) || 0) * (Number(String(precoPorChip).replace(',', '.')) || 0);
+  const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem());
+  const [whatsapp, setWhatsapp] = useState(() => formatarWhatsappInput(encontrarTelefoneLead(linha)));
+  const valorMensalEstimado = chipsItens.reduce((total, item) => total
+    + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
 
   useEffect(() => {
     listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
@@ -503,8 +578,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
-        quantidade_chips: Number(quantidadeChips),
-        preco_por_chip: Number(String(precoPorChip).replace(',', '.')),
+        chips_itens: chipsItens,
         whatsapp
       });
       onFuturoClienteSalvo(resultado.linha);
@@ -593,23 +667,14 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                   {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
                 </select>
               </div>
-              <div className="futuro-cliente-form__grid">
-                <div className="form-field">
-                  <label>Quantidade de chips</label>
-                  <input type="number" min="1" step="1" value={quantidadeChips} onChange={event => setQuantidadeChips(event.target.value)} required disabled={salvando} />
-                </div>
-                <div className="form-field">
-                  <label>Preco por chip</label>
-                  <input type="number" min="0.01" step="0.01" value={precoPorChip} onChange={event => setPrecoPorChip(event.target.value)} required disabled={salvando} />
-                </div>
-              </div>
+              <ChipsItensSondagem itens={chipsItens} onChange={setChipsItens} disabled={salvando} />
               <div className="futuro-cliente-estimativa">
                 <span>Media mensal estimada</span>
                 <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
               </div>
               <div className="form-field">
                 <label>WhatsApp com DDD</label>
-                <input type="tel" inputMode="numeric" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(event.target.value)} required disabled={salvando} />
+                <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
               </div>
               <div className="form-field">
                 <label>Notas sobre este cliente</label>
@@ -654,7 +719,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 /**
  * Renderiza leads recebidos view com os dados informados.
  */
-function LeadsRecebidosView() {
+function LeadsRecebidosView({ agora }) {
   const navigate = useNavigate();
   const [envios, setEnvios] = useState([]);
   const [selecionados, setSelecionados] = useState([]);
@@ -935,7 +1000,7 @@ function LeadsRecebidosView() {
                         </dl>
                       </details>
                     </td>
-                    <td data-label="Status" className="m-meta">{renderLeadStatus(linha)}</td>
+                    <td data-label="Status" className="m-meta">{renderLeadStatus(linha, agora)}</td>
                     {(podeRegistrarVenda || podeRegistrarFuturo) && (
                       <td data-label="Adicionar" className="m-actions">
                         <button
@@ -1002,10 +1067,14 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   const [contatoNome, setContatoNome] = useState(linha.sondagem?.contato_nome || '');
   const [contatoTipo, setContatoTipo] = useState(linha.sondagem?.contato_tipo || '');
   const [operadoraAtualId, setOperadoraAtualId] = useState(String(linha.sondagem?.operadora_atual_id || ''));
-  const [quantidadeChips, setQuantidadeChips] = useState(String(linha.sondagem?.quantidade_chips || ''));
-  const [precoPorChip, setPrecoPorChip] = useState(String(linha.sondagem?.preco_por_chip || ''));
-  const [whatsapp, setWhatsapp] = useState(linha.sondagem ? `${linha.sondagem.whatsapp_ddd || ''}${linha.sondagem.whatsapp_numero || ''}` : '');
-  const valorMensalEstimado = (Number(quantidadeChips) || 0) * (Number(String(precoPorChip).replace(',', '.')) || 0);
+  const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem(linha.sondagem));
+  const [whatsapp, setWhatsapp] = useState(() => formatarWhatsappInput(
+    linha.sondagem
+      ? `${linha.sondagem.whatsapp_ddd || ''}${linha.sondagem.whatsapp_numero || ''}`
+      : encontrarTelefoneLead(linha)
+  ));
+  const valorMensalEstimado = chipsItens.reduce((total, item) => total
+    + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
 
   useEffect(() => {
     listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
@@ -1044,8 +1113,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
-        quantidade_chips: Number(quantidadeChips),
-        preco_por_chip: Number(String(precoPorChip).replace(',', '.')),
+        chips_itens: chipsItens,
         whatsapp
       });
       onAtualizado(resultado.linha);
@@ -1125,23 +1193,14 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
                 {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
               </select>
             </div>
-            <div className="futuro-cliente-form__grid">
-              <div className="form-field">
-                <label>Quantidade de chips</label>
-                <input type="number" min="1" step="1" value={quantidadeChips} onChange={event => setQuantidadeChips(event.target.value)} required disabled={salvando} />
-              </div>
-              <div className="form-field">
-                <label>Preco por chip</label>
-                <input type="number" min="0.01" step="0.01" value={precoPorChip} onChange={event => setPrecoPorChip(event.target.value)} required disabled={salvando} />
-              </div>
-            </div>
+              <ChipsItensSondagem itens={chipsItens} onChange={setChipsItens} disabled={salvando} />
             <div className="futuro-cliente-estimativa">
               <span>Media mensal estimada</span>
               <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
             </div>
             <div className="form-field">
               <label>WhatsApp com DDD</label>
-              <input type="tel" inputMode="numeric" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(event.target.value)} required disabled={salvando} />
+              <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
             </div>
             <div className="form-field">
               <label>Observações</label>
@@ -1235,7 +1294,7 @@ function ConfirmarFuturoClienteLixeiraModal({ linha, tipo, processando, onClose,
 /**
  * Renderiza futuros clientes main view com os dados informados.
  */
-function FuturosClientesMainView() {
+function FuturosClientesMainView({ agora }) {
   const navigate = useNavigate();
   const [linhas, setLinhas] = useState([]);
   const [total, setTotal] = useState(0);
@@ -1555,7 +1614,9 @@ function FuturosClientesMainView() {
                             <dt>Notas</dt>
                             <dd>{linha.futuro_cliente_notas || '-'}</dd>
                             <dt>Retorno</dt>
-                            <dd>{linha.futuro_cliente_retorno ? formatarDataHora(linha.futuro_cliente_retorno) : '-'}</dd>
+                            <dd className={isRetornoFuturoClienteVencido(linha.futuro_cliente_retorno, agora) ? 'future-return-overdue' : ''}>
+                              {linha.futuro_cliente_retorno ? formatarDataHora(linha.futuro_cliente_retorno) : '-'}
+                            </dd>
                             <dt>{modoLixeira ? 'Enviado para lixeira' : 'Marcado em'}</dt>
                             <dd>{formatarDataHora(modoLixeira ? linha.futuro_cliente_excluido_em : linha.futuro_cliente_marcado_em)}</dd>
                             {modoLixeira && (
@@ -1588,7 +1649,7 @@ function FuturosClientesMainView() {
                       </td>
                       <td data-label="Retorno" className="m-meta">
                         {linha.futuro_cliente_retorno ? (
-                          <span className="pill success">
+                          <span className={`pill ${isRetornoFuturoClienteVencido(linha.futuro_cliente_retorno, agora) ? 'danger future-return-overdue' : 'success'}`}>
                             <span className="pill-dot"></span>
                             {formatarDataHora(linha.futuro_cliente_retorno)}
                           </span>
@@ -1677,6 +1738,12 @@ function FuturosClientesMainView() {
  */
 function FuturosClientesPage() {
   const [abaAtiva, setAbaAtiva] = useState('futuros');
+  const [agora, setAgora] = useState(() => Date.now());
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setAgora(Date.now()), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   return (
     <LayoutPrivado>
@@ -1699,9 +1766,9 @@ function FuturosClientesPage() {
         </div>
 
         {abaAtiva === 'leads' ? (
-          <LeadsRecebidosView />
+          <LeadsRecebidosView agora={agora} />
         ) : (
-          <FuturosClientesMainView />
+          <FuturosClientesMainView agora={agora} />
         )}
       </div>
     </LayoutPrivado>

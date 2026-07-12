@@ -614,6 +614,20 @@
   border-color: #d8b4fe;
 }
 
+.lead-send-status.sold {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.lead-table tbody tr.lead-admin-row-sold td {
+  background: color-mix(in srgb, #2563eb 6%, var(--surface));
+}
+
+.lead-table tbody tr.lead-admin-row-sold:hover td {
+  background: color-mix(in srgb, #2563eb 11%, var(--surface-2));
+}
+
 .lead-pagination {
   display: flex;
   align-items: center;

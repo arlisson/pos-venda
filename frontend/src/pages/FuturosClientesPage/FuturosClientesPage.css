@@ -257,6 +257,12 @@
   white-space: nowrap;
 }
 
+.lead-status-return.is-overdue,
+.future-return-overdue {
+  color: var(--danger, #dc2626);
+  font-weight: 600;
+}
+
 .clientes-leads-table .lead-register-sale-btn {
   width: auto;
   min-width: 118px;
@@ -469,6 +475,27 @@
   gap: 12px;
 }
 
+.chips-sondagem-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chips-sondagem-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
+  gap: 12px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.chips-sondagem-row .form-field { margin-bottom: 0; }
+.chips-sondagem-remove { margin-bottom: 1px; color: var(--danger); }
+.chips-sondagem-add { align-self: flex-start; }
+
 .lead-status-pill.sold {
   color: #1d4ed8;
   background: #dbeafe;
@@ -498,6 +525,8 @@
 
 @media (max-width: 640px) {
   .futuro-cliente-form__grid { grid-template-columns: 1fr; }
+  .chips-sondagem-row { grid-template-columns: 1fr 1fr; }
+  .chips-sondagem-remove { grid-column: 1 / -1; width: 100%; }
 }
 .futuros-clientes-metricas {
   display: grid;

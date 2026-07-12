@@ -434,9 +434,20 @@ function formatarLinha(linha) {
   const json = typeof linha?.toJSON === 'function' ? linha.toJSON() : linha;
   if (!json) return json;
 
+  const sondagem = json.sondagem ? {
+    ...json.sondagem,
+    chips_itens: parseJson(json.sondagem.chips_itens, [])
+  } : json.sondagem;
+  const retornoLinhaValido = json.futuro_cliente_retorno
+    && !String(json.futuro_cliente_retorno).startsWith('0000-00-00');
+  const marcadoLinhaValido = json.futuro_cliente_marcado_em
+    && !String(json.futuro_cliente_marcado_em).startsWith('0000-00-00');
   return {
     ...json,
     dados_json: parseJson(json.dados_json, {}),
+    sondagem,
+    futuro_cliente_retorno: retornoLinhaValido ? json.futuro_cliente_retorno : (sondagem?.retorno_em || null),
+    futuro_cliente_marcado_em: marcadoLinhaValido ? json.futuro_cliente_marcado_em : (sondagem?.respondido_em || null),
     planilha: formatarPlanilha(json.planilha),
     envio: formatarEnvio(json.envio)
   };
@@ -827,15 +838,32 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
     .whereNull('futuro_cliente_excluido_em')
     .resultSize();
   const linhas = await baseQuery
-    .withGraphFetched('[planilha, envio, atribuidoPara]')
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, usuario]]')
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'))
     .orderBy('planilha_id', 'asc')
     .orderBy('row_index', 'asc')
     .offset((page - 1) * pageSize)
     .limit(pageSize);
 
+  const cnpjsPagina = new Set();
+  linhas.forEach(linha => extrairCnpjsLinha(linha).forEach(cnpj => cnpjsPagina.add(cnpj)));
+  const clientesPorCnpj = cnpjsPagina.size
+    ? await db('clientes').whereIn('cnpj_digitos', Array.from(cnpjsPagina)).select('id', 'cnpj_digitos')
+    : [];
+  const clienteIds = clientesPorCnpj.map(cliente => Number(cliente.id));
+  const clientesComVenda = clienteIds.length
+    ? await db('vendas').whereIn('cliente_id', clienteIds).whereNull('excluido_em').distinct('cliente_id')
+    : [];
+  const idsComVenda = new Set(clientesComVenda.map(item => Number(item.cliente_id)));
+  const cnpjsComVenda = new Set(clientesPorCnpj
+    .filter(cliente => idsComVenda.has(Number(cliente.id)))
+    .map(cliente => cliente.cnpj_digitos));
+
   return {
-    data: linhas.map(formatarLinha),
+    data: linhas.map(linha => ({
+      ...formatarLinha(linha),
+      possui_venda_cliente: Array.from(extrairCnpjsLinha(linha)).some(cnpj => cnpjsComVenda.has(cnpj))
+    })),
     total,
     resumo: {
       total,
@@ -1824,8 +1852,14 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
   const contatoNome = String(dados.contato_nome || '').trim();
   const contatoTipo = String(dados.contato_tipo || '').trim().toLowerCase();
   const operadoraAtualId = Number(dados.operadora_atual_id || 0);
-  const quantidadeChips = Number(dados.quantidade_chips || 0);
-  const precoPorChip = Number(dados.preco_por_chip);
+  const chipsRecebidos = Array.isArray(dados.chips_itens) ? dados.chips_itens : [];
+  const chipsItens = (chipsRecebidos.length ? chipsRecebidos : [{
+    quantidade: dados.quantidade_chips,
+    preco_por_chip: dados.preco_por_chip
+  }]).map(item => ({
+    quantidade: Number(item.quantidade || 0),
+    preco_por_chip: Number(String(item.preco_por_chip ?? '').replace(',', '.'))
+  }));
   const telefoneDigitos = String(dados.whatsapp || `${dados.whatsapp_ddd || ''}${dados.whatsapp_numero || ''}`).replace(/\D/g, '');
   const whatsapp = telefoneDigitos.startsWith('55') && telefoneDigitos.length > 11 ? telefoneDigitos.slice(2) : telefoneDigitos;
   const whatsappDdd = whatsapp.slice(0, 2);
@@ -1834,13 +1868,19 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
   if (!contatoNome) throw criarHttpError(400, 'Informe o nome de quem falou.');
   if (!['adm', 'rl'].includes(contatoTipo)) throw criarHttpError(400, 'Informe se o contato e ADM ou RL.');
   if (!Number.isInteger(operadoraAtualId) || operadoraAtualId <= 0) throw criarHttpError(400, 'Informe a operadora atual.');
-  if (!Number.isInteger(quantidadeChips) || quantidadeChips <= 0) throw criarHttpError(400, 'Informe uma quantidade de chips valida.');
-  if (!Number.isFinite(precoPorChip) || precoPorChip <= 0) throw criarHttpError(400, 'Informe um preco por chip valido.');
+  if (!chipsItens.length || chipsItens.some(item => !Number.isInteger(item.quantidade) || item.quantidade <= 0)) {
+    throw criarHttpError(400, 'Informe quantidades de chips validas.');
+  }
+  if (chipsItens.some(item => !Number.isFinite(item.preco_por_chip) || item.preco_por_chip <= 0)) {
+    throw criarHttpError(400, 'Informe precos por chip validos.');
+  }
   if (whatsappDdd.length !== 2 || whatsappNumero.length < 8 || whatsappNumero.length > 9) {
     throw criarHttpError(400, 'Informe um WhatsApp com DDD valido.');
   }
 
-  const valorMensalEstimado = Math.round(quantidadeChips * precoPorChip * 100) / 100;
+  const quantidadeChips = chipsItens.reduce((total, item) => total + item.quantidade, 0);
+  const valorMensalEstimado = Math.round(chipsItens.reduce((total, item) => total + (item.quantidade * item.preco_por_chip), 0) * 100) / 100;
+  const precoPorChip = Math.round((valorMensalEstimado / quantidadeChips) * 100) / 100;
   const notas = String(dados.notas || dados.observacoes || '').trim() || null;
   const retorno = parseDataHoraRetorno(dados.retorno);
 
@@ -1862,7 +1902,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
     const sondagem = {
       lead_linha_id: Number(linhaId), atribuicao_id: atribuicao.id, usuario_id: usuarioId,
       contato_nome: contatoNome, contato_tipo: contatoTipo, operadora_atual_id: operadoraAtualId,
-      quantidade_chips: quantidadeChips, preco_por_chip: precoPorChip,
+      quantidade_chips: quantidadeChips, chips_itens: JSON.stringify(chipsItens), preco_por_chip: precoPorChip,
       valor_mensal_estimado: valorMensalEstimado, whatsapp_ddd: whatsappDdd,
       whatsapp_numero: whatsappNumero, observacoes: notas, retorno_em: retorno,
       respondido_em: formatarDateTimeSQL()
@@ -1871,10 +1911,10 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
     if (existente) await LeadSondagem.query(trx).patchAndFetchById(existente.id, sondagem);
     else await LeadSondagem.query(trx).insert(sondagem);
 
-    await LeadLinha.query(trx).patchAndFetchById(Number(linhaId), {
+    await trx('lead_linhas').where('id', Number(linhaId)).update({
       futuro_cliente: true, futuro_cliente_notas: notas, futuro_cliente_retorno: retorno,
       futuro_cliente_marcado_em: formatarDateTimeSQL(), futuro_cliente_marcado_por_id: usuarioId,
-      etapa_atual: 'sondagem', status_operacional: 'qualificado'
+      etapa_atual: 'sondagem', status_operacional: 'qualificado', updated_at: new Date()
     });
   });
 
