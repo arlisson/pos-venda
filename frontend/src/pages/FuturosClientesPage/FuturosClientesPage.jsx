@@ -392,9 +392,9 @@ function datetimeRetornoParaIso(valor) {
 
 function criarChipsItensSondagem(sondagem = null) {
   const itens = Array.isArray(sondagem?.chips_itens) ? sondagem.chips_itens : [];
-  if (itens.length) return itens.map(item => ({ quantidade: String(item.quantidade || ''), preco_por_chip: String(item.preco_por_chip || '') }));
+  if (itens.length) return itens.map(item => ({ quantidade: String(item.quantidade || ''), preco_por_chip: formatarNumeroParaInputMoeda(item.preco_por_chip) }));
   if (sondagem?.quantidade_chips || sondagem?.preco_por_chip) {
-    return [{ quantidade: String(sondagem.quantidade_chips || ''), preco_por_chip: String(sondagem.preco_por_chip || '') }];
+    return [{ quantidade: String(sondagem.quantidade_chips || ''), preco_por_chip: formatarNumeroParaInputMoeda(sondagem.preco_por_chip) }];
   }
   return [{ quantidade: '', preco_por_chip: '' }];
 }
@@ -437,7 +437,7 @@ function ChipsItensSondagem({ itens, onChange, disabled }) {
           </div>
           <div className="form-field">
             <label>Preco por chip</label>
-            <input type="number" min="0.01" step="0.01" value={item.preco_por_chip} onChange={event => atualizar(index, 'preco_por_chip', event.target.value)} required disabled={disabled} />
+            <input type="text" inputMode="decimal" placeholder="0,00" value={item.preco_por_chip} onChange={event => atualizar(index, 'preco_por_chip', formatarInputMoedaBR(event.target.value))} required disabled={disabled} />
           </div>
           {itens.length > 1 && (
             <button type="button" className="btn btn-icon btn-ghost chips-sondagem-remove" title="Remover faixa" onClick={() => remover(index)} disabled={disabled}><I.Trash size={14} /></button>
@@ -671,7 +671,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
-        chips_itens: chipsItens,
+        chips_itens: chipsItensParaEnvio(chipsItens),
         whatsapp
       });
       onFuturoClienteSalvo(resultado.linha);
@@ -1272,7 +1272,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
-        chips_itens: chipsItens,
+        chips_itens: chipsItensParaEnvio(chipsItens),
         whatsapp
       });
       onAtualizado(resultado.linha);
