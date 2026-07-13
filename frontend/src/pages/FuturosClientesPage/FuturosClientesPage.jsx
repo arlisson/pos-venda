@@ -716,9 +716,9 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                 <span className="adicionar-lead-campo__valor">{formatarValorCampoLead(valor) || '-'}</span>
               </div>
             ))}
-            {camposLead.length === 0 && (
+            {camposLead.length === 0 ? (
               <div className="muted" style={{ textAlign: 'center', padding: '16px 0' }}>Sem dados disponíveis.</div>
-            )}
+            ) : null}
           </div>
 
           {etapa === 'opcoes' && (
@@ -727,7 +727,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                 <div className="lead-already-qualified-notice">
                   Este futuro cliente ja possui uma venda registrada. Acesse a pagina de Vendas para visualizar a venda.
                 </div>
-              ) : linha.futuro_cliente && (
+              ) : Boolean(linha.futuro_cliente) && (
                 <>
                   <div className="lead-already-qualified-notice">
                     Este contato ja foi qualificado na primeira ligacao. Nesta etapa ele esta disponivel somente para registro de venda.
