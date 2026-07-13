@@ -955,29 +955,36 @@ async function listarEnviosDoUsuario(usuarioId) {
     .orderBy('created_at', 'desc')
     .orderBy('id', 'desc');
 
+  // O envio pode ter sido dividido entre varios vendedores: as metricas do card
+  // sao pessoais, contando apenas as linhas atribuidas a este usuario.
   const envioIds = envios.map(envio => Number(envio.id)).filter(Boolean);
-  const trabalhadosPorEnvio = new Map();
+  const metricasPorEnvio = new Map();
   if (envioIds.length > 0) {
     const totais = await LeadLinha.query()
       .select('envio_id')
-      .count('id as total_trabalhados')
+      .count('id as total_linhas')
+      .select(db.raw(
+        'SUM(CASE WHEN (futuro_cliente = 1 AND futuro_cliente_excluido_em IS NULL) '
+        + 'OR venda_recusada_em IS NOT NULL THEN 1 ELSE 0 END) as total_trabalhados'
+      ))
       .whereIn('envio_id', envioIds)
-      .where(builder => {
-        builder
-          .where(sub => sub.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em'))
-          .orWhereNotNull('venda_recusada_em');
-      })
+      .where('atribuido_para_id', usuarioId)
       .groupBy('envio_id');
-    totais.forEach(item => trabalhadosPorEnvio.set(Number(item.envio_id), Number(item.total_trabalhados || 0)));
+
+    totais.forEach(item => metricasPorEnvio.set(Number(item.envio_id), {
+      totalLinhas: Number(item.total_linhas || 0),
+      totalTrabalhados: Number(item.total_trabalhados || 0)
+    }));
   }
 
   return envios.map(envio => {
     const formatado = formatarEnvio(envio);
-    const totalTrabalhados = trabalhadosPorEnvio.get(Number(formatado.id)) || 0;
+    const metricas = metricasPorEnvio.get(Number(formatado.id)) || { totalLinhas: 0, totalTrabalhados: 0 };
     return {
       ...formatado,
-      total_trabalhados: totalTrabalhados,
-      total_a_trabalhar: Math.max(0, Number(formatado.total_linhas || 0) - totalTrabalhados)
+      total_linhas: metricas.totalLinhas,
+      total_trabalhados: metricas.totalTrabalhados,
+      total_a_trabalhar: Math.max(0, metricas.totalLinhas - metricas.totalTrabalhados)
     };
   });
 }
