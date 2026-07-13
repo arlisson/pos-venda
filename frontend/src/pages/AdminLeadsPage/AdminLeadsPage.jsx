@@ -1,6 +1,8 @@
 ﻿import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import * as I from '../../components/Icons';
+import DocProgresso from '../../components/DocProgresso';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
+import { calcularProgresso } from '../../utils/progresso';
 import { listarVendedoras } from '../../services/venda.service';
 import {
   atualizarLeadSchema,
@@ -56,6 +58,13 @@ function normalizarTexto(valor) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
+}
+
+/**
+ * Calcula o progresso de envio (enviados x pendentes) de uma planilha.
+ */
+function calcularProgressoEnvio(planilha) {
+  return calcularProgresso(planilha?.total_linhas, planilha?.total_enviados);
 }
 
 /**
@@ -1479,7 +1488,7 @@ function AdminLeadsPage() {
                   <span></span><span></span><span></span><span></span>
                   <i
                     className="lead-doc-preview__progress"
-                    style={{ '--progresso-envio': `${Math.min(100, Math.round((Number(planilha.total_enviados || 0) / Math.max(1, Number(planilha.total_linhas || 0))) * 100))}%` }}
+                    style={{ '--progresso-envio': `${calcularProgressoEnvio(planilha).percentual}%` }}
                     aria-hidden="true"
                   ></i>
                 </div>
@@ -1490,9 +1499,11 @@ function AdminLeadsPage() {
                     : `${planilha.total_linhas} ${planilha.total_linhas === 1 ? 'cliente' : 'clientes'}`}
                 </small>
                 {planilha.status !== 'processando' && (
-                  <small className="lead-doc-card__distribution">
-                    {planilha.total_enviados || 0} enviados - {planilha.total_pendentes || 0} pendentes
-                  </small>
+                  <DocProgresso
+                    {...calcularProgressoEnvio(planilha)}
+                    rotulo="enviados"
+                    rotuloCompleto="Tudo enviado"
+                  />
                 )}
               </div>
             ))}

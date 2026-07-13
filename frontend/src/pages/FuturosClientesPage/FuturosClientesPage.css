@@ -209,7 +209,7 @@
 }
 
 .clientes-leads-table tbody tr.lead-row-futuro td {
-  background: color-mix(in srgb, var(--success) 5%, transparent);
+  background: color-mix(in srgb, var(--success) 5%, var(--surface));
 }
 
 .clientes-leads-table tbody tr.lead-row-futuro:hover td {
@@ -221,7 +221,7 @@
 }
 
 .clientes-leads-table tbody tr.lead-row-vendido td {
-  background: color-mix(in srgb, #2563eb 7%, transparent);
+  background: color-mix(in srgb, #2563eb 7%, var(--surface));
 }
 
 .clientes-leads-table tbody tr.lead-row-vendido:hover td {
@@ -235,7 +235,7 @@
 
 .clientes-leads-table tbody tr.lead-row-recusado td,
 .futuros-clientes-table tbody tr.lead-row-recusado td {
-  background: color-mix(in srgb, var(--danger, #dc2626) 7%, transparent);
+  background: color-mix(in srgb, var(--danger, #dc2626) 7%, var(--surface));
 }
 
 .clientes-leads-table tbody tr.lead-row-recusado:hover td,
@@ -287,13 +287,194 @@
 .clientes-leads-table .lead-register-sale-btn {
   width: auto;
   min-width: 118px;
-  min-height: 24px;
+  min-height: 22px;
   padding: 2px 10px;
   font-size: 12px;
 }
 
 .clientes-leads-table .lead-cell-button {
   text-align: center;
+}
+
+/* ── Mailing recebido: densidade em telas de altura curta ── */
+
+.futuros-clientes-page .clientes-leads-view {
+  gap: 10px;
+}
+
+.futuros-clientes-page .clientes-leads-toolbar {
+  padding: 10px 14px;
+}
+
+.futuros-clientes-page .clientes-leads-strip {
+  padding: 10px 12px;
+}
+
+.futuros-clientes-page .clientes-leads-docs {
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+}
+
+.clientes-leads-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  max-width: 340px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.clientes-leads-chip strong {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.clientes-leads-chip small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O progresso e um grid de 2 linhas nos cards; no chip vira uma linha so. */
+.clientes-leads-chip .doc-progresso {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  margin: 0;
+}
+
+.clientes-leads-chip .doc-progresso__track {
+  width: 48px;
+  flex: none;
+}
+
+.clientes-leads-chip .doc-progresso__label {
+  display: none;
+}
+
+.clientes-leads-chip:hover,
+.clientes-leads-chip:focus-visible {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.clientes-leads-chip.active {
+  border-color: var(--text);
+  background: #d9d9d9;
+}
+
+.clientes-leads-table {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: clamp(360px, 64vh, 760px);
+}
+
+.clientes-leads-table .scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.clientes-leads-table table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.clientes-leads-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface-2);
+}
+
+.clientes-leads-table td {
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+
+.clientes-leads-table tbody td:not(.m-primary):not(.m-meta):not(.m-actions) {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Envio, Status e Adicionar seguem visiveis durante o scroll horizontal.
+   A 3a coluna so e fixada quando o usuario tem permissao de registro. */
+.clientes-leads-table th:nth-child(-n + 2),
+.clientes-leads-table td:nth-child(-n + 2),
+.clientes-leads-table--acoes th:nth-child(3),
+.clientes-leads-table--acoes td:nth-child(3) {
+  position: sticky;
+  z-index: 2;
+  background: var(--surface);
+}
+
+.clientes-leads-table thead th:nth-child(-n + 2),
+.clientes-leads-table--acoes thead th:nth-child(3) {
+  z-index: 4;
+  background: var(--surface-2);
+}
+
+.clientes-leads-table th:nth-child(1),
+.clientes-leads-table td:nth-child(1) {
+  left: 0;
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+}
+
+.clientes-leads-table th:nth-child(2),
+.clientes-leads-table td:nth-child(2) {
+  left: 140px;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+}
+
+.clientes-leads-table--acoes th:nth-child(3),
+.clientes-leads-table--acoes td:nth-child(3) {
+  left: 240px;
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+}
+
+/* Linhas de "carregando" / "nenhum registro" ocupam a tabela inteira. */
+.clientes-leads-table td[colspan] {
+  position: static;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+@media (max-height: 800px) {
+  .futuros-clientes-page .clientes-leads-docs {
+    max-height: 92px;
+    overflow-y: auto;
+  }
+
+  .clientes-leads-table {
+    height: clamp(320px, 60vh, 520px);
+  }
 }
 
 .lead-register-sale-btn.is-disabled,
@@ -362,6 +543,7 @@
 
   .clientes-leads-table table,
   .futuros-clientes-table table {
+    width: auto;
     min-width: 0;
   }
 
@@ -381,6 +563,16 @@
   .clientes-leads-table td,
   .futuros-clientes-table td {
     text-align: left !important;
+  }
+
+  /* No layout de cards nao ha scroll horizontal: solta as colunas fixas. */
+  .clientes-leads-table th,
+  .clientes-leads-table td {
+    position: static;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    white-space: normal;
   }
 
   .futuros-clientes-actions,
@@ -649,16 +841,12 @@
 
 .clientes-leads-preview__progress::after {
   display: block;
-  width: 100%;
+  width: var(--progresso-envio, 0%);
   height: 100%;
   content: '';
   border-radius: inherit;
   background: #2563eb;
-}
-
-.clientes-leads-doc__distribution {
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
+  transition: width 0.2s ease;
 }
 
 .futuros-clientes-metricas {

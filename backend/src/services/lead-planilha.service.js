@@ -16,6 +16,7 @@ const LeadSondagem = require('../models/LeadSondagem');
 const db = require('../database/connection');
 const { parseUtcDateTime } = require('../utils/datetime');
 const clienteAntigoService = require('./cliente-antigo.service');
+const { restaurarZerosCnpj } = require('./cnpj.service');
 
 const IMPORT_DIR = process.env.LEAD_IMPORT_DIR
   ? path.resolve(process.env.LEAD_IMPORT_DIR)
@@ -28,6 +29,7 @@ const DB_RETRY_ATTEMPTS = 2;
 const USAR_LOAD_INFILE = process.env.LEAD_IMPORT_USE_LOAD_INFILE === 'true';
 const UPDATED_COLUMN_SUFFIX = ' (atualizado)';
 const EXCEL_IMPORT_BATCH_SIZE = 5000;
+const PALAVRAS_COLUNA_DOCUMENTO = ['cnpj', 'cpf', 'documento'];
 const EXCEL_IMPORT_MAX_BYTES = Number(process.env.LEAD_EXCEL_IMPORT_MAX_BYTES || 50 * 1024 * 1024);
 const TERMOS_CABECALHO_MAILING = [
   'cnpj',
@@ -953,7 +955,31 @@ async function listarEnviosDoUsuario(usuarioId) {
     .orderBy('created_at', 'desc')
     .orderBy('id', 'desc');
 
-  return envios.map(formatarEnvio);
+  const envioIds = envios.map(envio => Number(envio.id)).filter(Boolean);
+  const trabalhadosPorEnvio = new Map();
+  if (envioIds.length > 0) {
+    const totais = await LeadLinha.query()
+      .select('envio_id')
+      .count('id as total_trabalhados')
+      .whereIn('envio_id', envioIds)
+      .where(builder => {
+        builder
+          .where(sub => sub.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em'))
+          .orWhereNotNull('venda_recusada_em');
+      })
+      .groupBy('envio_id');
+    totais.forEach(item => trabalhadosPorEnvio.set(Number(item.envio_id), Number(item.total_trabalhados || 0)));
+  }
+
+  return envios.map(envio => {
+    const formatado = formatarEnvio(envio);
+    const totalTrabalhados = trabalhadosPorEnvio.get(Number(formatado.id)) || 0;
+    return {
+      ...formatado,
+      total_trabalhados: totalTrabalhados,
+      total_a_trabalhar: Math.max(0, Number(formatado.total_linhas || 0) - totalTrabalhados)
+    };
+  });
 }
 
 /**
@@ -1318,6 +1344,50 @@ function valorCelulaExcel(celula) {
   return String(valor ?? '').trim();
 }
 
+/**
+ * Le a celula da coluna de documento sem perder zeros a esquerda: o Excel guarda
+ * o cnpj como numero e `01.234.567/0001-89` chegaria como 1234567000189. O texto
+ * formatado da celula ja traz os zeros quando a planilha usa formato customizado;
+ * so quando ele nao ajuda reconstruimos os zeros pelos digitos.
+ */
+function valorCelulaDocumento(celula) {
+  const bruto = valorCelulaExcel(celula);
+  if (contarDigitos(bruto) === 14) return bruto;
+
+  const formatado = String(celula?.text ?? '');
+  if (contarDigitos(formatado) === 14) return formatado.trim();
+
+  return restaurarZerosCnpj(bruto) || bruto;
+}
+
+/**
+ * Completa os zeros a esquerda de um documento vindo como texto (csv). Valores
+ * que ja tem os 14 digitos ficam como estao, inclusive a mascara.
+ */
+function textoDocumentoLead(valor) {
+  if (contarDigitos(valor) === 14) return valor;
+  return restaurarZerosCnpj(valor) || valor;
+}
+
+function contarDigitos(valor) {
+  return String(valor ?? '').replace(/\D/g, '').length;
+}
+
+/**
+ * Indices (base 0) das colunas que carregam cnpj/cpf, seja pelo mapeamento
+ * escolhido na tela ou pelo nome do cabecalho.
+ */
+function indicesColunasDocumento(colunasNomes, colunaMapeada = null) {
+  const indices = new Set();
+  colunasNomes.forEach((nome, index) => {
+    const normalizado = normalizarBuscaColunaLead(nome);
+    const ehDocumento = PALAVRAS_COLUNA_DOCUMENTO.some(palavra => normalizado.includes(palavra));
+    const ehMapeada = colunaMapeada && nome === colunaMapeada;
+    if (ehDocumento || ehMapeada) indices.add(index);
+  });
+  return indices;
+}
+
 function normalizarBuscaColunaLead(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -1554,6 +1624,7 @@ function montarColecaoCsv(nomeOriginal, buffer) {
   const headerIndex = Math.max((cabecalho?.rowNumber || 1) - 1, 0);
   const colunasNomes = normalizarColunasDuplicadas(cabecalho?.valores || parseCsvLineLead(linhasTexto[0], delimiter));
   const colunas = colunasNomes.map((nome, index) => ({ nome, index: index + 1 }));
+  const colunasDocumento = indicesColunasDocumento(colunasNomes);
   const linhas = [];
 
   for (let i = headerIndex + 1; i < linhasTexto.length; i += 1) {
@@ -1561,7 +1632,8 @@ function montarColecaoCsv(nomeOriginal, buffer) {
     const dados = { __rowIndex: i + 1 };
     let vazia = true;
     colunasNomes.forEach((coluna, index) => {
-      const valor = values[index] ?? '';
+      const bruto = values[index] ?? '';
+      const valor = colunasDocumento.has(index) ? textoDocumentoLead(bruto) : bruto;
       if (String(valor || '').trim()) vazia = false;
       dados[coluna] = valor;
     });
@@ -1597,6 +1669,7 @@ function montarColecoesExcel(nomeOriginal, workbook, abasSelecionadas = null, op
       return null;
     }
 
+    const colunasDocumento = indicesColunasDocumento(colunasNomes, opcoes.cnpj);
     const linhas = [];
     for (let rowNumber = headerRowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
       const row = worksheet.getRow(rowNumber);
@@ -1604,7 +1677,8 @@ function montarColecoesExcel(nomeOriginal, workbook, abasSelecionadas = null, op
       let vazia = true;
 
       colunasNomes.forEach((coluna, index) => {
-        const valor = valorCelulaExcel(row.getCell(index + 1));
+        const celula = row.getCell(index + 1);
+        const valor = colunasDocumento.has(index) ? valorCelulaDocumento(celula) : valorCelulaExcel(celula);
         if (String(valor || '').trim() !== '') vazia = false;
         dados[coluna] = valor;
       });
@@ -2164,8 +2238,9 @@ function extrairCnpjsLinha(linha) {
   return Object.entries(dados).reduce((acc, [chave, valor]) => {
     const nome = String(chave || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (!nome.includes('cnpj') && !nome.includes('documento')) return acc;
-    const digitos = String(valor || '').replace(/\D/g, '');
-    if (digitos.length === 14) acc.add(digitos);
+    // Linhas importadas antes da correcao podem estar sem os zeros a esquerda.
+    const digitos = restaurarZerosCnpj(valor);
+    if (digitos) acc.add(digitos);
     return acc;
   }, new Set());
 }
@@ -2465,5 +2540,10 @@ module.exports = {
   listarFuturosClientesLixeira,
   enviarFuturoClienteParaLixeira,
   restaurarFuturoCliente,
-  excluirFuturoClienteDefinitivo
+  excluirFuturoClienteDefinitivo,
+  _internals: {
+    montarColecoesExcel,
+    montarColecaoCsv,
+    extrairCnpjsLinha
+  }
 };

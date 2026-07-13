@@ -157,7 +157,12 @@
       "Bash(echo \"EXIT $?\")",
       "Bash(node scripts/diagnosticar-invalidos-clientes-antigos.js \"../planilhasParaCruzamento/VENDAS BASARI GLOBAL ATE 23-06.xlsx\")",
       "Bash(git checkout *)",
-      "Bash(node \"C:/Users/USERs/AppData/Local/Temp/claude/c--Users-USERs-Documents-GitHub-pos-venda/b7967c9c-fe7b-4a6d-af06-47d2f459eb4a/scratchpad/exercitar-importacao.js\")"
+      "Bash(node \"C:/Users/USERs/AppData/Local/Temp/claude/c--Users-USERs-Documents-GitHub-pos-venda/b7967c9c-fe7b-4a6d-af06-47d2f459eb4a/scratchpad/exercitar-importacao.js\")",
+      "PowerShell(npx eslint src/components/DocProgresso.jsx src/utils/progresso.js 2>&1)",
+      "PowerShell(npx vite build --logLevel error 2>&1)",
+      "PowerShell(npx eslint src/components/DocProgresso.jsx src/utils/progresso.js)",
+      "Skill(run)",
+      "Skill(run:*)"
     ]
   }
 }

@@ -5,7 +5,7 @@ const Venda = require('../models/Venda');
 const VendaAntiga = require('../models/VendaAntiga');
 const VendaAntigaBusca = require('../models/VendaAntigaBusca');
 const Usuario = require('../models/Usuario');
-const { sanitizarCnpj } = require('./cnpj.service');
+const { restaurarZerosCnpj, sanitizarCnpj, validarDigitosCpf } = require('./cnpj.service');
 const {
   criarHttpError,
   lerArquivoMultipart,
@@ -27,29 +27,6 @@ function sqlSomenteDigitos(coluna) {
   return `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${coluna}, '.', ''), '/', ''), '-', ''), '(', ''), ')', ''), ' ', '')`;
 }
 
-function cnpjRepetido(cnpj) {
-  return /^(\d)\1{13}$/.test(cnpj);
-}
-
-function digitosRepetidos(valor) {
-  return /^(\d)\1+$/.test(valor);
-}
-
-function validarDigitosCpf(cpf) {
-  if (!/^\d{11}$/.test(cpf) || digitosRepetidos(cpf)) return false;
-
-  const calcularDigito = tamanho => {
-    let soma = 0;
-    for (let index = 0; index < tamanho - 1; index += 1) {
-      soma += Number(cpf[index]) * (tamanho - index);
-    }
-    const digito = (soma * 10) % 11;
-    return digito === 10 ? 0 : digito;
-  };
-
-  return calcularDigito(10) === Number(cpf[9]) && calcularDigito(11) === Number(cpf[10]);
-}
-
 /**
  * Descobre que documento a celula contem. CPF entra como documento proprio
  * e CNPJ numerico vindo do Excel pode perder zeros a esquerda.
@@ -61,10 +38,8 @@ function classificarDocumento(valor) {
     return { tipo: 'cpf', digitos: crus };
   }
 
-  const cnpj = crus.length >= 11 && crus.length <= 13
-    ? crus.padStart(14, '0')
-    : sanitizarCnpj(valor);
-  if (cnpj.length === 14 && !cnpjRepetido(cnpj)) {
+  const cnpj = restaurarZerosCnpj(crus);
+  if (cnpj) {
     return { tipo: 'cnpj', digitos: cnpj };
   }
 

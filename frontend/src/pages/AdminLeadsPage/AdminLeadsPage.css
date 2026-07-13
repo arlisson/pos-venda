@@ -132,7 +132,7 @@
   position: relative;
   width: 148px;
   min-width: 148px;
-  min-height: 150px;
+  min-height: 172px;
   padding: 8px;
   border: 1px solid transparent;
   border-radius: var(--radius);
@@ -280,10 +280,6 @@
   width: 34px;
 }
 
-.lead-doc-card__distribution {
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
 
 .lead-doc-empty {
   color: var(--text-3);
@@ -1043,7 +1039,7 @@
   .lead-doc-card {
     width: 120px;
     min-width: 120px;
-    min-height: 130px;
+    min-height: 152px;
     scroll-snap-align: start;
   }
 

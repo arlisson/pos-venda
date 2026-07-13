@@ -85,6 +85,46 @@ function validarCnpj(valor) {
 }
 
 /**
+ * Valida digitos cpf e retorna o resultado esperado.
+ */
+function validarDigitosCpf(cpf) {
+  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  /**
+   * Calcula digito com base no tamanho informado.
+   */
+  const calcularDigito = (tamanho) => {
+    let soma = 0;
+    for (let index = 0; index < tamanho - 1; index += 1) {
+      soma += Number(cpf[index]) * (tamanho - index);
+    }
+    const digito = (soma * 10) % 11;
+    return digito === 10 ? 0 : digito;
+  };
+
+  return calcularDigito(10) === Number(cpf[9]) && calcularDigito(11) === Number(cpf[10]);
+}
+
+/**
+ * Recupera o cnpj de celulas de planilha que perderam zeros a esquerda: o Excel
+ * guarda o documento como numero e `01.234.567/0001-89` chega como 1234567000189.
+ * Retorna os 14 digitos ou '' quando nao da para afirmar que e um cnpj.
+ */
+function restaurarZerosCnpj(valor) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  if (digitos.length > 14 || digitos.length < 8) return '';
+  if (digitos.length === 11 && validarDigitosCpf(digitos)) return '';
+
+  const cnpj = digitos.padStart(14, '0');
+  if (isCnpjRepetido(cnpj)) return '';
+  if (digitos.length === 14) return cnpj;
+  // Digito verificador confirma a reconstrucao. Sem ele, so aceitamos ate 3 zeros
+  // recuperados, faixa em que um documento com digito errado ainda e importavel.
+  if (validarDigitosCnpj(cnpj) || digitos.length >= 11) return cnpj;
+  return '';
+}
+
+/**
  * Converte json seguro para o formato interno esperado.
  */
 function parseJsonSeguro(valor, fallback) {
@@ -603,7 +643,9 @@ module.exports = {
   normalizarMinhaReceita,
   normalizarCnpja,
   normalizarCnpjws,
+  restaurarZerosCnpj,
   sanitizarCnpj,
   validarCnpj,
-  validarDigitosCnpj
+  validarDigitosCnpj,
+  validarDigitosCpf
 };

@@ -1,6 +1,7 @@
 import { Fragment, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
+import DocProgresso from '../../components/DocProgresso';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
@@ -19,6 +20,7 @@ import {
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
 import { formatDateValue, formatUtcDateTime, parseUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
+import { calcularProgresso } from '../../utils/progresso';
 import { listarOperadoras } from '../../services/config.service';
 import './FuturosClientesPage.css';
 
@@ -1062,22 +1064,25 @@ function LeadsRecebidosView({ agora }) {
       <div className="clientes-leads-strip">
         <div className="clientes-leads-strip__title">Planilhas recebidas</div>
         <div className="clientes-leads-docs">
-          {envios.map(envio => (
-            <button
-              key={envio.id}
-              type="button"
-              className={`clientes-leads-doc ${selecionados.includes(envio.id) ? 'active' : ''}`}
-              onClick={() => toggleEnvio(envio.id)}
-            >
-              <div className="clientes-leads-preview">
-                <span></span><span></span><span></span><span></span>
-                <i className="clientes-leads-preview__progress" aria-hidden="true"></i>
-              </div>
-              <strong title={envio.nome}>{envio.nome}</strong>
-              <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} {envio.total_linhas === 1 ? 'cliente' : 'clientes'}</small>
-              <small className="clientes-leads-doc__distribution">{envio.total_linhas || 0} enviados - 0 pendentes</small>
-            </button>
-          ))}
+          {envios.map(envio => {
+            const progresso = calcularProgresso(envio.total_linhas, envio.total_trabalhados);
+            return (
+              <button
+                key={envio.id}
+                type="button"
+                className={`clientes-leads-chip ${selecionados.includes(envio.id) ? 'active' : ''}`}
+                onClick={() => toggleEnvio(envio.id)}
+              >
+                <strong title={envio.nome}>{envio.nome}</strong>
+                <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} {envio.total_linhas === 1 ? 'cliente' : 'clientes'}</small>
+                <DocProgresso
+                  {...progresso}
+                  rotulo="trab."
+                  rotuloCompleto="Completo"
+                />
+              </button>
+            );
+          })}
           {!carregando && envios.length === 0 && (
             <div className="lead-doc-empty">Nenhum envio recebido.</div>
           )}
@@ -1107,7 +1112,7 @@ function LeadsRecebidosView({ agora }) {
       {sucesso && <div className="alert-success alert-timed alert-timed--success">{sucesso}</div>}
       {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
 
-      <div className="list-table clientes-leads-table" style={{ margin: 0 }}>
+      <div className={`list-table clientes-leads-table ${(podeRegistrarVenda || podeRegistrarFuturo) ? 'clientes-leads-table--acoes' : ''}`} style={{ margin: 0 }}>
         <div className="scroll">
           <table>
             <thead>
