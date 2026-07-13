@@ -15,6 +15,7 @@ import {
   listarMeusLeadEnvios,
   listarMinhasLeadLinhas,
   marcarFuturoClienteLead,
+  marcarVendaRecusadaLead,
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
 import { formatDateValue, formatUtcDateTime, parseUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
@@ -160,6 +161,31 @@ function sugerirColunaVenda(campo, opcoes) {
   return encontrada?.nome || '';
 }
 
+const CAMPOS_EMPRESA_FUTURO_CLIENTE = {
+  razao_social: ['razao social', 'razão social', 'empresa', 'cliente', 'nome empresarial'],
+  cnpj: ['cnpj', 'cpf/cnpj', 'documento']
+};
+
+function encontrarValorLeadPorAliases(linha, aliases) {
+  const dados = linha?.dados_json || {};
+  const aliasesNormalizados = aliases.map(normalizarTextoLead);
+  const chave = Object.keys(dados)
+    .filter(nome => !nome.endsWith(' (atualizado)'))
+    .find(nome => {
+      const nomeNormalizado = normalizarTextoLead(nome);
+      return aliasesNormalizados.some(alias => alias && (nomeNormalizado === alias || nomeNormalizado.includes(alias) || alias.includes(nomeNormalizado)));
+    });
+
+  return chave ? String(dados[`${chave} (atualizado)`] ?? dados[chave] ?? '').trim() : '';
+}
+
+function getDadosEmpresaFuturoCliente(linha, sondagem = null) {
+  return {
+    razao_social: String(sondagem?.razao_social || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.razao_social) || '').trim(),
+    cnpj: String(sondagem?.cnpj || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.cnpj) || '').trim()
+  };
+}
+
 const CAMPOS_VENDA_LEAD = [
   { name: 'nome', label: 'Nome', aliases: ['nome', 'name', 'cliente', 'empresa'] },
   { name: 'razao_social', label: 'Razão Social', aliases: ['razao', 'razao social', 'razão social', 'empresa'] },
@@ -202,6 +228,8 @@ function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
       vendedora_id: String(vendedoraId),
       vendedoras: [String(vendedoraId)]
     } : {}),
+    ...(sondagem.razao_social ? { razao_social: sondagem.razao_social } : {}),
+    ...(sondagem.cnpj ? { cnpj: sondagem.cnpj } : {}),
     ...(sondagem.contato_nome ? { responsavel_nome: sondagem.contato_nome } : {}),
     ...(sondagem.contato_tipo ? { responsavel_tipo: sondagem.contato_tipo } : {}),
     ...(sondagem.operadora_atual_id ? { operadora_atual_id: String(sondagem.operadora_atual_id) } : {}),
@@ -276,27 +304,30 @@ function formatarWhatsappInput(valor) {
   return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
 }
 
-function encontrarTelefoneLead(linha) {
-  const dados = linha?.dados_json || {};
-  const prioridades = ['celular', 'whatsapp', 'telefone', 'fone', 'terminal'];
-  for (const prioridade of prioridades) {
-    const chave = Object.keys(dados)
-      .filter(nome => !nome.endsWith(' (atualizado)'))
-      .find(nome => normalizarTextoLead(nome) === prioridade);
-    if (!chave) continue;
-    const valor = dados[`${chave} (atualizado)`] ?? dados[chave];
-    if (String(valor || '').replace(/\D/g, '')) return valor;
-  }
-  return '';
-}
 
 function isFuturoClienteVendido(linha) {
   return Boolean(isFuturoClienteAtivo(linha) && (linha?.venda_id || linha?.status_operacional === 'vendido'));
 }
 
+function isFuturoClienteRecusado(linha) {
+  return Boolean(isFuturoClienteAtivo(linha) && linha?.status_operacional === 'perdido');
+}
+
 function isRetornoFuturoClienteVencido(valor, agora = Date.now()) {
   const retorno = parseUtcDateTime(valor);
   return Boolean(retorno && retorno.getTime() < agora);
+}
+
+function renderFuturoClienteSituacao(linha) {
+  if (isFuturoClienteVendido(linha)) {
+    return <span className="pill lead-status-pill sold"><span className="pill-dot"></span>Venda concluída</span>;
+  }
+
+  if (isFuturoClienteRecusado(linha)) {
+    return <span className="pill lead-status-pill refused" title={linha.venda_recusada_motivo || ''}><span className="pill-dot"></span>Venda recusada</span>;
+  }
+
+  return <span className="pill success lead-status-pill"><span className="pill-dot"></span>Em negociação</span>;
 }
 
 /**
@@ -318,6 +349,12 @@ function renderLeadStatus(linha, agora = Date.now()) {
           <span className="pill lead-status-pill sold">
             <span className="pill-dot"></span>
             Venda registrada
+          </span>
+        )}
+        {isFuturoClienteRecusado(linha) && (
+          <span className="pill lead-status-pill refused" title={linha.venda_recusada_motivo || ''}>
+            <span className="pill-dot"></span>
+            Venda recusada
           </span>
         )}
         <span className="pill success lead-status-pill">
@@ -360,6 +397,26 @@ function criarChipsItensSondagem(sondagem = null) {
     return [{ quantidade: String(sondagem.quantidade_chips || ''), preco_por_chip: String(sondagem.preco_por_chip || '') }];
   }
   return [{ quantidade: '', preco_por_chip: '' }];
+}
+
+function formatarMoedaSondagem(valor) {
+  const numero = Number(valor || 0);
+  return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatarChipsSondagem(sondagem) {
+  const itens = criarChipsItensSondagem(sondagem)
+    .filter(item => Number(item.quantidade) > 0 && Number(String(item.preco_por_chip).replace(',', '.')) > 0);
+
+  if (!itens.length) return '-';
+
+  return itens
+    .map(item => `${item.quantidade} × ${formatarMoedaSondagem(String(item.preco_por_chip).replace(',', '.'))}`)
+    .join(' + ');
+}
+
+function formatarWhatsappSondagem(sondagem) {
+  return sondagem?.whatsapp_ddd ? `(${sondagem.whatsapp_ddd}) ${sondagem.whatsapp_numero || ''}` : '-';
 }
 
 function ChipsItensSondagem({ itens, onChange, disabled }) {
@@ -545,17 +602,22 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
  */
 function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda, onFuturoClienteSalvo }) {
   const vendaRegistrada = isFuturoClienteVendido(linha);
+  const vendaRecusada = isFuturoClienteRecusado(linha);
   const [etapa, setEtapa] = useState('opcoes'); // 'opcoes' | 'venda' | 'futuro'
   const [notas, setNotas] = useState('');
+  const [motivoRecusa, setMotivoRecusa] = useState(linha.venda_recusada_motivo || '');
   const [retorno, setRetorno] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [operadoras, setOperadoras] = useState([]);
+  const dadosEmpresaInicial = useMemo(() => getDadosEmpresaFuturoCliente(linha), [linha]);
+  const [razaoSocial, setRazaoSocial] = useState(() => dadosEmpresaInicial.razao_social);
+  const [cnpj, setCnpj] = useState(() => dadosEmpresaInicial.cnpj);
   const [contatoNome, setContatoNome] = useState('');
   const [contatoTipo, setContatoTipo] = useState('');
   const [operadoraAtualId, setOperadoraAtualId] = useState('');
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem());
-  const [whatsapp, setWhatsapp] = useState(() => formatarWhatsappInput(encontrarTelefoneLead(linha)));
+  const [whatsapp, setWhatsapp] = useState('');
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
     + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
 
@@ -572,6 +634,18 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
         valor: dados[`${chave} (atualizado)`] ?? valor
       }));
   }, [linha]);
+  async function salvarVendaRecusada() {
+    setSalvando(true);
+    setErro('');
+    try {
+      const resultado = await marcarVendaRecusadaLead(linha.id, motivoRecusa);
+      onFuturoClienteSalvo(resultado.linha);
+    } catch (error) {
+      setErro(error.message || 'Erro ao marcar venda recusada.');
+      setSalvando(false);
+    }
+  }
+
 
   /**
    * Salva futuro cliente com os dados informados.
@@ -592,6 +666,8 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
       const resultado = await marcarFuturoClienteLead(linha.id, {
         notas,
         retorno: retornoIso,
+        razao_social: razaoSocial,
+        cnpj,
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
@@ -652,11 +728,43 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                   Este futuro cliente ja possui uma venda registrada. Acesse a pagina de Vendas para visualizar a venda.
                 </div>
               ) : linha.futuro_cliente && (
-                <div className="lead-already-qualified-notice">
-                  Este contato ja foi qualificado na primeira ligacao. Nesta etapa ele esta disponivel somente para registro de venda.
-                </div>
+                <>
+                  <div className="lead-already-qualified-notice">
+                    Este contato ja foi qualificado na primeira ligacao. Nesta etapa ele esta disponivel somente para registro de venda.
+                  </div>
+                  {linha.sondagem && (
+                    <div className="futuro-cliente-resumo">
+                      <div className="futuro-cliente-resumo__title">Dados preenchidos no futuro cliente</div>
+                      <div className="futuro-cliente-resumo__grid">
+                        <div><span>Razão social</span><strong>{linha.sondagem.razao_social || '-'}</strong></div>
+                        <div><span>CNPJ</span><strong>{linha.sondagem.cnpj || '-'}</strong></div>
+                        <div><span>Pessoa contatada</span><strong>{linha.sondagem.contato_nome || '-'}</strong></div>
+                        <div><span>Perfil do contato</span><strong>{String(linha.sondagem.contato_tipo || '-').toUpperCase()}</strong></div>
+                        <div><span>Operadora atual</span><strong>{linha.sondagem.operadoraAtual?.nome || '-'}</strong></div>
+                        <div><span>Chips / preço</span><strong>{formatarChipsSondagem(linha.sondagem)}</strong></div>
+                        <div><span>Média mensal</span><strong>{formatarMoedaSondagem(linha.sondagem.valor_mensal_estimado)}</strong></div>
+                        <div><span>WhatsApp</span><strong>{formatarWhatsappSondagem(linha.sondagem)}</strong></div>
+                        <div className="futuro-cliente-resumo__full"><span>Observações</span><strong>{linha.sondagem.observacoes || linha.futuro_cliente_notas || '-'}</strong></div>
+                      </div>
+                    </div>
+                  )}
+                  {vendaRecusada ? (
+                    <div className="futuro-cliente-recusa is-saved">
+                      <strong>Venda recusada</strong>
+                      <span>{linha.venda_recusada_motivo || 'Motivo nao informado.'}</span>
+                    </div>
+                  ) : (
+                    <div className="futuro-cliente-recusa">
+                      <label>Venda recusada</label>
+                      <textarea rows={3} value={motivoRecusa} onChange={event => setMotivoRecusa(event.target.value)} placeholder="Informe o motivo da recusa" disabled={salvando} />
+                      <button type="button" className="btn btn-danger" onClick={salvarVendaRecusada} disabled={salvando || !motivoRecusa.trim()}>
+                        Marcar venda recusada
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
-              {!vendaRegistrada && (
+              {!vendaRegistrada && !vendaRecusada && (
                 <button type="button" className="btn btn-primary" onClick={() => setEtapa('venda')}>
                   <I.Chart size={14} /> Registrar venda
                 </button>
@@ -671,6 +779,16 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 
           {etapa === 'futuro' && (
             <form className="futuro-cliente-form" onSubmit={salvarFuturoCliente}>
+              <div className="futuro-cliente-form__grid">
+                <div className="form-field">
+                  <label>CNPJ</label>
+                  <input value={cnpj} onChange={event => setCnpj(event.target.value)} maxLength="20" disabled={salvando} />
+                </div>
+                <div className="form-field">
+                  <label>Razão social</label>
+                  <input value={razaoSocial} onChange={event => setRazaoSocial(event.target.value)} maxLength="240" disabled={salvando} />
+                </div>
+              </div>
               <div className="form-field">
                 <label>Nome de quem falou</label>
                 <input value={contatoNome} onChange={event => setContatoNome(event.target.value)} required disabled={salvando} />
@@ -953,9 +1071,11 @@ function LeadsRecebidosView({ agora }) {
             >
               <div className="clientes-leads-preview">
                 <span></span><span></span><span></span><span></span>
+                <i className="clientes-leads-preview__progress" aria-hidden="true"></i>
               </div>
               <strong title={envio.nome}>{envio.nome}</strong>
-              <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} registros</small>
+              <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} {envio.total_linhas === 1 ? 'cliente' : 'clientes'}</small>
+              <small className="clientes-leads-doc__distribution">{envio.total_linhas || 0} enviados - 0 pendentes</small>
             </button>
           ))}
           {!carregando && envios.length === 0 && (
@@ -1005,7 +1125,7 @@ function LeadsRecebidosView({ agora }) {
                 <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
               ) : (
                 linhas.map(linha => (
-                  <tr key={linha.id} className={isFuturoClienteVendido(linha) ? 'lead-row-vendido' : (isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : '')}>
+                  <tr key={linha.id} className={isFuturoClienteVendido(linha) ? 'lead-row-vendido' : (isFuturoClienteRecusado(linha) ? 'lead-row-recusado' : (isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : ''))}>
                     <td data-label="Envio" className="m-primary">
                       <span className="tag">{linha.envio?.nome || '-'}</span>
                       <details className="mobile-row-drawer">
@@ -1082,21 +1202,22 @@ function LeadsRecebidosView({ agora }) {
  */
 function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVenda }) {
   const vendaRegistrada = isFuturoClienteVendido(linha);
+  const vendaRecusada = isFuturoClienteRecusado(linha);
   const [etapa, setEtapa] = useState('ver'); // 'ver' | 'venda'
   const [notas, setNotas] = useState(linha.futuro_cliente_notas || '');
+  const [motivoRecusa, setMotivoRecusa] = useState(linha.venda_recusada_motivo || '');
   const [retorno, setRetorno] = useState(formatarParaDatetimeLocal(linha.futuro_cliente_retorno));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [operadoras, setOperadoras] = useState([]);
+  const dadosEmpresaInicial = useMemo(() => getDadosEmpresaFuturoCliente(linha, linha.sondagem), [linha]);
+  const [razaoSocial, setRazaoSocial] = useState(() => dadosEmpresaInicial.razao_social);
+  const [cnpj, setCnpj] = useState(() => dadosEmpresaInicial.cnpj);
   const [contatoNome, setContatoNome] = useState(linha.sondagem?.contato_nome || '');
   const [contatoTipo, setContatoTipo] = useState(linha.sondagem?.contato_tipo || '');
   const [operadoraAtualId, setOperadoraAtualId] = useState(String(linha.sondagem?.operadora_atual_id || ''));
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem(linha.sondagem));
-  const [whatsapp, setWhatsapp] = useState(() => formatarWhatsappInput(
-    linha.sondagem
-      ? `${linha.sondagem.whatsapp_ddd || ''}${linha.sondagem.whatsapp_numero || ''}`
-      : encontrarTelefoneLead(linha)
-  ));
+  const [whatsapp, setWhatsapp] = useState('');
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
     + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
 
@@ -1115,6 +1236,18 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         valor: dados[`${chave} (atualizado)`] ?? valor
       }));
   }, [linha]);
+  async function salvarVendaRecusada() {
+    setSalvando(true);
+    setErro('');
+    try {
+      const resultado = await marcarVendaRecusadaLead(linha.id, motivoRecusa);
+      onAtualizado(resultado.linha);
+    } catch (error) {
+      setErro(error.message || 'Erro ao marcar venda recusada.');
+      setSalvando(false);
+    }
+  }
+
 
   /**
    * Salva  com os dados informados.
@@ -1134,6 +1267,8 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
       const resultado = await marcarFuturoClienteLead(linha.id, {
         notas,
         retorno: retornoIso,
+        razao_social: razaoSocial,
+        cnpj,
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
@@ -1188,6 +1323,8 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
 
           {linha.sondagem && (
             <div className="adicionar-lead-dados">
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Razão social</span><span className="adicionar-lead-campo__valor">{linha.sondagem.razao_social || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">CNPJ</span><span className="adicionar-lead-campo__valor">{linha.sondagem.cnpj || '-'}</span></div>
               <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Pessoa contatada</span><span className="adicionar-lead-campo__valor">{linha.sondagem.contato_nome} ({String(linha.sondagem.contato_tipo || '').toUpperCase()})</span></div>
               <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Operadora atual</span><span className="adicionar-lead-campo__valor">{linha.sondagem.operadoraAtual?.nome || '-'}</span></div>
               <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Chips / preco</span><span className="adicionar-lead-campo__valor">{linha.sondagem.quantidade_chips} × {Number(linha.sondagem.preco_por_chip).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
@@ -1198,6 +1335,16 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
           )}
 
           <div className="futuro-cliente-form">
+            <div className="futuro-cliente-form__grid">
+              <div className="form-field">
+                <label>CNPJ</label>
+                <input value={cnpj} onChange={event => setCnpj(event.target.value)} maxLength="20" disabled={salvando} />
+              </div>
+              <div className="form-field">
+                <label>Razão social</label>
+                <input value={razaoSocial} onChange={event => setRazaoSocial(event.target.value)} maxLength="240" disabled={salvando} />
+              </div>
+            </div>
             <div className="form-field">
               <label>Nome de quem falou</label>
               <input value={contatoNome} onChange={event => setContatoNome(event.target.value)} required disabled={salvando} />
@@ -1245,6 +1392,21 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
                 disabled={salvando}
               />
             </div>
+            {vendaRecusada ? (
+              <div className="futuro-cliente-recusa is-saved">
+                <strong>Venda recusada</strong>
+                <span>{linha.venda_recusada_motivo || 'Motivo nao informado.'}</span>
+                {linha.venda_recusada_em && <small>Marcada em {formatarDataHora(linha.venda_recusada_em)}</small>}
+              </div>
+            ) : !vendaRegistrada && (
+              <div className="futuro-cliente-recusa">
+                <label>Venda recusada</label>
+                <textarea rows={3} value={motivoRecusa} onChange={event => setMotivoRecusa(event.target.value)} placeholder="Informe o motivo da recusa" disabled={salvando} />
+                <button type="button" className="btn btn-danger" onClick={salvarVendaRecusada} disabled={salvando || !motivoRecusa.trim()}>
+                  Marcar venda recusada
+                </button>
+              </div>
+            )}
           </div>
 
           {erro && <div className="alert-error" style={{ marginTop: 8 }}>{erro}</div>}
@@ -1253,6 +1415,8 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         <div className="modal-footer">
           {vendaRegistrada ? (
             <div className="lead-already-qualified-notice">Este futuro cliente ja possui uma venda registrada. Acesse a pagina de Vendas para visualizar a venda.</div>
+          ) : vendaRecusada ? (
+            <div className="futuro-cliente-recusa is-saved">Venda recusada para este futuro cliente.</div>
           ) : (
             <button type="button" className="btn" onClick={() => setEtapa('venda')} disabled={salvando}>
               <I.Chart size={14} /> Registrar venda
@@ -1457,8 +1621,9 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
     ligacoes: acc.ligacoes + Number(item.qualificados || 0),
     distribuidos: acc.distribuidos + Number(item.distribuidos_venda || 0),
     vendidos: acc.vendidos + Number(item.vendidos || 0),
+    recusados: acc.recusados + Number(item.recusados || 0),
     potencial: acc.potencial + Number(item.potencial_mensal || 0)
-  }), { ligacoes: 0, distribuidos: 0, vendidos: 0, potencial: 0 }), [dias, periodoInvalido]);
+  }), { ligacoes: 0, distribuidos: 0, vendidos: 0, recusados: 0, potencial: 0 }), [dias, periodoInvalido]);
   const diasExibidos = periodoInvalido ? [] : dias;
 
   function selecionarPeriodo(inicio, fim) {
@@ -1516,7 +1681,8 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
           <div className="consultor-produtividade-metricas">
             <div className="is-primary"><span>Ligações feitas</span><strong>{carregando ? '...' : resumo.ligacoes}</strong></div>
             <div><span>Enviados para venda</span><strong>{carregando ? '...' : resumo.distribuidos}</strong></div>
-            <div><span>Vendas originadas</span><strong>{carregando ? '...' : resumo.vendidos}</strong></div>
+            <div><span>Vendas concluídas</span><strong>{carregando ? '...' : resumo.vendidos}</strong></div>
+            <div><span>Vendas recusadas</span><strong>{carregando ? '...' : resumo.recusados}</strong></div>
             <div><span>Conversão</span><strong>{carregando ? '...' : resumo.ligacoes ? `${((resumo.vendidos / resumo.ligacoes) * 100).toFixed(1)}%` : '0%'}</strong></div>
             <div><span>Potencial mensal</span><strong>{carregando ? '...' : resumo.potencial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></div>
           </div>
@@ -1526,18 +1692,19 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
           <div className="list-table consultor-produtividade-table">
             <div className="scroll">
               <table>
-                <thead><tr><th>Data</th><th>Ligações</th><th>Enviados para venda</th><th>Vendas</th><th>Potencial mensal</th></tr></thead>
+                <thead><tr><th>Data</th><th>Ligações</th><th>Enviados para venda</th><th>Concluídas</th><th>Recusadas</th><th>Potencial mensal</th></tr></thead>
                 <tbody>
                   {carregando ? (
-                    <tr><td colSpan="5" className="muted">Carregando produtividade...</td></tr>
+                    <tr><td colSpan="6" className="muted">Carregando produtividade...</td></tr>
                   ) : diasExibidos.length === 0 ? (
-                    <tr><td colSpan="5" className="muted">Nenhuma ligação registrada neste período.</td></tr>
+                    <tr><td colSpan="6" className="muted">Nenhuma ligação registrada neste período.</td></tr>
                   ) : diasExibidos.map(item => (
                     <tr key={item.data}>
                       <td>{formatarDataIso(String(item.data).slice(0, 10))}</td>
                       <td>{Number(item.qualificados || 0)}</td>
                       <td>{Number(item.distribuidos_venda || 0)}</td>
                       <td>{Number(item.vendidos || 0)}</td>
+                      <td>{Number(item.recusados || 0)}</td>
                       <td>{Number(item.potencial_mensal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     </tr>
                   ))}
@@ -1611,8 +1778,9 @@ function FuturosClientesMainView({ agora }) {
     qualificados: acc.qualificados + Number(item.qualificados || 0),
     distribuidos: acc.distribuidos + Number(item.distribuidos_venda || 0),
     vendidos: acc.vendidos + Number(item.vendidos || 0),
+    recusados: acc.recusados + Number(item.recusados || 0),
     potencial: acc.potencial + Number(item.potencial_mensal || 0)
-  }), { qualificados: 0, distribuidos: 0, vendidos: 0, potencial: 0 }), [metricas]);
+  }), { qualificados: 0, distribuidos: 0, vendidos: 0, recusados: 0, potencial: 0 }), [metricas]);
 
   useEffect(() => {
     if (!erro) return undefined;
@@ -1637,7 +1805,7 @@ function FuturosClientesMainView({ agora }) {
   }, [linhas]);
 
   const totalPaginas = Math.max(1, Math.ceil(total / 50));
-  const totalColunasTabela = colunasDados.length + 4 + (modoLixeira ? 2 : 0) + (podeGerenciar ? 1 : 0);
+  const totalColunasTabela = colunasDados.length + 5 + (modoLixeira ? 2 : 0) + (podeGerenciar ? 1 : 0);
 
   /**
    * Trata o evento de atualizado.
@@ -1781,20 +1949,22 @@ function FuturosClientesMainView({ agora }) {
           <div className="futuros-clientes-metricas">
             <div><span>Qualificados</span><strong>{resumoMetricas.qualificados}</strong></div>
             <div><span>Distribuidos para venda</span><strong>{resumoMetricas.distribuidos}</strong></div>
-            <div><span>Vendas originadas</span><strong>{resumoMetricas.vendidos}</strong></div>
+            <div><span>Vendas concluídas</span><strong>{resumoMetricas.vendidos}</strong></div>
+            <div><span>Vendas recusadas</span><strong>{resumoMetricas.recusados}</strong></div>
             <div><span>Conversao dos qualificados</span><strong>{resumoMetricas.qualificados ? `${((resumoMetricas.vendidos / resumoMetricas.qualificados) * 100).toFixed(1)}%` : '0%'}</strong></div>
             <div><span>Potencial mensal</span><strong>{resumoMetricas.potencial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></div>
           </div>
           <div className="list-table conversao-sondagem-table">
             <div className="scroll">
               <table>
-                <thead><tr><th>Consultor da primeira ligacao</th><th>Qualificados</th><th>Enviados para venda</th><th>Vendas originadas</th><th>Conversao</th><th>Potencial mensal</th></tr></thead>
+                <thead><tr><th>Consultor da primeira ligacao</th><th>Qualificados</th><th>Enviados para venda</th><th>Vendas concluídas</th><th>Vendas recusadas</th><th>Conversao</th><th>Potencial mensal</th></tr></thead>
                 <tbody>
                   {metricas.length === 0 ? (
-                    <tr><td colSpan="6" className="muted">Ainda nao existem qualificacoes para calcular a conversao.</td></tr>
+                    <tr><td colSpan="7" className="muted">Ainda nao existem qualificacoes para calcular a conversao.</td></tr>
                   ) : metricas.map(item => {
                     const qualificados = Number(item.qualificados || 0);
                     const vendidos = Number(item.vendidos || 0);
+                    const recusados = Number(item.recusados || 0);
                     return (
                       <tr
                         key={item.usuario_id || item.usuario_nome}
@@ -1813,6 +1983,7 @@ function FuturosClientesMainView({ agora }) {
                         <td>{qualificados}</td>
                         <td>{Number(item.distribuidos_venda || 0)}</td>
                         <td>{vendidos}</td>
+                        <td>{recusados}</td>
                         <td><span className="pill success">{qualificados ? `${((vendidos / qualificados) * 100).toFixed(1)}%` : '0%'}</span></td>
                         <td>{Number(item.potencial_mensal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                       </tr>
@@ -1859,6 +2030,7 @@ function FuturosClientesMainView({ agora }) {
               <tr>
                 <th>Envio</th>
                 <th>Notas</th>
+                <th>Situação</th>
                 <th>Retorno</th>
                 <th>{modoLixeira ? 'Enviado para lixeira' : 'Marcado em'}</th>
                 {modoLixeira && (
@@ -1900,6 +2072,8 @@ function FuturosClientesMainView({ agora }) {
                           <dl>
                             <dt>Notas</dt>
                             <dd>{linha.futuro_cliente_notas || '-'}</dd>
+                            <dt>Situação</dt>
+                            <dd>{renderFuturoClienteSituacao(linha)}</dd>
                             <dt>Retorno</dt>
                             <dd className={isRetornoFuturoClienteVencido(linha.futuro_cliente_retorno, agora) ? 'future-return-overdue' : ''}>
                               {linha.futuro_cliente_retorno ? formatarDataHora(linha.futuro_cliente_retorno) : '-'}
@@ -1933,6 +2107,9 @@ function FuturosClientesMainView({ agora }) {
                         >
                           {linha.futuro_cliente_notas || '-'}
                         </span>
+                      </td>
+                      <td data-label="Situação" className="m-meta">
+                        {renderFuturoClienteSituacao(linha)}
                       </td>
                       <td data-label="Retorno" className="m-meta">
                         {linha.futuro_cliente_retorno ? (

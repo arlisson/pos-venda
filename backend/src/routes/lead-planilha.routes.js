@@ -77,6 +77,17 @@ router.put(
   leadPlanilhaController.atualizarMeuCampo
 );
 router.post('/me/linhas/:id/venda', leadPlanilhaController.vincularVenda);
+router.post(
+  '/me/linhas/:id/venda-recusada',
+  exigirUmaPermissao(['futuros_clientes_registrar']),
+  auditar({
+    acao: 'lead_linha.venda_recusada',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, motivo: req.body?.motivo, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.marcarVendaRecusada
+);
 
 router.get('/', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.index);
 router.post('/uploads', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.upload);
