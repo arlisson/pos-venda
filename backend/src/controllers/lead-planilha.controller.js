@@ -307,6 +307,21 @@ async function metricasFuturosClientes(req, res) {
   }
 }
 
+/** Exporta a produtividade de primeira ligação em Excel. */
+async function exportarMetricasFuturosClientes(req, res) {
+  try {
+    const { buffer, nome } = await leadPlanilhaService.gerarXlsxProdutividadePrimeiraLigacao(req.query);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${nome}"`);
+    return res.send(buffer);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao exportar a produtividade da primeira ligação.'
+    });
+  }
+}
+
 async function vincularVenda(req, res) {
   try {
     return res.json(await leadPlanilhaService.vincularVendaAoLead(req.params.id, req.body?.venda_id, req.usuario.id));
@@ -409,6 +424,7 @@ module.exports = {
   listarFuturosClientes,
   listarTodosFuturosClientes,
   metricasFuturosClientes,
+  exportarMetricasFuturosClientes,
   vincularVenda,
   listarFuturosClientesLixeira,
   excluirFuturoCliente,

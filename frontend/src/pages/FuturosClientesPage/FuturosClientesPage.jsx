@@ -7,6 +7,7 @@ import {
   atualizarCampoLeadRecebido,
   excluirFuturoCliente,
   excluirFuturoClienteDefinitivo,
+  exportarMetricasFuturosClientesExcel,
   listarFuturosClientesLeads,
   listarFuturosClientesLixeira,
   listarQuadroFuturosClientes,
@@ -235,6 +236,17 @@ function formatarDataHora(valor) {
  */
 function formatarData(valor) {
   return formatDateValue(valor, undefined, '-');
+}
+
+/**
+ * Formata valores de data vindos das colunas dinamicas do lead.
+ */
+function formatarValorCampoLead(valor) {
+  if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}(?:[T\s].*)?$/.test(valor.trim())) {
+    return valor;
+  }
+
+  return formatarData(valor);
 }
 
 /**
@@ -625,7 +637,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
             {camposLead.map(({ label, valor }) => (
               <div key={label} className="adicionar-lead-campo">
                 <span className="adicionar-lead-campo__label">{label}</span>
-                <span className="adicionar-lead-campo__valor">{valor || '-'}</span>
+                <span className="adicionar-lead-campo__valor">{formatarValorCampoLead(valor) || '-'}</span>
               </div>
             ))}
             {camposLead.length === 0 && (
@@ -1168,7 +1180,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
               {camposLead.map(({ label, valor }) => (
                 <div key={label} className="adicionar-lead-campo">
                   <span className="adicionar-lead-campo__label">{label}</span>
-                  <span className="adicionar-lead-campo__valor">{valor || '-'}</span>
+                  <span className="adicionar-lead-campo__valor">{formatarValorCampoLead(valor) || '-'}</span>
                 </div>
               ))}
             </div>
@@ -1307,6 +1319,242 @@ function ConfirmarFuturoClienteLixeiraModal({ linha, tipo, processando, onClose,
   );
 }
 
+
+function dataLocalIso(data = new Date()) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+function formatarDataIso(data) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data || ''))) return '-';
+  const [ano, mes, dia] = data.split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
+/** Permite escolher o período e baixar a produtividade de todos os consultores. */
+function ExportarProdutividadeModal({ onClose }) {
+  const hoje = useMemo(() => dataLocalIso(), []);
+  const [dataInicio, setDataInicio] = useState(`${hoje.slice(0, 7)}-01`);
+  const [dataFim, setDataFim] = useState(hoje);
+  const [baixando, setBaixando] = useState(false);
+  const [erro, setErro] = useState('');
+  const periodoInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
+
+  function selecionarPeriodo(inicio, fim) {
+    setDataInicio(inicio);
+    setDataFim(fim);
+    setErro('');
+  }
+
+  async function baixar() {
+    if (periodoInvalido) return;
+    setBaixando(true);
+    setErro('');
+    try {
+      await exportarMetricasFuturosClientesExcel({
+        data_inicio: dataInicio,
+        data_fim: dataFim
+      });
+      onClose();
+    } catch (error) {
+      setErro(error.message || 'Erro ao baixar a planilha.');
+    } finally {
+      setBaixando(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={event => !baixando && event.target === event.currentTarget && onClose()}>
+      <div className="modal exportar-produtividade-modal" role="dialog" aria-modal="true" aria-labelledby="exportar-produtividade-titulo">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div className="consultor-modal-title">
+              <span className="consultor-modal-eyebrow"><I.Download size={13} /> Relatório Excel</span>
+              <div className="modal-client" id="exportar-produtividade-titulo">Exportar produtividade</div>
+              <div className="modal-sub">Baixe os resultados de todos os consultores de primeira ligação.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={baixando}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body exportar-produtividade-body">
+          <div className="exportar-produtividade-info">
+            <I.Calendar size={20} />
+            <div>
+              <strong>Escolha o período do relatório</strong>
+              <span>O arquivo inclui um resumo por consultor e o detalhamento de cada dia.</span>
+            </div>
+          </div>
+
+          <div className="consultor-periodo-filtros exportar-produtividade-filtros">
+            <label className="form-field">
+              <span>Data inicial</span>
+              <input type="date" value={dataInicio} max={dataFim || undefined} onChange={event => selecionarPeriodo(event.target.value, dataFim)} />
+            </label>
+            <label className="form-field">
+              <span>Data final</span>
+              <input type="date" value={dataFim} min={dataInicio || undefined} onChange={event => selecionarPeriodo(dataInicio, event.target.value)} />
+            </label>
+          </div>
+
+          <div className="consultor-periodo-atalhos exportar-produtividade-atalhos">
+            <button type="button" className="btn" onClick={() => selecionarPeriodo(hoje, hoje)}>Hoje</button>
+            <button type="button" className="btn" onClick={() => selecionarPeriodo(`${hoje.slice(0, 7)}-01`, hoje)}>Este mês</button>
+            <button type="button" className="btn" onClick={() => selecionarPeriodo('', '')}>Todo o período</button>
+          </div>
+
+          {(periodoInvalido || erro) && (
+            <div className="alert-error">
+              {periodoInvalido ? 'A data inicial deve ser anterior ou igual a data final.' : erro}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose} disabled={baixando}>Cancelar</button>
+          <button type="button" className="btn btn-primary" onClick={baixar} disabled={baixando || periodoInvalido}>
+            <I.Download size={15} /> {baixando ? 'Gerando planilha...' : 'Baixar Excel'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Exibe a produtividade de primeira ligacao de um consultor por periodo. */
+function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
+  const hoje = useMemo(() => dataLocalIso(), []);
+  const [dataInicio, setDataInicio] = useState(hoje);
+  const [dataFim, setDataFim] = useState(hoje);
+  const [dias, setDias] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  const periodoInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
+
+  useEffect(() => {
+    if (periodoInvalido) {
+      return undefined;
+    }
+
+    let cancelado = false;
+    listarMetricasFuturosClientes({
+      usuario_id: consultor.usuario_id,
+      data_inicio: dataInicio,
+      data_fim: dataFim,
+      agrupar_por: 'dia'
+    })
+      .then(data => !cancelado && setDias(Array.isArray(data) ? data : []))
+      .catch(error => !cancelado && setErro(error.message || 'Erro ao carregar a produtividade.'))
+      .finally(() => !cancelado && setCarregando(false));
+    return () => { cancelado = true; };
+  }, [consultor.usuario_id, dataInicio, dataFim, periodoInvalido]);
+
+  const resumo = useMemo(() => (periodoInvalido ? [] : dias).reduce((acc, item) => ({
+    ligacoes: acc.ligacoes + Number(item.qualificados || 0),
+    distribuidos: acc.distribuidos + Number(item.distribuidos_venda || 0),
+    vendidos: acc.vendidos + Number(item.vendidos || 0),
+    potencial: acc.potencial + Number(item.potencial_mensal || 0)
+  }), { ligacoes: 0, distribuidos: 0, vendidos: 0, potencial: 0 }), [dias, periodoInvalido]);
+  const diasExibidos = periodoInvalido ? [] : dias;
+
+  function selecionarPeriodo(inicio, fim) {
+    if (inicio === dataInicio && fim === dataFim) return;
+    setCarregando(!(inicio && fim && inicio > fim));
+    setErro('');
+    setDataInicio(inicio);
+    setDataFim(fim);
+  }
+
+  function selecionarHoje() {
+    selecionarPeriodo(hoje, hoje);
+  }
+
+  function selecionarMes() {
+    selecionarPeriodo(`${hoje.slice(0, 7)}-01`, hoje);
+  }
+
+  return (
+    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <div className="modal consultor-produtividade-modal" role="dialog" aria-modal="true" aria-labelledby="consultor-produtividade-titulo">
+        <div className="modal-header">
+          <div className="modal-header-row">
+            <div className="consultor-modal-title">
+              <span className="consultor-modal-eyebrow">Consultor de primeira ligação</span>
+              <div className="modal-client" id="consultor-produtividade-titulo">{consultor.usuario_nome || 'Usuário removido'}</div>
+              <div className="modal-sub">Acompanhe a qualificação e a conversão no período selecionado.</div>
+            </div>
+            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose}>
+              <I.Close size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-body consultor-produtividade-body">
+          <div className="consultor-periodo-label"><I.Calendar size={15} /><span>Período analisado</span></div>
+          <div className="consultor-periodo-filtros">
+            <label className="form-field">
+              <span>Data inicial</span>
+              <input type="date" value={dataInicio} max={dataFim || undefined} onChange={event => selecionarPeriodo(event.target.value, dataFim)} />
+            </label>
+            <label className="form-field">
+              <span>Data final</span>
+              <input type="date" value={dataFim} min={dataInicio || undefined} onChange={event => selecionarPeriodo(dataInicio, event.target.value)} />
+            </label>
+            <div className="consultor-periodo-atalhos">
+              <button type="button" className="btn" onClick={selecionarHoje}>Hoje</button>
+              <button type="button" className="btn" onClick={selecionarMes}>Este mês</button>
+              <button type="button" className="btn" onClick={() => selecionarPeriodo('', '')}>Todo o período</button>
+            </div>
+          </div>
+
+          {(periodoInvalido || erro) && <div className="alert-error">{periodoInvalido ? 'A data inicial deve ser anterior ou igual a data final.' : erro}</div>}
+
+          <div className="consultor-produtividade-metricas">
+            <div className="is-primary"><span>Ligações feitas</span><strong>{carregando ? '...' : resumo.ligacoes}</strong></div>
+            <div><span>Enviados para venda</span><strong>{carregando ? '...' : resumo.distribuidos}</strong></div>
+            <div><span>Vendas originadas</span><strong>{carregando ? '...' : resumo.vendidos}</strong></div>
+            <div><span>Conversão</span><strong>{carregando ? '...' : resumo.ligacoes ? `${((resumo.vendidos / resumo.ligacoes) * 100).toFixed(1)}%` : '0%'}</strong></div>
+            <div><span>Potencial mensal</span><strong>{carregando ? '...' : resumo.potencial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></div>
+          </div>
+
+          <p className="consultor-produtividade-nota">Uma ligação é contabilizada quando o futuro cliente é qualificado.</p>
+
+          <div className="list-table consultor-produtividade-table">
+            <div className="scroll">
+              <table>
+                <thead><tr><th>Data</th><th>Ligações</th><th>Enviados para venda</th><th>Vendas</th><th>Potencial mensal</th></tr></thead>
+                <tbody>
+                  {carregando ? (
+                    <tr><td colSpan="5" className="muted">Carregando produtividade...</td></tr>
+                  ) : diasExibidos.length === 0 ? (
+                    <tr><td colSpan="5" className="muted">Nenhuma ligação registrada neste período.</td></tr>
+                  ) : diasExibidos.map(item => (
+                    <tr key={item.data}>
+                      <td>{formatarDataIso(String(item.data).slice(0, 10))}</td>
+                      <td>{Number(item.qualificados || 0)}</td>
+                      <td>{Number(item.distribuidos_venda || 0)}</td>
+                      <td>{Number(item.vendidos || 0)}</td>
+                      <td>{Number(item.potencial_mensal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Renderiza futuros clientes main view com os dados informados.
  */
@@ -1325,6 +1573,8 @@ function FuturosClientesMainView({ agora }) {
   const [processandoId, setProcessandoId] = useState(null);
   const [confirmacaoLixeira, setConfirmacaoLixeira] = useState(null);
   const [metricas, setMetricas] = useState([]);
+  const [consultorAtivo, setConsultorAtivo] = useState(null);
+  const [exportacaoAberta, setExportacaoAberta] = useState(false);
 
   const usuario = useMemo(() => getUsuarioLocal(), []);
   const podeGerenciar = temPermissao(usuario, 'futuros_clientes_registrar');
@@ -1511,13 +1761,22 @@ function FuturosClientesMainView({ agora }) {
         />
       )}
 
+      {consultorAtivo && (
+        <ConsultorPrimeiraLigacaoModal consultor={consultorAtivo} onClose={() => setConsultorAtivo(null)} />
+      )}
+
+      {exportacaoAberta && <ExportarProdutividadeModal onClose={() => setExportacaoAberta(false)} />}
+
       {podeVerQuadroGeral && !modoLixeira && (
         <section className="conversao-sondagem-module">
           <div className="conversao-sondagem-header">
             <div>
-              <h2>Conversao da primeira ligacao</h2>
-              <p>A venda e atribuida ao consultor que qualificou o futuro cliente, mesmo quando outro consultor fecha.</p>
+              <h2>Conversão da primeira ligação</h2>
+              <p>A venda é atribuída ao consultor que qualificou o futuro cliente, mesmo quando outro consultor fecha.</p>
             </div>
+            <button type="button" className="btn conversao-exportar-btn" onClick={() => setExportacaoAberta(true)}>
+              <I.Download size={15} /> Baixar Excel
+            </button>
           </div>
           <div className="futuros-clientes-metricas">
             <div><span>Qualificados</span><strong>{resumoMetricas.qualificados}</strong></div>
@@ -1537,7 +1796,19 @@ function FuturosClientesMainView({ agora }) {
                     const qualificados = Number(item.qualificados || 0);
                     const vendidos = Number(item.vendidos || 0);
                     return (
-                      <tr key={item.usuario_id || item.usuario_nome}>
+                      <tr
+                        key={item.usuario_id || item.usuario_nome}
+                        className="consultor-metricas-row"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setConsultorAtivo(item)}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setConsultorAtivo(item);
+                          }
+                        }}
+                      >
                         <td><strong>{item.usuario_nome || 'Usuario removido'}</strong></td>
                         <td>{qualificados}</td>
                         <td>{Number(item.distribuidos_venda || 0)}</td>

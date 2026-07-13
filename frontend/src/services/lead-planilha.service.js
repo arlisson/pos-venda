@@ -273,6 +273,24 @@ export function listarMetricasFuturosClientes(filtros = {}) {
 }
 
 /**
+ * Baixa a produtividade dos consultores de primeira ligação em Excel.
+ */
+export async function exportarMetricasFuturosClientesExcel(filtros = {}) {
+  const blob = await apiBlob(`/lead-planilhas/futuros-clientes/metricas/exportar${montarQuery(filtros)}`);
+  const sufixo = filtros.data_inicio || filtros.data_fim
+    ? `${filtros.data_inicio || 'inicio'}-a-${filtros.data_fim || 'hoje'}`
+    : 'todo-periodo';
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `produtividade-primeira-ligacao-${sufixo}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Lista futuros clientes leads conforme os filtros e parametros informados.
  */
 export function listarFuturosClientesLeads(filtros = {}) {

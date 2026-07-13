@@ -1966,13 +1966,170 @@ async function obterMetricasFuturosClientes(filtros = {}) {
     .where('ll.futuro_cliente', true)
     .whereNull('ll.futuro_cliente_excluido_em');
   if (filtros.usuario_id) query.where('ll.futuro_cliente_marcado_por_id', Number(filtros.usuario_id));
-  return query
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(filtros.data_inicio || ''))) {
+    query.where('ll.futuro_cliente_marcado_em', '>=', `${filtros.data_inicio} 00:00:00`);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(filtros.data_fim || ''))) {
+    query.where('ll.futuro_cliente_marcado_em', '<', db.raw('DATE_ADD(?, INTERVAL 1 DAY)', [filtros.data_fim]));
+  }
+
+  query
     .groupBy('ll.futuro_cliente_marcado_por_id', 'u.nome')
     .select('ll.futuro_cliente_marcado_por_id as usuario_id', 'u.nome as usuario_nome')
     .count({ qualificados: 'll.id' })
     .sum({ potencial_mensal: 'ls.valor_mensal_estimado' })
     .sum({ distribuidos_venda: db.raw("CASE WHEN ll.status_operacional IN ('distribuido_venda', 'vendido', 'perdido') THEN 1 ELSE 0 END") })
     .sum({ vendidos: db.raw("CASE WHEN ll.status_operacional = 'vendido' OR ll.venda_id IS NOT NULL THEN 1 ELSE 0 END") });
+
+  if (filtros.agrupar_por === 'dia') {
+    query
+      .select(db.raw('DATE(ll.futuro_cliente_marcado_em) as data'))
+      .groupByRaw('DATE(ll.futuro_cliente_marcado_em)')
+      .orderBy('data', 'desc');
+  }
+
+  return query;
+}
+
+/** Aplica o estilo padrao das planilhas de produtividade. */
+function estilizarPlanilhaProdutividade(worksheet, totalColunas) {
+  worksheet.views = [{ state: 'frozen', ySplit: 4 }];
+  worksheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: worksheet.rowCount, column: totalColunas } };
+  worksheet.getRow(1).height = 28;
+  worksheet.getRow(1).font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+  worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } };
+  worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'left' };
+  worksheet.getRow(2).font = { italic: true, color: { argb: 'FF475569' } };
+  worksheet.getRow(4).height = 24;
+  worksheet.getRow(4).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  worksheet.getRow(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
+  worksheet.getRow(4).alignment = { vertical: 'middle', horizontal: 'center' };
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber <= 4) return;
+    row.alignment = { vertical: 'middle' };
+    if (rowNumber % 2 === 1) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+    }
+    row.eachCell(cell => {
+      cell.border = {
+        bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } }
+      };
+    });
+  });
+}
+
+function descricaoPeriodoProdutividade(filtros = {}) {
+  if (filtros.data_inicio && filtros.data_fim) {
+    return filtros.data_inicio === filtros.data_fim
+      ? `Data: ${filtros.data_inicio.split('-').reverse().join('/')}`
+      : `Período: ${filtros.data_inicio.split('-').reverse().join('/')} a ${filtros.data_fim.split('-').reverse().join('/')}`;
+  }
+  if (filtros.data_inicio) return `A partir de: ${filtros.data_inicio.split('-').reverse().join('/')}`;
+  if (filtros.data_fim) return `Até: ${filtros.data_fim.split('-').reverse().join('/')}`;
+  return 'Período: todos os registros';
+}
+
+async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
+  if (filtros.data_inicio && filtros.data_fim && filtros.data_inicio > filtros.data_fim) {
+    throw criarHttpError(400, 'A data inicial deve ser anterior ou igual à data final.');
+  }
+
+  const filtrosPeriodo = {
+    data_inicio: filtros.data_inicio,
+    data_fim: filtros.data_fim
+  };
+  const resumo = await obterMetricasFuturosClientes(filtrosPeriodo);
+  const diario = await obterMetricasFuturosClientes({ ...filtrosPeriodo, agrupar_por: 'dia' });
+  const ordenarConsultor = (a, b) => String(a.usuario_nome || '').localeCompare(String(b.usuario_nome || ''), 'pt-BR');
+  const dataMetricaIso = valor => valor instanceof Date
+    ? valor.toISOString().slice(0, 10)
+    : String(valor || '').slice(0, 10);
+  resumo.sort(ordenarConsultor);
+  diario.sort((a, b) => dataMetricaIso(b.data).localeCompare(dataMetricaIso(a.data)) || ordenarConsultor(a, b));
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Sistema Pos Venda';
+  workbook.created = new Date();
+  const periodo = descricaoPeriodoProdutividade(filtrosPeriodo);
+
+  const wsResumo = workbook.addWorksheet('Resumo por consultor');
+  wsResumo.mergeCells('A1:F1');
+  wsResumo.getCell('A1').value = 'Produtividade da primeira ligação';
+  wsResumo.mergeCells('A2:F2');
+  wsResumo.getCell('A2').value = periodo;
+  wsResumo.addRow([]);
+  wsResumo.addRow(['CONSULTOR', 'LIGAÇÕES FEITAS', 'ENVIADOS PARA VENDA', 'VENDAS ORIGINADAS', 'CONVERSÃO', 'POTENCIAL MENSAL']);
+  resumo.forEach(item => {
+    const ligacoes = Number(item.qualificados || 0);
+    const vendas = Number(item.vendidos || 0);
+    wsResumo.addRow([
+      item.usuario_nome || 'Usuário removido',
+      ligacoes,
+      Number(item.distribuidos_venda || 0),
+      vendas,
+      ligacoes ? vendas / ligacoes : 0,
+      Number(item.potencial_mensal || 0)
+    ]);
+  });
+  const totais = resumo.reduce((acc, item) => ({
+    ligacoes: acc.ligacoes + Number(item.qualificados || 0),
+    distribuidos: acc.distribuidos + Number(item.distribuidos_venda || 0),
+    vendas: acc.vendas + Number(item.vendidos || 0),
+    potencial: acc.potencial + Number(item.potencial_mensal || 0)
+  }), { ligacoes: 0, distribuidos: 0, vendas: 0, potencial: 0 });
+  const linhaTotal = wsResumo.addRow([
+    'TOTAL',
+    totais.ligacoes,
+    totais.distribuidos,
+    totais.vendas,
+    totais.ligacoes ? totais.vendas / totais.ligacoes : 0,
+    totais.potencial
+  ]);
+  wsResumo.columns = [
+    { width: 30 }, { width: 18 }, { width: 23 }, { width: 21 }, { width: 14 }, { width: 20 }
+  ];
+  wsResumo.getColumn(5).numFmt = '0.0%';
+  wsResumo.getColumn(6).numFmt = 'R$ #,##0.00';
+  estilizarPlanilhaProdutividade(wsResumo, 6);
+  linhaTotal.font = { bold: true };
+  linhaTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+
+  const wsDiario = workbook.addWorksheet('Detalhamento diário');
+  wsDiario.mergeCells('A1:G1');
+  wsDiario.getCell('A1').value = 'Detalhamento diário da primeira ligação';
+  wsDiario.mergeCells('A2:G2');
+  wsDiario.getCell('A2').value = periodo;
+  wsDiario.addRow([]);
+  wsDiario.addRow(['DATA', 'CONSULTOR', 'LIGAÇÕES FEITAS', 'ENVIADOS PARA VENDA', 'VENDAS ORIGINADAS', 'CONVERSÃO', 'POTENCIAL MENSAL']);
+  diario.forEach(item => {
+    const ligacoes = Number(item.qualificados || 0);
+    const vendas = Number(item.vendidos || 0);
+    const data = dataMetricaIso(item.data);
+    wsDiario.addRow([
+      /^\d{4}-\d{2}-\d{2}$/.test(data) ? data.split('-').reverse().join('/') : data,
+      item.usuario_nome || 'Usuário removido',
+      ligacoes,
+      Number(item.distribuidos_venda || 0),
+      vendas,
+      ligacoes ? vendas / ligacoes : 0,
+      Number(item.potencial_mensal || 0)
+    ]);
+  });
+  wsDiario.columns = [
+    { width: 14 }, { width: 30 }, { width: 18 }, { width: 23 }, { width: 21 }, { width: 14 }, { width: 20 }
+  ];
+  wsDiario.getColumn(6).numFmt = '0.0%';
+  wsDiario.getColumn(7).numFmt = 'R$ #,##0.00';
+  estilizarPlanilhaProdutividade(wsDiario, 7);
+
+  const sufixo = filtros.data_inicio || filtros.data_fim
+    ? `${filtros.data_inicio || 'inicio'}-a-${filtros.data_fim || 'hoje'}`
+    : 'todo-periodo';
+  return {
+    buffer: await workbook.xlsx.writeBuffer(),
+    nome: `produtividade-primeira-ligacao-${sufixo}.xlsx`
+  };
 }
 
 function extrairCnpjsLinha(linha) {
@@ -2222,6 +2379,7 @@ module.exports = {
   marcarComoFuturoCliente,
   listarFuturosClientes,
   obterMetricasFuturosClientes,
+  gerarXlsxProdutividadePrimeiraLigacao,
   vincularVendaAoLead,
   listarFuturosClientesLixeira,
   enviarFuturoClienteParaLixeira,
