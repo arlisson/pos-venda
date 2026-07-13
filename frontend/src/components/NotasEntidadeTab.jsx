@@ -120,7 +120,11 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
   const [draftEdicao, setDraftEdicao] = useState(NOTA_VAZIA);
   const [salvando, setSalvando] = useState(false);
 
-  const labelEntidade = useMemo(() => tipo === 'cliente' ? 'cliente' : 'venda', [tipo]);
+  const labelEntidade = useMemo(() => {
+    if (tipo === 'cliente') return 'cliente';
+    if (tipo === 'lead') return 'lead';
+    return 'venda';
+  }, [tipo]);
 
   /**
    * Carrega notas e atualiza o estado relacionado.

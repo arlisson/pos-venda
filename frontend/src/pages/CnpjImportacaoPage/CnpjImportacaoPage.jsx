@@ -25,17 +25,12 @@ const COLUNAS_TABELA = [
   { key: 'nome_fantasia', label: 'Nome fantasia' },
   { key: 'situacao_cadastral', label: 'Situacao' },
   { key: 'email', label: 'E-mail' },
-  { key: 'telefone', label: 'Telefone' },
-  { key: 'telefone_open_cnpj', label: 'Tel. Open CNPJ' },
-  { key: 'telefone_cnpjws', label: 'Tel. CNPJ.ws' },
-  { key: 'telefone_minha_receita', label: 'Tel. Minha Receita' },
+  { key: 'telefone_receita', label: 'Tel. Receita' },
   { key: 'telefone_google_places', label: 'Tel. Google' },
   { key: 'google_status', label: 'Google status' },
   { key: 'google_detalhe', label: 'Google detalhe' },
   { key: 'google_resultados', label: 'Resultados Google' },
   { key: 'avisos', label: 'Avisos' },
-  { key: 'telefone_fonte', label: 'Fonte telefone' },
-  { key: 'telefone_confianca', label: 'Conf. telefone' },
   { key: 'cep', label: 'CEP' },
   { key: 'endereco', label: 'Endereco' },
   { key: 'numero', label: 'Numero' },
@@ -48,9 +43,7 @@ const COLUNAS_TABELA = [
 const COLUNAS_MOBILE_RESUMO = new Set(['cnpj', 'razao_social', 'nome_fantasia', 'situacao_cadastral']);
 const COLUNAS_MOBILE_DETALHES = COLUNAS_TABELA.filter(coluna => !COLUNAS_MOBILE_RESUMO.has(coluna.key));
 const COLUNAS_TELEFONE_POR_FONTE = [
-  'telefone_open_cnpj',
-  'telefone_cnpjws',
-  'telefone_minha_receita',
+  'telefone_receita',
   'telefone_google_places'
 ];
 
@@ -232,6 +225,14 @@ function linhaPodeAdicionar(linha) {
   return linha.status === 'encontrado' && !linha.adicionado && cnpj.length === 14;
 }
 
+function linhaTemTelefone(linha) {
+  return [
+    linha?.telefone_receita,
+    linha?.telefone_google_places,
+    linha?.telefone
+  ].some(valor => String(valor || '').trim());
+}
+
 function esperarCancelavel(ms, signal) {
   if (!ms || ms <= 0) return Promise.resolve();
 
@@ -366,7 +367,9 @@ function CnpjImportacaoPage() {
       );
     });
   }, [buscaTexto, dataFim, dataInicio, filtroAdicionado, linhas, ordenacao]);
-  const linhasAdicionaveis = useMemo(() => linhasFiltradas.filter(linhaPodeAdicionar), [linhasFiltradas]);
+  const linhasAdicionaveis = useMemo(() => (
+    linhasFiltradas.filter(linha => linhaPodeAdicionar(linha) && linhaTemTelefone(linha))
+  ), [linhasFiltradas]);
   const reconsultandoSet = useMemo(() => new Set(reconsultandoCnpjs), [reconsultandoCnpjs]);
   const totalEncontrados = linhasFiltradas.filter(linha => linha.status === 'encontrado').length;
   const totalErros = linhasFiltradas.filter(linha => linha.status === 'erro').length;

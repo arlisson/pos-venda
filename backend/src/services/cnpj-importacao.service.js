@@ -9,7 +9,6 @@ const ClienteSecreto = require('../models/ClienteSecreto');
 const INTERVALO_CONSULTA_MS = Number(process.env.CNPJ_IMPORT_INTERVALO_MS || 21000);
 const LIMITE_LINHAS = Number(process.env.CNPJ_IMPORT_LIMITE_LINHAS || 50);
 const TABELA_BUSCAS_REALIZADAS = 'cnpj_buscas_realizadas';
-const TABELA_BUSCAS_TEXTO_REALIZADAS = 'cnpj_buscas_texto_realizadas';
 const COLUNAS_EXPORTACAO = [
   { header: 'Status', key: 'status', width: 14 },
   { header: 'Mensagem', key: 'message', width: 32 },
@@ -18,16 +17,11 @@ const COLUNAS_EXPORTACAO = [
   { header: 'Nome fantasia', key: 'nome_fantasia', width: 28 },
   { header: 'Situacao', key: 'situacao_cadastral', width: 18 },
   { header: 'E-mail', key: 'email', width: 28 },
-  { header: 'Telefone', key: 'telefone', width: 18 },
-  { header: 'Tel. Open CNPJ', key: 'telefone_open_cnpj', width: 18 },
-  { header: 'Tel. CNPJ.ws', key: 'telefone_cnpjws', width: 18 },
-  { header: 'Tel. Minha Receita', key: 'telefone_minha_receita', width: 18 },
+  { header: 'Tel. Receita', key: 'telefone_receita', width: 18 },
   { header: 'Tel. Google', key: 'telefone_google_places', width: 18 },
   { header: 'Google status', key: 'google_status', width: 18 },
   { header: 'Google detalhe', key: 'google_detalhe', width: 32 },
   { header: 'Avisos', key: 'avisos', width: 42 },
-  { header: 'Fonte telefone', key: 'telefone_fonte', width: 18 },
-  { header: 'Conf. telefone', key: 'telefone_confianca', width: 16 },
   { header: 'CEP', key: 'cep', width: 14 },
   { header: 'Endereco', key: 'endereco', width: 34 },
   { header: 'Numero', key: 'numero', width: 12 },
@@ -315,7 +309,6 @@ function normalizarInteiroPositivo(valor, fallback) {
 }
 
 let tabelaBuscasRealizadasDisponivel = null;
-let tabelaBuscasTextoRealizadasDisponivel = null;
 
 async function tabelaBuscasRealizadasExiste() {
   if (tabelaBuscasRealizadasDisponivel !== null) {
@@ -329,20 +322,6 @@ async function tabelaBuscasRealizadasExiste() {
   }
 
   return tabelaBuscasRealizadasDisponivel;
-}
-
-async function tabelaBuscasTextoRealizadasExiste() {
-  if (tabelaBuscasTextoRealizadasDisponivel !== null) {
-    return tabelaBuscasTextoRealizadasDisponivel;
-  }
-
-  try {
-    tabelaBuscasTextoRealizadasDisponivel = await db.schema.hasTable(TABELA_BUSCAS_TEXTO_REALIZADAS);
-  } catch (error) {
-    tabelaBuscasTextoRealizadasDisponivel = false;
-  }
-
-  return tabelaBuscasTextoRealizadasDisponivel;
 }
 
 function parseJsonSeguro(valor, fallback = null) {
@@ -360,6 +339,9 @@ async function buscarCnpjJaBuscado(cnpj) {
 
   return db(TABELA_BUSCAS_REALIZADAS)
     .where({ cnpj: sanitizarCnpj(cnpj) })
+    .where(function () {
+      this.where('tipo_busca', 'cnpj').orWhereNull('tipo_busca');
+    })
     .first();
 }
 
@@ -405,6 +387,40 @@ function montarLinhaBuscaRealizada(registro, index) {
   const payload = parseJsonSeguro(registro.payload, {});
   const cnpj = sanitizarCnpj(registro.cnpj || payload.cnpj_digitos || payload.cnpj);
   const buscadoEm = registro.buscado_em || payload.consultado_em || null;
+  const tipoBusca = registro.tipo_busca || payload.tipo_busca || (payload.busca_por_texto ? 'texto' : 'cnpj');
+
+  if (tipoBusca === 'texto') {
+    const aviso = `Busca por texto ja realizada${buscadoEm ? ` em ${formatarDataHoraCurta(buscadoEm)}` : ''}.`;
+    const avisosExistentes = payload.avisos && payload.avisos !== '-'
+      ? String(payload.avisos)
+      : '';
+
+    return {
+      ...payload,
+      row_index: payload.row_index || `texto-${registro.id || index + 1}`,
+      status: 'encontrado',
+      cnpj: cnpj ? formatarCnpj(cnpj) : '',
+      cnpj_digitos: cnpj,
+      razao_social: payload.razao_social || registro.razao_social || registro.termo_busca || '',
+      nome_fantasia: payload.nome_fantasia || registro.nome_fantasia || '',
+      email: payload.email || registro.email || '',
+      telefone: payload.telefone || registro.telefone || '',
+      telefone_receita: payload.telefone_receita || '',
+      telefone_google_places: payload.telefone_google_places || registro.telefone || '',
+      telefone_fonte: payload.telefone_fonte || registro.telefone_fonte || '',
+      telefone_confianca: payload.telefone_confianca || registro.telefone_confianca || '',
+      google_status: payload.google_status || 'encontrado_por_texto',
+      google_detalhe: payload.google_detalhe || registro.google_detalhe || '',
+      message: aviso,
+      avisos: avisosExistentes ? `${avisosExistentes} | ${aviso}` : aviso,
+      cache: true,
+      busca_realizada: true,
+      busca_por_texto: true,
+      ja_buscado_em: buscadoEm,
+      lead_id: null,
+      adicionado: false
+    };
+  }
 
   return {
     ...payload,
@@ -429,40 +445,6 @@ function montarLinhaBuscaRealizada(registro, index) {
     message: `CNPJ ja buscado${buscadoEm ? ` em ${formatarDataHoraCurta(buscadoEm)}` : ''}.`,
     cache: true,
     busca_realizada: true,
-    ja_buscado_em: buscadoEm,
-    lead_id: null,
-    adicionado: false
-  };
-}
-function montarLinhaBuscaTextoRealizada(registro, index) {
-  const payload = parseJsonSeguro(registro.payload, {});
-  const cnpj = sanitizarCnpj(registro.cnpj || payload.cnpj_digitos || payload.cnpj);
-  const buscadoEm = registro.buscado_em || payload.consultado_em || null;
-  const aviso = `Busca por texto ja realizada${buscadoEm ? ` em ${formatarDataHoraCurta(buscadoEm)}` : ''}.`;
-  const avisosExistentes = payload.avisos && payload.avisos !== '-'
-    ? String(payload.avisos)
-    : '';
-
-  return {
-    ...payload,
-    row_index: payload.row_index || `texto-${registro.id || index + 1}`,
-    status: 'encontrado',
-    cnpj: cnpj ? formatarCnpj(cnpj) : '',
-    cnpj_digitos: cnpj,
-    razao_social: payload.razao_social || registro.razao_social || registro.termo_busca || '',
-    nome_fantasia: payload.nome_fantasia || registro.nome_fantasia || '',
-    email: payload.email || registro.email || '',
-    telefone: payload.telefone || registro.telefone || '',
-    telefone_google_places: payload.telefone_google_places || registro.telefone || '',
-    telefone_fonte: payload.telefone_fonte || registro.telefone_fonte || '',
-    telefone_confianca: payload.telefone_confianca || registro.telefone_confianca || '',
-    google_status: payload.google_status || 'encontrado_por_texto',
-    google_detalhe: payload.google_detalhe || registro.google_detalhe || '',
-    message: aviso,
-    avisos: avisosExistentes ? `${avisosExistentes} | ${aviso}` : aviso,
-    cache: true,
-    busca_realizada: true,
-    busca_por_texto: true,
     ja_buscado_em: buscadoEm,
     lead_id: null,
     adicionado: false
@@ -500,10 +482,7 @@ function aplicarLeadExistente(linha, leadsPorCnpj) {
 }
 
 async function listarBuscasRealizadas(usuarioId) {
-  const temTabelaCnpj = await tabelaBuscasRealizadasExiste();
-  const temTabelaTexto = await tabelaBuscasTextoRealizadasExiste();
-
-  if (!temTabelaCnpj && !temTabelaTexto) {
+  if (!await tabelaBuscasRealizadasExiste()) {
     return {
       total_cnpjs: 0,
       total_consultados: 0,
@@ -514,17 +493,12 @@ async function listarBuscasRealizadas(usuarioId) {
     };
   }
 
-  const registrosCnpj = temTabelaCnpj
-    ? await db(TABELA_BUSCAS_REALIZADAS).orderBy('buscado_em', 'desc').orderBy('id', 'desc')
-    : [];
-  const registrosTexto = temTabelaTexto
-    ? await db(TABELA_BUSCAS_TEXTO_REALIZADAS).orderBy('buscado_em', 'desc').orderBy('id', 'desc')
-    : [];
-
-  const linhasBase = [
-    ...registrosCnpj.map(montarLinhaBuscaRealizada),
-    ...registrosTexto.map(montarLinhaBuscaTextoRealizada)
-  ].sort((a, b) => timestampLinhaHistorico(b) - timestampLinhaHistorico(a));
+  const registros = await db(TABELA_BUSCAS_REALIZADAS)
+    .orderBy('buscado_em', 'desc')
+    .orderBy('id', 'desc');
+  const linhasBase = registros
+    .map(montarLinhaBuscaRealizada)
+    .sort((a, b) => timestampLinhaHistorico(b) - timestampLinhaHistorico(a));
   const leadsPorCnpj = await buscarLeadsExistentesPorCnpj(linhasBase.map(linha => linha.cnpj_digitos), usuarioId);
   const linhas = linhasBase.map(linha => aplicarLeadExistente(linha, leadsPorCnpj));
 
@@ -546,31 +520,16 @@ async function excluirBuscaRealizada(cnpj) {
     throw criarHttpError(400, 'Informe um CNPJ valido para excluir.');
   }
 
-  let removidos = 0;
-  if (await tabelaBuscasRealizadasExiste()) {
-    removidos += await db(TABELA_BUSCAS_REALIZADAS)
-      .where({ cnpj: cnpjDigitos })
-      .delete();
-  }
+  if (!await tabelaBuscasRealizadasExiste()) return 0;
 
-  if (await tabelaBuscasTextoRealizadasExiste()) {
-    removidos += await db(TABELA_BUSCAS_TEXTO_REALIZADAS)
-      .where({ cnpj: cnpjDigitos })
-      .delete();
-  }
-
-  return removidos;
+  return db(TABELA_BUSCAS_REALIZADAS)
+    .where({ cnpj: cnpjDigitos })
+    .delete();
 }
 
 async function limparBuscasRealizadas() {
-  let removidos = 0;
-  if (await tabelaBuscasRealizadasExiste()) {
-    removidos += await db(TABELA_BUSCAS_REALIZADAS).delete();
-  }
-  if (await tabelaBuscasTextoRealizadasExiste()) {
-    removidos += await db(TABELA_BUSCAS_TEXTO_REALIZADAS).delete();
-  }
-  return removidos;
+  if (!await tabelaBuscasRealizadasExiste()) return 0;
+  return db(TABELA_BUSCAS_REALIZADAS).delete();
 }
 
 function normalizarCnpjsReconsulta(cnpjs = []) {
@@ -635,8 +594,12 @@ async function salvarCnpjBuscado(linha) {
   if (!await tabelaBuscasRealizadasExiste()) return;
 
   const agora = formatarDateTimeSQL();
+  const cnpj = sanitizarCnpj(linha.cnpj_digitos);
   const registro = {
-    cnpj: sanitizarCnpj(linha.cnpj_digitos),
+    chave: `cnpj:${cnpj}`,
+    tipo_busca: 'cnpj',
+    termo_busca: linha.razao_social || linha.nome_fantasia || cnpj,
+    cnpj,
     razao_social: linha.razao_social || null,
     nome_fantasia: linha.nome_fantasia || null,
     email: linha.email || null,
@@ -650,6 +613,8 @@ async function salvarCnpjBuscado(linha) {
     uf: linha.uf || null,
     telefone_fonte: linha.telefone_fonte || null,
     telefone_confianca: linha.telefone_confianca || null,
+    google_place_id: null,
+    google_detalhe: linha.google_detalhe || null,
     payload: JSON.stringify({ ...linha, busca_realizada: false, ja_buscado_em: null }),
     buscado_em: linha.consultado_em ? formatarDateTimeSQL(linha.consultado_em) : agora,
     updated_at: agora
@@ -660,7 +625,7 @@ async function salvarCnpjBuscado(linha) {
       ...registro,
       created_at: agora
     })
-    .onConflict('cnpj')
+    .onConflict('chave')
     .merge(registro);
 }
 
@@ -683,19 +648,27 @@ function chaveBuscaTextoLinha(linha) {
 
 async function salvarBuscaTextoRealizada(linha) {
   if (!linha || linha.status !== 'encontrado' || !linha.busca_por_texto) return;
-  if (!await tabelaBuscasTextoRealizadasExiste()) return;
+  if (!await tabelaBuscasRealizadasExiste()) return;
 
   const agora = formatarDateTimeSQL();
   const place = linha.google_places?.place || {};
   const termoBusca = String(linha.google_places?.query || linha.razao_social || linha.nome_fantasia || '').trim();
   const registro = {
     chave: chaveBuscaTextoLinha(linha),
+    tipo_busca: 'texto',
     termo_busca: termoBusca.slice(0, 255) || 'Busca por texto',
     cnpj: sanitizarCnpj(linha.cnpj_digitos || linha.cnpj) || null,
     razao_social: linha.razao_social || null,
     nome_fantasia: linha.nome_fantasia || null,
     email: linha.email || null,
     telefone: linha.telefone || linha.telefone_google_places || null,
+    cep: linha.cep || null,
+    endereco: linha.endereco || null,
+    numero: linha.numero || null,
+    complemento: linha.complemento || null,
+    bairro: linha.bairro || null,
+    municipio: linha.municipio || null,
+    uf: linha.uf || null,
     telefone_fonte: linha.telefone_fonte || null,
     telefone_confianca: linha.telefone_confianca || null,
     google_place_id: place.id || place.place_id || null,
@@ -705,7 +678,7 @@ async function salvarBuscaTextoRealizada(linha) {
     updated_at: agora
   };
 
-  await db(TABELA_BUSCAS_TEXTO_REALIZADAS)
+  await db(TABELA_BUSCAS_REALIZADAS)
     .insert({
       ...registro,
       created_at: agora
@@ -772,9 +745,7 @@ function montarLinhaConsulta(item, dados) {
     situacao_cadastral: dados.situacaoCadastral || '',
     email: dados.email || '',
     telefone: dados.telefone || '',
-    telefone_open_cnpj: telefonesPorFonte.openCnpj,
-    telefone_cnpjws: telefonesPorFonte.cnpjws,
-    telefone_minha_receita: telefonesPorFonte.minhaReceita,
+    telefone_receita: telefonesPorFonte.receita,
     telefone_google_places: telefonesPorFonte.googlePlaces,
     google_status: dados.googlePlaces?.encontrado
       ? 'encontrado'
@@ -820,9 +791,7 @@ function montarLinhaGoogleTexto(item, empresa, resultadoGoogle, erroOriginal = n
     situacao_cadastral: '',
     email: '',
     telefone,
-    telefone_open_cnpj: '',
-    telefone_cnpjws: '',
-    telefone_minha_receita: '',
+    telefone_receita: '',
     telefone_google_places: telefone,
     google_status: 'encontrado_por_texto',
     google_detalhe: empresa.endereco || empresa.nome || resultadoGoogle.query || '',
@@ -914,7 +883,10 @@ function montarTelefonesPorFonte(dados = {}) {
     telefones[chavePrincipal] = dados.telefone;
   }
 
-  return telefones;
+  return {
+    ...telefones,
+    receita: telefones.openCnpj || telefones.cnpjws || telefones.minhaReceita || ''
+  };
 }
 
 function aplicarTelefoneEncontrado(dados, resultado, campoResultado, opcoes = {}) {
@@ -1155,16 +1127,11 @@ async function consultarPlanilha(req) {
       'nome_fantasia',
       'situacao_cadastral',
       'email',
-      'telefone',
-      'telefone_open_cnpj',
-      'telefone_cnpjws',
-      'telefone_minha_receita',
+      'telefone_receita',
       'telefone_google_places',
       'google_status',
       'google_detalhe',
       'avisos',
-      'telefone_fonte',
-      'telefone_confianca',
       'cep',
       'endereco',
       'numero',
@@ -1222,16 +1189,11 @@ async function consultarPlanilhaStream(req, onEvento) {
       'nome_fantasia',
       'situacao_cadastral',
       'email',
-      'telefone',
-      'telefone_open_cnpj',
-      'telefone_cnpjws',
-      'telefone_minha_receita',
+      'telefone_receita',
       'telefone_google_places',
       'google_status',
       'google_detalhe',
       'avisos',
-      'telefone_fonte',
-      'telefone_confianca',
       'cep',
       'endereco',
       'numero',
@@ -1344,8 +1306,9 @@ async function consultarPlanilhaStream(req, onEvento) {
 }
 
 function montarPayloadCliente(linha) {
-  const telefone = separarTelefone(linha.telefone);
   const nome = linha.razao_social || linha.nome_fantasia || linha.cnpj;
+  const telefoneReceita = linha.telefone_receita || linha.telefone || '';
+  const telefoneGoogle = linha.telefone_google_places || '';
 
   return {
     nome,
@@ -1353,8 +1316,10 @@ function montarPayloadCliente(linha) {
     cnpj: linha.cnpj || linha.cnpj_digitos,
     responsavel_tipo: 'rl',
     email: linha.email || null,
-    fixo_ddd: telefone.ddd,
-    fixo_numero: telefone.numero
+    telefone_receita: telefoneReceita || null,
+    telefone_google: telefoneGoogle || null,
+    telefone_receita_contatavel: false,
+    telefone_google_contatavel: false
   };
 }
 async function adicionarLeads(linhas = [], usuarioId) {
@@ -1426,8 +1391,9 @@ function numeroLinhaOriginal(rowIndex) {
 
 function telefoneEncontradoLinha(linha = {}) {
   return [
-    linha.telefone,
+    linha.telefone_receita,
     linha.telefone_google_places,
+    linha.telefone,
     linha.telefone_open_cnpj,
     linha.telefone_cnpjws,
     linha.telefone_minha_receita

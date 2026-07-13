@@ -45,6 +45,30 @@ async function upload(req, res) {
 }
 
 /**
+ * Importa uma planilha Excel de mailing.
+ */
+async function importarExcel(req, res) {
+  try {
+    const planilha = await leadPlanilhaService.importarExcel(req, req.usuario.id);
+    return res.status(201).json(planilha);
+  } catch (error) {
+    console.error(error);
+    return res.status(400).json({ message: error.message || 'Erro ao importar XLSX.' });
+  }
+}
+/**
+ * Importa o arquivo enviado somente para a base de clientes antigos.
+ */
+async function importarBaseAntiga(req, res) {
+  try {
+    const resultado = await leadPlanilhaService.importarBaseAntigaArquivo(req, req.usuario.id);
+    return res.status(201).json(resultado);
+  } catch (error) {
+    console.error(error);
+    return res.status(400).json({ message: error.message || 'Erro ao importar base antiga.' });
+  }
+}
+/**
  * Retorna status no formato esperado pelo fluxo.
  */
 async function status(req, res) {
@@ -265,6 +289,33 @@ async function listarFuturosClientes(req, res) {
   }
 }
 
+async function listarTodosFuturosClientes(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.listarFuturosClientes(req.query, null));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao listar o quadro de futuros clientes.' });
+  }
+}
+
+async function metricasFuturosClientes(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.obterMetricasFuturosClientes(req.query));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao calcular metricas de futuros clientes.' });
+  }
+}
+
+async function vincularVenda(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.vincularVendaAoLead(req.params.id, req.body?.venda_id, req.usuario.id));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao vincular venda ao lead.' });
+  }
+}
+
 /**
  * Lista futuros clientes lixeira conforme os filtros e parametros informados.
  */
@@ -338,6 +389,8 @@ module.exports = {
   index,
   store,
   upload,
+  importarExcel,
+  importarBaseAntiga,
   status,
   storeLinhas,
   finalizar,
@@ -354,6 +407,9 @@ module.exports = {
   exportarMinhas,
   marcarFuturoCliente,
   listarFuturosClientes,
+  listarTodosFuturosClientes,
+  metricasFuturosClientes,
+  vincularVenda,
   listarFuturosClientesLixeira,
   excluirFuturoCliente,
   restaurarFuturoCliente,

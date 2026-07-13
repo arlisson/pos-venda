@@ -10,7 +10,12 @@ import {
 import { temPermissao } from '../../services/auth.service';
 import { formatDateValue } from '../../utils/datetime';
 
-const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
+const TIPOS_RETORNO_NOTA = [
+  'nota_retorno_pre',
+  'nota_retorno_due',
+  'futuro_cliente_retorno_pre',
+  'futuro_cliente_retorno_due'
+];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPOS_RETORNO_VENDA = ['venda_retorno_registrado'];
@@ -39,6 +44,8 @@ function tomNotificacao(notification) {
       return 'warn';
     case 'nota_retorno_pre':
     case 'nota_retorno_due':
+    case 'futuro_cliente_retorno_pre':
+    case 'futuro_cliente_retorno_due':
       return 'contact';
     default:
       return notification.nivel === 'warn' ? 'warn' : 'danger';
@@ -49,6 +56,11 @@ function tomNotificacao(notification) {
  * Retorna notification target a partir dos dados informados.
  */
 function getNotificationTarget(notification) {
+  if (notification.tipo === 'futuro_cliente_retorno_pre'
+    || notification.tipo === 'futuro_cliente_retorno_due') {
+    return '/futuros-clientes';
+  }
+
   if (notification.tipo === 'cliente_fidelidade') {
     return Number(notification.dados?.dias_restantes ?? 1) < 0
       ? '/clientes?fidelidade=vencida'
@@ -60,6 +72,9 @@ function getNotificationTarget(notification) {
     return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
   }
 
+  if (notification.entidade === 'clientes-secretos') {
+    return '/clientes-secretos';
+  }
   if (notification.entidade === 'vendas') {
     const vendaId = notification.entidade_id || notification.dados?.venda_id;
     if (!vendaId) return '/vendas';

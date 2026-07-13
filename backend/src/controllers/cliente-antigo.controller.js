@@ -34,6 +34,34 @@ async function historico(req, res) {
 }
 
 /**
+ * Atualiza uma venda antiga cadastrada na base isolada.
+ */
+async function atualizar(req, res) {
+  try {
+    const resultado = await clienteAntigoService.atualizar(req.params.id, req.body);
+    return res.json(resultado);
+  } catch (error) {
+    if (!error.statusCode) console.error(error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao atualizar cliente antigo.'
+    });
+  }
+}
+/**
+ * Exclui uma venda antiga cadastrada na base isolada.
+ */
+async function excluir(req, res) {
+  try {
+    const resultado = await clienteAntigoService.excluir(req.params.id);
+    return res.json(resultado);
+  } catch (error) {
+    if (!error.statusCode) console.error(error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao excluir cliente antigo.'
+    });
+  }
+}
+/**
  * Preview do upload da planilha de vendas antigas.
  */
 async function planilhaPreview(req, res) {
@@ -66,6 +94,8 @@ async function planilhaImportar(req, res) {
 module.exports = {
   buscar,
   historico,
+  atualizar,
+  excluir,
   planilhaPreview,
   planilhaImportar
 };

@@ -6,7 +6,8 @@ function montarPermissoes(permissoes, permissoesLiberadas = []) {
 }
 
 const PERMISSOES_ADMIN_EXPLICITAS = new Set([
-  'clientes_secretos_ver_todos'
+  'clientes_secretos_ver_todos',
+  'clientes_antigos_ver_historico'
 ]);
 
 async function upsertRole(knex, role) {

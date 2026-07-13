@@ -6,16 +6,17 @@
   flex-direction: column;
   gap: 16px;
   padding: 22px 24px 24px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .futuros-clientes-view {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .clientes-tabs {
@@ -119,8 +120,23 @@
 }
 
 .futuros-clientes-table {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: clamp(320px, 52vh, 620px);
+  min-height: 320px;
+}
+
+.futuros-clientes-table .scroll {
   flex: 1;
   min-height: 0;
+  overflow: auto;
+}
+
+.futuros-clientes-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .futuros-clientes-table th,
@@ -204,6 +220,18 @@
   box-shadow: inset 3px 0 0 var(--success);
 }
 
+.clientes-leads-table tbody tr.lead-row-vendido td {
+  background: color-mix(in srgb, #2563eb 7%, transparent);
+}
+
+.clientes-leads-table tbody tr.lead-row-vendido:hover td {
+  background: color-mix(in srgb, #2563eb 12%, var(--surface-2));
+}
+
+.lead-row-vendido td:first-child {
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+
 .lead-status-cell {
   display: flex;
   flex-direction: column;
@@ -227,6 +255,12 @@
   font-size: 11.5px;
   line-height: 1.25;
   white-space: nowrap;
+}
+
+.lead-status-return.is-overdue,
+.future-return-overdue {
+  color: var(--danger, #dc2626);
+  font-weight: 600;
 }
 
 .clientes-leads-table .lead-register-sale-btn {
@@ -313,6 +347,8 @@
   .clientes-leads-table,
   .futuros-clientes-table {
     flex: none;
+    height: auto;
+    min-height: 0;
     overflow: visible;
   }
 
@@ -413,6 +449,16 @@
   margin-top: 4px;
 }
 
+.lead-already-qualified-notice {
+  padding: 10px 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: var(--success-bg);
+  color: var(--success);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
 /* ── Detalhe futuro cliente ── */
 
 .futuros-clientes-table tbody tr {
@@ -423,3 +469,98 @@
   background: var(--surface-2);
   cursor: pointer;
 }
+.futuro-cliente-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.chips-sondagem-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chips-sondagem-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
+  gap: 12px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.chips-sondagem-row .form-field { margin-bottom: 0; }
+.chips-sondagem-remove { margin-bottom: 1px; color: var(--danger); }
+.chips-sondagem-add { align-self: flex-start; }
+
+.lead-status-pill.sold {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.clientes-toolbar__meta-sold {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.futuro-cliente-estimativa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color, #d9dee8);
+  border-radius: 8px;
+  background: var(--surface-muted, #f7f8fa);
+}
+
+@media (max-width: 640px) {
+  .futuro-cliente-form__grid { grid-template-columns: 1fr; }
+  .chips-sondagem-row { grid-template-columns: 1fr 1fr; }
+  .chips-sondagem-remove { grid-column: 1 / -1; width: 100%; }
+}
+.futuros-clientes-metricas {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.futuros-clientes-metricas > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--border-color, #d9dee8);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+}
+
+.futuros-clientes-metricas span { font-size: 12px; color: var(--text-muted, #687080); }
+.futuros-clientes-metricas strong { font-size: 20px; }
+
+@media (max-width: 900px) {
+  .futuros-clientes-metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.conversao-sondagem-module {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #d9dee8);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+.conversao-sondagem-header h2 { margin: 0; font-size: 17px; }
+.conversao-sondagem-header p { margin: 4px 0 14px; color: var(--text-muted, #687080); font-size: 13px; }
+.conversao-sondagem-table { margin: 14px 0 0; }
+.conversao-sondagem-table th:not(:first-child),
+.conversao-sondagem-table td:not(:first-child) { text-align: center; }

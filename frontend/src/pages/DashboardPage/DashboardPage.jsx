@@ -47,7 +47,13 @@ const CATEGORY_LABELS = {
   internet: 'Internet',
 };
 
-const TIPOS_RETORNO_NOTA = ['nota_retorno_pre', 'nota_retorno_due'];
+const TIPOS_RETORNO_NOTA = [
+  'nota_retorno_pre',
+  'nota_retorno_due',
+  'futuro_cliente_retorno_pre',
+  'futuro_cliente_retorno_due'
+];
+const TIPOS_RETORNO_FUTURO_CLIENTE = ['futuro_cliente_retorno_pre', 'futuro_cliente_retorno_due'];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPO_VENDA_PARADA = 'venda_parada_funil';
@@ -673,6 +679,10 @@ function getInitials(name) {
  * Retorna notification target a partir dos dados informados.
  */
 function getNotificationTarget(notificacao) {
+  if (TIPOS_RETORNO_FUTURO_CLIENTE.includes(notificacao.tipo)) {
+    return '/futuros-clientes';
+  }
+
   if (notificacao.tipo === 'cliente_fidelidade') {
     return Number(notificacao.dados?.dias_restantes ?? 1) < 0
       ? '/clientes?fidelidade=vencida'
@@ -684,6 +694,9 @@ function getNotificationTarget(notificacao) {
     return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
   }
 
+  if (notificacao.entidade === 'clientes-secretos') {
+    return '/clientes-secretos';
+  }
   if (notificacao.entidade === 'vendas') {
     const vendaId = notificacao.entidade_id || notificacao.dados?.venda_id;
     if (!vendaId) return '/vendas';
@@ -1192,9 +1205,19 @@ function DashboardPage() {
   async function abrirNotificacaoNoDashboard(notificacao) {
     await marcarNotificacaoComoLidaLocal(notificacao);
 
+    if (TIPOS_RETORNO_FUTURO_CLIENTE.includes(notificacao.tipo)) {
+      navigate('/futuros-clientes');
+      return;
+    }
+
     if (notificacao.tipo === 'cliente_fidelidade' || notificacao.entidade === 'clientes') {
       const aba = TIPOS_RETORNO_NOTA.includes(notificacao.tipo) ? 'notas' : 'cliente';
       await abrirClienteNoDashboard(notificacao.entidade_id || notificacao.dados?.entidade_id, aba);
+      return;
+    }
+
+    if (notificacao.entidade === 'clientes-secretos') {
+      navigate('/clientes-secretos');
       return;
     }
 

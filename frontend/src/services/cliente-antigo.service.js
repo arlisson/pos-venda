@@ -1,7 +1,7 @@
 /**
  * Cliente de API para a ferramenta de busca de clientes antigos.
  */
-import { apiGet, apiRequest } from './api';
+import { apiDelete, apiGet, apiRequest } from './api';
 import { sanitizarCnpj } from './cnpj.service';
 
 /**
@@ -40,6 +40,16 @@ export async function listarHistoricoClientesAntigos(filtros = {}) {
   return apiGet(`/clientes-antigos/historico${query ? `?${query}` : ''}`);
 }
 
+export async function atualizarClienteAntigo(id, dados) {
+  return apiRequest(`/clientes-antigos/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(dados)
+  });
+}
+
+export async function excluirClienteAntigo(id) {
+  return apiDelete(`/clientes-antigos/${id}`);
+}
 function montarFormDataPlanilha(arquivo, mapeamento, abas = null) {
   const formData = new FormData();
   formData.append('arquivo', arquivo);

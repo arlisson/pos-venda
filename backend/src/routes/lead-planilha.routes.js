@@ -76,9 +76,12 @@ router.put(
   }),
   leadPlanilhaController.atualizarMeuCampo
 );
+router.post('/me/linhas/:id/venda', leadPlanilhaController.vincularVenda);
 
 router.get('/', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.index);
 router.post('/uploads', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.upload);
+router.post('/importar-excel', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.importarExcel);
+router.post('/importar-base-antiga', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.importarBaseAntiga);
 router.post(
   '/',
   exigirUmaPermissao(['gerenciar_leads']),
@@ -109,6 +112,8 @@ router.delete(
 router.get('/linhas', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.linhas);
 router.get('/envios', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.envios);
 router.post('/exportar', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.exportar);
+router.get('/futuros-clientes', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.listarTodosFuturosClientes);
+router.get('/futuros-clientes/metricas', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.metricasFuturosClientes);
 router.post(
   '/dividir',
   exigirUmaPermissao(['gerenciar_leads']),

@@ -9,12 +9,15 @@ import {
   excluirFuturoClienteDefinitivo,
   listarFuturosClientesLeads,
   listarFuturosClientesLixeira,
+  listarQuadroFuturosClientes,
+  listarMetricasFuturosClientes,
   listarMeusLeadEnvios,
   listarMinhasLeadLinhas,
   marcarFuturoClienteLead,
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
-import { formatDateValue, formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
+import { formatDateValue, formatUtcDateTime, parseUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
+import { listarOperadoras } from '../../services/config.service';
 import './FuturosClientesPage.css';
 
 // ─── Helpers de colunas de lead ──────────────────────────────────────────────
@@ -179,6 +182,11 @@ function montarClientePreenchido(vendaPreenchida) {
     razao_social: vendaPreenchida.razao_social || '',
     whatsapp: vendaPreenchida.telefone || '',
     email: vendaPreenchida.email || '',
+    responsavel_nome: vendaPreenchida.responsavel_nome || '',
+    responsavel_tipo: vendaPreenchida.responsavel_tipo || 'rl',
+    operadora_atual_id: vendaPreenchida.operadora_atual_id || '',
+    quantidade_chips: vendaPreenchida.quantidade_linhas || '',
+    valor_pago: vendaPreenchida.valor_mensal_estimado || '',
   };
 }
 
@@ -186,7 +194,20 @@ function montarClientePreenchido(vendaPreenchida) {
  * Monta venda preenchida do lead a partir dos dados informados.
  */
 function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
-  const payload = usuario?.id ? { vendedora_id: String(usuario.id) } : {};
+  const sondagem = linha?.sondagem || {};
+  const vendedoraId = Number(linha?.atribuido_para_id || usuario?.id || 0);
+  const payload = {
+    ...(vendedoraId > 0 ? {
+      vendedora_id: String(vendedoraId),
+      vendedoras: [String(vendedoraId)]
+    } : {}),
+    ...(sondagem.contato_nome ? { responsavel_nome: sondagem.contato_nome } : {}),
+    ...(sondagem.contato_tipo ? { responsavel_tipo: sondagem.contato_tipo } : {}),
+    ...(sondagem.operadora_atual_id ? { operadora_atual_id: String(sondagem.operadora_atual_id) } : {}),
+    ...(sondagem.quantidade_chips ? { quantidade_linhas: Number(sondagem.quantidade_chips) } : {}),
+    ...(sondagem.valor_mensal_estimado ? { valor_mensal_estimado: Number(sondagem.valor_mensal_estimado) } : {}),
+    ...(sondagem.whatsapp_ddd ? { telefone: `${sondagem.whatsapp_ddd}${sondagem.whatsapp_numero || ''}` } : {})
+  };
 
   CAMPOS_VENDA_LEAD.forEach(campo => {
     const coluna = mapeamento?.[campo.name];
@@ -230,10 +251,46 @@ function isFuturoClienteAtivo(linha) {
   return Boolean(linha?.futuro_cliente && !linha?.futuro_cliente_excluido_em);
 }
 
+function formatarWhatsappInput(valor) {
+  let digitos = String(valor || '').replace(/\D/g, '');
+  if (digitos.startsWith('55') && digitos.length > 11) digitos = digitos.slice(2);
+  digitos = digitos.slice(0, 11);
+  if (!digitos) return '';
+  if (digitos.length <= 2) return `(${digitos}`;
+  const ddd = digitos.slice(0, 2);
+  const numero = digitos.slice(2);
+  if (numero.length <= 4) return `(${ddd}) ${numero}`;
+  if (numero.length <= 8) return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
+  return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+}
+
+function encontrarTelefoneLead(linha) {
+  const dados = linha?.dados_json || {};
+  const prioridades = ['celular', 'whatsapp', 'telefone', 'fone', 'terminal'];
+  for (const prioridade of prioridades) {
+    const chave = Object.keys(dados)
+      .filter(nome => !nome.endsWith(' (atualizado)'))
+      .find(nome => normalizarTextoLead(nome) === prioridade);
+    if (!chave) continue;
+    const valor = dados[`${chave} (atualizado)`] ?? dados[chave];
+    if (String(valor || '').replace(/\D/g, '')) return valor;
+  }
+  return '';
+}
+
+function isFuturoClienteVendido(linha) {
+  return Boolean(isFuturoClienteAtivo(linha) && (linha?.venda_id || linha?.status_operacional === 'vendido'));
+}
+
+function isRetornoFuturoClienteVencido(valor, agora = Date.now()) {
+  const retorno = parseUtcDateTime(valor);
+  return Boolean(retorno && retorno.getTime() < agora);
+}
+
 /**
  * Renderiza lead status no fluxo da tela.
  */
-function renderLeadStatus(linha) {
+function renderLeadStatus(linha, agora = Date.now()) {
   if (isFuturoClienteNaLixeira(linha)) {
     return (
       <span className="lead-status-cell">
@@ -245,12 +302,20 @@ function renderLeadStatus(linha) {
   if (isFuturoClienteAtivo(linha)) {
     return (
       <span className="lead-status-cell">
+        {isFuturoClienteVendido(linha) && (
+          <span className="pill lead-status-pill sold">
+            <span className="pill-dot"></span>
+            Venda registrada
+          </span>
+        )}
         <span className="pill success lead-status-pill">
           <span className="pill-dot"></span>
           Futuro cliente
         </span>
         {linha.futuro_cliente_retorno && (
-          <span className="lead-status-return">Retorno: {formatarDataHora(linha.futuro_cliente_retorno)}</span>
+          <span className={`lead-status-return ${isRetornoFuturoClienteVencido(linha.futuro_cliente_retorno, agora) ? 'is-overdue' : ''}`}>
+            Retorno: {formatarDataHora(linha.futuro_cliente_retorno)}
+          </span>
         )}
       </span>
     );
@@ -274,6 +339,47 @@ function datetimeRetornoParaIso(valor) {
 
   const data = new Date(valor);
   return isNaN(data.getTime()) ? null : data.toISOString();
+}
+
+function criarChipsItensSondagem(sondagem = null) {
+  const itens = Array.isArray(sondagem?.chips_itens) ? sondagem.chips_itens : [];
+  if (itens.length) return itens.map(item => ({ quantidade: String(item.quantidade || ''), preco_por_chip: String(item.preco_por_chip || '') }));
+  if (sondagem?.quantidade_chips || sondagem?.preco_por_chip) {
+    return [{ quantidade: String(sondagem.quantidade_chips || ''), preco_por_chip: String(sondagem.preco_por_chip || '') }];
+  }
+  return [{ quantidade: '', preco_por_chip: '' }];
+}
+
+function ChipsItensSondagem({ itens, onChange, disabled }) {
+  function atualizar(index, campo, valor) {
+    onChange(itens.map((item, itemIndex) => itemIndex === index ? { ...item, [campo]: valor } : item));
+  }
+  function remover(index) {
+    if (itens.length <= 1) return;
+    onChange(itens.filter((_, itemIndex) => itemIndex !== index));
+  }
+  return (
+    <div className="chips-sondagem-editor">
+      {itens.map((item, index) => (
+        <div className="chips-sondagem-row" key={index}>
+          <div className="form-field">
+            <label>Quantidade de chips</label>
+            <input type="number" min="1" step="1" value={item.quantidade} onChange={event => atualizar(index, 'quantidade', event.target.value)} required disabled={disabled} />
+          </div>
+          <div className="form-field">
+            <label>Preco por chip</label>
+            <input type="number" min="0.01" step="0.01" value={item.preco_por_chip} onChange={event => atualizar(index, 'preco_por_chip', event.target.value)} required disabled={disabled} />
+          </div>
+          {itens.length > 1 && (
+            <button type="button" className="btn btn-icon btn-ghost chips-sondagem-remove" title="Remover faixa" onClick={() => remover(index)} disabled={disabled}><I.Trash size={14} /></button>
+          )}
+        </div>
+      ))}
+      <button type="button" className="btn btn-sm chips-sondagem-add" onClick={() => onChange([...itens, { quantidade: '', preco_por_chip: '' }])} disabled={disabled}>
+        <I.Plus size={14} /> Adicionar outro valor de chip
+      </button>
+    </div>
+  );
 }
 
 // ─── Modal: registrar venda ───────────────────────────────────────────────────
@@ -426,11 +532,24 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
  * Renderiza adicionar lead modal.
  */
 function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda, onFuturoClienteSalvo }) {
+  const vendaRegistrada = isFuturoClienteVendido(linha);
   const [etapa, setEtapa] = useState('opcoes'); // 'opcoes' | 'venda' | 'futuro'
   const [notas, setNotas] = useState('');
   const [retorno, setRetorno] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [operadoras, setOperadoras] = useState([]);
+  const [contatoNome, setContatoNome] = useState('');
+  const [contatoTipo, setContatoTipo] = useState('');
+  const [operadoraAtualId, setOperadoraAtualId] = useState('');
+  const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem());
+  const [whatsapp, setWhatsapp] = useState(() => formatarWhatsappInput(encontrarTelefoneLead(linha)));
+  const valorMensalEstimado = chipsItens.reduce((total, item) => total
+    + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
+
+  useEffect(() => {
+    listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
+  }, []);
 
   const camposLead = useMemo(() => {
     const dados = linha.dados_json || {};
@@ -460,7 +579,12 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 
       const resultado = await marcarFuturoClienteLead(linha.id, {
         notas,
-        retorno: retornoIso
+        retorno: retornoIso,
+        contato_nome: contatoNome,
+        contato_tipo: contatoTipo,
+        operadora_atual_id: Number(operadoraAtualId),
+        chips_itens: chipsItens,
+        whatsapp
       });
       onFuturoClienteSalvo(resultado.linha);
     } catch (error) {
@@ -511,17 +635,58 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 
           {etapa === 'opcoes' && (
             <div className="adicionar-lead-acoes">
-              <button type="button" className="btn btn-primary" onClick={() => setEtapa('venda')}>
-                <I.Chart size={14} /> Registrar venda
-              </button>
-              <button type="button" className="btn" onClick={() => setEtapa('futuro')}>
-                <I.Calendar size={14} /> Registrar futuro cliente
-              </button>
+              {vendaRegistrada ? (
+                <div className="lead-already-qualified-notice">
+                  Este futuro cliente ja possui uma venda registrada. Acesse a pagina de Vendas para visualizar a venda.
+                </div>
+              ) : linha.futuro_cliente && (
+                <div className="lead-already-qualified-notice">
+                  Este contato ja foi qualificado na primeira ligacao. Nesta etapa ele esta disponivel somente para registro de venda.
+                </div>
+              )}
+              {!vendaRegistrada && (
+                <button type="button" className="btn btn-primary" onClick={() => setEtapa('venda')}>
+                  <I.Chart size={14} /> Registrar venda
+                </button>
+              )}
+              {!linha.futuro_cliente && (
+                <button type="button" className="btn" onClick={() => setEtapa('futuro')}>
+                  <I.Calendar size={14} /> Registrar futuro cliente
+                </button>
+              )}
             </div>
           )}
 
           {etapa === 'futuro' && (
             <form className="futuro-cliente-form" onSubmit={salvarFuturoCliente}>
+              <div className="form-field">
+                <label>Nome de quem falou</label>
+                <input value={contatoNome} onChange={event => setContatoNome(event.target.value)} required disabled={salvando} />
+              </div>
+              <div className="form-field">
+                <label>Perfil do contato</label>
+                <select value={contatoTipo} onChange={event => setContatoTipo(event.target.value)} required disabled={salvando}>
+                  <option value="">Selecione</option>
+                  <option value="adm">ADM</option>
+                  <option value="rl">RL</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Operadora atual</label>
+                <select value={operadoraAtualId} onChange={event => setOperadoraAtualId(event.target.value)} required disabled={salvando}>
+                  <option value="">Selecione</option>
+                  {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
+                </select>
+              </div>
+              <ChipsItensSondagem itens={chipsItens} onChange={setChipsItens} disabled={salvando} />
+              <div className="futuro-cliente-estimativa">
+                <span>Media mensal estimada</span>
+                <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+              </div>
+              <div className="form-field">
+                <label>WhatsApp com DDD</label>
+                <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
+              </div>
               <div className="form-field">
                 <label>Notas sobre este cliente</label>
                 <textarea
@@ -565,7 +730,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 /**
  * Renderiza leads recebidos view com os dados informados.
  */
-function LeadsRecebidosView() {
+function LeadsRecebidosView({ agora }) {
   const navigate = useNavigate();
   const [envios, setEnvios] = useState([]);
   const [selecionados, setSelecionados] = useState([]);
@@ -652,6 +817,7 @@ function LeadsRecebidosView() {
   const totalPaginas = Math.max(1, Math.ceil(totalLinhas / 200));
   const totalColunasTabela = colunas.length + 2 + ((podeRegistrarVenda || podeRegistrarFuturo) ? 1 : 0);
   const totalFuturosClientesAtivos = linhas.filter(isFuturoClienteAtivo).length;
+  const totalFuturosClientesVendidos = linhas.filter(isFuturoClienteVendido).length;
 
   /**
    * Alterna envio no estado atual.
@@ -792,6 +958,11 @@ function LeadsRecebidosView() {
           <span className="clientes-toolbar__meta-secondary">
             {totalFuturosClientesAtivos} futuro(s) cliente(s)
           </span>
+          {totalFuturosClientesVendidos > 0 && (
+            <span className="clientes-toolbar__meta-sold">
+              {totalFuturosClientesVendidos} com venda
+            </span>
+          )}
         </div>
         <div className="clientes-leads-actions">
           <form className="clientes-search" onSubmit={event => event.preventDefault()}>
@@ -822,7 +993,7 @@ function LeadsRecebidosView() {
                 <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
               ) : (
                 linhas.map(linha => (
-                  <tr key={linha.id} className={isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : ''}>
+                  <tr key={linha.id} className={isFuturoClienteVendido(linha) ? 'lead-row-vendido' : (isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : '')}>
                     <td data-label="Envio" className="m-primary">
                       <span className="tag">{linha.envio?.nome || '-'}</span>
                       <details className="mobile-row-drawer">
@@ -840,7 +1011,7 @@ function LeadsRecebidosView() {
                         </dl>
                       </details>
                     </td>
-                    <td data-label="Status" className="m-meta">{renderLeadStatus(linha)}</td>
+                    <td data-label="Status" className="m-meta">{renderLeadStatus(linha, agora)}</td>
                     {(podeRegistrarVenda || podeRegistrarFuturo) && (
                       <td data-label="Adicionar" className="m-actions">
                         <button
@@ -898,11 +1069,28 @@ function LeadsRecebidosView() {
  * Renderiza futuro cliente detalhe modal.
  */
 function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVenda }) {
+  const vendaRegistrada = isFuturoClienteVendido(linha);
   const [etapa, setEtapa] = useState('ver'); // 'ver' | 'venda'
   const [notas, setNotas] = useState(linha.futuro_cliente_notas || '');
   const [retorno, setRetorno] = useState(formatarParaDatetimeLocal(linha.futuro_cliente_retorno));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [operadoras, setOperadoras] = useState([]);
+  const [contatoNome, setContatoNome] = useState(linha.sondagem?.contato_nome || '');
+  const [contatoTipo, setContatoTipo] = useState(linha.sondagem?.contato_tipo || '');
+  const [operadoraAtualId, setOperadoraAtualId] = useState(String(linha.sondagem?.operadora_atual_id || ''));
+  const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem(linha.sondagem));
+  const [whatsapp, setWhatsapp] = useState(() => formatarWhatsappInput(
+    linha.sondagem
+      ? `${linha.sondagem.whatsapp_ddd || ''}${linha.sondagem.whatsapp_numero || ''}`
+      : encontrarTelefoneLead(linha)
+  ));
+  const valorMensalEstimado = chipsItens.reduce((total, item) => total
+    + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
+
+  useEffect(() => {
+    listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
+  }, []);
 
   const usuario = useMemo(() => getUsuarioLocal(), []);
 
@@ -933,7 +1121,12 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
 
       const resultado = await marcarFuturoClienteLead(linha.id, {
         notas,
-        retorno: retornoIso
+        retorno: retornoIso,
+        contato_nome: contatoNome,
+        contato_tipo: contatoTipo,
+        operadora_atual_id: Number(operadoraAtualId),
+        chips_itens: chipsItens,
+        whatsapp
       });
       onAtualizado(resultado.linha);
     } catch (error) {
@@ -981,7 +1174,46 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
             </div>
           )}
 
+          {linha.sondagem && (
+            <div className="adicionar-lead-dados">
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Pessoa contatada</span><span className="adicionar-lead-campo__valor">{linha.sondagem.contato_nome} ({String(linha.sondagem.contato_tipo || '').toUpperCase()})</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Operadora atual</span><span className="adicionar-lead-campo__valor">{linha.sondagem.operadoraAtual?.nome || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Chips / preco</span><span className="adicionar-lead-campo__valor">{linha.sondagem.quantidade_chips} × {Number(linha.sondagem.preco_por_chip).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Media mensal</span><span className="adicionar-lead-campo__valor">{Number(linha.sondagem.valor_mensal_estimado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">WhatsApp</span><span className="adicionar-lead-campo__valor">({linha.sondagem.whatsapp_ddd}) {linha.sondagem.whatsapp_numero}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Sondagem feita por</span><span className="adicionar-lead-campo__valor">{linha.sondagem.usuario?.nome || '-'}</span></div>
+            </div>
+          )}
+
           <div className="futuro-cliente-form">
+            <div className="form-field">
+              <label>Nome de quem falou</label>
+              <input value={contatoNome} onChange={event => setContatoNome(event.target.value)} required disabled={salvando} />
+            </div>
+            <div className="form-field">
+              <label>ADM ou RL</label>
+              <select value={contatoTipo} onChange={event => setContatoTipo(event.target.value)} required disabled={salvando}>
+                <option value="">Selecione</option>
+                <option value="adm">ADM</option>
+                <option value="rl">RL</option>
+              </select>
+            </div>
+            <div className="form-field">
+              <label>Operadora atual</label>
+              <select value={operadoraAtualId} onChange={event => setOperadoraAtualId(event.target.value)} required disabled={salvando}>
+                <option value="">Selecione</option>
+                {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
+              </select>
+            </div>
+              <ChipsItensSondagem itens={chipsItens} onChange={setChipsItens} disabled={salvando} />
+            <div className="futuro-cliente-estimativa">
+              <span>Media mensal estimada</span>
+              <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+            </div>
+            <div className="form-field">
+              <label>WhatsApp com DDD</label>
+              <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
+            </div>
             <div className="form-field">
               <label>Observações</label>
               <textarea
@@ -1007,9 +1239,13 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="btn" onClick={() => setEtapa('venda')} disabled={salvando}>
-            <I.Chart size={14} /> Registrar venda
-          </button>
+          {vendaRegistrada ? (
+            <div className="lead-already-qualified-notice">Este futuro cliente ja possui uma venda registrada. Acesse a pagina de Vendas para visualizar a venda.</div>
+          ) : (
+            <button type="button" className="btn" onClick={() => setEtapa('venda')} disabled={salvando}>
+              <I.Chart size={14} /> Registrar venda
+            </button>
+          )}
           <div style={{ flex: 1 }} />
           <button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button>
           <button type="submit" className="btn btn-primary" disabled={salvando}>
@@ -1074,7 +1310,7 @@ function ConfirmarFuturoClienteLixeiraModal({ linha, tipo, processando, onClose,
 /**
  * Renderiza futuros clientes main view com os dados informados.
  */
-function FuturosClientesMainView() {
+function FuturosClientesMainView({ agora }) {
   const navigate = useNavigate();
   const [linhas, setLinhas] = useState([]);
   const [total, setTotal] = useState(0);
@@ -1088,15 +1324,19 @@ function FuturosClientesMainView() {
   const [modoLixeira, setModoLixeira] = useState(false);
   const [processandoId, setProcessandoId] = useState(null);
   const [confirmacaoLixeira, setConfirmacaoLixeira] = useState(null);
+  const [metricas, setMetricas] = useState([]);
 
   const usuario = useMemo(() => getUsuarioLocal(), []);
   const podeGerenciar = temPermissao(usuario, 'futuros_clientes_registrar');
+  const podeVerQuadroGeral = temPermissao(usuario, 'gerenciar_leads');
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     let cancelado = false;
     setCarregando(true);
-    const listar = modoLixeira ? listarFuturosClientesLixeira : listarFuturosClientesLeads;
+    const listar = modoLixeira
+      ? listarFuturosClientesLixeira
+      : (podeVerQuadroGeral ? listarQuadroFuturosClientes : listarFuturosClientesLeads);
     listar({ page: pagina, page_size: 50, busca: buscaDeferred })
       .then(data => {
         if (!cancelado) {
@@ -1109,6 +1349,20 @@ function FuturosClientesMainView() {
     return () => { cancelado = true; };
   }, [pagina, buscaDeferred, modoLixeira]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (!podeVerQuadroGeral || modoLixeira) return;
+    listarMetricasFuturosClientes()
+      .then(data => setMetricas(Array.isArray(data) ? data : []))
+      .catch(() => setMetricas([]));
+  }, [podeVerQuadroGeral, modoLixeira, linhas]);
+
+  const resumoMetricas = useMemo(() => metricas.reduce((acc, item) => ({
+    qualificados: acc.qualificados + Number(item.qualificados || 0),
+    distribuidos: acc.distribuidos + Number(item.distribuidos_venda || 0),
+    vendidos: acc.vendidos + Number(item.vendidos || 0),
+    potencial: acc.potencial + Number(item.potencial_mensal || 0)
+  }), { qualificados: 0, distribuidos: 0, vendidos: 0, potencial: 0 }), [metricas]);
 
   useEffect(() => {
     if (!erro) return undefined;
@@ -1256,6 +1510,49 @@ function FuturosClientesMainView() {
           onRegistrarVenda={handleRegistrarVenda}
         />
       )}
+
+      {podeVerQuadroGeral && !modoLixeira && (
+        <section className="conversao-sondagem-module">
+          <div className="conversao-sondagem-header">
+            <div>
+              <h2>Conversao da primeira ligacao</h2>
+              <p>A venda e atribuida ao consultor que qualificou o futuro cliente, mesmo quando outro consultor fecha.</p>
+            </div>
+          </div>
+          <div className="futuros-clientes-metricas">
+            <div><span>Qualificados</span><strong>{resumoMetricas.qualificados}</strong></div>
+            <div><span>Distribuidos para venda</span><strong>{resumoMetricas.distribuidos}</strong></div>
+            <div><span>Vendas originadas</span><strong>{resumoMetricas.vendidos}</strong></div>
+            <div><span>Conversao dos qualificados</span><strong>{resumoMetricas.qualificados ? `${((resumoMetricas.vendidos / resumoMetricas.qualificados) * 100).toFixed(1)}%` : '0%'}</strong></div>
+            <div><span>Potencial mensal</span><strong>{resumoMetricas.potencial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></div>
+          </div>
+          <div className="list-table conversao-sondagem-table">
+            <div className="scroll">
+              <table>
+                <thead><tr><th>Consultor da primeira ligacao</th><th>Qualificados</th><th>Enviados para venda</th><th>Vendas originadas</th><th>Conversao</th><th>Potencial mensal</th></tr></thead>
+                <tbody>
+                  {metricas.length === 0 ? (
+                    <tr><td colSpan="6" className="muted">Ainda nao existem qualificacoes para calcular a conversao.</td></tr>
+                  ) : metricas.map(item => {
+                    const qualificados = Number(item.qualificados || 0);
+                    const vendidos = Number(item.vendidos || 0);
+                    return (
+                      <tr key={item.usuario_id || item.usuario_nome}>
+                        <td><strong>{item.usuario_nome || 'Usuario removido'}</strong></td>
+                        <td>{qualificados}</td>
+                        <td>{Number(item.distribuidos_venda || 0)}</td>
+                        <td>{vendidos}</td>
+                        <td><span className="pill success">{qualificados ? `${((vendidos / qualificados) * 100).toFixed(1)}%` : '0%'}</span></td>
+                        <td>{Number(item.potencial_mensal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
       <div className="clientes-leads-toolbar">
         <form className="clientes-search" onSubmit={event => event.preventDefault()}>
           <I.Search size={14} />
@@ -1333,7 +1630,9 @@ function FuturosClientesMainView() {
                             <dt>Notas</dt>
                             <dd>{linha.futuro_cliente_notas || '-'}</dd>
                             <dt>Retorno</dt>
-                            <dd>{linha.futuro_cliente_retorno ? formatarDataHora(linha.futuro_cliente_retorno) : '-'}</dd>
+                            <dd className={isRetornoFuturoClienteVencido(linha.futuro_cliente_retorno, agora) ? 'future-return-overdue' : ''}>
+                              {linha.futuro_cliente_retorno ? formatarDataHora(linha.futuro_cliente_retorno) : '-'}
+                            </dd>
                             <dt>{modoLixeira ? 'Enviado para lixeira' : 'Marcado em'}</dt>
                             <dd>{formatarDataHora(modoLixeira ? linha.futuro_cliente_excluido_em : linha.futuro_cliente_marcado_em)}</dd>
                             {modoLixeira && (
@@ -1366,7 +1665,7 @@ function FuturosClientesMainView() {
                       </td>
                       <td data-label="Retorno" className="m-meta">
                         {linha.futuro_cliente_retorno ? (
-                          <span className="pill success">
+                          <span className={`pill ${isRetornoFuturoClienteVencido(linha.futuro_cliente_retorno, agora) ? 'danger future-return-overdue' : 'success'}`}>
                             <span className="pill-dot"></span>
                             {formatarDataHora(linha.futuro_cliente_retorno)}
                           </span>
@@ -1455,6 +1754,12 @@ function FuturosClientesMainView() {
  */
 function FuturosClientesPage() {
   const [abaAtiva, setAbaAtiva] = useState('futuros');
+  const [agora, setAgora] = useState(() => Date.now());
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setAgora(Date.now()), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   return (
     <LayoutPrivado>
@@ -1477,9 +1782,9 @@ function FuturosClientesPage() {
         </div>
 
         {abaAtiva === 'leads' ? (
-          <LeadsRecebidosView />
+          <LeadsRecebidosView agora={agora} />
         ) : (
-          <FuturosClientesMainView />
+          <FuturosClientesMainView agora={agora} />
         )}
       </div>
     </LayoutPrivado>

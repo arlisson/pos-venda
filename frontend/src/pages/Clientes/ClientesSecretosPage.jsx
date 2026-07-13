@@ -1,10 +1,17 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
+import ClienteModal from './ClienteModal';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
-import { excluirClienteSecreto, listarClientesSecretos } from '../../services/cliente.service';
+import {
+  atualizarClienteSecreto,
+  criarClienteSecreto,
+  excluirClienteSecreto,
+  listarClientesSecretos,
+  verificarDocumentoClienteSecreto
+} from '../../services/cliente.service';
+import { listarOperadoras } from '../../services/config.service';
 import { useDebounce } from '../../utils/useDebounce';
 import './Clientes.css';
 
@@ -109,10 +116,25 @@ function normalizarBusca(valor) {
     .trim();
 }
 
+function formatarTelefoneOrigem(valor) {
+  const digitos = apenasDigitos(valor, 11);
+  if (!digitos) return '';
+  const ddd = digitos.slice(0, 2);
+  const numero = digitos.slice(2);
+  if (!ddd) return numero;
+  if (numero.length <= 4) return `(${ddd}) ${numero}`;
+  if (numero.length <= 8) return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
+  return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+}
+
 function formatarContato(cliente) {
+  const receita = formatarTelefoneOrigem(cliente.telefone_receita);
+  const google = formatarTelefoneOrigem(cliente.telefone_google);
   const whatsapp = formatarTelefone(cliente.whatsapp_ddd, cliente.whatsapp_numero);
   const fixo = formatarTelefone(cliente.fixo_ddd, cliente.fixo_numero);
-  return { whatsapp, fixo };
+  const principal = receita || google || whatsapp || fixo;
+  const todos = [receita, google, whatsapp, fixo].filter(Boolean);
+  return { receita, google, whatsapp, fixo, principal, todos };
 }
 
 function formatarMoeda(valor) {
@@ -196,7 +218,7 @@ function clienteCasaComBusca(cliente, campo, termo) {
   const campos = {
     cliente: [cliente.nome, cliente.razao_social],
     documento: [cliente.cnpj, cliente.cnpj_digitos],
-    telefone: [contato.whatsapp, contato.fixo, `${cliente.whatsapp_ddd || ''}${cliente.whatsapp_numero || ''}`, `${cliente.fixo_ddd || ''}${cliente.fixo_numero || ''}`],
+    telefone: [contato.receita, contato.google, contato.whatsapp, contato.fixo, cliente.telefone_receita, cliente.telefone_google, `${cliente.whatsapp_ddd || ''}${cliente.whatsapp_numero || ''}`, `${cliente.fixo_ddd || ''}${cliente.fixo_numero || ''}`],
     email: [cliente.email],
     responsavel: [cliente.responsavel_nome, cliente.responsavel_tipo],
     geral: [
@@ -206,6 +228,8 @@ function clienteCasaComBusca(cliente, campo, termo) {
       cliente.cnpj_digitos,
       cliente.email,
       cliente.responsavel_nome,
+      contato.receita,
+      contato.google,
       contato.whatsapp,
       contato.fixo
     ]
@@ -220,13 +244,16 @@ function clienteCasaComBusca(cliente, campo, termo) {
 }
 
 function ClientesSecretosPage() {
-  const navigate = useNavigate();
   const usuario = getUsuarioLocal();
   const usuarioId = Number(usuario?.id);
   const podeCriar = temPermissao(usuario, 'clientes_secretos_criar');
   const podeEditar = temPermissao(usuario, 'clientes_secretos_editar');
   const podeExcluir = temPermissao(usuario, 'clientes_secretos_excluir');
   const [clientes, setClientes] = useState([]);
+  const [operadoras, setOperadoras] = useState([]);
+  const [modalAberto, setModalAberto] = useState(false);
+  const [clienteModal, setClienteModal] = useState(null);
+  const [clienteCadastroDraft, setClienteCadastroDraft] = useState(null);
   const [buscaCampo, setBuscaCampo] = useState('geral');
   const [busca, setBusca] = useState('');
   const [responsavelTipo, setResponsavelTipo] = useState('');
@@ -285,8 +312,12 @@ function ClientesSecretosPage() {
     setErro('');
     setCarregando(true);
     try {
-      const dados = await listarClientesSecretos();
-      setClientes(Array.isArray(dados) ? dados : []);
+      const [clientesData, operadorasData] = await Promise.all([
+        listarClientesSecretos(),
+        listarOperadoras()
+      ]);
+      setClientes(Array.isArray(clientesData) ? clientesData : []);
+      setOperadoras(Array.isArray(operadorasData) ? operadorasData : []);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar leads.');
     } finally {
@@ -326,9 +357,27 @@ function ClientesSecretosPage() {
     return podeExcluir && podeGerenciarCliente(cliente);
   }
 
+  function abrirNovoLead() {
+    if (!podeCriar) return;
+    setClienteModal(null);
+    setModalAberto(true);
+  }
+
   function abrirCliente(cliente) {
     if (!podeEditarCliente(cliente)) return;
-    navigate(`/clientes-secretos/${cliente.id}/editar`);
+    setClienteModal(cliente);
+    setModalAberto(true);
+  }
+
+  async function salvarLead() {
+    const editando = Boolean(clienteModal);
+    setModalAberto(false);
+    setClienteModal(null);
+    if (!editando) {
+      setClienteCadastroDraft(null);
+    }
+    await carregar();
+    setSucesso(editando ? 'Lead atualizado com sucesso.' : 'Lead cadastrado com sucesso.');
   }
 
   async function excluir(cliente) {
@@ -352,6 +401,25 @@ function ClientesSecretosPage() {
 
   return (
     <LayoutPrivado>
+      {modalAberto && (
+        <ClienteModal
+          cliente={clienteModal}
+          operadoras={operadoras}
+          entidade="lead"
+          draftKey="cliente_secreto_novo"
+          criarFn={criarClienteSecreto}
+          atualizarFn={atualizarClienteSecreto}
+          verificarDocumentoFn={verificarDocumentoClienteSecreto}
+          initialDraft={clienteCadastroDraft}
+          onDraftChange={setClienteCadastroDraft}
+          onClose={() => {
+            setModalAberto(false);
+            setClienteModal(null);
+          }}
+          onSave={salvarLead}
+        />
+      )}
+
       {filtrosAbertos && (
         <div className="filtros-popup-overlay" onClick={() => setFiltrosAbertos(false)}>
           <div className="filtros-popup" onClick={event => event.stopPropagation()}>
@@ -445,7 +513,7 @@ function ClientesSecretosPage() {
             </button>
 
             {podeCriar && (
-              <button type="button" className="btn btn-primary" onClick={() => navigate('/clientes-secretos/novo')}>
+              <button type="button" className="btn btn-primary" onClick={abrirNovoLead}>
                 <I.Plus size={14} /> Novo lead
               </button>
             )}
@@ -523,7 +591,7 @@ function ClientesSecretosPage() {
                                 <dt>Responsavel</dt>
                                 <dd>{cliente.responsavel_tipo === 'adm' ? 'ADM' : 'RL'} {cliente.responsavel_nome || '-'}</dd>
                                 <dt>Contato</dt>
-                                <dd>{cliente.email || '-'} / {contato.whatsapp || contato.fixo || '-'}</dd>
+                                <dd>{cliente.email || '-'} / {contato.principal || '-'}</dd>
                                 <dt>Operadora</dt>
                                 <dd title={resumoOperadoras.detalhe}>{resumoOperadoras.titulo}</dd>
                                 <dt>Registrado por</dt>
@@ -564,7 +632,7 @@ function ClientesSecretosPage() {
                         <td data-label="Contato" className="m-secondary">
                           <div className="cliente-contact">
                             <span>{cliente.email || '-'}</span>
-                            <span>{contato.whatsapp || contato.fixo || '-'}</span>
+                            <span title={contato.todos.join(' / ')}>{contato.principal || '-'}</span>
                           </div>
                         </td>
                         <td data-label="Operadora" data-mobile-hidden="true">

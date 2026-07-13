@@ -9,7 +9,8 @@ export const PERMISSAO_POS_VENDA = {
 };
 export const PERMISSAO_GERENCIAR_PERMISSOES = 'gerenciar_permissoes';
 export const PERMISSOES_ADMIN_EXPLICITAS = new Set([
-  'clientes_secretos_ver_todos'
+  'clientes_secretos_ver_todos',
+  'clientes_antigos_ver_historico'
 ]);
 
 /**
@@ -364,6 +365,11 @@ export const GRUPOS_PERMISSOES = [
       {
         titulo: 'Gestão da base',
         itens: [
+          {
+            chave: 'clientes_antigos_editar',
+            nome: 'Editar registros',
+            descricao: 'Permite corrigir vendas antigas encontradas na tela de busca.'
+          },
           {
             chave: 'clientes_antigos_gerenciar',
             nome: 'Gerenciar base (upload)',
