@@ -222,6 +222,30 @@ export async function baixarPacoteArquivosVenda(vendaId) {
 }
 
 /**
+ * Lista as etapas de conferencia de uma venda.
+ */
+export async function listarEtapasVenda(vendaId) {
+  return apiGet(`/vendas/${vendaId}/etapas`);
+}
+
+/**
+ * Marca ou desmarca a etapa 1 (verificacao com o 0800).
+ */
+export async function atualizarEtapa0800(vendaId, concluida) {
+  return apiRequest(`/vendas/${vendaId}/etapas/0800`, {
+    method: 'PATCH',
+    body: JSON.stringify({ concluida: Boolean(concluida) })
+  });
+}
+
+/**
+ * Busca o conteudo de um arquivo da venda como blob (usado nas miniaturas das etapas).
+ */
+export async function blobArquivoVenda(vendaId, arquivoVendaId) {
+  return apiBlob(`/vendas/${vendaId}/arquivos/${arquivoVendaId}/view`);
+}
+
+/**
  * Cria venda com os dados informados.
  */
 export async function criarVenda(dados) {

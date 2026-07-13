@@ -4,6 +4,7 @@ const router = express.Router();
 const vendaController = require('../controllers/venda.controller');
 const vendaCruzamentoController = require('../controllers/venda-cruzamento.controller');
 const vendaArquivoController = require('../controllers/venda-arquivo.controller');
+const vendaEtapaController = require('../controllers/venda-etapa.controller');
 const vendaProblemaController = require('../controllers/venda-problema.controller');
 const vendaAprovacaoController = require('../controllers/venda-aprovacao.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
@@ -81,6 +82,18 @@ router.get('/:id/arquivos/pacote/download', exigirUmaPermissao(['vendas_document
 router.get('/:id/arquivos/:arquivoVendaId/download', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaArquivoController.download);
 router.get('/:id/arquivos/:arquivoVendaId/view', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaArquivoController.view);
 router.delete('/:id/arquivos/:arquivoVendaId', exigirUmaPermissao(['vendas_documentos']), exigirUmaPermissao(['vendas_editar', 'editar_vendas_compartilhadas']), vendaArquivoController.destroy);
+router.get('/:id/etapas', exigirUmaPermissao(['vendas_documentos', 'adicionar_documentos']), exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaEtapaController.index);
+router.patch(
+  '/:id/etapas/0800',
+  exigirUmaPermissao(['adicionar_documentos']),
+  auditar({
+    acao: 'venda.etapa_0800_atualizada',
+    entidade: 'vendas',
+    entidade_id: req => req.params.id,
+    dados: req => ({ concluida: Boolean(req.body?.concluida) })
+  }),
+  vendaEtapaController.update0800
+);
 router.get('/:id', exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']), vendaController.show);
 router.post(
   '/:id/email-template',

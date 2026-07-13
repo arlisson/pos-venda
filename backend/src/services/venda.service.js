@@ -1648,6 +1648,7 @@ async function listarEtapasFunilOrdenadas() {
         nome: etapa.nome,
         ordem: etapa.ordem,
         etapa_final: Boolean(etapa.etapa_final),
+        bloqueia_avanco: Boolean(etapa.bloqueia_avanco),
         retorno: false
       }));
     }
@@ -1658,6 +1659,7 @@ async function listarEtapasFunilOrdenadas() {
         id: status,
         nome: FUNIL_STATUS_LABELS[status] || status,
         ordem: index + 1,
+        bloqueia_avanco: false,
         retorno: false
       }));
   }
@@ -1669,6 +1671,7 @@ async function listarEtapasFunilOrdenadas() {
       nome: FUNIL_STATUS_LABELS[status] || status,
       etapa_final: status === 'concluido',
       ordem: index + 1,
+      bloqueia_avanco: false,
       retorno: false
     }));
 }
@@ -2927,6 +2930,41 @@ async function validarStatusFunil(status) {
 }
 
 /**
+ * Impede que a venda avance de uma etapa barreira com etapas de conferencia pendentes.
+ * Retorna a mensagem de bloqueio, ou null quando a movimentacao e permitida.
+ */
+async function validarBarreiraConferencia(venda, statusDestino) {
+  if (statusDestino === 'retorno' || venda.status_funil === 'retorno') {
+    return null;
+  }
+
+  const etapasFunil = await listarEtapasFunilOrdenadas();
+  const origem = etapasFunil.find(etapa => etapa.id === venda.status_funil);
+  const destino = etapasFunil.find(etapa => etapa.id === statusDestino);
+
+  if (!origem?.bloqueia_avanco) {
+    return null;
+  }
+
+  // A barreira so vale para avanco: voltar atras continua liberado.
+  if (!destino || Number(destino.ordem) <= Number(origem.ordem)) {
+    return null;
+  }
+
+  // Require tardio: venda-etapa.service depende de venda-arquivo.service, que importa este modulo.
+  const { etapasPendentes } = require('./venda-etapa.service');
+
+  const vendaComOperadora = await Venda.query().findById(venda.id).withGraphFetched('operadora');
+  const pendentes = etapasPendentes(vendaComOperadora);
+
+  if (pendentes.length === 0) {
+    return null;
+  }
+
+  return `Conclua as etapas de conferência antes de avançar: ${pendentes.map(etapa => etapa.titulo).join(', ')}.`;
+}
+
+/**
  * Atualiza status venda com os dados informados.
  */
 async function atualizarStatusVenda(id, dados, usuarioId) {
@@ -2973,6 +3011,12 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 
   if (!FUNIL_PRIORIDADES.includes(prioridade)) {
     return { status: 'invalid', message: 'Prioridade do funil invalida.' };
+  }
+
+  const bloqueioBarreira = await validarBarreiraConferencia(venda, status);
+
+  if (bloqueioBarreira) {
+    return { status: 'invalid', message: bloqueioBarreira };
   }
 
   if (status === 'retorno') {

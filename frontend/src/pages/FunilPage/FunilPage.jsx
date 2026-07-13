@@ -9,7 +9,7 @@ import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
 import { STAGES as FALLBACK_STAGES } from '../../config/constants';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import ClienteModal from '../Clientes/ClienteModal';
-import VendaModal from '../VendasPage/VendaModal';
+import VendaModal, { ArquivosVendaTab } from '../VendasPage/VendaModal';
 import VendaProblemaPanel from '../VendasPage/VendaProblemaPanel';
 import {
   WhatsappMensagemModal,
@@ -144,7 +144,8 @@ function normalizarEtapasFunil(etapas = [], usarFallback = true) {
         dot: id || `etapa_${index}`,
         ordem: Number(etapa.ordem ?? index),
         ativo: normalizarAtivo(etapa.ativo),
-        etapaFinal: Boolean(etapa.etapa_final || etapa.etapaFinal)
+        etapaFinal: Boolean(etapa.etapa_final || etapa.etapaFinal),
+        bloqueiaAvanco: Boolean(etapa.bloqueia_avanco || etapa.bloqueiaAvanco)
       };
     })
     .filter(etapa => etapa.id && etapa.name);
@@ -819,7 +820,7 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
 /**
  * Renderiza sale modal.
  */
-function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFullSale, openingFullSale, podeCancelar, podeReverterCancelamento, onCancelSale, onReverterCancelamento }) {
+function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFullSale, openingFullSale, podeCancelar, podeReverterCancelamento, onCancelSale, onReverterCancelamento, podeEditarVenda, podeVerDocumentos, podeAdicionarDocumentos }) {
   const [tab, setTab] = useState('info');
   const [novaFase, setNovaFase] = useState(sale.stage);
   const [novaPrioridade, setNovaPrioridade] = useState(sale.priority || 'media');
@@ -833,6 +834,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
   const [historicoCarregando, setHistoricoCarregando] = useState(false);
   const cancelada = Boolean(sale.canceladaEm);
   const priorityInfo = getPriorityInfo(sale.priority);
+  const podeAcessarDocumentos = Boolean(podeVerDocumentos || podeAdicionarDocumentos);
 
   useEffect(() => {
     let cancelado = false;
@@ -1003,6 +1005,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
           {[
             { id: 'info', label: 'Informações' },
             { id: 'historico', label: 'Histórico' },
+            ...(podeAcessarDocumentos ? [{ id: 'documentos', label: 'Documentos' }] : []),
             { id: 'status', label: 'Atualizar status' },
           ].map(t => (
             <button
@@ -1086,6 +1089,15 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
                 <SaleEventList sale={saleComHistorico} />
               )}
             </>
+          )}
+
+          {tab === 'documentos' && podeAcessarDocumentos && (
+            <ArquivosVendaTab
+              venda={{ id: sale.id }}
+              podeEditar={podeEditarVenda}
+              podeVisualizar={podeVerDocumentos}
+              podeAdicionar={podeAdicionarDocumentos}
+            />
           )}
 
           {tab === 'status' && (
@@ -1618,7 +1630,8 @@ const NOVA_ETAPA = {
   nome: '',
   ordem: 0,
   ativo: true,
-  etapa_final: false
+  etapa_final: false,
+  bloqueia_avanco: false
 };
 
 /**
@@ -2087,6 +2100,7 @@ function FunilPage() {
       await criarEtapaFunil({
         nome: newStage.nome.trim(),
         etapa_final: newStage.etapa_final,
+        bloqueia_avanco: newStage.bloqueia_avanco,
         ativo: true,
         ordem: stagesVisiveis.filter(s => s.adminId).length + 1
       });
@@ -2216,6 +2230,31 @@ function FunilPage() {
       await atualizarEtapasAposCrud(!stage.etapaFinal ? 'Etapa final definida.' : 'Etapa deixou de ser final.');
     } catch (err) {
       setStageFeedback({ type: 'error', message: err.message || 'Erro ao definir etapa final.' });
+    } finally {
+      setStageSavingId(null);
+    }
+  }
+
+  /**
+   * Trata o evento de toggle barrier stage.
+   */
+  async function handleToggleBarrierStage(stage) {
+    if (!stage.adminId) return;
+
+    setStageSavingId(stage.adminId);
+    setStageFeedback({ type: '', message: '' });
+
+    try {
+      await atualizarEtapaFunil(stage.adminId, {
+        bloqueia_avanco: !stage.bloqueiaAvanco
+      });
+      await atualizarEtapasAposCrud(
+        !stage.bloqueiaAvanco
+          ? 'Barreira definida: vendas nesta etapa só avançam com as etapas de conferência concluídas.'
+          : 'Barreira removida da etapa.'
+      );
+    } catch (err) {
+      setStageFeedback({ type: 'error', message: err.message || 'Erro ao definir barreira da etapa.' });
     } finally {
       setStageSavingId(null);
     }
@@ -2384,6 +2423,9 @@ function FunilPage() {
           podeReverterCancelamento={podeReverterCancelamentoVenda}
           onCancelSale={handleCancelarVenda}
           onReverterCancelamento={handleReverterCancelamentoVenda}
+          podeEditarVenda={podeEditarVenda}
+          podeVerDocumentos={podeVerDocumentosVenda}
+          podeAdicionarDocumentos={podeAdicionarDocumentosVenda}
         />
       )}
       {vendaCompleta && (
@@ -2605,6 +2647,18 @@ function FunilPage() {
                     />
                     Etapa final
                   </label>
+                  <label
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+                    title="Vendas nesta etapa só avançam com todas as etapas de conferência concluídas"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={newStage.bloqueia_avanco}
+                      onChange={event => setNewStage({ ...newStage, bloqueia_avanco: event.target.checked })}
+                      disabled={creatingStage}
+                    />
+                    Barreira de conferência
+                  </label>
                   <button type="submit" className="btn btn-primary btn-sm" disabled={creatingStage || !newStage.nome.trim()}>
                     {creatingStage ? 'Adicionando...' : 'Adicionar'}
                   </button>
@@ -2699,6 +2753,15 @@ function FunilPage() {
                       <span className="column-name">
                         {st.name}
                         {st.etapaFinal && <span className="tag" style={{ marginLeft: 6 }}>Final</span>}
+                        {st.bloqueiaAvanco && (
+                          <span
+                            className="tag"
+                            style={{ marginLeft: 6 }}
+                            title="Barreira: vendas só avançam com as etapas de conferência concluídas"
+                          >
+                            Barreira
+                          </span>
+                        )}
                       </span>
                     )}
                     <span className="column-count">{items.length}</span>
@@ -2746,6 +2809,15 @@ function FunilPage() {
                         disabled={stageSaving}
                       >
                         {editableStage.etapaFinal ? 'Remover final' : 'Etapa final'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        onClick={() => handleToggleBarrierStage(editableStage)}
+                        disabled={stageSaving}
+                        title="Vendas nesta etapa só avançam com todas as etapas de conferência concluídas"
+                      >
+                        {editableStage.bloqueiaAvanco ? 'Remover barreira' : 'Barreira'}
                       </button>
                       <button
                         type="button"

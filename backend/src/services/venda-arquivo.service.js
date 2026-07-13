@@ -32,6 +32,18 @@ const ALLOWED_TYPES = String(
   process.env.VENDA_ARQUIVOS_ALLOWED_TYPES || 'application/pdf,image/jpeg,image/png,image/webp'
 ).split(',').map(item => item.trim()).filter(Boolean);
 
+const CATEGORIAS_DOCUMENTO = ['contrato', 'documento', 'comprovante', 'outro'];
+const CATEGORIAS_ETAPA = ['etapa_abr', 'etapa_vivo'];
+const ALLOWED_TYPES_ETAPA = ['image/jpeg', 'image/png', 'image/webp'];
+
+/**
+ * Indica se a categoria informada e um comprovante de etapa de conferencia.
+ * Comprovantes de etapa ficam fora do ZIP e fora da retencao de 30 dias.
+ */
+function ehCategoriaEtapa(categoria) {
+  return CATEGORIAS_ETAPA.includes(String(categoria || ''));
+}
+
 /**
  * Busca escopo vendas conforme os parametros informados.
  */
@@ -182,6 +194,7 @@ async function listarArquivos(vendaId, usuarioId) {
   if (!podeVisualizarDocumentos) {
     return {
       arquivos: [],
+      etapas_arquivos: [],
       pacote: null,
       documentos_ocultos: true
     };
@@ -196,9 +209,11 @@ async function listarArquivos(vendaId, usuarioId) {
     .orderBy('id', 'asc');
 
   const pacote = await obterPacote(vendaId, usuarioId, { validarAcesso: false });
+  const formatados = arquivos.map(formatarArquivoVenda);
 
   return {
-    arquivos: arquivos.map(formatarArquivoVenda),
+    arquivos: formatados.filter(item => !ehCategoriaEtapa(item.categoria)),
+    etapas_arquivos: formatados.filter(item => ehCategoriaEtapa(item.categoria)),
     pacote
   };
 }
@@ -211,6 +226,7 @@ async function receberArquivoUpload(req, vendaId, usuarioId) {
 
   const totalAtivos = await VendaArquivo.query()
     .where('venda_id', vendaId)
+    .whereNotIn('categoria', CATEGORIAS_ETAPA)
     .whereNull('excluido_em')
     .resultSize();
 
@@ -233,8 +249,24 @@ async function receberArquivoUpload(req, vendaId, usuarioId) {
     throw error;
   }
 
+  const categoria = String(upload.campos?.categoria || '');
+  const etapa = ehCategoriaEtapa(categoria);
+
+  if (etapa && !ALLOWED_TYPES_ETAPA.includes(upload.mimeType)) {
+    await fs.promises.unlink(upload.tempPath).catch(() => {});
+    const error = new Error('A etapa aceita apenas imagens (JPG, PNG ou WEBP).');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const arquivoVenda = await salvarArquivoVenda(vendaId, usuarioId, upload);
-  await marcarPacoteDesatualizado(vendaId);
+
+  if (etapa) {
+    const vendaEtapaService = require('./venda-etapa.service');
+    await vendaEtapaService.sincronizarEtapaPorArquivos(vendaId, categoria, usuarioId);
+  } else {
+    await marcarPacoteDesatualizado(vendaId);
+  }
 
   return arquivoVenda;
 }
@@ -254,7 +286,7 @@ async function salvarArquivoVenda(vendaId, usuarioId, upload) {
     venda_id: Number(vendaId),
     arquivo_id: arquivo.id,
     nome_original: upload.nomeOriginal,
-    categoria: ['contrato', 'documento', 'comprovante', 'outro'].includes(upload.campos.categoria)
+    categoria: [...CATEGORIAS_DOCUMENTO, ...CATEGORIAS_ETAPA].includes(upload.campos.categoria)
       ? upload.campos.categoria
       : 'outro',
     descricao: upload.campos.descricao ? String(upload.campos.descricao).slice(0, 500) : null,
@@ -318,7 +350,7 @@ async function prepararDownloadArquivo(vendaId, arquivoVendaId, usuarioId) {
  * Exclui arquivo venda conforme a regra de negocio.
  */
 async function excluirArquivoVenda(vendaId, arquivoVendaId, usuarioId) {
-  await buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId);
+  const vinculo = await buscarVinculoArquivo(vendaId, arquivoVendaId, usuarioId);
 
   const total = await VendaArquivo.query()
     .patch({
@@ -330,7 +362,12 @@ async function excluirArquivoVenda(vendaId, arquivoVendaId, usuarioId) {
     .whereNull('excluido_em');
 
   if (total > 0) {
-    await marcarPacoteDesatualizado(vendaId);
+    if (ehCategoriaEtapa(vinculo.categoria)) {
+      const vendaEtapaService = require('./venda-etapa.service');
+      await vendaEtapaService.sincronizarEtapaPorArquivos(vendaId, vinculo.categoria, usuarioId);
+    } else {
+      await marcarPacoteDesatualizado(vendaId);
+    }
   }
 
   return total;
@@ -413,6 +450,7 @@ async function gerarPacoteVenda(vendaId, usuarioId, pacoteId = null) {
   try {
     const arquivos = await VendaArquivo.query()
       .where('venda_id', vendaId)
+      .whereNotIn('categoria', CATEGORIAS_ETAPA)
       .whereNull('excluido_em')
       .withGraphFetched('arquivo')
       .orderBy('ordem', 'asc')
@@ -449,6 +487,7 @@ async function gerarPacoteVenda(vendaId, usuarioId, pacoteId = null) {
         updated_at: formatarDateTimeSQL()
       })
       .where('venda_id', vendaId)
+      .whereNotIn('categoria', CATEGORIAS_ETAPA)
       .whereNull('excluido_em');
 
     return formatarPacote(pronto);
@@ -606,6 +645,10 @@ async function limparArquivosIndividuaisVencidos() {
 }
 
 module.exports = {
+  CATEGORIAS_DOCUMENTO,
+  CATEGORIAS_ETAPA,
+  ehCategoriaEtapa,
+  garantirAcessoVenda,
   listarArquivos,
   receberArquivoUpload,
   prepararDownloadArquivo,

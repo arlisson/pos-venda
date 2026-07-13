@@ -112,6 +112,16 @@ class Venda extends Model {
         tipo_venda_id: { type: ['integer', 'null'] },
         servico_id: { type: ['integer', 'null'] },
 
+        etapa_0800_concluida: { type: 'boolean' },
+        etapa_0800_concluida_em: { type: ['string', 'null'] },
+        etapa_0800_concluida_por_id: { type: ['integer', 'null'] },
+        etapa_abr_concluida: { type: 'boolean' },
+        etapa_abr_concluida_em: { type: ['string', 'null'] },
+        etapa_abr_concluida_por_id: { type: ['integer', 'null'] },
+        etapa_vivo_concluida: { type: 'boolean' },
+        etapa_vivo_concluida_em: { type: ['string', 'null'] },
+        etapa_vivo_concluida_por_id: { type: ['integer', 'null'] },
+
         status_funil: { type: ['string', 'null'], maxLength: 40 },
         prioridade_funil: { type: 'string', maxLength: 20 },
         status_anterior_retorno: { type: ['string', 'null'], maxLength: 40 },
