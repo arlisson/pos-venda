@@ -1,5 +1,5 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal, flushSync } from 'react-dom';
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -1521,6 +1521,123 @@ function DeleteStageModal({ stage, saving, onClose, onConfirm }) {
 }
 
 /**
+ * Renderiza o menu de acoes de uma etapa do funil, em portal para nao ser cortado
+ * pelo overflow da coluna.
+ */
+function StageMenu({ stage, disabled, onRename, onToggleFinal, onToggleBarrier, onToggleActive, onDelete }) {
+  const [aberto, setAberto] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+
+  /**
+   * Calcula a posicao do menu ancorada no gatilho, com flip quando falta espaco.
+   */
+  function calcularPosicao() {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const altura = menuRef.current?.offsetHeight || 200;
+    const largura = menuRef.current?.offsetWidth || 210;
+    const abreParaCima = rect.bottom + 4 + altura > window.innerHeight && rect.top - 4 - altura > 0;
+    setMenuPos({
+      top: abreParaCima ? rect.top - 4 - altura : rect.bottom + 4,
+      left: Math.max(8, Math.min(rect.right - largura, window.innerWidth - largura - 8))
+    });
+  }
+
+  useLayoutEffect(() => {
+    if (aberto) calcularPosicao();
+  }, [aberto]);
+
+  useEffect(() => {
+    if (!aberto) return;
+
+    /**
+     * Fecha o menu ao clicar fora do gatilho e do proprio menu.
+     */
+    function fecharFora(e) {
+      if (!triggerRef.current?.contains(e.target) && !menuRef.current?.contains(e.target)) {
+        setAberto(false);
+      }
+    }
+
+    /**
+     * Fecha o menu ao pressionar Escape.
+     */
+    function fecharEsc(e) {
+      if (e.key === 'Escape') setAberto(false);
+    }
+
+    document.addEventListener('mousedown', fecharFora);
+    document.addEventListener('keydown', fecharEsc);
+    window.addEventListener('resize', calcularPosicao);
+    window.addEventListener('scroll', calcularPosicao, true);
+
+    return () => {
+      document.removeEventListener('mousedown', fecharFora);
+      document.removeEventListener('keydown', fecharEsc);
+      window.removeEventListener('resize', calcularPosicao);
+      window.removeEventListener('scroll', calcularPosicao, true);
+    };
+  }, [aberto]);
+
+  /**
+   * Fecha o menu e dispara a acao escolhida.
+   */
+  function executar(acao) {
+    setAberto(false);
+    acao();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={triggerRef}
+        className={`btn btn-icon btn-ghost column-menu-btn${aberto ? ' is-open' : ''}`}
+        onClick={() => setAberto(v => !v)}
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={aberto}
+        title="Ações da etapa"
+      >
+        <I.More size={14} />
+      </button>
+
+      {aberto && createPortal(
+        <div className="stage-menu" ref={menuRef} role="menu" style={{ top: menuPos.top, left: menuPos.left }}>
+          <button type="button" role="menuitem" className="stage-menu__item" onClick={() => executar(onRename)}>
+            <I.Edit size={13} /> Renomear
+          </button>
+          <button type="button" role="menuitem" className="stage-menu__item" onClick={() => executar(onToggleFinal)}>
+            <I.Flag size={13} /> {stage.etapaFinal ? 'Remover etapa final' : 'Marcar como etapa final'}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="stage-menu__item"
+            onClick={() => executar(onToggleBarrier)}
+            title="Vendas nesta etapa só avançam com todas as etapas de conferência concluídas"
+          >
+            <I.Shield size={13} /> {stage.bloqueiaAvanco ? 'Remover barreira' : 'Ativar barreira'}
+          </button>
+
+          <div className="stage-menu__sep" />
+
+          <button type="button" role="menuitem" className="stage-menu__item" onClick={() => executar(onToggleActive)}>
+            <I.EyeOff size={13} /> {stage.ativo === false ? 'Reativar etapa' : 'Desativar etapa'}
+          </button>
+          <button type="button" role="menuitem" className="stage-menu__item is-danger" onClick={() => executar(onDelete)}>
+            <I.Trash size={13} /> Excluir etapa
+          </button>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
+/**
  * Renderiza sale card.
  */
 function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, onXlsxClaro, baixandoXlsxId, onWhatsapp, onProblema, podeOperarPosVenda }) {
@@ -2132,6 +2249,14 @@ function FunilPage() {
   }
 
   /**
+   * Cancela a edicao inline do nome, restaurando o valor original.
+   */
+  function cancelarEdicaoEtapa(stage) {
+    setEditingStageId(null);
+    setEditStageNames(prev => ({ ...prev, [stage.adminId]: stage.name }));
+  }
+
+  /**
    * Trata o evento de save stage name.
    */
   async function handleSaveStageName(stage) {
@@ -2734,110 +2859,83 @@ function FunilPage() {
                         {...dragListeners}
                         className="drag-handle"
                         title="Arrastar para reordenar"
-                        style={{ cursor: 'grab', display: 'flex', alignItems: 'center', color: 'var(--text-3)', flexShrink: 0 }}
                       >
                         <I.GripVertical size={12} />
                       </span>
                     )}
                     <span className={`column-dot ${st.dot}`}></span>
                     {isEditingStage ? (
-                      <input
-                        className="column-name-input"
-                        value={editValue}
-                        onChange={event => setEditStageNames(prev => ({ ...prev, [editableStage.adminId]: event.target.value }))}
-                        disabled={stageSaving}
-                        autoFocus
-                        aria-label={`Editar nome da etapa ${editableStage.name}`}
-                      />
+                      <>
+                        <input
+                          className="column-name-input"
+                          value={editValue}
+                          onChange={event => setEditStageNames(prev => ({ ...prev, [editableStage.adminId]: event.target.value }))}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter' && editChanged && !stageSaving) handleSaveStageName(editableStage);
+                            if (event.key === 'Escape') cancelarEdicaoEtapa(editableStage);
+                          }}
+                          disabled={stageSaving}
+                          autoFocus
+                          aria-label={`Editar nome da etapa ${editableStage.name}`}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-icon btn-ghost column-edit-btn"
+                          onClick={() => handleSaveStageName(editableStage)}
+                          disabled={stageSaving || !editChanged}
+                          title="Salvar nome"
+                        >
+                          <I.Check size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-icon btn-ghost column-edit-btn"
+                          onClick={() => cancelarEdicaoEtapa(editableStage)}
+                          disabled={stageSaving}
+                          title="Cancelar edição"
+                        >
+                          <I.Close size={13} />
+                        </button>
+                      </>
                     ) : (
-                      <span className="column-name">
-                        {st.name}
-                        {st.etapaFinal && <span className="tag" style={{ marginLeft: 6 }}>Final</span>}
-                        {st.bloqueiaAvanco && (
-                          <span
-                            className="tag"
-                            style={{ marginLeft: 6 }}
-                            title="Barreira: vendas só avançam com as etapas de conferência concluídas"
-                          >
-                            Barreira
+                      <>
+                        <span className="column-name" title={st.name}>{st.name}</span>
+                        {(st.etapaFinal || st.bloqueiaAvanco) && (
+                          <span className="column-flags">
+                            {st.etapaFinal && (
+                              <span className="column-flag is-final" title="Etapa final" aria-label="Etapa final">
+                                <I.Flag size={12} />
+                              </span>
+                            )}
+                            {st.bloqueiaAvanco && (
+                              <span
+                                className="column-flag is-barrier"
+                                title="Barreira: vendas só avançam com as etapas de conferência concluídas"
+                                aria-label="Barreira"
+                              >
+                                <I.Shield size={12} />
+                              </span>
+                            )}
                           </span>
                         )}
-                      </span>
-                    )}
-                    <span className="column-count">{items.length}</span>
-                    {canEditStage && !isEditingStage && (
-                      <button
-                        type="button"
-                        className="btn btn-icon btn-ghost column-edit-btn"
-                        onClick={() => {
-                          setEditingStageId(editableStage.adminId);
-                          setEditStageNames(prev => ({ ...prev, [editableStage.adminId]: editableStage.name }));
-                        }}
-                        title="Editar etapa"
-                      >
-                        <I.Edit size={12} />
-                      </button>
+                        <span className="column-count">{items.length}</span>
+                        {canEditStage && (
+                          <StageMenu
+                            stage={editableStage}
+                            disabled={stageSaving}
+                            onRename={() => {
+                              setEditingStageId(editableStage.adminId);
+                              setEditStageNames(prev => ({ ...prev, [editableStage.adminId]: editableStage.name }));
+                            }}
+                            onToggleFinal={() => handleToggleFinalStage(editableStage)}
+                            onToggleBarrier={() => handleToggleBarrierStage(editableStage)}
+                            onToggleActive={() => handleToggleStage(editableStage)}
+                            onDelete={() => setStageToDelete({ ...editableStage, vendasCount: items.length })}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
-                  {isEditingStage && (
-                    <div className="column-stage-actions">
-                      <button
-                        type="button"
-                        className="btn btn-icon btn-ghost"
-                        onClick={() => handleSaveStageName(editableStage)}
-                        disabled={stageSaving || !editChanged}
-                        title="Salvar nome"
-                      >
-                        <I.Check size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-icon btn-ghost"
-                        onClick={() => {
-                          setEditingStageId(null);
-                          setEditStageNames(prev => ({ ...prev, [editableStage.adminId]: editableStage.name }));
-                        }}
-                        disabled={stageSaving}
-                        title="Cancelar edicao"
-                      >
-                        <I.Close size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm"
-                        onClick={() => handleToggleFinalStage(editableStage)}
-                        disabled={stageSaving}
-                      >
-                        {editableStage.etapaFinal ? 'Remover final' : 'Etapa final'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm"
-                        onClick={() => handleToggleBarrierStage(editableStage)}
-                        disabled={stageSaving}
-                        title="Vendas nesta etapa só avançam com todas as etapas de conferência concluídas"
-                      >
-                        {editableStage.bloqueiaAvanco ? 'Remover barreira' : 'Barreira'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm"
-                        onClick={() => handleToggleStage(editableStage)}
-                        disabled={stageSaving}
-                      >
-                        {editableStage.ativo === false ? 'Reativar' : 'Desativar'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-icon btn-ghost btn-danger-icon"
-                        onClick={() => setStageToDelete({ ...editableStage, vendasCount: items.length })}
-                        disabled={stageSaving}
-                        title="Excluir etapa"
-                      >
-                        <I.Trash size={13} />
-                      </button>
-                    </div>
-                  )}
                   <div className="column-total">
                     <span className="label">Total</span>
                     <span className="value">{formatBRL(colTotal)}</span>
