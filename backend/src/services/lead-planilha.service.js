@@ -463,12 +463,32 @@ async function listarPlanilhas() {
     .orderBy('created_at', 'desc')
     .orderBy('id', 'desc');
 
+  const planilhaIds = planilhas.map(planilha => Number(planilha.id)).filter(Boolean);
+  const enviadosPorPlanilha = new Map();
+  if (planilhaIds.length > 0) {
+    const totais = await LeadLinha.query()
+      .select('planilha_id')
+      .count('id as total_enviados')
+      .whereIn('planilha_id', planilhaIds)
+      .whereNotNull('envio_id')
+      .groupBy('planilha_id');
+    totais.forEach(item => enviadosPorPlanilha.set(Number(item.planilha_id), Number(item.total_enviados || 0)));
+  }
+
   const reconciliadas = [];
   for (const planilha of planilhas) {
     reconciliadas.push(await reconciliarPlanilhaProcessando(planilha));
   }
 
-  return reconciliadas.map(formatarPlanilha);
+  return reconciliadas.map(planilha => {
+    const formatada = formatarPlanilha(planilha);
+    const totalEnviados = enviadosPorPlanilha.get(Number(formatada.id)) || 0;
+    return {
+      ...formatada,
+      total_enviados: totalEnviados,
+      total_pendentes: Math.max(0, formatada.total_linhas - totalEnviados)
+    };
+  });
 }
 
 /**
@@ -1849,6 +1869,8 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
     throw criarHttpError(403, 'Você não pode atualizar este lead.');
   }
 
+  const razaoSocial = String(dados.razao_social || '').trim().slice(0, 240) || null;
+  const cnpj = String(dados.cnpj || '').trim().slice(0, 20) || null;
   const contatoNome = String(dados.contato_nome || '').trim();
   const contatoTipo = String(dados.contato_tipo || '').trim().toLowerCase();
   const operadoraAtualId = Number(dados.operadora_atual_id || 0);
@@ -1901,6 +1923,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
 
     const sondagem = {
       lead_linha_id: Number(linhaId), atribuicao_id: atribuicao.id, usuario_id: usuarioId,
+      razao_social: razaoSocial, cnpj,
       contato_nome: contatoNome, contato_tipo: contatoTipo, operadora_atual_id: operadoraAtualId,
       quantidade_chips: quantidadeChips, chips_itens: JSON.stringify(chipsItens), preco_por_chip: precoPorChip,
       valor_mensal_estimado: valorMensalEstimado, whatsapp_ddd: whatsappDdd,
@@ -1979,7 +2002,8 @@ async function obterMetricasFuturosClientes(filtros = {}) {
     .count({ qualificados: 'll.id' })
     .sum({ potencial_mensal: 'ls.valor_mensal_estimado' })
     .sum({ distribuidos_venda: db.raw("CASE WHEN ll.status_operacional IN ('distribuido_venda', 'vendido', 'perdido') THEN 1 ELSE 0 END") })
-    .sum({ vendidos: db.raw("CASE WHEN ll.status_operacional = 'vendido' OR ll.venda_id IS NOT NULL THEN 1 ELSE 0 END") });
+    .sum({ vendidos: db.raw("CASE WHEN ll.status_operacional = 'vendido' OR ll.venda_id IS NOT NULL THEN 1 ELSE 0 END") })
+    .sum({ recusados: db.raw("CASE WHEN ll.status_operacional = 'perdido' THEN 1 ELSE 0 END") });
 
   if (filtros.agrupar_por === 'dia') {
     query
@@ -2054,12 +2078,12 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
   const periodo = descricaoPeriodoProdutividade(filtrosPeriodo);
 
   const wsResumo = workbook.addWorksheet('Resumo por consultor');
-  wsResumo.mergeCells('A1:F1');
+  wsResumo.mergeCells('A1:G1');
   wsResumo.getCell('A1').value = 'Produtividade da primeira ligação';
-  wsResumo.mergeCells('A2:F2');
+  wsResumo.mergeCells('A2:G2');
   wsResumo.getCell('A2').value = periodo;
   wsResumo.addRow([]);
-  wsResumo.addRow(['CONSULTOR', 'LIGAÇÕES FEITAS', 'ENVIADOS PARA VENDA', 'VENDAS ORIGINADAS', 'CONVERSÃO', 'POTENCIAL MENSAL']);
+  wsResumo.addRow(['CONSULTOR', 'LIGAÇÕES FEITAS', 'ENVIADOS PARA VENDA', 'VENDAS CONCLUÍDAS', 'VENDAS RECUSADAS', 'CONVERSÃO', 'POTENCIAL MENSAL']);
   resumo.forEach(item => {
     const ligacoes = Number(item.qualificados || 0);
     const vendas = Number(item.vendidos || 0);
@@ -2068,6 +2092,7 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
       ligacoes,
       Number(item.distribuidos_venda || 0),
       vendas,
+      Number(item.recusados || 0),
       ligacoes ? vendas / ligacoes : 0,
       Number(item.potencial_mensal || 0)
     ]);
@@ -2076,32 +2101,34 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
     ligacoes: acc.ligacoes + Number(item.qualificados || 0),
     distribuidos: acc.distribuidos + Number(item.distribuidos_venda || 0),
     vendas: acc.vendas + Number(item.vendidos || 0),
+    recusadas: acc.recusadas + Number(item.recusados || 0),
     potencial: acc.potencial + Number(item.potencial_mensal || 0)
-  }), { ligacoes: 0, distribuidos: 0, vendas: 0, potencial: 0 });
+  }), { ligacoes: 0, distribuidos: 0, vendas: 0, recusadas: 0, potencial: 0 });
   const linhaTotal = wsResumo.addRow([
     'TOTAL',
     totais.ligacoes,
     totais.distribuidos,
     totais.vendas,
+    totais.recusadas,
     totais.ligacoes ? totais.vendas / totais.ligacoes : 0,
     totais.potencial
   ]);
   wsResumo.columns = [
-    { width: 30 }, { width: 18 }, { width: 23 }, { width: 21 }, { width: 14 }, { width: 20 }
+    { width: 30 }, { width: 18 }, { width: 23 }, { width: 21 }, { width: 18 }, { width: 14 }, { width: 20 }
   ];
-  wsResumo.getColumn(5).numFmt = '0.0%';
-  wsResumo.getColumn(6).numFmt = 'R$ #,##0.00';
-  estilizarPlanilhaProdutividade(wsResumo, 6);
+  wsResumo.getColumn(6).numFmt = '0.0%';
+  wsResumo.getColumn(7).numFmt = 'R$ #,##0.00';
+  estilizarPlanilhaProdutividade(wsResumo, 7);
   linhaTotal.font = { bold: true };
   linhaTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
 
   const wsDiario = workbook.addWorksheet('Detalhamento diário');
-  wsDiario.mergeCells('A1:G1');
+  wsDiario.mergeCells('A1:H1');
   wsDiario.getCell('A1').value = 'Detalhamento diário da primeira ligação';
-  wsDiario.mergeCells('A2:G2');
+  wsDiario.mergeCells('A2:H2');
   wsDiario.getCell('A2').value = periodo;
   wsDiario.addRow([]);
-  wsDiario.addRow(['DATA', 'CONSULTOR', 'LIGAÇÕES FEITAS', 'ENVIADOS PARA VENDA', 'VENDAS ORIGINADAS', 'CONVERSÃO', 'POTENCIAL MENSAL']);
+  wsDiario.addRow(['DATA', 'CONSULTOR', 'LIGAÇÕES FEITAS', 'ENVIADOS PARA VENDA', 'VENDAS CONCLUÍDAS', 'VENDAS RECUSADAS', 'CONVERSÃO', 'POTENCIAL MENSAL']);
   diario.forEach(item => {
     const ligacoes = Number(item.qualificados || 0);
     const vendas = Number(item.vendidos || 0);
@@ -2112,17 +2139,17 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
       ligacoes,
       Number(item.distribuidos_venda || 0),
       vendas,
+      Number(item.recusados || 0),
       ligacoes ? vendas / ligacoes : 0,
       Number(item.potencial_mensal || 0)
     ]);
   });
   wsDiario.columns = [
-    { width: 14 }, { width: 30 }, { width: 18 }, { width: 23 }, { width: 21 }, { width: 14 }, { width: 20 }
+    { width: 14 }, { width: 30 }, { width: 18 }, { width: 23 }, { width: 21 }, { width: 18 }, { width: 14 }, { width: 20 }
   ];
-  wsDiario.getColumn(6).numFmt = '0.0%';
-  wsDiario.getColumn(7).numFmt = 'R$ #,##0.00';
-  estilizarPlanilhaProdutividade(wsDiario, 7);
-
+  wsDiario.getColumn(7).numFmt = '0.0%';
+  wsDiario.getColumn(8).numFmt = 'R$ #,##0.00';
+  estilizarPlanilhaProdutividade(wsDiario, 8);
   const sufixo = filtros.data_inicio || filtros.data_fim
     ? `${filtros.data_inicio || 'inicio'}-a-${filtros.data_fim || 'hoje'}`
     : 'todo-periodo';
@@ -2219,6 +2246,7 @@ async function vincularVendaAoLead(linhaId, vendaId, usuarioId) {
   await LeadLinha.transaction(async trx => {
     await LeadLinha.query(trx).patchAndFetchById(linha.id, {
       venda_id: Number(vendaId), cliente_id: venda.cliente_id || null,
+      venda_recusada_motivo: null, venda_recusada_em: null, venda_recusada_por_id: null,
       etapa_atual: 'venda', status_operacional: 'vendido'
     });
     const atribuicao = await LeadAtribuicao.query(trx)
@@ -2231,6 +2259,58 @@ async function vincularVendaAoLead(linhaId, vendaId, usuarioId) {
     }
   });
   return { linha_id: Number(linhaId), venda_id: Number(vendaId), cliente_id: venda.cliente_id || null };
+}
+
+async function marcarVendaRecusadaLead(linhaId, usuarioId, dados = {}) {
+  const motivo = String(dados.motivo || dados.venda_recusada_motivo || '').trim();
+  if (!motivo) throw criarHttpError(400, 'Informe o motivo da venda recusada.');
+  if (motivo.length > 1000) throw criarHttpError(400, 'O motivo da venda recusada deve ter no maximo 1000 caracteres.');
+
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
+  }
+  if (!linha.futuro_cliente || linha.futuro_cliente_excluido_em) {
+    throw criarHttpError(400, 'Somente futuros clientes ativos podem ter venda recusada.');
+  }
+  if (linha.venda_id || linha.status_operacional === 'vendido') {
+    throw criarHttpError(409, 'Este futuro cliente ja possui venda registrada.');
+  }
+
+  await LeadLinha.transaction(async trx => {
+    const recusadaEm = formatarDateTimeSQL();
+    await LeadLinha.query(trx).patchAndFetchById(linha.id, {
+      venda_recusada_motivo: motivo,
+      venda_recusada_em: recusadaEm,
+      venda_recusada_por_id: usuarioId,
+      etapa_atual: 'venda',
+      status_operacional: 'perdido'
+    });
+
+    let atribuicao = await LeadAtribuicao.query(trx)
+      .where({ lead_linha_id: linha.id, usuario_id: usuarioId, etapa: 'venda' })
+      .orderBy('id', 'desc').first();
+    if (!atribuicao) {
+      atribuicao = await LeadAtribuicao.query(trx).insertAndFetch({
+        lead_linha_id: linha.id,
+        envio_id: linha.envio_id,
+        usuario_id: usuarioId,
+        etapa: 'venda',
+        status: 'atribuido',
+        criado_por_id: usuarioId
+      });
+    }
+    await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
+      status: 'perdido', motivo_resultado: motivo, finalizado_em: recusadaEm
+    });
+  });
+
+  const atualizada = await LeadLinha.query()
+    .findById(linha.id)
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, usuario]]')
+    .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
+
+  return { linha: formatarLinha(atualizada) };
 }
 
 /**
@@ -2381,6 +2461,7 @@ module.exports = {
   obterMetricasFuturosClientes,
   gerarXlsxProdutividadePrimeiraLigacao,
   vincularVendaAoLead,
+  marcarVendaRecusadaLead,
   listarFuturosClientesLixeira,
   enviarFuturoClienteParaLixeira,
   restaurarFuturoCliente,

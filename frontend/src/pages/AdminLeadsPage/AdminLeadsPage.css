@@ -256,9 +256,33 @@
   background: #2563eb;
 }
 
+.lead-doc-preview__progress {
+  width: 100%;
+  height: 4px;
+  margin-top: auto;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+
+.lead-doc-preview__progress::after {
+  display: block;
+  width: var(--progresso-envio, 0%);
+  height: 100%;
+  content: '';
+  border-radius: inherit;
+  background: #2563eb;
+  transition: width 0.2s ease;
+}
+
 .lead-doc-card:hover .lead-doc-preview span:first-child,
 .lead-doc-card:focus-visible .lead-doc-preview span:first-child {
   width: 34px;
+}
+
+.lead-doc-card__distribution {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .lead-doc-empty {
@@ -620,12 +644,30 @@
   border-color: #93c5fd;
 }
 
+.lead-send-status.refused {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
 .lead-table tbody tr.lead-admin-row-sold td {
   background: color-mix(in srgb, #2563eb 6%, var(--surface));
 }
 
 .lead-table tbody tr.lead-admin-row-sold:hover td {
   background: color-mix(in srgb, #2563eb 11%, var(--surface-2));
+}
+
+.lead-table tbody tr.lead-admin-row-refused td {
+  background: color-mix(in srgb, #dc2626 7%, var(--surface));
+}
+
+.lead-table tbody tr.lead-admin-row-refused:hover td {
+  background: color-mix(in srgb, #dc2626 12%, var(--surface-2));
+}
+
+.lead-table tbody tr.lead-admin-row-refused td:first-child {
+  box-shadow: inset 3px 0 0 #dc2626;
 }
 
 .lead-pagination {

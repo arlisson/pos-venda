@@ -331,6 +331,15 @@ async function vincularVenda(req, res) {
   }
 }
 
+async function marcarVendaRecusada(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarVendaRecusadaLead(req.params.id, req.usuario.id, req.body || {}));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao marcar venda recusada.' });
+  }
+}
+
 /**
  * Lista futuros clientes lixeira conforme os filtros e parametros informados.
  */
@@ -426,6 +435,7 @@ module.exports = {
   metricasFuturosClientes,
   exportarMetricasFuturosClientes,
   vincularVenda,
+  marcarVendaRecusada,
   listarFuturosClientesLixeira,
   excluirFuturoCliente,
   restaurarFuturoCliente,

@@ -264,6 +264,10 @@ export function vincularVendaLead(linhaId, vendaId) {
   return apiPost(`/lead-planilhas/me/linhas/${linhaId}/venda`, { venda_id: vendaId });
 }
 
+export function marcarVendaRecusadaLead(linhaId, motivo) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/venda-recusada`, { motivo });
+}
+
 export function listarQuadroFuturosClientes(filtros = {}) {
   return apiGet(`/lead-planilhas/futuros-clientes${montarQuery(filtros)}`);
 }

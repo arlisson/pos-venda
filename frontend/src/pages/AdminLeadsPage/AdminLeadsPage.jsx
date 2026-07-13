@@ -122,6 +122,10 @@ function getStatusDistribuicao(linha) {
     : 'Não enviado';
 }
 
+function isLeadVendaRecusada(linha) {
+  return Boolean(linha?.status_operacional === 'perdido' || linha?.venda_recusada_em || linha?.venda_recusada_motivo);
+}
+
 /**
  * Formata numero para exibicao ou envio.
  */
@@ -1473,13 +1477,23 @@ function AdminLeadsPage() {
                 </button>
                 <div className="lead-doc-preview">
                   <span></span><span></span><span></span><span></span>
+                  <i
+                    className="lead-doc-preview__progress"
+                    style={{ '--progresso-envio': `${Math.min(100, Math.round((Number(planilha.total_enviados || 0) / Math.max(1, Number(planilha.total_linhas || 0))) * 100))}%` }}
+                    aria-hidden="true"
+                  ></i>
                 </div>
                 <strong title={planilha.nome}>{planilha.nome}</strong>
                 <small>
                   {planilha.status === 'processando'
                     ? 'Processando...'
-                    : `${planilha.total_linhas} ${planilha.total_linhas === 1 ? 'linha' : 'linhas'}`}
+                    : `${planilha.total_linhas} ${planilha.total_linhas === 1 ? 'cliente' : 'clientes'}`}
                 </small>
+                {planilha.status !== 'processando' && (
+                  <small className="lead-doc-card__distribution">
+                    {planilha.total_enviados || 0} enviados - {planilha.total_pendentes || 0} pendentes
+                  </small>
+                )}
               </div>
             ))}
 
@@ -1623,7 +1637,14 @@ function AdminLeadsPage() {
                   <tr><td colSpan={colunas.length + 4} className="muted">Selecione uma planilha para visualizar o mailing.</td></tr>
                 ) : (
                   linhasPagina.map(linha => (
-                    <tr key={linha.id} className={linha.venda_id || linha.status_operacional === 'vendido' || linha.possui_venda_cliente ? 'lead-admin-row-sold' : ''}>
+                    <tr
+                      key={linha.id}
+                      className={
+                        isLeadVendaRecusada(linha)
+                          ? 'lead-admin-row-refused'
+                          : (linha.venda_id || linha.status_operacional === 'vendido' || linha.possui_venda_cliente ? 'lead-admin-row-sold' : '')
+                      }
+                    >
                       <td><span className="tag">{linha.planilha?.nome || '-'}</span></td>
                       <td>
                         <div className="lead-status-stack">
@@ -1631,10 +1652,15 @@ function AdminLeadsPage() {
                             {getStatusDistribuicao(linha)}
                           </span>
                           {Boolean(linha.futuro_cliente) && !linha.futuro_cliente_excluido_em && (
-                            <span className="lead-send-status qualified" title="Qualificado para futuro cliente">Qualificado</span>
+                            <span className="lead-send-status qualified" title="Qualificado para venda">Qualificado venda</span>
                           )}
                           {(Boolean(linha.venda_id) || linha.status_operacional === 'vendido' || linha.possui_venda_cliente) && (
                             <span className="lead-send-status sold" title="Este futuro cliente possui uma venda vinculada">Venda registrada</span>
+                          )}
+                          {isLeadVendaRecusada(linha) && (
+                            <span className="lead-send-status refused" title={linha.venda_recusada_motivo ? `Motivo: ${linha.venda_recusada_motivo}` : 'Venda recusada'}>
+                              Venda recusada
+                            </span>
                           )}
                         </div>
                       </td>
