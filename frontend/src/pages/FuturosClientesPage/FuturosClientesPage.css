@@ -310,93 +310,6 @@
   padding: 10px 12px;
 }
 
-.futuros-clientes-page .clientes-leads-docs {
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 0;
-}
-
-.clientes-leads-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  max-width: 340px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  outline: none;
-  transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.clientes-leads-chip__icone {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-left: -4px;
-  border-radius: 6px;
-  background: #eff6ff;
-  color: #2563eb;
-}
-
-.clientes-leads-chip.active .clientes-leads-chip__icone {
-  background: var(--surface);
-}
-
-.clientes-leads-chip strong {
-  flex: none;
-  font-size: 12.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.clientes-leads-chip small {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-3);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* O progresso e um grid de 2 linhas nos cards; no chip vira uma linha so. */
-.clientes-leads-chip .doc-progresso {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: auto;
-  margin: 0;
-}
-
-.clientes-leads-chip .doc-progresso__track {
-  width: 48px;
-  flex: none;
-}
-
-.clientes-leads-chip .doc-progresso__label {
-  display: none;
-}
-
-.clientes-leads-chip:hover,
-.clientes-leads-chip:focus-visible {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-sm);
-}
-
-.clientes-leads-chip.active {
-  border-color: var(--text);
-  background: #d9d9d9;
-}
-
 .clientes-leads-table {
   flex: 0 0 auto;
   display: flex;
@@ -484,11 +397,6 @@
 }
 
 @media (max-height: 800px) {
-  .futuros-clientes-page .clientes-leads-docs {
-    max-height: 92px;
-    overflow-y: auto;
-  }
-
   .clientes-leads-table {
     height: clamp(320px, 60vh, 520px);
   }

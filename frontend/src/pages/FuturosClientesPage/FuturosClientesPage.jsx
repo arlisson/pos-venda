@@ -1118,18 +1118,23 @@ function LeadsRecebidosView({ agora }) {
               <button
                 key={envio.id}
                 type="button"
-                className={`clientes-leads-chip ${selecionados.includes(envio.id) ? 'active' : ''}`}
+                className={`clientes-leads-doc ${selecionados.includes(envio.id) ? 'active' : ''}`}
                 onClick={() => toggleEnvio(envio.id)}
               >
-                <span className="clientes-leads-chip__icone" aria-hidden="true">
-                  <I.TableSheet size={14} />
-                </span>
+                <div className="clientes-leads-preview">
+                  <span></span><span></span><span></span><span></span>
+                  <i
+                    className="clientes-leads-preview__progress"
+                    style={{ '--progresso-envio': `${progresso.percentual}%` }}
+                    aria-hidden="true"
+                  ></i>
+                </div>
                 <strong title={envio.nome}>{envio.nome}</strong>
                 <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} {envio.total_linhas === 1 ? 'cliente' : 'clientes'}</small>
                 <DocProgresso
                   {...progresso}
-                  rotulo="trab."
-                  rotuloCompleto="Completo"
+                  rotulo="trabalhados"
+                  rotuloCompleto="Tudo trabalhado"
                 />
               </button>
             );
