@@ -335,6 +335,23 @@
     box-shadow 0.16s ease;
 }
 
+.clientes-leads-chip__icone {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: -4px;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.clientes-leads-chip.active .clientes-leads-chip__icone {
+  background: var(--surface);
+}
+
 .clientes-leads-chip strong {
   flex: none;
   font-size: 12.5px;

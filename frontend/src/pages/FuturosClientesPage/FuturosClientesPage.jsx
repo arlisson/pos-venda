@@ -392,6 +392,54 @@ function datetimeRetornoParaIso(valor) {
   return isNaN(data.getTime()) ? null : data.toISOString();
 }
 
+/**
+ * Formata a digitacao do usuario como moeda BR (digitos da direita para a esquerda).
+ */
+function formatarInputMoedaBR(valor) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  if (!digitos) return '';
+
+  return (Number(digitos) / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+/**
+ * Formata um numero vindo da API para o formato exibido no input de moeda.
+ */
+function formatarNumeroParaInputMoeda(valor) {
+  if (valor === undefined || valor === null || valor === '') return '';
+
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return '';
+
+  return numero.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+/**
+ * Converte o texto do input de moeda BR ("1.234,56") em numero.
+ */
+function moedaBRParaNumero(valor) {
+  const numero = Number(String(valor ?? '').replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+/**
+ * Monta os itens de chips no formato aceito pela API.
+ */
+function chipsItensParaEnvio(itens) {
+  return (itens || [])
+    .map(item => ({
+      quantidade: Number(item.quantidade) || 0,
+      preco_por_chip: moedaBRParaNumero(item.preco_por_chip)
+    }))
+    .filter(item => item.quantidade > 0 && item.preco_por_chip > 0);
+}
+
 function criarChipsItensSondagem(sondagem = null) {
   const itens = Array.isArray(sondagem?.chips_itens) ? sondagem.chips_itens : [];
   if (itens.length) return itens.map(item => ({ quantidade: String(item.quantidade || ''), preco_por_chip: formatarNumeroParaInputMoeda(item.preco_por_chip) }));
@@ -408,12 +456,12 @@ function formatarMoedaSondagem(valor) {
 
 function formatarChipsSondagem(sondagem) {
   const itens = criarChipsItensSondagem(sondagem)
-    .filter(item => Number(item.quantidade) > 0 && Number(String(item.preco_por_chip).replace(',', '.')) > 0);
+    .filter(item => Number(item.quantidade) > 0 && moedaBRParaNumero(item.preco_por_chip) > 0);
 
   if (!itens.length) return '-';
 
   return itens
-    .map(item => `${item.quantidade} × ${formatarMoedaSondagem(String(item.preco_por_chip).replace(',', '.'))}`)
+    .map(item => `${item.quantidade} × ${formatarMoedaSondagem(moedaBRParaNumero(item.preco_por_chip))}`)
     .join(' + ');
 }
 
@@ -621,7 +669,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem());
   const [whatsapp, setWhatsapp] = useState('');
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
-    + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
+    + ((Number(item.quantidade) || 0) * moedaBRParaNumero(item.preco_por_chip)), 0);
 
   useEffect(() => {
     listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
@@ -1073,6 +1121,9 @@ function LeadsRecebidosView({ agora }) {
                 className={`clientes-leads-chip ${selecionados.includes(envio.id) ? 'active' : ''}`}
                 onClick={() => toggleEnvio(envio.id)}
               >
+                <span className="clientes-leads-chip__icone" aria-hidden="true">
+                  <I.TableSheet size={14} />
+                </span>
                 <strong title={envio.nome}>{envio.nome}</strong>
                 <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} {envio.total_linhas === 1 ? 'cliente' : 'clientes'}</small>
                 <DocProgresso
@@ -1224,7 +1275,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem(linha.sondagem));
   const [whatsapp, setWhatsapp] = useState('');
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
-    + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
+    + ((Number(item.quantidade) || 0) * moedaBRParaNumero(item.preco_por_chip)), 0);
 
   useEffect(() => {
     listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
