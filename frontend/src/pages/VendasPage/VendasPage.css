@@ -1253,6 +1253,295 @@ input.is-invalid {
   min-width: 0;
 }
 
+/* Etapas de conferencia (0800, ABR Telecom, VIVO) */
+.venda-etapas {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.venda-etapas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.venda-etapas-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.venda-etapas-resumo {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.venda-etapas-resumo--ok {
+  color: var(--success);
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.venda-etapas-stepper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.venda-etapa-step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.venda-etapa-step__bullet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+  transition: 120ms;
+}
+
+.venda-etapa-step__label {
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.venda-etapa-step__conector {
+  position: absolute;
+  top: 14px;
+  left: calc(50% + 20px);
+  width: calc(100% - 40px);
+  height: 2px;
+  background: var(--border-strong);
+}
+
+.venda-etapa-step--concluida .venda-etapa-step__bullet {
+  border-color: var(--success);
+  background: var(--success);
+  color: #fff;
+}
+
+.venda-etapa-step--concluida .venda-etapa-step__label {
+  color: var(--success);
+}
+
+.venda-etapa-step--concluida .venda-etapa-step__conector {
+  background: var(--success);
+}
+
+.venda-etapa-step--atual .venda-etapa-step__bullet {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--surface);
+  box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.12);
+}
+
+.venda-etapa-step--atual .venda-etapa-step__label {
+  color: var(--text);
+}
+
+.venda-etapas-cards {
+  display: grid;
+  gap: 10px;
+}
+
+.venda-etapa-card {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.venda-etapa-card--concluida {
+  border-color: #bbf7d0;
+  background: #f7fdf9;
+}
+
+.venda-etapa-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.venda-etapa-card__titulo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13.5px;
+}
+
+.venda-etapa-card__numero {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.venda-etapa-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.venda-etapa-badge.is-ok {
+  color: var(--success);
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.venda-etapa-card__meta,
+.venda-etapa-card__hint {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.venda-etapa-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.venda-etapa-check input:disabled {
+  cursor: not-allowed;
+}
+
+.venda-etapa-card__anexos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  justify-items: start;
+  gap: 8px 12px;
+}
+
+.venda-etapa-card__anexos .btn {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 34px;
+}
+
+.venda-etapa-card__anexos .venda-etapa-card__hint {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.venda-etapa-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.venda-etapa-card__anexos .venda-etapa-thumbs {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-content: flex-end;
+  max-width: 172px;
+}
+
+.venda-etapa-thumb {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.venda-etapa-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.venda-etapa-thumb__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text-3);
+}
+
+.venda-etapa-thumb__overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  opacity: 0;
+  transition: 120ms;
+}
+
+.venda-etapa-thumb:hover .venda-etapa-thumb__overlay,
+.venda-etapa-thumb:focus-within .venda-etapa-thumb__overlay {
+  opacity: 1;
+}
+
+.venda-etapas-progresso {
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.venda-etapas--bloqueada .venda-etapas-resumo {
+  font-weight: 500;
+}
+
 .venda-problema-modal {
   width: min(620px, calc(100vw - 32px));
 }

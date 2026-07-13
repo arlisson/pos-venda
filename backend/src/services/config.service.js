@@ -342,6 +342,7 @@ async function criarFunilEtapa(dados) {
   }
 
   const etapaFinal = Boolean(dados.etapa_final);
+  const bloqueiaAvanco = Boolean(dados.bloqueia_avanco);
   await validarEtapaFinalUnica(etapaFinal);
 
   const existente = await FunilEtapa.query().findOne({ codigo });
@@ -356,7 +357,8 @@ async function criarFunilEtapa(dados) {
       nome: dados.nome,
       ativo: true,
       ordem: ordemNova ?? existente.ordem,
-      etapa_final: etapaFinal
+      etapa_final: etapaFinal,
+      bloqueia_avanco: bloqueiaAvanco
     });
   }
 
@@ -365,7 +367,8 @@ async function criarFunilEtapa(dados) {
     nome: dados.nome,
     ativo: dados.ativo ?? true,
     ordem: ordemNova ?? 0,
-    etapa_final: etapaFinal
+    etapa_final: etapaFinal,
+    bloqueia_avanco: bloqueiaAvanco
   });
 }
 
@@ -389,6 +392,7 @@ async function atualizarFunilEtapa(id, dados) {
   if (dados.ativo !== undefined) atualizacao.ativo = dados.ativo;
   if (dados.ordem !== undefined) atualizacao.ordem = dados.ordem;
   if (dados.etapa_final !== undefined) atualizacao.etapa_final = Boolean(dados.etapa_final);
+  if (dados.bloqueia_avanco !== undefined) atualizacao.bloqueia_avanco = Boolean(dados.bloqueia_avanco);
 
   await validarEtapaFinalUnica(atualizacao.etapa_final, id);
 

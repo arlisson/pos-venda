@@ -8,10 +8,12 @@ import * as I from '../../components/Icons';
 import VendaProblemaPanel from './VendaProblemaPanel';
 import { useFormDraft } from '../../utils/useFormDraft';
 import {
+  atualizarEtapa0800,
   atualizarVenda,
   baixarArquivoVenda,
   baixarPacoteArquivosVenda,
   baixarXlsxClaro,
+  blobArquivoVenda,
   buscarVendaPorId,
   criarVenda,
   deletarVenda,
@@ -21,6 +23,7 @@ import {
   gerarEmailVenda,
   listarArquivosVenda,
   listarDestinatariosProblemaVenda,
+  listarEtapasVenda,
   listarVendas,
   listarVendedoras,
   marcarProblemaVenda,
@@ -2565,7 +2568,294 @@ function getIconStatusPacote(status) {
 /**
  * Renderiza arquivos venda tab.
  */
-function ArquivosVendaTab({
+/**
+ * Miniatura de um comprovante de etapa. Busca o blob autenticado da API.
+ */
+function EtapaThumb({ vendaId, arquivo, podeExcluir, onExcluir }) {
+  const [url, setUrl] = useState('');
+
+  useEffect(() => {
+    let ativo = true;
+    let objectUrl = '';
+
+    blobArquivoVenda(vendaId, arquivo.id)
+      .then(blob => {
+        if (!ativo) return;
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      })
+      .catch(() => {});
+
+    return () => {
+      ativo = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [vendaId, arquivo.id]);
+
+  return (
+    <div className="venda-etapa-thumb">
+      {url ? (
+        <img src={url} alt={arquivo.nome_original} />
+      ) : (
+        <span className="venda-etapa-thumb__placeholder"><I.Note size={16} /></span>
+      )}
+      <div className="venda-etapa-thumb__overlay">
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => visualizarArquivoVenda(vendaId, arquivo.id)}
+          title="Visualizar"
+        >
+          <I.Eye size={12} />
+        </button>
+        {podeExcluir && (
+          <button
+            type="button"
+            className="btn btn-sm vendas-trash-delete"
+            onClick={() => onExcluir(arquivo)}
+            title="Excluir comprovante"
+          >
+            <I.Trash size={12} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Checklist de conferencia da venda (0800, ABR Telecom e VIVO) exibido na aba Documentos.
+ */
+function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [], onArquivosAlterados = () => {} }) {
+  const [etapas, setEtapas] = useState([]);
+  const [carregando, setCarregando] = useState(false);
+  const [salvando, setSalvando] = useState('');
+  const [erro, setErro] = useState('');
+  const inputsRef = useRef({});
+
+  /**
+   * Carrega as etapas da venda.
+   */
+  async function carregarEtapas() {
+    if (!venda?.id) return;
+
+    setCarregando(true);
+
+    try {
+      const data = await listarEtapasVenda(venda.id);
+      setEtapas(data.etapas || []);
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar etapas.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    carregarEtapas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venda?.id]);
+
+  const visiveis = etapas.filter(etapa => etapa.aplicavel);
+  const concluidas = visiveis.filter(etapa => etapa.concluida).length;
+  const atual = visiveis.find(etapa => !etapa.concluida) || null;
+
+  /**
+   * Alterna a etapa 1 (0800).
+   */
+  async function handleToggle0800(concluida) {
+    setErro('');
+    setSalvando('0800');
+
+    try {
+      const data = await atualizarEtapa0800(venda.id, concluida);
+      setEtapas(data.etapas || []);
+    } catch (error) {
+      setErro(error.message || 'Erro ao atualizar a etapa.');
+    } finally {
+      setSalvando('');
+    }
+  }
+
+  /**
+   * Anexa o comprovante de uma etapa (conclui a etapa automaticamente).
+   */
+  async function handleAnexar(etapa, event) {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+
+    if (files.length === 0) return;
+
+    setErro('');
+    setSalvando(etapa.chave);
+
+    try {
+      for (const file of files) {
+        await uploadArquivoVenda(venda.id, file, { categoria: etapa.categoria });
+      }
+
+      await onArquivosAlterados();
+      await carregarEtapas();
+    } catch (error) {
+      setErro(error.message || 'Erro ao anexar comprovante.');
+    } finally {
+      setSalvando('');
+    }
+  }
+
+  /**
+   * Remove um comprovante de etapa (reabre a etapa se for o ultimo).
+   */
+  async function handleExcluirComprovante(etapa, arquivo) {
+    if (!window.confirm(`Excluir o comprovante "${arquivo.nome_original}"? A etapa volta a ficar pendente se for o último.`)) return;
+
+    setErro('');
+    setSalvando(etapa.chave);
+
+    try {
+      await excluirArquivoVenda(venda.id, arquivo.id);
+      await onArquivosAlterados();
+      await carregarEtapas();
+    } catch (error) {
+      setErro(error.message || 'Erro ao excluir comprovante.');
+    } finally {
+      setSalvando('');
+    }
+  }
+
+  if (carregando && etapas.length === 0) {
+    return (
+      <div className="venda-etapas">
+        <div className="venda-etapas-title">Etapas de conferência</div>
+        <div className="venda-etapas-resumo">Carregando etapas...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="venda-etapas">
+      <div className="venda-etapas-header">
+        <div className="venda-etapas-title">Etapas de conferência</div>
+        <div className={`venda-etapas-resumo ${atual ? '' : 'venda-etapas-resumo--ok'}`}>
+          {atual
+            ? `Etapa ${visiveis.indexOf(atual) + 1} de ${visiveis.length} · ${atual.titulo}`
+            : 'Todas as etapas concluídas'}
+        </div>
+      </div>
+
+      <div className="venda-etapas-stepper">
+        {visiveis.map((etapa, idx) => {
+          const estado = etapa.concluida
+            ? 'concluida'
+            : (atual && atual.chave === etapa.chave ? 'atual' : 'pendente');
+
+          return (
+            <div key={etapa.chave} className={`venda-etapa-step venda-etapa-step--${estado}`}>
+              <span className="venda-etapa-step__bullet">
+                {etapa.concluida ? <I.Check size={14} /> : idx + 1}
+              </span>
+              <span className="venda-etapa-step__label">{etapa.titulo}</span>
+              {idx < visiveis.length - 1 && <span className="venda-etapa-step__conector" />}
+            </div>
+          );
+        })}
+      </div>
+
+      {erro && <div className="alert-error">{erro}</div>}
+
+      <div className="venda-etapas-cards">
+        {visiveis.map((etapa, idx) => {
+          const arquivos = etapasArquivos.filter(item => item.categoria === etapa.categoria);
+          const ocupado = salvando === etapa.chave;
+
+          return (
+            <div
+              key={etapa.chave}
+              className={`venda-etapa-card ${etapa.concluida ? 'venda-etapa-card--concluida' : ''}`}
+            >
+              <div className="venda-etapa-card__head">
+                <div className="venda-etapa-card__titulo">
+                  <span className="venda-etapa-card__numero">Etapa {idx + 1}</span>
+                  <strong>{etapa.titulo}</strong>
+                </div>
+                <span className={`venda-etapa-badge ${etapa.concluida ? 'is-ok' : ''}`}>
+                  {etapa.concluida ? 'Concluída' : 'Pendente'}
+                </span>
+              </div>
+
+              {etapa.concluida && etapa.concluida_por && (
+                <div className="venda-etapa-card__meta">
+                  Por {etapa.concluida_por.nome}
+                  {etapa.concluida_em ? ` · ${formatarDataHora(etapa.concluida_em)}` : ''}
+                </div>
+              )}
+
+              {!etapa.requer_arquivo ? (
+                <label className="venda-etapa-check">
+                  <input
+                    type="checkbox"
+                    checked={etapa.concluida}
+                    disabled={!podeAdicionar || ocupado}
+                    onChange={event => handleToggle0800(event.target.checked)}
+                  />
+                  <span>Marcar como concluída</span>
+                </label>
+              ) : (
+                <div className="venda-etapa-card__anexos">
+                  <input
+                    ref={el => { inputsRef.current[etapa.chave] = el; }}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    hidden
+                    onChange={event => handleAnexar(etapa, event)}
+                  />
+
+                  {arquivos.length > 0 && (
+                    <div className="venda-etapa-thumbs">
+                      {arquivos.map(arquivo => (
+                        <EtapaThumb
+                          key={arquivo.id}
+                          vendaId={venda.id}
+                          arquivo={arquivo}
+                          podeExcluir={podeEditar && !ocupado}
+                          onExcluir={item => handleExcluirComprovante(etapa, item)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className={`btn ${etapa.concluida ? '' : 'btn-primary'}`}
+                    disabled={!podeAdicionar || ocupado}
+                    onClick={() => inputsRef.current[etapa.chave]?.click()}
+                  >
+                    <I.Plus size={13} />
+                    {ocupado ? 'Enviando...' : 'Anexar comprovante'}
+                  </button>
+                  <span className="venda-etapa-card__hint">
+                    A etapa é concluída ao anexar a imagem (JPG, PNG ou WEBP).
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="venda-etapas-progresso">
+        {concluidas} de {visiveis.length} etapas concluídas
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Aba de documentos da venda (etapas de conferencia + arquivos).
+ * Exportada porque o modal rapido do funil reutiliza a mesma aba.
+ */
+export function ArquivosVendaTab({
   venda,
   podeEditar,
   podeVisualizar,
@@ -2575,6 +2865,7 @@ function ArquivosVendaTab({
 }) {
   const inputRef = useRef(null);
   const [arquivos, setArquivos] = useState([]);
+  const [etapasArquivos, setEtapasArquivos] = useState([]);
   const [pacote, setPacote] = useState(null);
   const [categoria, setCategoria] = useState('documento');
   const [carregando, setCarregando] = useState(false);
@@ -2591,6 +2882,7 @@ function ArquivosVendaTab({
 
     if (!podeVisualizar) {
       setArquivos([]);
+      setEtapasArquivos([]);
       setPacote(null);
       return;
     }
@@ -2601,6 +2893,7 @@ function ArquivosVendaTab({
     try {
       const data = await listarArquivosVenda(venda.id);
       setArquivos(data.arquivos || []);
+      setEtapasArquivos(data.etapas_arquivos || []);
       setPacote(data.pacote || null);
     } catch (error) {
       setErro(error.message || 'Erro ao carregar arquivos.');
@@ -2719,6 +3012,13 @@ function ArquivosVendaTab({
 
     return (
       <div className="venda-arquivos">
+        <div className="venda-etapas venda-etapas--bloqueada">
+          <div className="venda-etapas-title">Etapas de conferência</div>
+          <div className="venda-etapas-resumo">
+            Salve a venda para liberar as etapas de conferência (0800, ABR Telecom e VIVO).
+          </div>
+        </div>
+
         <div className="venda-arquivos-toolbar">
           <div className="venda-arquivos-heading">
             <div className="venda-arquivos-title-row">
@@ -2817,6 +3117,14 @@ function ArquivosVendaTab({
 
   return (
     <div className="venda-arquivos">
+      <EtapasVendaTab
+        venda={venda}
+        podeEditar={podeEditar}
+        podeAdicionar={podeAdicionar}
+        etapasArquivos={etapasArquivos}
+        onArquivosAlterados={carregar}
+      />
+
       <div className="venda-arquivos-toolbar">
         <div className="venda-arquivos-heading">
           <div className="venda-arquivos-title-row">
