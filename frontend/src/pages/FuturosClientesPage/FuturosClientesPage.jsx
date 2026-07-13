@@ -195,8 +195,12 @@ function montarClientePreenchido(vendaPreenchida) {
  */
 function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
   const sondagem = linha?.sondagem || {};
+  const vendedoraId = Number(linha?.atribuido_para_id || usuario?.id || 0);
   const payload = {
-    ...(usuario?.id ? { vendedora_id: String(usuario.id) } : {}),
+    ...(vendedoraId > 0 ? {
+      vendedora_id: String(vendedoraId),
+      vendedoras: [String(vendedoraId)]
+    } : {}),
     ...(sondagem.contato_nome ? { responsavel_nome: sondagem.contato_nome } : {}),
     ...(sondagem.contato_tipo ? { responsavel_tipo: sondagem.contato_tipo } : {}),
     ...(sondagem.operadora_atual_id ? { operadora_atual_id: String(sondagem.operadora_atual_id) } : {}),
@@ -528,6 +532,7 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
  * Renderiza adicionar lead modal.
  */
 function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda, onFuturoClienteSalvo }) {
+  const vendaRegistrada = isFuturoClienteVendido(linha);
   const [etapa, setEtapa] = useState('opcoes'); // 'opcoes' | 'venda' | 'futuro'
   const [notas, setNotas] = useState('');
   const [retorno, setRetorno] = useState('');
@@ -630,14 +635,20 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 
           {etapa === 'opcoes' && (
             <div className="adicionar-lead-acoes">
-              {linha.futuro_cliente && (
+              {vendaRegistrada ? (
+                <div className="lead-already-qualified-notice">
+                  Este futuro cliente ja possui uma venda registrada. Acesse a pagina de Vendas para visualizar a venda.
+                </div>
+              ) : linha.futuro_cliente && (
                 <div className="lead-already-qualified-notice">
                   Este contato ja foi qualificado na primeira ligacao. Nesta etapa ele esta disponivel somente para registro de venda.
                 </div>
               )}
-              <button type="button" className="btn btn-primary" onClick={() => setEtapa('venda')}>
-                <I.Chart size={14} /> Registrar venda
-              </button>
+              {!vendaRegistrada && (
+                <button type="button" className="btn btn-primary" onClick={() => setEtapa('venda')}>
+                  <I.Chart size={14} /> Registrar venda
+                </button>
+              )}
               {!linha.futuro_cliente && (
                 <button type="button" className="btn" onClick={() => setEtapa('futuro')}>
                   <I.Calendar size={14} /> Registrar futuro cliente
@@ -1058,6 +1069,7 @@ function LeadsRecebidosView({ agora }) {
  * Renderiza futuro cliente detalhe modal.
  */
 function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVenda }) {
+  const vendaRegistrada = isFuturoClienteVendido(linha);
   const [etapa, setEtapa] = useState('ver'); // 'ver' | 'venda'
   const [notas, setNotas] = useState(linha.futuro_cliente_notas || '');
   const [retorno, setRetorno] = useState(formatarParaDatetimeLocal(linha.futuro_cliente_retorno));
@@ -1227,9 +1239,13 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="btn" onClick={() => setEtapa('venda')} disabled={salvando}>
-            <I.Chart size={14} /> Registrar venda
-          </button>
+          {vendaRegistrada ? (
+            <div className="lead-already-qualified-notice">Este futuro cliente ja possui uma venda registrada. Acesse a pagina de Vendas para visualizar a venda.</div>
+          ) : (
+            <button type="button" className="btn" onClick={() => setEtapa('venda')} disabled={salvando}>
+              <I.Chart size={14} /> Registrar venda
+            </button>
+          )}
           <div style={{ flex: 1 }} />
           <button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button>
           <button type="submit" className="btn btn-primary" disabled={salvando}>

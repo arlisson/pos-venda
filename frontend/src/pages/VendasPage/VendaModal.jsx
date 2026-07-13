@@ -3096,6 +3096,12 @@ function VendaModal({
   
   const [form, setForm] = useState(() => {
     const base = venda ? normalizarVenda(venda) : { ...criarVendaVazia(), ...(initialValues || {}) };
+
+    // Alguns fluxos antigos ainda preenchem apenas o campo legado. Mantem a
+    // selecao multipla usada pelo formulario coerente com esse valor inicial.
+    if (!venda && base.vendedora_id && (!Array.isArray(base.vendedoras) || base.vendedoras.length === 0)) {
+      base.vendedoras = [String(base.vendedora_id)];
+    }
     
     // Para novo venda, tenta carregar rascunho salvo, depois initialDraft, depois formulário vazio
     if (!editando) {

@@ -2772,9 +2772,11 @@ async function criarVenda(dados, usuarioId) {
         .where({ id: origemLeadLinhaId, atribuido_para_id: Number(usuarioId) })
         .where('futuro_cliente', true)
         .whereNull('futuro_cliente_excluido_em')
+        .whereNull('venda_id')
+        .where(builder => builder.whereNull('status_operacional').orWhereNot('status_operacional', 'vendido'))
         .first();
       if (!leadOrigem) {
-        throw new Error('Futuro cliente nao encontrado, nao qualificado ou atribuido a outro consultor.');
+        throw new Error('Futuro cliente nao encontrado, ja vendido ou atribuido a outro consultor.');
       }
     }
     if (!leadOrigem && payload.cliente_id) {
