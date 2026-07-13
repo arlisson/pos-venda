@@ -564,3 +564,174 @@
 .conversao-sondagem-table { margin: 14px 0 0; }
 .conversao-sondagem-table th:not(:first-child),
 .conversao-sondagem-table td:not(:first-child) { text-align: center; }
+
+.consultor-metricas-row {
+  cursor: pointer;
+}
+
+.consultor-metricas-row:hover td {
+  background: var(--surface-2);
+}
+
+.consultor-metricas-row:focus-visible {
+  outline: 2px solid var(--primary, #2563eb);
+  outline-offset: -2px;
+}
+
+.conversao-sondagem-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.conversao-sondagem-header p { margin-bottom: 0; }
+.conversao-exportar-btn { flex: 0 0 auto; }
+
+.consultor-produtividade-modal {
+  width: min(900px, 96vw);
+  max-height: 92vh;
+  overflow: hidden;
+}
+
+.consultor-produtividade-modal .modal-header {
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary, #2563eb) 7%, var(--surface)) 0%, var(--surface) 55%);
+}
+
+.consultor-modal-title {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.consultor-modal-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary, #2563eb);
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.consultor-produtividade-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  background: color-mix(in srgb, var(--surface-2) 55%, var(--surface));
+}
+
+.consultor-periodo-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: -5px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.consultor-periodo-filtros {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.consultor-periodo-filtros .form-field { margin: 0; }
+
+.consultor-periodo-atalhos {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-bottom: 1px;
+}
+
+.consultor-produtividade-metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+}
+
+.consultor-produtividade-metricas > div {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.consultor-produtividade-metricas > div::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--border-strong, #cbd5e1);
+  content: '';
+}
+
+.consultor-produtividade-metricas > div.is-primary::before { background: var(--primary, #2563eb); }
+.consultor-produtividade-metricas span { color: var(--text-2); font-size: 11px; line-height: 1.25; }
+.consultor-produtividade-metricas strong {
+  font-size: 19px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.consultor-produtividade-nota { margin: -5px 2px 0; color: var(--text-2); font-size: 11.5px; }
+.consultor-produtividade-table { margin: 0; max-height: 300px; border-radius: 11px; background: var(--surface); }
+.consultor-produtividade-table .scroll { max-height: 300px; overflow: auto; }
+.consultor-produtividade-table th { position: sticky; top: 0; z-index: 1; }
+.consultor-produtividade-table th:not(:first-child),
+.consultor-produtividade-table td:not(:first-child) { text-align: center; }
+
+.exportar-produtividade-modal {
+  width: min(560px, 96vw);
+  overflow: hidden;
+}
+
+.exportar-produtividade-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.exportar-produtividade-info {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 22%, var(--border));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--primary, #2563eb) 7%, var(--surface));
+  color: var(--primary, #2563eb);
+}
+
+.exportar-produtividade-info div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.exportar-produtividade-info strong { color: var(--text); font-size: 13px; }
+.exportar-produtividade-info span { color: var(--text-2); font-size: 12px; line-height: 1.4; }
+.exportar-produtividade-filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.exportar-produtividade-atalhos { padding: 0; }
+
+@media (max-width: 720px) {
+  .conversao-sondagem-header { align-items: stretch; flex-direction: column; }
+  .conversao-exportar-btn { align-self: flex-start; }
+  .consultor-periodo-filtros { grid-template-columns: 1fr; }
+  .consultor-produtividade-metricas { grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); }
+  .exportar-produtividade-filtros { grid-template-columns: 1fr; }
+}

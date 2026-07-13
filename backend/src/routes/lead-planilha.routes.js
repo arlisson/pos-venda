@@ -114,6 +114,7 @@ router.get('/envios', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaContr
 router.post('/exportar', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.exportar);
 router.get('/futuros-clientes', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.listarTodosFuturosClientes);
 router.get('/futuros-clientes/metricas', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.metricasFuturosClientes);
+router.get('/futuros-clientes/metricas/exportar', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.exportarMetricasFuturosClientes);
 router.post(
   '/dividir',
   exigirUmaPermissao(['gerenciar_leads']),
