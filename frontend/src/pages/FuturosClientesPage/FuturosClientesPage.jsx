@@ -276,6 +276,47 @@ function formatarWhatsappInput(valor) {
   return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
 }
 
+/**
+ * Formata input moeda br para exibicao ou envio.
+ */
+function formatarInputMoedaBR(valor) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+
+  if (!digitos) return '';
+
+  const numero = Number(digitos) / 100;
+
+  return numero.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+/**
+ * Converte valor numerico vindo da API para o formato do input mascarado.
+ */
+function formatarNumeroParaInputMoeda(valor) {
+  if (valor === undefined || valor === null || valor === '') return '';
+
+  const numero = Number(String(valor).replace(',', '.'));
+  if (!Number.isFinite(numero)) return '';
+
+  return numero.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+/**
+ * Converte o valor digitado no input mascarado em numero.
+ */
+function parseValorInput(valor) {
+  if (valor === undefined || valor === null || valor === '') return 0;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+
+  return Number(String(valor).replace(/\./g, '').replace(',', '.')) || 0;
+}
+
 function encontrarTelefoneLead(linha) {
   const dados = linha?.dados_json || {};
   const prioridades = ['celular', 'whatsapp', 'telefone', 'fone', 'terminal'];
@@ -355,11 +396,29 @@ function datetimeRetornoParaIso(valor) {
 
 function criarChipsItensSondagem(sondagem = null) {
   const itens = Array.isArray(sondagem?.chips_itens) ? sondagem.chips_itens : [];
-  if (itens.length) return itens.map(item => ({ quantidade: String(item.quantidade || ''), preco_por_chip: String(item.preco_por_chip || '') }));
+  if (itens.length) return itens.map(item => ({ quantidade: String(item.quantidade || ''), preco_por_chip: formatarNumeroParaInputMoeda(item.preco_por_chip) }));
   if (sondagem?.quantidade_chips || sondagem?.preco_por_chip) {
-    return [{ quantidade: String(sondagem.quantidade_chips || ''), preco_por_chip: String(sondagem.preco_por_chip || '') }];
+    return [{ quantidade: String(sondagem.quantidade_chips || ''), preco_por_chip: formatarNumeroParaInputMoeda(sondagem.preco_por_chip) }];
   }
   return [{ quantidade: '', preco_por_chip: '' }];
+}
+
+/**
+ * Normaliza os chips digitados para o formato numerico esperado pela API.
+ */
+function chipsItensParaEnvio(itens) {
+  return itens.map(item => ({
+    quantidade: Number(item.quantidade) || 0,
+    preco_por_chip: parseValorInput(item.preco_por_chip)
+  }));
+}
+
+/**
+ * Calcula a media mensal estimada a partir dos chips digitados.
+ */
+function calcularValorMensalEstimado(itens) {
+  return itens.reduce((total, item) => total
+    + ((Number(item.quantidade) || 0) * parseValorInput(item.preco_por_chip)), 0);
 }
 
 function ChipsItensSondagem({ itens, onChange, disabled }) {
@@ -380,7 +439,7 @@ function ChipsItensSondagem({ itens, onChange, disabled }) {
           </div>
           <div className="form-field">
             <label>Preco por chip</label>
-            <input type="number" min="0.01" step="0.01" value={item.preco_por_chip} onChange={event => atualizar(index, 'preco_por_chip', event.target.value)} required disabled={disabled} />
+            <input type="text" inputMode="decimal" placeholder="0,00" value={item.preco_por_chip} onChange={event => atualizar(index, 'preco_por_chip', formatarInputMoedaBR(event.target.value))} required disabled={disabled} />
           </div>
           {itens.length > 1 && (
             <button type="button" className="btn btn-icon btn-ghost chips-sondagem-remove" title="Remover faixa" onClick={() => remover(index)} disabled={disabled}><I.Trash size={14} /></button>
@@ -556,8 +615,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [operadoraAtualId, setOperadoraAtualId] = useState('');
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem());
   const [whatsapp, setWhatsapp] = useState(() => formatarWhatsappInput(encontrarTelefoneLead(linha)));
-  const valorMensalEstimado = chipsItens.reduce((total, item) => total
-    + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
+  const valorMensalEstimado = calcularValorMensalEstimado(chipsItens);
 
   useEffect(() => {
     listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
@@ -595,7 +653,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
-        chips_itens: chipsItens,
+        chips_itens: chipsItensParaEnvio(chipsItens),
         whatsapp
       });
       onFuturoClienteSalvo(resultado.linha);
@@ -1097,8 +1155,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
       ? `${linha.sondagem.whatsapp_ddd || ''}${linha.sondagem.whatsapp_numero || ''}`
       : encontrarTelefoneLead(linha)
   ));
-  const valorMensalEstimado = chipsItens.reduce((total, item) => total
-    + ((Number(item.quantidade) || 0) * (Number(String(item.preco_por_chip).replace(',', '.')) || 0)), 0);
+  const valorMensalEstimado = calcularValorMensalEstimado(chipsItens);
 
   useEffect(() => {
     listarOperadoras().then(resultado => setOperadoras(Array.isArray(resultado) ? resultado : resultado?.data || [])).catch(() => setOperadoras([]));
@@ -1137,7 +1194,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
-        chips_itens: chipsItens,
+        chips_itens: chipsItensParaEnvio(chipsItens),
         whatsapp
       });
       onAtualizado(resultado.linha);
