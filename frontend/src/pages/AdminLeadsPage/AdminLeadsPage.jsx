@@ -197,6 +197,7 @@ function montarFiltrosBackend(filtros, colunas, planilhasSelecionadas, schema) {
 function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDivisao, onClose, onSave }) {
   const [nome, setNome] = useState(`Envio ${new Date().toLocaleDateString('pt-BR')}`);
   const [usuarios, setUsuarios] = useState([]);
+  const [buscaUsuario, setBuscaUsuario] = useState('');
   const [quantidade, setQuantidade] = useState(String(totalLinhas));
   const [colunasVisiveis, setColunasVisiveis] = useState(colunas);
   const [manual, setManual] = useState(null);
@@ -303,6 +304,18 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   const vaiTransferir = incluirEnviados
     ? Math.max(0, quantidadeNumerica - disponiveisPadrao)
     : 0;
+  const termoBuscaUsuario = buscaUsuario
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+    .trim();
+  const vendedorasFiltradas = vendedoras.filter(vendedora => (
+    vendedora.nome
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('pt-BR')
+      .includes(termoBuscaUsuario)
+  ));
 
   return (
     <div className="modal-overlay">
@@ -390,14 +403,27 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
           )}
 
           <div className="leads-block-title">Vendedores</div>
+          <label className="leads-seller-search">
+            <I.Search size={15} aria-hidden="true" />
+            <input
+              value={buscaUsuario}
+              onChange={event => setBuscaUsuario(event.target.value)}
+              onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }}
+              placeholder="Buscar usuário"
+              aria-label="Buscar usuário para receber o mailing"
+            />
+          </label>
           <div className="leads-seller-grid">
-            {vendedoras.map(vendedora => (
+            {vendedorasFiltradas.map(vendedora => (
               <label key={vendedora.id} className="leads-check-card">
                 <input type="checkbox" checked={usuarios.includes(vendedora.id)} onChange={() => toggleUsuario(vendedora.id)} />
                 <span>{vendedora.nome}</span>
               </label>
             ))}
           </div>
+          {vendedorasFiltradas.length === 0 && (
+            <div className="leads-seller-empty">Nenhum usuário encontrado.</div>
+          )}
 
           {manual && (
             <div className="leads-warning">
