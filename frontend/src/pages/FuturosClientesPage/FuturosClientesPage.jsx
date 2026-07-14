@@ -15,8 +15,11 @@ import {
   listarMetricasFuturosClientes,
   listarMeusLeadEnvios,
   listarMinhasLeadLinhas,
+  marcarClienteRecusouLead,
   marcarFuturoClienteLead,
+  marcarRetornoLead,
   marcarVendaRecusadaLead,
+  reverterClienteRecusouLead,
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
 import { formatDateValue, formatUtcDateTime, parseUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
@@ -344,6 +347,34 @@ function renderLeadStatus(linha, agora = Date.now()) {
     );
   }
 
+  if (linha.cliente_recusou) {
+    return (
+      <span className="lead-status-cell">
+        <span className="pill lead-status-pill refused" title={linha.cliente_recusou_motivo || ''}>
+          <span className="pill-dot"></span>
+          Cliente recusou
+        </span>
+        {linha.cliente_recusou_em && (
+          <span className="lead-status-return">Em {formatarDataHora(linha.cliente_recusou_em)}</span>
+        )}
+      </span>
+    );
+  }
+
+  if (linha.retorno_agendado_em && !isFuturoClienteAtivo(linha)) {
+    return (
+      <span className="lead-status-cell">
+        <span className="pill warn lead-status-pill">
+          <span className="pill-dot"></span>
+          Retorno marcado
+        </span>
+        <span className={`lead-status-return ${isRetornoFuturoClienteVencido(linha.retorno_agendado_em, agora) ? 'is-overdue' : ''}`}>
+          {formatarDataHora(linha.retorno_agendado_em)}
+        </span>
+      </span>
+    );
+  }
+
   if (isFuturoClienteAtivo(linha)) {
     return (
       <span className="lead-status-cell">
@@ -650,13 +681,19 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
 /**
  * Renderiza adicionar lead modal.
  */
-function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda, onFuturoClienteSalvo }) {
+function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda, onFuturoClienteSalvo, onLinhaAtualizada }) {
   const vendaRegistrada = isFuturoClienteVendido(linha);
   const vendaRecusada = isFuturoClienteRecusado(linha);
+  const clienteRecusou = Boolean(linha.cliente_recusou);
   const [etapa, setEtapa] = useState('opcoes'); // 'opcoes' | 'venda' | 'futuro'
   const [notas, setNotas] = useState('');
   const [motivoRecusa, setMotivoRecusa] = useState(linha.venda_recusada_motivo || '');
   const [retorno, setRetorno] = useState('');
+  const [formRecusaAberto, setFormRecusaAberto] = useState(false);
+  const [motivoClienteRecusou, setMotivoClienteRecusou] = useState('');
+  const [retornoAgendado, setRetornoAgendado] = useState(() => formatarParaDatetimeLocal(linha.retorno_agendado_em) || '');
+  const [salvandoRetorno, setSalvandoRetorno] = useState(false);
+  const [sucessoRetorno, setSucessoRetorno] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [operadoras, setOperadoras] = useState([]);
@@ -693,6 +730,67 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
     } catch (error) {
       setErro(error.message || 'Erro ao marcar venda recusada.');
       setSalvando(false);
+    }
+  }
+
+  /**
+   * Registra que o cliente recusou o contato (motivo opcional).
+   */
+  async function salvarClienteRecusou() {
+    setSalvando(true);
+    setErro('');
+    try {
+      const resultado = await marcarClienteRecusouLead(linha.id, motivoClienteRecusou.trim());
+      onFuturoClienteSalvo(resultado.linha, 'Recusa do cliente registrada com sucesso.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao registrar a recusa do cliente.');
+      setSalvando(false);
+    }
+  }
+
+  /**
+   * Desfaz a recusa e devolve o lead para a fila de trabalho.
+   */
+  async function reverterRecusa() {
+    setSalvando(true);
+    setErro('');
+    try {
+      const resultado = await reverterClienteRecusouLead(linha.id);
+      // Mantem o card aberto no mesmo lead, ja de volta nas opcoes de registro.
+      onLinhaAtualizada(resultado.linha);
+      setEtapa('opcoes');
+      setFormRecusaAberto(false);
+      setMotivoClienteRecusou('');
+      setRetornoAgendado(formatarParaDatetimeLocal(resultado.linha.retorno_agendado_em) || '');
+    } catch (error) {
+      setErro(error.message || 'Erro ao reverter a recusa do cliente.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  /**
+   * Agenda ou limpa a data e hora de retorno do lead sem fechar o card.
+   */
+  async function salvarRetornoAgendado() {
+    setSalvandoRetorno(true);
+    setErro('');
+    setSucessoRetorno('');
+    try {
+      const retornoIso = datetimeRetornoParaIso(retornoAgendado);
+      if (retornoAgendado && !retornoIso) {
+        setErro('Informe uma data e hora de retorno validas.');
+        return;
+      }
+
+      const resultado = await marcarRetornoLead(linha.id, retornoIso);
+      onLinhaAtualizada(resultado.linha);
+      setRetornoAgendado(formatarParaDatetimeLocal(resultado.linha.retorno_agendado_em) || '');
+      setSucessoRetorno(retornoIso ? 'Retorno marcado. Ele aparece em Ligações marcadas.' : 'Retorno removido.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao marcar o retorno.');
+    } finally {
+      setSalvandoRetorno(false);
     }
   }
 
@@ -771,7 +869,20 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
             ) : null}
           </div>
 
-          {etapa === 'opcoes' && (
+          {etapa === 'opcoes' && clienteRecusou && (
+            <div className="adicionar-lead-acoes">
+              <div className="futuro-cliente-recusa is-saved">
+                <strong>Cliente recusou em {formatarDataHora(linha.cliente_recusou_em)}</strong>
+                <span>{linha.cliente_recusou_motivo || 'Motivo nao informado.'}</span>
+              </div>
+              <button type="button" className="btn" onClick={reverterRecusa} disabled={salvando}>
+                <I.Refresh size={14} /> {salvando ? 'Revertendo...' : 'Reverter recusa'}
+              </button>
+              {erro && <div className="alert-error" style={{ marginTop: 8 }}>{erro}</div>}
+            </div>
+          )}
+
+          {etapa === 'opcoes' && !clienteRecusou && (
             <div className="adicionar-lead-acoes">
               {vendaRegistrada ? (
                 <div className="lead-already-qualified-notice">
@@ -824,6 +935,57 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                   <I.Calendar size={14} /> Registrar futuro cliente
                 </button>
               )}
+
+              {!linha.futuro_cliente && !vendaRegistrada && (
+                formRecusaAberto ? (
+                  <div className="futuro-cliente-recusa">
+                    <label>Motivo da recusa (opcional)</label>
+                    <textarea
+                      rows={3}
+                      value={motivoClienteRecusou}
+                      onChange={event => setMotivoClienteRecusou(event.target.value)}
+                      placeholder="Ex.: já tem contrato, não tem interesse..."
+                      disabled={salvando}
+                    />
+                    <div className="futuro-cliente-recusa__acoes">
+                      <button type="button" className="btn" onClick={() => { setFormRecusaAberto(false); setErro(''); }} disabled={salvando}>
+                        Cancelar
+                      </button>
+                      <button type="button" className="btn btn-danger" onClick={salvarClienteRecusou} disabled={salvando}>
+                        {salvando ? 'Salvando...' : 'Confirmar recusa'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="btn btn-danger" onClick={() => { setFormRecusaAberto(true); setSucessoRetorno(''); }} disabled={salvando}>
+                    <I.Close size={14} /> Cliente recusou
+                  </button>
+                )
+              )}
+
+              {!linha.futuro_cliente && (
+                <div className="lead-retorno">
+                  <label htmlFor={`retorno-lead-${linha.id}`}>Marcar retorno</label>
+                  <div className="lead-retorno__linha">
+                    <input
+                      id={`retorno-lead-${linha.id}`}
+                      type="datetime-local"
+                      value={retornoAgendado}
+                      onChange={event => { setRetornoAgendado(event.target.value); setSucessoRetorno(''); }}
+                      disabled={salvando || salvandoRetorno}
+                    />
+                    <button type="button" className="btn" onClick={salvarRetornoAgendado} disabled={salvando || salvandoRetorno}>
+                      {salvandoRetorno ? 'Salvando...' : 'Salvar retorno'}
+                    </button>
+                  </div>
+                  {linha.retorno_agendado_em && (
+                    <span className="lead-retorno__atual">Retorno marcado para {formatarDataHora(linha.retorno_agendado_em)}.</span>
+                  )}
+                  {sucessoRetorno && <span className="lead-retorno__sucesso">{sucessoRetorno}</span>}
+                </div>
+              )}
+
+              {erro && <div className="alert-error" style={{ marginTop: 8 }}>{erro}</div>}
             </div>
           )}
 
@@ -1075,10 +1237,18 @@ function LeadsRecebidosView({ agora }) {
   /**
    * Trata o evento de futuro cliente salvo.
    */
-  function handleFuturoClienteSalvo(linhaAtualizada) {
+  function handleFuturoClienteSalvo(linhaAtualizada, mensagem = 'Lead marcado como futuro cliente com sucesso.') {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
     setModalAdicionar(null);
-    setSucesso('Lead marcado como futuro cliente com sucesso.');
+    setSucesso(mensagem);
+  }
+
+  /**
+   * Atualiza a linha na tabela e no card aberto, sem fechar o modal.
+   */
+  function handleLinhaAtualizada(linhaAtualizada) {
+    setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
+    setModalAdicionar(atual => (atual && atual.id === linhaAtualizada.id ? linhaAtualizada : atual));
   }
 
   return (
@@ -1106,6 +1276,7 @@ function LeadsRecebidosView({ agora }) {
           onClose={() => setModalAdicionar(null)}
           onRegistrarVenda={continuarRegistroVenda}
           onFuturoClienteSalvo={handleFuturoClienteSalvo}
+          onLinhaAtualizada={handleLinhaAtualizada}
         />
       )}
 
@@ -2100,7 +2271,7 @@ function FuturosClientesMainView({ agora }) {
                     <th>Enviado por</th>
                   </>
                 )}
-                {colunasDados.map(chave => <th key={chave}>{chave}</th>)}
+                {colunasDados.map(chave => <th key={chave}><span className="th-label" title={chave}>{chave}</span></th>)}
                 {podeGerenciar && <th>{modoLixeira ? 'Acoes' : 'Excluir'}</th>}
               </tr>
             </thead>

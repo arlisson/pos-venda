@@ -88,6 +88,39 @@ router.post(
   }),
   leadPlanilhaController.marcarVendaRecusada
 );
+router.post(
+  '/me/linhas/:id/cliente-recusou',
+  exigirUmaPermissao(['futuros_clientes_registrar']),
+  auditar({
+    acao: 'lead_linha.cliente_recusou',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, motivo: req.body?.motivo, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.marcarClienteRecusou
+);
+router.post(
+  '/me/linhas/:id/cliente-recusou/reverter',
+  exigirUmaPermissao(['futuros_clientes_registrar']),
+  auditar({
+    acao: 'lead_linha.cliente_recusou_revertido',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.reverterClienteRecusou
+);
+router.post(
+  '/me/linhas/:id/retorno',
+  exigirUmaPermissao(['futuros_clientes_registrar']),
+  auditar({
+    acao: 'lead_linha.retorno_marcado',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.marcarRetorno
+);
 
 router.get('/', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.index);
 router.post('/uploads', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.upload);

@@ -51,9 +51,16 @@ const TIPOS_RETORNO_NOTA = [
   'nota_retorno_pre',
   'nota_retorno_due',
   'futuro_cliente_retorno_pre',
-  'futuro_cliente_retorno_due'
+  'futuro_cliente_retorno_due',
+  'lead_retorno_pre',
+  'lead_retorno_due'
 ];
-const TIPOS_RETORNO_FUTURO_CLIENTE = ['futuro_cliente_retorno_pre', 'futuro_cliente_retorno_due'];
+const TIPOS_RETORNO_PAGINA_LEADS = [
+  'futuro_cliente_retorno_pre',
+  'futuro_cliente_retorno_due',
+  'lead_retorno_pre',
+  'lead_retorno_due'
+];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPO_VENDA_PARADA = 'venda_parada_funil';
@@ -679,7 +686,7 @@ function getInitials(name) {
  * Retorna notification target a partir dos dados informados.
  */
 function getNotificationTarget(notificacao) {
-  if (TIPOS_RETORNO_FUTURO_CLIENTE.includes(notificacao.tipo)) {
+  if (TIPOS_RETORNO_PAGINA_LEADS.includes(notificacao.tipo)) {
     return '/futuros-clientes';
   }
 
@@ -1205,7 +1212,7 @@ function DashboardPage() {
   async function abrirNotificacaoNoDashboard(notificacao) {
     await marcarNotificacaoComoLidaLocal(notificacao);
 
-    if (TIPOS_RETORNO_FUTURO_CLIENTE.includes(notificacao.tipo)) {
+    if (TIPOS_RETORNO_PAGINA_LEADS.includes(notificacao.tipo)) {
       navigate('/futuros-clientes');
       return;
     }

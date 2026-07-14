@@ -133,10 +133,42 @@
   overflow: auto;
 }
 
+/* Deixa a tabela crescer alem do container para o scroll horizontal funcionar,
+   em vez de espremer as colunas e quebrar o texto em varias linhas. */
+.futuros-clientes-table table {
+  width: max-content;
+  min-width: 100%;
+}
+
 .futuros-clientes-table thead th {
   position: sticky;
   top: 0;
   z-index: 2;
+}
+
+/* Cabecalho longo ("1o FATURA (VENCIMENTO)") quebra no maximo uma vez.
+   O clamp fica no span interno: mudar o display do proprio th/td quebraria a tabela. */
+.futuros-clientes-table .th-label {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 150px;
+  margin: 0 auto;
+}
+
+/* Celulas das colunas dinamicas: uma linha so, com reticencias. */
+.futuros-clientes-table tbody td[data-mobile-hidden='true'] {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Linhas de "carregando" / "nenhum registro" ocupam a tabela inteira. */
+.futuros-clientes-table td[colspan] {
+  max-width: none;
+  white-space: normal;
 }
 
 .futuros-clientes-table th,
@@ -375,14 +407,14 @@
 .clientes-leads-table th:nth-child(2),
 .clientes-leads-table td:nth-child(2) {
   left: 140px;
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
+  width: 170px;
+  min-width: 170px;
+  max-width: 170px;
 }
 
 .clientes-leads-table--acoes th:nth-child(3),
 .clientes-leads-table--acoes td:nth-child(3) {
-  left: 240px;
+  left: 310px;
   width: 140px;
   min-width: 140px;
   max-width: 140px;
@@ -485,6 +517,13 @@
     overflow: visible;
   }
 
+  /* No mobile a tabela vira cards: as celulas dinamicas voltam a quebrar linha
+     normalmente dentro do drawer. */
+  .futuros-clientes-table tbody td[data-mobile-hidden='true'] {
+    max-width: none;
+    white-space: normal;
+  }
+
   .clientes-leads-table td,
   .futuros-clientes-table td {
     text-align: left !important;
@@ -507,11 +546,6 @@
 
   .adicionar-lead-dados {
     grid-template-columns: 1fr;
-  }
-
-  .adicionar-lead-campo__label,
-  .adicionar-lead-campo__valor {
-    white-space: normal;
   }
 }
 
@@ -552,12 +586,13 @@
   text-overflow: ellipsis;
 }
 
+/* No modal o valor aparece sempre por inteiro: nada de reticencias. */
 .adicionar-lead-campo__valor {
   font-size: 13px;
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .adicionar-lead-acoes {
@@ -684,6 +719,64 @@
 .futuro-cliente-recusa.is-saved {
   border-color: #fca5a5;
   background: #fff7f7;
+}
+
+.futuro-cliente-recusa__acoes {
+  display: flex;
+  gap: 8px;
+}
+
+.futuro-cliente-recusa__acoes .btn {
+  align-self: auto;
+}
+
+/* ── Retorno marcado no card do lead ── */
+
+.lead-retorno {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.lead-retorno label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #6b7280);
+}
+
+.lead-retorno__linha {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.lead-retorno__linha input {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+}
+
+.lead-retorno__linha .btn {
+  white-space: nowrap;
+}
+
+.lead-retorno__atual,
+.lead-retorno__sucesso {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.lead-retorno__atual {
+  color: var(--text-muted, #6b7280);
+}
+
+.lead-retorno__sucesso {
+  color: #166534;
 }
 
 /* ── Detalhe futuro cliente ── */
