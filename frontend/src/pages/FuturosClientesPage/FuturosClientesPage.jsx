@@ -965,23 +965,42 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
 
               {!linha.futuro_cliente && (
                 <div className="lead-retorno">
-                  <label htmlFor={`retorno-lead-${linha.id}`}>Marcar retorno</label>
+                  <div className="lead-retorno__head">
+                    <span className="lead-retorno__icone"><I.Bell size={15} /></span>
+                    <div className="lead-retorno__titulo">
+                      <strong>Marcar retorno</strong>
+                      <span>Agende quando falar com este lead novamente</span>
+                    </div>
+                  </div>
+
                   <div className="lead-retorno__linha">
-                    <input
-                      id={`retorno-lead-${linha.id}`}
-                      type="datetime-local"
-                      value={retornoAgendado}
-                      onChange={event => { setRetornoAgendado(event.target.value); setSucessoRetorno(''); }}
-                      disabled={salvando || salvandoRetorno}
-                    />
-                    <button type="button" className="btn" onClick={salvarRetornoAgendado} disabled={salvando || salvandoRetorno}>
-                      {salvandoRetorno ? 'Salvando...' : 'Salvar retorno'}
+                    <label className="lead-retorno__campo" htmlFor={`retorno-lead-${linha.id}`}>
+                      <I.Calendar size={14} />
+                      <input
+                        id={`retorno-lead-${linha.id}`}
+                        type="datetime-local"
+                        value={retornoAgendado}
+                        onChange={event => { setRetornoAgendado(event.target.value); setSucessoRetorno(''); }}
+                        disabled={salvando || salvandoRetorno}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn-primary lead-retorno__salvar"
+                      onClick={salvarRetornoAgendado}
+                      disabled={salvando || salvandoRetorno || !retornoAgendado}
+                    >
+                      {salvandoRetorno ? 'Salvando...' : 'Salvar'}
                     </button>
                   </div>
-                  {linha.retorno_agendado_em && (
-                    <span className="lead-retorno__atual">Retorno marcado para {formatarDataHora(linha.retorno_agendado_em)}.</span>
+
+                  {sucessoRetorno ? (
+                    <span className="lead-retorno__sucesso"><I.Check size={13} /> {sucessoRetorno}</span>
+                  ) : linha.retorno_agendado_em && (
+                    <span className="lead-retorno__atual">
+                      <I.Check size={13} /> Retorno marcado para <strong>{formatarDataHora(linha.retorno_agendado_em)}</strong>
+                    </span>
                   )}
-                  {sucessoRetorno && <span className="lead-retorno__sucesso">{sucessoRetorno}</span>}
                 </div>
               )}
 
@@ -1132,6 +1151,7 @@ function LeadsRecebidosView({ agora }) {
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
+<<<<<<< HEAD
     if (!linhaNotificacaoId) {
       notificacaoAbertaRef.current = null;
       return;
@@ -1146,6 +1166,18 @@ function LeadsRecebidosView({ agora }) {
       setErro('O lead desta notificacao nao esta mais disponivel.');
     }
   }, [carregando, linhaNotificacaoId, linhas, totalLinhas]);
+=======
+    if (!erro) return undefined;
+    const timer = setTimeout(() => setErro(''), 6000);
+    return () => clearTimeout(timer);
+  }, [erro]);
+
+  useEffect(() => {
+    if (!sucesso) return undefined;
+    const timer = setTimeout(() => setSucesso(''), 4000);
+    return () => clearTimeout(timer);
+  }, [sucesso]);
+>>>>>>> 0c2cc5f266c0c00ec58f386232fe53529b00d0ba
 
   const enviosSelecionados = useMemo(
     () => envios.filter(envio => selecionados.includes(envio.id)),

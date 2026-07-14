@@ -1923,11 +1923,13 @@ input, select, textarea { font-family: inherit; }
 .alert-success {
   padding: 10px 14px; background: var(--success-bg); border: 1px solid #bbf7d0;
   border-radius: var(--radius); color: var(--success); font-size: 13px;
+  flex: 0 0 auto;
 }
 
 .alert-error {
   padding: 10px 14px; background: var(--danger-bg); border: 1px solid #fecaca;
   border-radius: var(--radius); color: var(--danger); font-size: 13px;
+  flex: 0 0 auto;
 }
 
 .field-hint {
