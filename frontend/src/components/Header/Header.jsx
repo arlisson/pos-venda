@@ -14,7 +14,15 @@ const TIPOS_RETORNO_NOTA = [
   'nota_retorno_pre',
   'nota_retorno_due',
   'futuro_cliente_retorno_pre',
-  'futuro_cliente_retorno_due'
+  'futuro_cliente_retorno_due',
+  'lead_retorno_pre',
+  'lead_retorno_due'
+];
+const TIPOS_RETORNO_PAGINA_LEADS = [
+  'futuro_cliente_retorno_pre',
+  'futuro_cliente_retorno_due',
+  'lead_retorno_pre',
+  'lead_retorno_due'
 ];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
@@ -46,6 +54,8 @@ function tomNotificacao(notification) {
     case 'nota_retorno_due':
     case 'futuro_cliente_retorno_pre':
     case 'futuro_cliente_retorno_due':
+    case 'lead_retorno_pre':
+    case 'lead_retorno_due':
       return 'contact';
     default:
       return notification.nivel === 'warn' ? 'warn' : 'danger';
@@ -56,8 +66,7 @@ function tomNotificacao(notification) {
  * Retorna notification target a partir dos dados informados.
  */
 function getNotificationTarget(notification) {
-  if (notification.tipo === 'futuro_cliente_retorno_pre'
-    || notification.tipo === 'futuro_cliente_retorno_due') {
+  if (TIPOS_RETORNO_PAGINA_LEADS.includes(notification.tipo)) {
     return '/futuros-clientes';
   }
 

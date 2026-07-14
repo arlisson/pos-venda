@@ -31,6 +31,12 @@ class LeadLinha extends Model {
         venda_recusada_motivo: { type: ['string', 'null'] },
         venda_recusada_em: { type: ['string', 'object', 'null'] },
         venda_recusada_por_id: { type: ['integer', 'null'] },
+        cliente_recusou: { type: ['boolean', 'integer'] },
+        cliente_recusou_motivo: { type: ['string', 'null'] },
+        cliente_recusou_em: { type: ['string', 'object', 'null'] },
+        cliente_recusou_por_id: { type: ['integer', 'null'] },
+        retorno_agendado_em: { type: ['string', 'object', 'null'] },
+        retorno_agendado_por_id: { type: ['integer', 'null'] },
         futuro_cliente_excluido_em: { type: ['string', 'object', 'null'] },
         futuro_cliente_excluir_definitivo_em: { type: ['string', 'object', 'null'] },
         futuro_cliente_excluido_por_id: { type: ['integer', 'null'] },
@@ -38,6 +44,13 @@ class LeadLinha extends Model {
         updated_at: { type: ['string', 'object'] }
       }
     };
+  }
+
+  // Sem esta lista, o Objection deduz as colunas JSON pelo jsonSchema e trata como JSON
+  // toda coluna cujo type aceita 'object' — inclusive as de data, que iriam para o banco
+  // com aspas e virariam 0000-00-00 no MySQL.
+  static get jsonAttributes() {
+    return ['dados_json'];
   }
 
   static get relationMappings() {

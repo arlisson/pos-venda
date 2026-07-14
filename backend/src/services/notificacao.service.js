@@ -23,6 +23,9 @@ const TIPO_NOTA_RETORNO_DUE = 'nota_retorno_due';
 const TIPO_FUTURO_RETORNO_PRE = 'futuro_cliente_retorno_pre';
 const TIPO_FUTURO_RETORNO_DUE = 'futuro_cliente_retorno_due';
 const TIPOS_FUTURO_RETORNO = [TIPO_FUTURO_RETORNO_PRE, TIPO_FUTURO_RETORNO_DUE];
+const TIPO_LEAD_RETORNO_PRE = 'lead_retorno_pre';
+const TIPO_LEAD_RETORNO_DUE = 'lead_retorno_due';
+const TIPOS_LEAD_RETORNO = [TIPO_LEAD_RETORNO_PRE, TIPO_LEAD_RETORNO_DUE];
 const TIPOS_PROBLEMA_VENDA = [
   'venda_problema_aberto',
   'venda_problema_resolvido',
@@ -535,6 +538,88 @@ async function sincronizarRetornosFuturosClientes() {
   }
 }
 
+async function salvarNotificacaoRetornoLead(linha, etapa, agora) {
+  const retorno = parseDataHora(linha.retorno_agendado_em);
+  if (!retorno) return null;
+  const isDue = etapa === TIPO_LEAD_RETORNO_DUE;
+  const sourceKey = `${etapa}:${linha.id}`;
+  const nome = tituloFuturoCliente(linha.dados_json, linha.id);
+  const retornoFormatado = formatarDataHoraBR(linha.retorno_agendado_em);
+  const payload = {
+    tipo: etapa,
+    titulo: isDue ? 'Retorno de lead vencido' : 'Retorno de lead em breve',
+    mensagem: isDue
+      ? `Retorne a ligacao de "${nome}" marcada para ${retornoFormatado}.`
+      : `Retorno de "${nome}" marcado para ${retornoFormatado}.`,
+    nivel: isDue ? 'danger' : 'warn',
+    entidade: 'lead_linhas',
+    entidade_id: linha.id,
+    source_key: sourceKey,
+    dados: JSON.stringify({
+      lead_linha_id: linha.id,
+      retorno_agendado_para: linha.retorno_agendado_em,
+      retorno_etapa: isDue ? 'due' : 'pre',
+      titulo_nota: nome
+    }),
+    ativa: true,
+    updated_at: agora
+  };
+  await db('notificacoes').insert(payload).onConflict('source_key').merge(payload);
+  const notificacao = await Notificacao.query().where('source_key', sourceKey).first();
+  const adminsIds = await listarAdminsAtivos();
+  const destinatarios = Array.from(new Set([Number(linha.atribuido_para_id), ...adminsIds].filter(Boolean)));
+  for (const destinatarioId of destinatarios) {
+    await db('notificacao_destinatarios').insert({ notificacao_id: notificacao.id, usuario_id: destinatarioId })
+      .onConflict(['notificacao_id', 'usuario_id']).ignore();
+  }
+  notificacaoEmailService.enviarEmailsPendentesAsync(notificacao.id);
+  return notificacao;
+}
+
+/**
+ * Sincroniza os retornos marcados direto no card de lead recebido (antes de virar futuro cliente).
+ */
+async function sincronizarRetornosLeads() {
+  const agora = new Date();
+  const linhas = await db('lead_linhas')
+    .whereNotNull('retorno_agendado_em')
+    .where('cliente_recusou', false)
+    .where('futuro_cliente', false)
+    .select('id', 'atribuido_para_id', 'retorno_agendado_em', 'dados_json');
+
+  for (const linha of linhas) {
+    const retorno = parseDataHora(linha.retorno_agendado_em);
+    if (!retorno) continue;
+    if (retorno <= agora) {
+      await Notificacao.query().where('source_key', `${TIPO_LEAD_RETORNO_PRE}:${linha.id}`)
+        .patch({ ativa: false, updated_at: agora });
+      await salvarNotificacaoRetornoLead(linha, TIPO_LEAD_RETORNO_DUE, agora);
+    } else {
+      await Notificacao.query().where('source_key', `${TIPO_LEAD_RETORNO_DUE}:${linha.id}`)
+        .patch({ ativa: false, updated_at: agora });
+      await salvarNotificacaoRetornoLead(linha, TIPO_LEAD_RETORNO_PRE, agora);
+    }
+  }
+
+  const notificacoesObsoletas = await db('notificacoes as n')
+    .leftJoin('lead_linhas as ll', 'll.id', 'n.entidade_id')
+    .whereIn('n.tipo', TIPOS_LEAD_RETORNO)
+    .where('n.ativa', true)
+    .where(builder => builder
+      .whereNull('ll.id')
+      .orWhereNull('ll.retorno_agendado_em')
+      .orWhere('ll.cliente_recusou', true)
+      .orWhere('ll.futuro_cliente', true))
+    .distinct('n.id');
+
+  const notificacoesObsoletasIds = notificacoesObsoletas.map(notificacao => notificacao.id);
+  if (notificacoesObsoletasIds.length > 0) {
+    await db('notificacoes')
+      .whereIn('id', notificacoesObsoletasIds)
+      .update({ ativa: false, updated_at: agora });
+  }
+}
+
 /**
  * Converte dados para o formato interno esperado.
  */
@@ -575,6 +660,7 @@ function aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, pode
       TIPO_NOTA_RETORNO_PRE,
       TIPO_NOTA_RETORNO_DUE,
       ...TIPOS_FUTURO_RETORNO,
+      ...TIPOS_LEAD_RETORNO,
       ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
       ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
     ]);
@@ -656,6 +742,7 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
   await sincronizarRetornosFuturosClientes();
+  await sincronizarRetornosLeads();
   await vendaNotificacaoParadaService.sincronizarVendasParadas();
   await limparNotificacoesSemObjetoReferente();
 
@@ -721,6 +808,7 @@ async function listarUrgentes(usuarioId) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
   await sincronizarRetornosFuturosClientes();
+  await sincronizarRetornosLeads();
   await vendaNotificacaoParadaService.sincronizarVendasParadas();
   await limparNotificacoesSemObjetoReferente();
 
@@ -913,5 +1001,6 @@ module.exports = {
   desativarNotificacoesRetornoNota,
   sincronizarRetornosNotas,
   sincronizarRetornosFuturosClientes,
+  sincronizarRetornosLeads,
   limparNotificacoesSemObjetoReferente
 };

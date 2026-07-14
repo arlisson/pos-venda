@@ -340,6 +340,33 @@ async function marcarVendaRecusada(req, res) {
   }
 }
 
+async function marcarClienteRecusou(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarClienteRecusouLead(req.params.id, req.usuario.id, req.body || {}));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao marcar recusa do cliente.' });
+  }
+}
+
+async function reverterClienteRecusou(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.reverterClienteRecusouLead(req.params.id, req.usuario.id));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao reverter a recusa do cliente.' });
+  }
+}
+
+async function marcarRetorno(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarRetornoLead(req.params.id, req.usuario.id, req.body || {}));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao marcar retorno do lead.' });
+  }
+}
+
 /**
  * Lista futuros clientes lixeira conforme os filtros e parametros informados.
  */
@@ -436,6 +463,9 @@ module.exports = {
   exportarMetricasFuturosClientes,
   vincularVenda,
   marcarVendaRecusada,
+  marcarClienteRecusou,
+  reverterClienteRecusou,
+  marcarRetorno,
   listarFuturosClientesLixeira,
   excluirFuturoCliente,
   restaurarFuturoCliente,

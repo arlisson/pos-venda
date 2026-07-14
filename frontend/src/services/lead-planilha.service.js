@@ -268,6 +268,27 @@ export function marcarVendaRecusadaLead(linhaId, motivo) {
   return apiPost(`/lead-planilhas/me/linhas/${linhaId}/venda-recusada`, { motivo });
 }
 
+/**
+ * Registra que o cliente recusou o contato na primeira ligacao.
+ */
+export function marcarClienteRecusouLead(linhaId, motivo) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/cliente-recusou`, { motivo });
+}
+
+/**
+ * Reverte a recusa do cliente e devolve o lead para a fila de trabalho.
+ */
+export function reverterClienteRecusouLead(linhaId) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/cliente-recusou/reverter`, {});
+}
+
+/**
+ * Agenda (ou limpa, com retorno nulo) a data e hora de retorno do lead.
+ */
+export function marcarRetornoLead(linhaId, retorno) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/retorno`, { retorno });
+}
+
 export function listarQuadroFuturosClientes(filtros = {}) {
   return apiGet(`/lead-planilhas/futuros-clientes${montarQuery(filtros)}`);
 }

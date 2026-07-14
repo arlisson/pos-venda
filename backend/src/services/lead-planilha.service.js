@@ -1985,7 +1985,11 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
   const valorMensalEstimado = Math.round(chipsItens.reduce((total, item) => total + (item.quantidade * item.preco_por_chip), 0) * 100) / 100;
   const precoPorChip = Math.round((valorMensalEstimado / quantidadeChips) * 100) / 100;
   const notas = String(dados.notas || dados.observacoes || '').trim() || null;
-  const retorno = parseDataHoraRetorno(dados.retorno);
+  // Sem data no formulario, aproveita o retorno ja agendado no card do lead recebido.
+  const retornoAgendado = linha.retorno_agendado_em
+    ? formatarDateTimeSQL(parseUtcDateTime(linha.retorno_agendado_em))
+    : null;
+  const retorno = parseDataHoraRetorno(dados.retorno) || retornoAgendado;
 
   await LeadLinha.transaction(async trx => {
     let atribuicao = await LeadAtribuicao.query(trx)
@@ -2018,9 +2022,12 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
     await trx('lead_linhas').where('id', Number(linhaId)).update({
       futuro_cliente: true, futuro_cliente_notas: notas, futuro_cliente_retorno: retorno,
       futuro_cliente_marcado_em: formatarDateTimeSQL(), futuro_cliente_marcado_por_id: usuarioId,
+      retorno_agendado_em: null, retorno_agendado_por_id: null,
       etapa_atual: 'sondagem', status_operacional: 'qualificado', updated_at: new Date()
     });
   });
+
+  await sincronizarNotificacoesRetornoLeads();
 
   const atualizada = await LeadLinha.query()
     .findById(linhaId)
@@ -2396,6 +2403,143 @@ async function marcarVendaRecusadaLead(linhaId, usuarioId, dados = {}) {
 }
 
 /**
+ * Busca a linha e recarrega com os relacionamentos usados pelo frontend.
+ */
+async function buscarLinhaFormatada(linhaId) {
+  const atualizada = await LeadLinha.query()
+    .findById(Number(linhaId))
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, usuario]]')
+    .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
+
+  return { linha: formatarLinha(atualizada) };
+}
+
+/**
+ * Registra que o cliente recusou o contato na primeira ligacao.
+ */
+async function marcarClienteRecusouLead(linhaId, usuarioId, dados = {}) {
+  const motivo = String(dados.motivo || dados.cliente_recusou_motivo || '').trim();
+  if (motivo.length > 1000) throw criarHttpError(400, 'O motivo da recusa deve ter no maximo 1000 caracteres.');
+
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
+  }
+  if (linha.venda_id || linha.status_operacional === 'vendido') {
+    throw criarHttpError(409, 'Este lead ja possui venda registrada.');
+  }
+  if (linha.cliente_recusou) {
+    throw criarHttpError(409, 'Este lead ja foi marcado como recusado pelo cliente.');
+  }
+
+  const recusadoEm = formatarDateTimeSQL();
+
+  await LeadLinha.transaction(async trx => {
+    await LeadLinha.query(trx).patchAndFetchById(linha.id, {
+      cliente_recusou: true,
+      cliente_recusou_motivo: motivo || null,
+      cliente_recusou_em: recusadoEm,
+      cliente_recusou_por_id: usuarioId,
+      retorno_agendado_em: null,
+      retorno_agendado_por_id: null,
+      status_operacional: 'perdido'
+    });
+
+    let atribuicao = await LeadAtribuicao.query(trx)
+      .where({ lead_linha_id: linha.id, usuario_id: usuarioId, etapa: 'sondagem' })
+      .orderBy('id', 'desc').first();
+    if (!atribuicao) {
+      atribuicao = await LeadAtribuicao.query(trx).insertAndFetch({
+        lead_linha_id: linha.id,
+        envio_id: linha.envio_id,
+        usuario_id: usuarioId,
+        etapa: 'sondagem',
+        status: 'atribuido',
+        criado_por_id: usuarioId
+      });
+    }
+    await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
+      status: 'perdido', motivo_resultado: motivo || null, finalizado_em: recusadoEm
+    });
+  });
+
+  await sincronizarNotificacoesRetornoLeads();
+
+  return buscarLinhaFormatada(linha.id);
+}
+
+/**
+ * Reverte a recusa do cliente e devolve o lead para a fila de trabalho.
+ */
+async function reverterClienteRecusouLead(linhaId, usuarioId) {
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
+  }
+  if (!linha.cliente_recusou) {
+    throw criarHttpError(400, 'Este lead nao esta marcado como recusado pelo cliente.');
+  }
+
+  await LeadLinha.transaction(async trx => {
+    await LeadLinha.query(trx).patchAndFetchById(linha.id, {
+      cliente_recusou: false,
+      cliente_recusou_motivo: null,
+      cliente_recusou_em: null,
+      cliente_recusou_por_id: null,
+      status_operacional: linha.futuro_cliente ? 'qualificado' : 'pendente'
+    });
+
+    const atribuicao = await LeadAtribuicao.query(trx)
+      .where({ lead_linha_id: linha.id, usuario_id: usuarioId, etapa: 'sondagem' })
+      .orderBy('id', 'desc').first();
+    if (atribuicao && atribuicao.status === 'perdido') {
+      await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
+        status: linha.futuro_cliente ? 'qualificado' : 'atribuido',
+        motivo_resultado: null,
+        finalizado_em: null
+      });
+    }
+  });
+
+  return buscarLinhaFormatada(linha.id);
+}
+
+/**
+ * Agenda (ou limpa) a data e hora de retorno de um lead recebido.
+ */
+async function marcarRetornoLead(linhaId, usuarioId, dados = {}) {
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
+  }
+  if (linha.cliente_recusou) {
+    throw criarHttpError(409, 'Este lead foi recusado pelo cliente e nao pode ter retorno marcado.');
+  }
+
+  const retorno = parseDataHoraRetorno(dados.retorno);
+
+  await LeadLinha.query().patchAndFetchById(linha.id, {
+    retorno_agendado_em: retorno,
+    retorno_agendado_por_id: retorno ? usuarioId : null
+  });
+
+  await sincronizarNotificacoesRetornoLeads();
+
+  return buscarLinhaFormatada(linha.id);
+}
+
+/**
+ * Atualiza as notificacoes de "ligacoes marcadas" sem derrubar a requisicao em caso de falha.
+ */
+async function sincronizarNotificacoesRetornoLeads() {
+  try {
+    await require('./notificacao.service').sincronizarRetornosLeads();
+  } catch (error) {
+    console.error('Erro ao sincronizar notificacoes de retorno de leads:', error);
+  }
+}
+
+/**
  * Limpa futuros clientes vencidos da lixeira e restaura o estado inicial.
  */
 async function limparFuturosClientesVencidosDaLixeira(usuarioId = null) {
@@ -2544,6 +2688,9 @@ module.exports = {
   gerarXlsxProdutividadePrimeiraLigacao,
   vincularVendaAoLead,
   marcarVendaRecusadaLead,
+  marcarClienteRecusouLead,
+  reverterClienteRecusouLead,
+  marcarRetornoLead,
   listarFuturosClientesLixeira,
   enviarFuturoClienteParaLixeira,
   restaurarFuturoCliente,
