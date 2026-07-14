@@ -1151,22 +1151,6 @@ function LeadsRecebidosView({ agora }) {
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
-    if (!linhaNotificacaoId) {
-      notificacaoAbertaRef.current = null;
-      return;
-    }
-    if (carregando || notificacaoAbertaRef.current === linhaNotificacaoId) return;
-
-    const linha = linhas.find(item => Number(item.id) === linhaNotificacaoId);
-    if (linha) {
-      notificacaoAbertaRef.current = linhaNotificacaoId;
-      setModalAdicionar(linha);
-    } else if (totalLinhas === 0) {
-      setErro('O lead desta notificacao nao esta mais disponivel.');
-    }
-  }, [carregando, linhaNotificacaoId, linhas, totalLinhas]);
-
-  useEffect(() => {
     if (!erro) return undefined;
     const timer = setTimeout(() => setErro(''), 6000);
     return () => clearTimeout(timer);
