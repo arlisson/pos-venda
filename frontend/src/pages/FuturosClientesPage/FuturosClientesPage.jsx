@@ -1151,7 +1151,6 @@ function LeadsRecebidosView({ agora }) {
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
-<<<<<<< HEAD
     if (!linhaNotificacaoId) {
       notificacaoAbertaRef.current = null;
       return;
@@ -1166,7 +1165,8 @@ function LeadsRecebidosView({ agora }) {
       setErro('O lead desta notificacao nao esta mais disponivel.');
     }
   }, [carregando, linhaNotificacaoId, linhas, totalLinhas]);
-=======
+
+  useEffect(() => {
     if (!erro) return undefined;
     const timer = setTimeout(() => setErro(''), 6000);
     return () => clearTimeout(timer);
@@ -1177,7 +1177,6 @@ function LeadsRecebidosView({ agora }) {
     const timer = setTimeout(() => setSucesso(''), 4000);
     return () => clearTimeout(timer);
   }, [sucesso]);
->>>>>>> 0c2cc5f266c0c00ec58f386232fe53529b00d0ba
 
   const enviosSelecionados = useMemo(
     () => envios.filter(envio => selecionados.includes(envio.id)),
