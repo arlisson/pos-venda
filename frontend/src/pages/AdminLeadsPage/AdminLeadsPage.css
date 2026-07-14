@@ -856,6 +856,33 @@
   gap: 8px;
 }
 
+.leads-seller-search {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-3);
+  background: var(--surface);
+}
+
+.leads-seller-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.leads-seller-empty {
+  padding: 10px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
 .leads-check-card {
   display: flex;
   align-items: center;
