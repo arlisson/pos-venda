@@ -1,5 +1,5 @@
-import { Fragment, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as I from '../../components/Icons';
 import DocProgresso from '../../components/DocProgresso';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -1074,6 +1074,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
  */
 function LeadsRecebidosView({ agora }) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [envios, setEnvios] = useState([]);
   const [selecionados, setSelecionados] = useState([]);
   const [linhas, setLinhas] = useState([]);
@@ -1088,9 +1089,14 @@ function LeadsRecebidosView({ agora }) {
   const [salvandoAtualizacao, setSalvandoAtualizacao] = useState(false);
   const [erroAtualizacao, setErroAtualizacao] = useState('');
   const [modalAdicionar, setModalAdicionar] = useState(null);
+  const notificacaoAbertaRef = useRef(null);
   const usuario = useMemo(() => getUsuarioLocal(), []);
   const podeRegistrarVenda = temPermissao(usuario, 'vendas_criar');
   const podeRegistrarFuturo = temPermissao(usuario, 'futuros_clientes_registrar');
+  const linhaNotificacaoId = useMemo(() => {
+    const id = Number(searchParams.get('linha_id'));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  }, [searchParams]);
 
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -1104,7 +1110,7 @@ function LeadsRecebidosView({ agora }) {
   }, []);
 
   useEffect(() => {
-    if (selecionados.length === 0) {
+    if (selecionados.length === 0 && !linhaNotificacaoId) {
       setLinhas([]);
       setTotalLinhas(0);
       return;
@@ -1112,7 +1118,7 @@ function LeadsRecebidosView({ agora }) {
 
     let cancelado = false;
     setCarregando(true);
-    listarMinhasLeadLinhas({ envio_ids: selecionados, page: pagina, page_size: 200, busca: buscaDeferred })
+    listarMinhasLeadLinhas({ envio_ids: selecionados, page: pagina, page_size: 200, busca: buscaDeferred, linha_id: linhaNotificacaoId || undefined })
       .then(data => {
         if (!cancelado) {
           setLinhas(data.data || []);
@@ -1122,8 +1128,24 @@ function LeadsRecebidosView({ agora }) {
       .catch(error => setErro(error.message || 'Erro ao carregar leads recebidos.'))
       .finally(() => !cancelado && setCarregando(false));
     return () => { cancelado = true; };
-  }, [selecionados, pagina, buscaDeferred]);
+  }, [selecionados, pagina, buscaDeferred, linhaNotificacaoId]);
   /* eslint-enable react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (!linhaNotificacaoId) {
+      notificacaoAbertaRef.current = null;
+      return;
+    }
+    if (carregando || notificacaoAbertaRef.current === linhaNotificacaoId) return;
+
+    const linha = linhas.find(item => Number(item.id) === linhaNotificacaoId);
+    if (linha) {
+      notificacaoAbertaRef.current = linhaNotificacaoId;
+      setModalAdicionar(linha);
+    } else if (totalLinhas === 0) {
+      setErro('O lead desta notificacao nao esta mais disponivel.');
+    }
+  }, [carregando, linhaNotificacaoId, linhas, totalLinhas]);
 
   const enviosSelecionados = useMemo(
     () => envios.filter(envio => selecionados.includes(envio.id)),
@@ -1237,9 +1259,15 @@ function LeadsRecebidosView({ agora }) {
   /**
    * Trata o evento de futuro cliente salvo.
    */
+  function fecharModalAdicionar() {
+    notificacaoAbertaRef.current = linhaNotificacaoId;
+    setModalAdicionar(null);
+    if (linhaNotificacaoId) setSearchParams({ aba: 'leads' }, { replace: true });
+  }
+
   function handleFuturoClienteSalvo(linhaAtualizada, mensagem = 'Lead marcado como futuro cliente com sucesso.') {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
-    setModalAdicionar(null);
+    fecharModalAdicionar();
     setSucesso(mensagem);
   }
 
@@ -1273,7 +1301,7 @@ function LeadsRecebidosView({ agora }) {
           linha={modalAdicionar}
           colunas={colunas}
           usuario={usuario}
-          onClose={() => setModalAdicionar(null)}
+          onClose={fecharModalAdicionar}
           onRegistrarVenda={continuarRegistroVenda}
           onFuturoClienteSalvo={handleFuturoClienteSalvo}
           onLinhaAtualizada={handleLinhaAtualizada}
@@ -1959,6 +1987,7 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
  */
 function FuturosClientesMainView({ agora }) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [linhas, setLinhas] = useState([]);
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -1978,6 +2007,10 @@ function FuturosClientesMainView({ agora }) {
   const usuario = useMemo(() => getUsuarioLocal(), []);
   const podeGerenciar = temPermissao(usuario, 'futuros_clientes_registrar');
   const podeVerQuadroGeral = temPermissao(usuario, 'gerenciar_leads');
+  const linhaNotificacaoId = useMemo(() => {
+    const id = Number(searchParams.get('linha_id'));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  }, [searchParams]);
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -1986,7 +2019,7 @@ function FuturosClientesMainView({ agora }) {
     const listar = modoLixeira
       ? listarFuturosClientesLixeira
       : (podeVerQuadroGeral ? listarQuadroFuturosClientes : listarFuturosClientesLeads);
-    listar({ page: pagina, page_size: 50, busca: buscaDeferred })
+    listar({ page: pagina, page_size: 50, busca: buscaDeferred, linha_id: linhaNotificacaoId || undefined })
       .then(data => {
         if (!cancelado) {
           setLinhas(data.data || []);
@@ -1996,7 +2029,7 @@ function FuturosClientesMainView({ agora }) {
       .catch(error => setErro(error.message || 'Erro ao carregar futuros clientes.'))
       .finally(() => !cancelado && setCarregando(false));
     return () => { cancelado = true; };
-  }, [pagina, buscaDeferred, modoLixeira]);
+  }, [pagina, buscaDeferred, modoLixeira, linhaNotificacaoId]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   useEffect(() => {
@@ -2026,6 +2059,17 @@ function FuturosClientesMainView({ agora }) {
     return () => clearTimeout(timer);
   }, [sucesso]);
 
+  useEffect(() => {
+    if (!linhaNotificacaoId || carregando) return;
+
+    const linha = linhas.find(item => Number(item.id) === linhaNotificacaoId);
+    if (linha) {
+      setLinhaAtiva(linha);
+    } else if (total === 0) {
+      setErro('O futuro cliente desta notificacao nao esta mais disponivel.');
+    }
+  }, [carregando, linhaNotificacaoId, linhas, total]);
+
   const colunasDados = useMemo(() => {
     const mapa = new Map();
     linhas.forEach(linha => {
@@ -2044,7 +2088,13 @@ function FuturosClientesMainView({ agora }) {
    */
   function handleAtualizado(linhaAtualizada) {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
+    fecharDetalhe();
+  }
+
+  /** Fecha o detalhe aberto pela notificacao e retorna a lista completa. */
+  function fecharDetalhe() {
     setLinhaAtiva(null);
+    if (linhaNotificacaoId) setSearchParams({}, { replace: true });
   }
 
   /**
@@ -2155,7 +2205,7 @@ function FuturosClientesMainView({ agora }) {
       {linhaAtiva && (
         <FuturoClienteDetalheModal
           linha={linhaAtiva}
-          onClose={() => setLinhaAtiva(null)}
+          onClose={fecharDetalhe}
           onAtualizado={handleAtualizado}
           onRegistrarVenda={handleRegistrarVenda}
         />
@@ -2433,13 +2483,26 @@ function FuturosClientesMainView({ agora }) {
  * Renderiza futuros clientes page.
  */
 function FuturosClientesPage() {
-  const [abaAtiva, setAbaAtiva] = useState('futuros');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const abaDaNotificacao = searchParams.get('aba') === 'leads' ? 'leads' : 'futuros';
+  const [abaAtiva, setAbaAtiva] = useState(abaDaNotificacao);
   const [agora, setAgora] = useState(() => Date.now());
+
+  useEffect(() => {
+    setAbaAtiva(abaDaNotificacao);
+  }, [abaDaNotificacao]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setAgora(Date.now()), 30000);
     return () => window.clearInterval(intervalId);
   }, []);
+
+  function selecionarAba(aba) {
+    setAbaAtiva(aba);
+    if (searchParams.has('aba') || searchParams.has('linha_id')) {
+      setSearchParams({}, { replace: true });
+    }
+  }
 
   return (
     <LayoutPrivado>
@@ -2448,14 +2511,14 @@ function FuturosClientesPage() {
           <button
             type="button"
             className={`clientes-tab ${abaAtiva === 'futuros' ? 'active' : ''}`}
-            onClick={() => setAbaAtiva('futuros')}
+            onClick={() => selecionarAba('futuros')}
           >
             Futuros clientes
           </button>
           <button
             type="button"
             className={`clientes-tab ${abaAtiva === 'leads' ? 'active' : ''}`}
-            onClick={() => setAbaAtiva('leads')}
+            onClick={() => selecionarAba('leads')}
           >
             Mailing recebido
           </button>

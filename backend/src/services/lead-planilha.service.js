@@ -800,6 +800,8 @@ function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
 
   if (planilhaIds.length > 0) query.whereIn('planilha_id', planilhaIds);
   if (envioIds.length > 0) query.whereIn('envio_id', envioIds);
+  const linhaId = Number(filtros.linha_id || 0);
+  if (Number.isInteger(linhaId) && linhaId > 0) query.where('id', linhaId);
   if (opcoes.usuarioId) query.where('atribuido_para_id', Number(opcoes.usuarioId));
   if (filtros.etapa) query.where('etapa_atual', String(filtros.etapa));
   if (filtros.somente_qualificados === true || filtros.somente_qualificados === 'true') {
@@ -2050,6 +2052,9 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
     .where('futuro_cliente', true)
     .whereNull('futuro_cliente_excluido_em');
   if (usuarioId) query.where('futuro_cliente_marcado_por_id', usuarioId);
+
+  const linhaId = Number(filtros.linha_id || 0);
+  if (Number.isInteger(linhaId) && linhaId > 0) query.where('id', linhaId);
 
   query = aplicarBuscaFuturosClientes(query, filtros.busca);
 
