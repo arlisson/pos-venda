@@ -1603,6 +1603,9 @@ function AdminLeadsPage() {
                 {planilha.status !== 'processando' && (
                   <DocProgresso
                     {...calcularProgressoEnvio(planilha)}
+                    recusados={Number(planilha.total_recusados || 0)}
+                    futuros={Number(planilha.total_futuros || 0)}
+                    segmentarBarra={false}
                     rotulo="enviados"
                     rotuloCompleto="Tudo enviado"
                   />

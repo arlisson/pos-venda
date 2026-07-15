@@ -1054,9 +1054,13 @@ input, select, textarea { font-family: inherit; }
 .doc-progresso__fill { display: block; height: 100%; background: #2563eb; transition: width 0.2s ease; }
 .doc-progresso__fill.is-segmentado { background: linear-gradient(to right, var(--success) 0% var(--corte, 100%), var(--danger) var(--corte, 100%) 100%); }
 .doc-progresso__pct { color: var(--text-3); font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.doc-progresso__label { grid-column: 1 / -1; text-align: center; color: var(--text-2); font-size: 11px; font-variant-numeric: tabular-nums; }
-.doc-progresso__label.is-completo { color: var(--success); font-weight: 600; }
-.doc-progresso__recusa { color: var(--danger); font-weight: 600; }
+.doc-progresso__stats { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.doc-progresso__stat { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.doc-progresso__num { font-size: 13px; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.doc-progresso__num.is-completo { color: var(--success); }
+.doc-progresso__cap { font-style: normal; font-size: 10px; color: var(--text-3); }
+.doc-progresso__stat.is-futuros .doc-progresso__num { color: var(--success); }
+.doc-progresso__stat.is-recusa .doc-progresso__num { color: var(--danger); }
 
 .tag { padding: 2px 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; font-weight: 500; }
 .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--surface-3); color: var(--text-2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
