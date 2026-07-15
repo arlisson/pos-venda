@@ -649,6 +649,12 @@ function AdminLeadsPage() {
   const [caResultado, setCaResultado] = useState(null);
   const [caAbasSelecionadas, setCaAbasSelecionadas] = useState([]);
   const [abaMailing, setAbaMailing] = useState('mailing');
+  const [filtroPlanilhas, setFiltroPlanilhas] = useState({
+    nome: '',
+    statusEnvio: 'todos',
+    totalMinimo: '',
+    enviadosMinimo: ''
+  });
 
   /**
    * Carrega base e atualiza o estado relacionado.
@@ -680,6 +686,28 @@ function AdminLeadsPage() {
   const planilhasSelecionadas = useMemo(() => (
     planilhas.filter(planilha => selecionadas.includes(planilha.id))
   ), [planilhas, selecionadas]);
+
+  const planilhasFiltradas = useMemo(() => {
+    const nome = normalizarTexto(filtroPlanilhas.nome);
+    const totalMinimo = Number(filtroPlanilhas.totalMinimo || 0);
+    const enviadosMinimo = Number(filtroPlanilhas.enviadosMinimo || 0);
+
+    return planilhas.filter(planilha => {
+      const total = Number(planilha.total_linhas || 0);
+      const enviados = Number(planilha.total_enviados || 0);
+      const correspondeNome = !nome || normalizarTexto(planilha.nome).includes(nome);
+      const correspondeTotal = total >= totalMinimo;
+      const correspondeEnviados = enviados >= enviadosMinimo;
+      const correspondeStatus = {
+        todos: true,
+        nao_enviados: enviados === 0,
+        parciais: enviados > 0 && enviados < total,
+        concluidos: total > 0 && enviados >= total
+      }[filtroPlanilhas.statusEnvio];
+
+      return correspondeNome && correspondeTotal && correspondeEnviados && correspondeStatus;
+    });
+  }, [planilhas, filtroPlanilhas]);
 
   const colunas = useMemo(() => {
     const grupos = new Map();
@@ -1482,8 +1510,56 @@ function AdminLeadsPage() {
             </button>
           </div>
 
+          <div className="lead-doc-filters" aria-label="Filtros das planilhas">
+            <div className="lead-doc-filter-search">
+              <I.Search size={14} />
+              <input
+                value={filtroPlanilhas.nome}
+                onChange={event => setFiltroPlanilhas(prev => ({ ...prev, nome: event.target.value }))}
+                placeholder="Buscar planilha por nome"
+                aria-label="Buscar planilha por nome"
+              />
+            </div>
+            <select
+              value={filtroPlanilhas.statusEnvio}
+              onChange={event => setFiltroPlanilhas(prev => ({ ...prev, statusEnvio: event.target.value }))}
+              aria-label="Status de envio"
+            >
+              <option value="todos">Todos os envios</option>
+              <option value="nao_enviados">Não enviados</option>
+              <option value="parciais">Parcialmente enviados</option>
+              <option value="concluidos">Todos enviados</option>
+            </select>
+            <input
+              type="number"
+              min="0"
+              value={filtroPlanilhas.totalMinimo}
+              onChange={event => setFiltroPlanilhas(prev => ({ ...prev, totalMinimo: event.target.value }))}
+              placeholder="Mín. clientes"
+              aria-label="Quantidade mínima de clientes"
+            />
+            <input
+              type="number"
+              min="0"
+              value={filtroPlanilhas.enviadosMinimo}
+              onChange={event => setFiltroPlanilhas(prev => ({ ...prev, enviadosMinimo: event.target.value }))}
+              placeholder="Mín. enviados"
+              aria-label="Quantidade mínima enviada"
+            />
+            {(filtroPlanilhas.nome || filtroPlanilhas.statusEnvio !== 'todos' || filtroPlanilhas.totalMinimo || filtroPlanilhas.enviadosMinimo) && (
+              <button
+                className="lead-doc-filters__clear"
+                type="button"
+                onClick={() => setFiltroPlanilhas({ nome: '', statusEnvio: 'todos', totalMinimo: '', enviadosMinimo: '' })}
+              >
+                Limpar filtros
+              </button>
+            )}
+            <span className="lead-doc-filters__count">{planilhasFiltradas.length} de {planilhas.length}</span>
+          </div>
+
           <div className="lead-doc-list">
-            {planilhas.map(planilha => (
+            {planilhasFiltradas.map(planilha => (
               <div
                 key={planilha.id}
                 role="button"
@@ -1536,6 +1612,9 @@ function AdminLeadsPage() {
 
             {!carregando && planilhas.length === 0 && (
               <div className="lead-doc-empty">Nenhuma planilha importada.</div>
+            )}
+            {!carregando && planilhas.length > 0 && planilhasFiltradas.length === 0 && (
+              <div className="lead-doc-empty">Nenhuma planilha encontrada com esses filtros.</div>
             )}
           </div>
         </div>
