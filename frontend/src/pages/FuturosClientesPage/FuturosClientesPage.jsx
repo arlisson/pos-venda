@@ -724,6 +724,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [contatoTipo, setContatoTipo] = useState('');
   const [operadoraAtualId, setOperadoraAtualId] = useState('');
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem());
+  const [melhorNumeroContato, setMelhorNumeroContato] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
     + ((Number(item.quantidade) || 0) * moedaBRParaNumero(item.preco_por_chip)), 0);
@@ -874,6 +875,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
         chips_itens: chipsItensParaEnvio(chipsItens),
+        melhor_numero_contato: melhorNumeroContato,
         whatsapp
       });
       onFuturoClienteSalvo(resultado.linha);
@@ -1134,6 +1136,10 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
               <div className="futuro-cliente-estimativa">
                 <span>Media mensal estimada</span>
                 <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+              </div>
+              <div className="form-field">
+                <label>Melhor número para contato (pode ser o mesmo do whatsapp)</label>
+                <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={melhorNumeroContato} onChange={event => setMelhorNumeroContato(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
               </div>
               <div className="form-field">
                 <label>WhatsApp com DDD</label>
@@ -1621,6 +1627,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   const [contatoTipo, setContatoTipo] = useState(linha.sondagem?.contato_tipo || '');
   const [operadoraAtualId, setOperadoraAtualId] = useState(String(linha.sondagem?.operadora_atual_id || ''));
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem(linha.sondagem));
+  const [melhorNumeroContato, setMelhorNumeroContato] = useState(() => formatarWhatsappInput(linha.sondagem?.melhor_numero_contato || ''));
   const [whatsapp, setWhatsapp] = useState(() => (
     linha.sondagem?.whatsapp_ddd
       ? formatarWhatsappInput(`${linha.sondagem.whatsapp_ddd}${linha.sondagem.whatsapp_numero || ''}`)
@@ -1681,6 +1688,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
         chips_itens: chipsItensParaEnvio(chipsItens),
+        melhor_numero_contato: melhorNumeroContato,
         whatsapp
       });
       onAtualizado(resultado.linha);
@@ -1776,6 +1784,10 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
             <div className="futuro-cliente-estimativa">
               <span>Media mensal estimada</span>
               <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+            </div>
+            <div className="form-field">
+              <label>Melhor número para contato</label>
+              <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={melhorNumeroContato} onChange={event => setMelhorNumeroContato(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
             </div>
             <div className="form-field">
               <label>WhatsApp com DDD</label>

@@ -26,9 +26,14 @@ function formatarDataHora(valor) {
 function montarMensagemFuturoCliente(linha = {}) {
   const sondagem = linha.sondagem || {};
   const telefone = [sondagem.whatsapp_ddd, sondagem.whatsapp_numero].filter(Boolean).join('');
-  const whatsapp = telefone
-    ? `(${telefone.slice(0, 2)}) ${telefone.slice(2, 7)}-${telefone.slice(7)}`
-    : 'N\u00E3o informado';
+  const formatarTelefone = numero => {
+    if (!numero) return 'N\u00E3o informado';
+    const digitos = String(numero).replace(/\D/g, '');
+    const inicioNumero = digitos.length === 11 ? 7 : 6;
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2, inicioNumero)}-${digitos.slice(inicioNumero)}`;
+  };
+  const whatsapp = formatarTelefone(telefone);
+  const melhorNumeroContato = formatarTelefone(sondagem.melhor_numero_contato);
   const itensChips = Array.isArray(sondagem.chips_itens) ? sondagem.chips_itens : [];
   const descricaoChips = itensChips.length
     ? itensChips.map(item => `${item.quantidade}x ${formatarMoeda(item.preco_por_chip)}`).join(', ')
@@ -41,10 +46,12 @@ function montarMensagemFuturoCliente(linha = {}) {
     `Empresa: ${sondagem.razao_social || 'N\u00E3o informada'}`,
     `CNPJ: ${sondagem.cnpj || 'N\u00E3o informado'}`,
     `Contato: ${sondagem.contato_nome || 'N\u00E3o informado'} (${tipoContato})`,
+    `Melhor n\u00FAmero para contato: ${melhorNumeroContato}`,
     `WhatsApp: ${whatsapp}`,
     `Operadora atual: ${sondagem.operadoraAtual?.nome || 'N\u00E3o informada'}`,
     `Chips: ${descricaoChips}`,
     `Valor mensal estimado: ${formatarMoeda(sondagem.valor_mensal_estimado)}`,
+    `Data do contato: ${formatarDataHora(sondagem.respondido_em || linha.futuro_cliente_marcado_em)}`,
     `Retorno: ${formatarDataHora(sondagem.retorno_em || linha.futuro_cliente_retorno)}`,  
     `Observa\u00E7\u00F5es: ${sondagem.observacoes || 'Nenhuma'}`
   ].join('\n');

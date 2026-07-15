@@ -2002,6 +2002,10 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
   const whatsapp = telefoneDigitos.startsWith('55') && telefoneDigitos.length > 11 ? telefoneDigitos.slice(2) : telefoneDigitos;
   const whatsappDdd = whatsapp.slice(0, 2);
   const whatsappNumero = whatsapp.slice(2);
+  const melhorNumeroContatoDigitos = String(dados.melhor_numero_contato || '').replace(/\D/g, '');
+  const melhorNumeroContato = melhorNumeroContatoDigitos.startsWith('55') && melhorNumeroContatoDigitos.length > 11
+    ? melhorNumeroContatoDigitos.slice(2)
+    : melhorNumeroContatoDigitos;
 
   if (!contatoNome) throw criarHttpError(400, 'Informe o nome de quem falou.');
   if (!['adm', 'rl'].includes(contatoTipo)) throw criarHttpError(400, 'Informe se o contato e ADM ou RL.');
@@ -2014,6 +2018,9 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
   }
   if (whatsappDdd.length !== 2 || whatsappNumero.length < 8 || whatsappNumero.length > 9) {
     throw criarHttpError(400, 'Informe um WhatsApp com DDD valido.');
+  }
+  if (melhorNumeroContato.length < 10 || melhorNumeroContato.length > 11) {
+    throw criarHttpError(400, 'Informe o melhor numero para contato com DDD valido.');
   }
 
   const quantidadeChips = chipsItens.reduce((total, item) => total + item.quantidade, 0);
@@ -2047,7 +2054,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
       contato_nome: contatoNome, contato_tipo: contatoTipo, operadora_atual_id: operadoraAtualId,
       quantidade_chips: quantidadeChips, chips_itens: JSON.stringify(chipsItens), preco_por_chip: precoPorChip,
       valor_mensal_estimado: valorMensalEstimado, whatsapp_ddd: whatsappDdd,
-      whatsapp_numero: whatsappNumero, observacoes: notas, retorno_em: retorno,
+      whatsapp_numero: whatsappNumero, melhor_numero_contato: melhorNumeroContato, observacoes: notas, retorno_em: retorno,
       respondido_em: formatarDateTimeSQL()
     };
     const existente = await LeadSondagem.query(trx).where('lead_linha_id', Number(linhaId)).first();
