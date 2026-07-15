@@ -111,6 +111,28 @@ router.post(
   leadPlanilhaController.reverterClienteRecusou
 );
 router.post(
+  '/me/linhas/:id/chamada-nao-atendida',
+  exigirUmaPermissao(['futuros_clientes_registrar']),
+  auditar({
+    acao: 'lead_linha.chamada_nao_atendida',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, motivo: req.body?.motivo, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.marcarChamadaNaoAtendida
+);
+router.post(
+  '/me/linhas/:id/chamada-nao-atendida/reverter',
+  exigirUmaPermissao(['futuros_clientes_registrar']),
+  auditar({
+    acao: 'lead_linha.chamada_nao_atendida_revertida',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.reverterChamadaNaoAtendida
+);
+router.post(
   '/me/linhas/:id/retorno',
   exigirUmaPermissao(['futuros_clientes_registrar']),
   auditar({

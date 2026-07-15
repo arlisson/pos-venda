@@ -358,6 +358,24 @@ async function reverterClienteRecusou(req, res) {
   }
 }
 
+async function marcarChamadaNaoAtendida(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarChamadaNaoAtendidaLead(req.params.id, req.usuario.id, req.body || {}));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao marcar chamada nao atendida.' });
+  }
+}
+
+async function reverterChamadaNaoAtendida(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.reverterChamadaNaoAtendidaLead(req.params.id, req.usuario.id));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao reverter a chamada nao atendida.' });
+  }
+}
+
 async function marcarRetorno(req, res) {
   try {
     return res.json(await leadPlanilhaService.marcarRetornoLead(req.params.id, req.usuario.id, req.body || {}));
@@ -465,6 +483,8 @@ module.exports = {
   marcarVendaRecusada,
   marcarClienteRecusou,
   reverterClienteRecusou,
+  marcarChamadaNaoAtendida,
+  reverterChamadaNaoAtendida,
   marcarRetorno,
   listarFuturosClientesLixeira,
   excluirFuturoCliente,

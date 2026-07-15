@@ -467,6 +467,7 @@ async function listarPlanilhas() {
 
   const planilhaIds = planilhas.map(planilha => Number(planilha.id)).filter(Boolean);
   const enviadosPorPlanilha = new Map();
+  const metricasPorPlanilha = new Map();
   if (planilhaIds.length > 0) {
     const totais = await LeadLinha.query()
       .select('planilha_id')
@@ -475,6 +476,20 @@ async function listarPlanilhas() {
       .whereNotNull('envio_id')
       .groupBy('planilha_id');
     totais.forEach(item => enviadosPorPlanilha.set(Number(item.planilha_id), Number(item.total_enviados || 0)));
+
+    const metricas = await LeadLinha.query()
+      .select('planilha_id')
+      .select(db.raw('SUM(CASE WHEN cliente_recusou = 1 THEN 1 ELSE 0 END) as total_recusados'))
+      .select(db.raw(
+        'SUM(CASE WHEN futuro_cliente = 1 AND futuro_cliente_excluido_em IS NULL '
+        + 'THEN 1 ELSE 0 END) as total_futuros'
+      ))
+      .whereIn('planilha_id', planilhaIds)
+      .groupBy('planilha_id');
+    metricas.forEach(item => metricasPorPlanilha.set(Number(item.planilha_id), {
+      totalRecusados: Number(item.total_recusados || 0),
+      totalFuturos: Number(item.total_futuros || 0)
+    }));
   }
 
   const reconciliadas = [];
@@ -485,10 +500,14 @@ async function listarPlanilhas() {
   return reconciliadas.map(planilha => {
     const formatada = formatarPlanilha(planilha);
     const totalEnviados = enviadosPorPlanilha.get(Number(formatada.id)) || 0;
+    const metricas = metricasPorPlanilha.get(Number(formatada.id))
+      || { totalRecusados: 0, totalFuturos: 0 };
     return {
       ...formatada,
       total_enviados: totalEnviados,
-      total_pendentes: Math.max(0, formatada.total_linhas - totalEnviados)
+      total_pendentes: Math.max(0, formatada.total_linhas - totalEnviados),
+      total_recusados: metricas.totalRecusados,
+      total_futuros: metricas.totalFuturos
     };
   });
 }
@@ -970,6 +989,10 @@ async function listarEnviosDoUsuario(usuarioId) {
         + 'OR venda_recusada_em IS NOT NULL OR cliente_recusou = 1 THEN 1 ELSE 0 END) as total_trabalhados'
       ))
       .select(db.raw('SUM(CASE WHEN cliente_recusou = 1 THEN 1 ELSE 0 END) as total_recusados'))
+      .select(db.raw(
+        'SUM(CASE WHEN futuro_cliente = 1 AND futuro_cliente_excluido_em IS NULL '
+        + 'THEN 1 ELSE 0 END) as total_futuros'
+      ))
       .whereIn('envio_id', envioIds)
       .where('atribuido_para_id', usuarioId)
       .groupBy('envio_id');
@@ -977,19 +1000,21 @@ async function listarEnviosDoUsuario(usuarioId) {
     totais.forEach(item => metricasPorEnvio.set(Number(item.envio_id), {
       totalLinhas: Number(item.total_linhas || 0),
       totalTrabalhados: Number(item.total_trabalhados || 0),
-      totalRecusados: Number(item.total_recusados || 0)
+      totalRecusados: Number(item.total_recusados || 0),
+      totalFuturos: Number(item.total_futuros || 0)
     }));
   }
 
   return envios.map(envio => {
     const formatado = formatarEnvio(envio);
     const metricas = metricasPorEnvio.get(Number(formatado.id))
-      || { totalLinhas: 0, totalTrabalhados: 0, totalRecusados: 0 };
+      || { totalLinhas: 0, totalTrabalhados: 0, totalRecusados: 0, totalFuturos: 0 };
     return {
       ...formatado,
       total_linhas: metricas.totalLinhas,
       total_trabalhados: metricas.totalTrabalhados,
       total_recusados: metricas.totalRecusados,
+      total_futuros: metricas.totalFuturos,
       total_a_trabalhar: Math.max(0, metricas.totalLinhas - metricas.totalTrabalhados)
     };
   });
@@ -2514,6 +2539,53 @@ async function reverterClienteRecusouLead(linhaId, usuarioId) {
 }
 
 /**
+ * Registra que a ligacao nao foi atendida (motivo opcional). Nao tira o lead da fila.
+ */
+async function marcarChamadaNaoAtendidaLead(linhaId, usuarioId, dados = {}) {
+  const motivo = String(dados.motivo || dados.chamada_nao_atendida_motivo || '').trim();
+  if (motivo.length > 1000) throw criarHttpError(400, 'O motivo deve ter no maximo 1000 caracteres.');
+
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
+  }
+  if (linha.chamada_nao_atendida) {
+    throw criarHttpError(409, 'Este lead ja foi marcado como chamada nao atendida.');
+  }
+
+  await LeadLinha.query().patchAndFetchById(linha.id, {
+    chamada_nao_atendida: true,
+    chamada_nao_atendida_motivo: motivo || null,
+    chamada_nao_atendida_em: formatarDateTimeSQL(),
+    chamada_nao_atendida_por_id: usuarioId
+  });
+
+  return buscarLinhaFormatada(linha.id);
+}
+
+/**
+ * Reverte a marcacao de chamada nao atendida.
+ */
+async function reverterChamadaNaoAtendidaLead(linhaId, usuarioId) {
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
+  }
+  if (!linha.chamada_nao_atendida) {
+    throw criarHttpError(400, 'Este lead nao esta marcado como chamada nao atendida.');
+  }
+
+  await LeadLinha.query().patchAndFetchById(linha.id, {
+    chamada_nao_atendida: false,
+    chamada_nao_atendida_motivo: null,
+    chamada_nao_atendida_em: null,
+    chamada_nao_atendida_por_id: null
+  });
+
+  return buscarLinhaFormatada(linha.id);
+}
+
+/**
  * Agenda (ou limpa) a data e hora de retorno de um lead recebido.
  */
 async function marcarRetornoLead(linhaId, usuarioId, dados = {}) {
@@ -2699,6 +2771,8 @@ module.exports = {
   marcarVendaRecusadaLead,
   marcarClienteRecusouLead,
   reverterClienteRecusouLead,
+  marcarChamadaNaoAtendidaLead,
+  reverterChamadaNaoAtendidaLead,
   marcarRetornoLead,
   listarFuturosClientesLixeira,
   enviarFuturoClienteParaLixeira,

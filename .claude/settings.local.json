@@ -164,7 +164,8 @@
       "Skill(run)",
       "Skill(run:*)",
       "PowerShell(node --check c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\backend\\\\src\\\\services\\\\lead-planilha.service.js)",
-      "Bash(node --check src/services/lead-planilha.service.js)"
+      "Bash(node --check src/services/lead-planilha.service.js)",
+      "Bash(node -e \"require\\('./src/services/lead-planilha.service.js'\\); require\\('./src/controllers/lead-planilha.controller.js'\\); require\\('./src/routes/lead-planilha.routes.js'\\); require\\('./src/models/LeadLinha.js'\\); console.log\\('backend modules OK'\\)\")"
     ]
   }
 }

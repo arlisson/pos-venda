@@ -16,10 +16,12 @@ import {
   listarMeusLeadEnvios,
   listarMinhasLeadLinhas,
   marcarClienteRecusouLead,
+  marcarChamadaNaoAtendidaLead,
   marcarFuturoClienteLead,
   marcarRetornoLead,
   marcarVendaRecusadaLead,
   reverterClienteRecusouLead,
+  reverterChamadaNaoAtendidaLead,
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
 import { formatDateValue, formatUtcDateTime, parseUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
@@ -363,6 +365,20 @@ function renderLeadStatus(linha, agora = Date.now()) {
     );
   }
 
+  if (linha.chamada_nao_atendida && !isFuturoClienteVendido(linha) && !isFuturoClienteRecusado(linha)) {
+    return (
+      <span className="lead-status-cell">
+        <span className="pill warn lead-status-pill" title={linha.chamada_nao_atendida_motivo || ''}>
+          <span className="pill-dot"></span>
+          Chamada não atendida
+        </span>
+        {linha.chamada_nao_atendida_em && (
+          <span className="lead-status-return">Em {formatarDataHora(linha.chamada_nao_atendida_em)}</span>
+        )}
+      </span>
+    );
+  }
+
   if (linha.retorno_agendado_em && !isFuturoClienteAtivo(linha)) {
     return (
       <span className="lead-status-cell">
@@ -693,6 +709,8 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [retorno, setRetorno] = useState('');
   const [formRecusaAberto, setFormRecusaAberto] = useState(false);
   const [motivoClienteRecusou, setMotivoClienteRecusou] = useState('');
+  const [formChamadaAberto, setFormChamadaAberto] = useState(false);
+  const [motivoChamada, setMotivoChamada] = useState('');
   const [retornoAgendado, setRetornoAgendado] = useState(() => formatarParaDatetimeLocal(linha.retorno_agendado_em) || '');
   const [salvandoRetorno, setSalvandoRetorno] = useState(false);
   const [sucessoRetorno, setSucessoRetorno] = useState('');
@@ -766,6 +784,40 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
       setRetornoAgendado(formatarParaDatetimeLocal(resultado.linha.retorno_agendado_em) || '');
     } catch (error) {
       setErro(error.message || 'Erro ao reverter a recusa do cliente.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  /**
+   * Registra que a ligacao nao foi atendida (motivo opcional). Nao tira o lead da fila.
+   */
+  async function salvarChamadaNaoAtendida() {
+    setSalvando(true);
+    setErro('');
+    try {
+      const resultado = await marcarChamadaNaoAtendidaLead(linha.id, motivoChamada.trim());
+      onLinhaAtualizada(resultado.linha);
+      setFormChamadaAberto(false);
+      setMotivoChamada('');
+    } catch (error) {
+      setErro(error.message || 'Erro ao registrar a chamada nao atendida.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  /**
+   * Desfaz a marcacao de chamada nao atendida.
+   */
+  async function reverterChamada() {
+    setSalvando(true);
+    setErro('');
+    try {
+      const resultado = await reverterChamadaNaoAtendidaLead(linha.id);
+      onLinhaAtualizada(resultado.linha);
+    } catch (error) {
+      setErro(error.message || 'Erro ao reverter a chamada nao atendida.');
     } finally {
       setSalvando(false);
     }
@@ -936,6 +988,43 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                 <button type="button" className="btn" onClick={() => setEtapa('futuro')}>
                   <I.Calendar size={14} /> Registrar futuro cliente
                 </button>
+              )}
+
+              {!linha.futuro_cliente && !vendaRegistrada && (
+                linha.chamada_nao_atendida ? (
+                  <div className="futuro-cliente-recusa is-saved">
+                    <strong>Chamada não atendida em {formatarDataHora(linha.chamada_nao_atendida_em)}</strong>
+                    <span>{linha.chamada_nao_atendida_motivo || 'Sem observação.'}</span>
+                    <div className="futuro-cliente-recusa__acoes">
+                      <button type="button" className="btn" onClick={reverterChamada} disabled={salvando}>
+                        <I.Refresh size={14} /> {salvando ? 'Desfazendo...' : 'Desfazer'}
+                      </button>
+                    </div>
+                  </div>
+                ) : formChamadaAberto ? (
+                  <div className="futuro-cliente-recusa">
+                    <label>Observação (opcional)</label>
+                    <textarea
+                      rows={3}
+                      value={motivoChamada}
+                      onChange={event => setMotivoChamada(event.target.value)}
+                      placeholder="Ex.: caixa postal, número não existe, ligou e caiu..."
+                      disabled={salvando}
+                    />
+                    <div className="futuro-cliente-recusa__acoes">
+                      <button type="button" className="btn" onClick={() => { setFormChamadaAberto(false); setErro(''); }} disabled={salvando}>
+                        Cancelar
+                      </button>
+                      <button type="button" className="btn btn-primary" onClick={salvarChamadaNaoAtendida} disabled={salvando}>
+                        {salvando ? 'Salvando...' : 'Confirmar'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="btn" onClick={() => { setFormChamadaAberto(true); setSucessoRetorno(''); }} disabled={salvando}>
+                    <I.Bell size={14} /> Chamada não atendida
+                  </button>
+                )
               )}
 
               {!linha.futuro_cliente && !vendaRegistrada && (
@@ -1354,6 +1443,7 @@ function LeadsRecebidosView({ agora }) {
           {envios.map(envio => {
             const progresso = calcularProgresso(envio.total_linhas, envio.total_trabalhados);
             const recusados = Number(envio.total_recusados || 0);
+            const futuros = Number(envio.total_futuros || 0);
             return (
               <button
                 key={envio.id}
@@ -1369,6 +1459,7 @@ function LeadsRecebidosView({ agora }) {
                 <DocProgresso
                   {...progresso}
                   recusados={recusados}
+                  futuros={futuros}
                   rotulo="trabalhados"
                   rotuloCompleto="Tudo trabalhado"
                 />
@@ -1514,7 +1605,11 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   const [contatoTipo, setContatoTipo] = useState(linha.sondagem?.contato_tipo || '');
   const [operadoraAtualId, setOperadoraAtualId] = useState(String(linha.sondagem?.operadora_atual_id || ''));
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem(linha.sondagem));
-  const [whatsapp, setWhatsapp] = useState('');
+  const [whatsapp, setWhatsapp] = useState(() => (
+    linha.sondagem?.whatsapp_ddd
+      ? formatarWhatsappInput(`${linha.sondagem.whatsapp_ddd}${linha.sondagem.whatsapp_numero || ''}`)
+      : ''
+  ));
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
     + ((Number(item.quantidade) || 0) * moedaBRParaNumero(item.preco_por_chip)), 0);
 

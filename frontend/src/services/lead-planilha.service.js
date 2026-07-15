@@ -283,6 +283,20 @@ export function reverterClienteRecusouLead(linhaId) {
 }
 
 /**
+ * Registra que a ligacao nao foi atendida (motivo opcional).
+ */
+export function marcarChamadaNaoAtendidaLead(linhaId, motivo) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/chamada-nao-atendida`, { motivo });
+}
+
+/**
+ * Reverte a marcacao de chamada nao atendida.
+ */
+export function reverterChamadaNaoAtendidaLead(linhaId) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/chamada-nao-atendida/reverter`, {});
+}
+
+/**
  * Agenda (ou limpa, com retorno nulo) a data e hora de retorno do lead.
  */
 export function marcarRetornoLead(linhaId, retorno) {
