@@ -454,6 +454,91 @@ async function excluirFuturoClienteDefinitivo(req, res) {
   }
 }
 
+// ─── Ações administrativas por linha (gerenciar_leads) ────────────────────────
+// Reutilizam as funções de transição do serviço com { comoAdmin: true }, o que
+// dispensa a checagem de dono (atribuido_para_id) e relaxa as travas de estado.
+
+async function adminAtualizarCampoLead(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.atualizarCampoLinhaRecebida(req.params.id, req.usuario.id, req.body || {}, { comoAdmin: true }));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao atualizar lead.' });
+  }
+}
+
+async function adminMarcarFuturoCliente(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarComoFuturoCliente(req.params.id, req.usuario.id, req.body || {}, { comoAdmin: true }));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao qualificar futuro cliente.' });
+  }
+}
+
+async function adminMarcarVendaRecusada(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarVendaRecusadaLead(req.params.id, req.usuario.id, req.body || {}, { comoAdmin: true }));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao marcar venda recusada.' });
+  }
+}
+
+async function adminReverterVendaRecusada(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.reverterVendaRecusadaLead(req.params.id, req.usuario.id, { comoAdmin: true }));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao reverter a venda recusada.' });
+  }
+}
+
+async function adminMarcarClienteRecusou(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarClienteRecusouLead(req.params.id, req.usuario.id, req.body || {}, { comoAdmin: true }));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao marcar recusa do cliente.' });
+  }
+}
+
+async function adminReverterClienteRecusou(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.reverterClienteRecusouLead(req.params.id, req.usuario.id, { comoAdmin: true }));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao reverter a recusa do cliente.' });
+  }
+}
+
+async function adminMarcarChamadaNaoAtendida(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarChamadaNaoAtendidaLead(req.params.id, req.usuario.id, req.body || {}, { comoAdmin: true }));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao marcar chamada nao atendida.' });
+  }
+}
+
+async function adminReverterChamadaNaoAtendida(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.reverterChamadaNaoAtendidaLead(req.params.id, req.usuario.id, { comoAdmin: true }));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao reverter a chamada nao atendida.' });
+  }
+}
+
+async function adminMarcarRetorno(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.marcarRetornoLead(req.params.id, req.usuario.id, req.body || {}, { comoAdmin: true }));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao marcar retorno do lead.' });
+  }
+}
+
 module.exports = {
   index,
   store,
@@ -489,5 +574,14 @@ module.exports = {
   listarFuturosClientesLixeira,
   excluirFuturoCliente,
   restaurarFuturoCliente,
-  excluirFuturoClienteDefinitivo
+  excluirFuturoClienteDefinitivo,
+  adminAtualizarCampoLead,
+  adminMarcarFuturoCliente,
+  adminMarcarVendaRecusada,
+  adminReverterVendaRecusada,
+  adminMarcarClienteRecusou,
+  adminReverterClienteRecusou,
+  adminMarcarChamadaNaoAtendida,
+  adminReverterChamadaNaoAtendida,
+  adminMarcarRetorno
 };

@@ -176,6 +176,107 @@ router.delete(
   leadPlanilhaController.destroy
 );
 router.get('/linhas', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.linhas);
+
+// Ações administrativas por linha (Planilha de Mailing) — gate gerenciar_leads.
+router.put(
+  '/linhas/:id/campo',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_linha.campo_atualizado_admin',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: (req, resultado) => ({ coluna: resultado?.coluna || req.body?.coluna, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.adminAtualizarCampoLead
+);
+router.post(
+  '/linhas/:id/futuro-cliente',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_linha.futuro_cliente_marcado_admin',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.adminMarcarFuturoCliente
+);
+router.post(
+  '/linhas/:id/venda-recusada',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_linha.venda_recusada_admin',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, motivo: req.body?.motivo, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.adminMarcarVendaRecusada
+);
+router.post(
+  '/linhas/:id/venda-recusada/reverter',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_linha.venda_recusada_revertida_admin',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.adminReverterVendaRecusada
+);
+router.post(
+  '/linhas/:id/cliente-recusou',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_linha.cliente_recusou_admin',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, motivo: req.body?.motivo, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.adminMarcarClienteRecusou
+);
+router.post(
+  '/linhas/:id/cliente-recusou/reverter',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_linha.cliente_recusou_revertido_admin',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.adminReverterClienteRecusou
+);
+router.post(
+  '/linhas/:id/chamada-nao-atendida',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_linha.chamada_nao_atendida_admin',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, motivo: req.body?.motivo, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.adminMarcarChamadaNaoAtendida
+);
+router.post(
+  '/linhas/:id/chamada-nao-atendida/reverter',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_linha.chamada_nao_atendida_revertida_admin',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.adminReverterChamadaNaoAtendida
+);
+router.post(
+  '/linhas/:id/retorno',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_linha.retorno_marcado_admin',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.adminMarcarRetorno
+);
 router.get('/envios', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.envios);
 router.post('/exportar', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.exportar);
 router.get('/futuros-clientes', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.listarTodosFuturosClientes);

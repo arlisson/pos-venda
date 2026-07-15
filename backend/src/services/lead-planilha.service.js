@@ -922,11 +922,11 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
 /**
  * Atualiza campo linha recebida com os dados informados.
  */
-async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}) {
+async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
   if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
 
-  if (Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+  if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
     throw criarHttpError(403, 'Você não pode atualizar este lead.');
   }
 
@@ -1970,16 +1970,17 @@ async function exportarCsv(filtros, res, opcoes = {}) {
 /**
  * Marca como futuro cliente conforme a acao solicitada.
  */
-async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
+async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
-  if (linha?.futuro_cliente && Number(linha.futuro_cliente_marcado_por_id) !== Number(usuarioId)) {
+  if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
+  if (!opcoes.comoAdmin && linha.futuro_cliente && Number(linha.futuro_cliente_marcado_por_id) !== Number(usuarioId)) {
     throw criarHttpError(409, 'Este lead ja foi qualificado na primeira ligacao e nao pode ser qualificado novamente.');
   }
-  if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
 
-  if (Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+  if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
     throw criarHttpError(403, 'Você não pode atualizar este lead.');
   }
+  const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
   const razaoSocial = String(dados.razao_social || '').trim().slice(0, 240) || null;
   const cnpj = String(dados.cnpj || '').trim().slice(0, 20) || null;
@@ -2024,11 +2025,11 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
 
   await LeadLinha.transaction(async trx => {
     let atribuicao = await LeadAtribuicao.query(trx)
-      .where({ lead_linha_id: Number(linhaId), usuario_id: Number(usuarioId), etapa: 'sondagem' })
+      .where({ lead_linha_id: Number(linhaId), usuario_id: donoId, etapa: 'sondagem' })
       .orderBy('id', 'desc').first();
     if (!atribuicao) {
       atribuicao = await LeadAtribuicao.query(trx).insertAndFetch({
-        lead_linha_id: Number(linhaId), envio_id: linha.envio_id, usuario_id: usuarioId,
+        lead_linha_id: Number(linhaId), envio_id: linha.envio_id, usuario_id: donoId,
         etapa: 'sondagem', status: 'atribuido', criado_por_id: usuarioId
       });
     }
@@ -2038,7 +2039,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
     });
 
     const sondagem = {
-      lead_linha_id: Number(linhaId), atribuicao_id: atribuicao.id, usuario_id: usuarioId,
+      lead_linha_id: Number(linhaId), atribuicao_id: atribuicao.id, usuario_id: donoId,
       razao_social: razaoSocial, cnpj,
       contato_nome: contatoNome, contato_tipo: contatoTipo, operadora_atual_id: operadoraAtualId,
       quantidade_chips: quantidadeChips, chips_itens: JSON.stringify(chipsItens), preco_por_chip: precoPorChip,
@@ -2052,7 +2053,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
 
     await trx('lead_linhas').where('id', Number(linhaId)).update({
       futuro_cliente: true, futuro_cliente_notas: notas, futuro_cliente_retorno: retorno,
-      futuro_cliente_marcado_em: formatarDateTimeSQL(), futuro_cliente_marcado_por_id: usuarioId,
+      futuro_cliente_marcado_em: formatarDateTimeSQL(), futuro_cliente_marcado_por_id: donoId,
       retorno_agendado_em: null, retorno_agendado_por_id: null,
       etapa_atual: 'sondagem', status_operacional: 'qualificado', updated_at: new Date()
     });
@@ -2408,21 +2409,23 @@ async function vincularVendaAoLead(linhaId, vendaId, usuarioId) {
   return { linha_id: Number(linhaId), venda_id: Number(vendaId), cliente_id: venda.cliente_id || null };
 }
 
-async function marcarVendaRecusadaLead(linhaId, usuarioId, dados = {}) {
+async function marcarVendaRecusadaLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const motivo = String(dados.motivo || dados.venda_recusada_motivo || '').trim();
   if (!motivo) throw criarHttpError(400, 'Informe o motivo da venda recusada.');
   if (motivo.length > 1000) throw criarHttpError(400, 'O motivo da venda recusada deve ter no maximo 1000 caracteres.');
 
   const linha = await LeadLinha.query().findById(Number(linhaId));
-  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
     throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
   }
-  if (!linha.futuro_cliente || linha.futuro_cliente_excluido_em) {
+  if (!opcoes.comoAdmin && (!linha.futuro_cliente || linha.futuro_cliente_excluido_em)) {
     throw criarHttpError(400, 'Somente futuros clientes ativos podem ter venda recusada.');
   }
   if (linha.venda_id || linha.status_operacional === 'vendido') {
     throw criarHttpError(409, 'Este futuro cliente ja possui venda registrada.');
   }
+  const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
   await LeadLinha.transaction(async trx => {
     const recusadaEm = formatarDateTimeSQL();
@@ -2435,13 +2438,13 @@ async function marcarVendaRecusadaLead(linhaId, usuarioId, dados = {}) {
     });
 
     let atribuicao = await LeadAtribuicao.query(trx)
-      .where({ lead_linha_id: linha.id, usuario_id: usuarioId, etapa: 'venda' })
+      .where({ lead_linha_id: linha.id, usuario_id: donoId, etapa: 'venda' })
       .orderBy('id', 'desc').first();
     if (!atribuicao) {
       atribuicao = await LeadAtribuicao.query(trx).insertAndFetch({
         lead_linha_id: linha.id,
         envio_id: linha.envio_id,
-        usuario_id: usuarioId,
+        usuario_id: donoId,
         etapa: 'venda',
         status: 'atribuido',
         criado_por_id: usuarioId
@@ -2461,6 +2464,44 @@ async function marcarVendaRecusadaLead(linhaId, usuarioId, dados = {}) {
 }
 
 /**
+ * Reverte a "venda recusada" e devolve o lead para a etapa de venda como qualificado.
+ */
+async function reverterVendaRecusadaLead(linhaId, usuarioId, opcoes = {}) {
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+    throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
+  }
+  if (!linha.venda_recusada_em && linha.status_operacional !== 'perdido') {
+    throw criarHttpError(400, 'Este lead nao esta marcado como venda recusada.');
+  }
+  const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
+  const futuroClienteAtivo = Boolean(linha.futuro_cliente && !linha.futuro_cliente_excluido_em);
+
+  await LeadLinha.transaction(async trx => {
+    await LeadLinha.query(trx).patchAndFetchById(linha.id, {
+      venda_recusada_motivo: null,
+      venda_recusada_em: null,
+      venda_recusada_por_id: null,
+      status_operacional: futuroClienteAtivo ? 'qualificado' : 'pendente'
+    });
+
+    const atribuicao = await LeadAtribuicao.query(trx)
+      .where({ lead_linha_id: linha.id, usuario_id: donoId, etapa: 'venda' })
+      .orderBy('id', 'desc').first();
+    if (atribuicao && atribuicao.status === 'perdido') {
+      await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
+        status: futuroClienteAtivo ? 'qualificado' : 'atribuido',
+        motivo_resultado: null,
+        finalizado_em: null
+      });
+    }
+  });
+
+  return buscarLinhaFormatada(linha.id);
+}
+
+/**
  * Busca a linha e recarrega com os relacionamentos usados pelo frontend.
  */
 async function buscarLinhaFormatada(linhaId) {
@@ -2475,20 +2516,22 @@ async function buscarLinhaFormatada(linhaId) {
 /**
  * Registra que o cliente recusou o contato na primeira ligacao.
  */
-async function marcarClienteRecusouLead(linhaId, usuarioId, dados = {}) {
+async function marcarClienteRecusouLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const motivo = String(dados.motivo || dados.cliente_recusou_motivo || '').trim();
   if (motivo.length > 1000) throw criarHttpError(400, 'O motivo da recusa deve ter no maximo 1000 caracteres.');
 
   const linha = await LeadLinha.query().findById(Number(linhaId));
-  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
     throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
   }
   if (linha.venda_id || linha.status_operacional === 'vendido') {
     throw criarHttpError(409, 'Este lead ja possui venda registrada.');
   }
-  if (linha.cliente_recusou) {
+  if (!opcoes.comoAdmin && linha.cliente_recusou) {
     throw criarHttpError(409, 'Este lead ja foi marcado como recusado pelo cliente.');
   }
+  const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
   const recusadoEm = formatarDateTimeSQL();
 
@@ -2504,13 +2547,13 @@ async function marcarClienteRecusouLead(linhaId, usuarioId, dados = {}) {
     });
 
     let atribuicao = await LeadAtribuicao.query(trx)
-      .where({ lead_linha_id: linha.id, usuario_id: usuarioId, etapa: 'sondagem' })
+      .where({ lead_linha_id: linha.id, usuario_id: donoId, etapa: 'sondagem' })
       .orderBy('id', 'desc').first();
     if (!atribuicao) {
       atribuicao = await LeadAtribuicao.query(trx).insertAndFetch({
         lead_linha_id: linha.id,
         envio_id: linha.envio_id,
-        usuario_id: usuarioId,
+        usuario_id: donoId,
         etapa: 'sondagem',
         status: 'atribuido',
         criado_por_id: usuarioId
@@ -2529,14 +2572,16 @@ async function marcarClienteRecusouLead(linhaId, usuarioId, dados = {}) {
 /**
  * Reverte a recusa do cliente e devolve o lead para a fila de trabalho.
  */
-async function reverterClienteRecusouLead(linhaId, usuarioId) {
+async function reverterClienteRecusouLead(linhaId, usuarioId, opcoes = {}) {
   const linha = await LeadLinha.query().findById(Number(linhaId));
-  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
     throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
   }
   if (!linha.cliente_recusou) {
     throw criarHttpError(400, 'Este lead nao esta marcado como recusado pelo cliente.');
   }
+  const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
   await LeadLinha.transaction(async trx => {
     await LeadLinha.query(trx).patchAndFetchById(linha.id, {
@@ -2548,7 +2593,7 @@ async function reverterClienteRecusouLead(linhaId, usuarioId) {
     });
 
     const atribuicao = await LeadAtribuicao.query(trx)
-      .where({ lead_linha_id: linha.id, usuario_id: usuarioId, etapa: 'sondagem' })
+      .where({ lead_linha_id: linha.id, usuario_id: donoId, etapa: 'sondagem' })
       .orderBy('id', 'desc').first();
     if (atribuicao && atribuicao.status === 'perdido') {
       await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
@@ -2565,15 +2610,16 @@ async function reverterClienteRecusouLead(linhaId, usuarioId) {
 /**
  * Registra que a ligacao nao foi atendida (motivo opcional). Nao tira o lead da fila.
  */
-async function marcarChamadaNaoAtendidaLead(linhaId, usuarioId, dados = {}) {
+async function marcarChamadaNaoAtendidaLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const motivo = String(dados.motivo || dados.chamada_nao_atendida_motivo || '').trim();
   if (motivo.length > 1000) throw criarHttpError(400, 'O motivo deve ter no maximo 1000 caracteres.');
 
   const linha = await LeadLinha.query().findById(Number(linhaId));
-  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
     throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
   }
-  if (linha.chamada_nao_atendida) {
+  if (!opcoes.comoAdmin && linha.chamada_nao_atendida) {
     throw criarHttpError(409, 'Este lead ja foi marcado como chamada nao atendida.');
   }
 
@@ -2590,9 +2636,10 @@ async function marcarChamadaNaoAtendidaLead(linhaId, usuarioId, dados = {}) {
 /**
  * Reverte a marcacao de chamada nao atendida.
  */
-async function reverterChamadaNaoAtendidaLead(linhaId, usuarioId) {
+async function reverterChamadaNaoAtendidaLead(linhaId, usuarioId, opcoes = {}) {
   const linha = await LeadLinha.query().findById(Number(linhaId));
-  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
     throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
   }
   if (!linha.chamada_nao_atendida) {
@@ -2612,20 +2659,22 @@ async function reverterChamadaNaoAtendidaLead(linhaId, usuarioId) {
 /**
  * Agenda (ou limpa) a data e hora de retorno de um lead recebido.
  */
-async function marcarRetornoLead(linhaId, usuarioId, dados = {}) {
+async function marcarRetornoLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const linha = await LeadLinha.query().findById(Number(linhaId));
-  if (!linha || Number(linha.atribuido_para_id) !== Number(usuarioId)) {
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
     throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
   }
-  if (linha.cliente_recusou) {
+  if (!opcoes.comoAdmin && linha.cliente_recusou) {
     throw criarHttpError(409, 'Este lead foi recusado pelo cliente e nao pode ter retorno marcado.');
   }
+  const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
   const retorno = parseDataHoraRetorno(dados.retorno);
 
   await LeadLinha.query().patchAndFetchById(linha.id, {
     retorno_agendado_em: retorno,
-    retorno_agendado_por_id: retorno ? usuarioId : null
+    retorno_agendado_por_id: retorno ? donoId : null
   });
 
   await sincronizarNotificacoesRetornoLeads();
@@ -2793,6 +2842,7 @@ module.exports = {
   gerarXlsxProdutividadePrimeiraLigacao,
   vincularVendaAoLead,
   marcarVendaRecusadaLead,
+  reverterVendaRecusadaLead,
   marcarClienteRecusouLead,
   reverterClienteRecusouLead,
   marcarChamadaNaoAtendidaLead,

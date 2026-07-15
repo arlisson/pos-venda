@@ -303,6 +303,45 @@ export function marcarRetornoLead(linhaId, retorno) {
   return apiPost(`/lead-planilhas/me/linhas/${linhaId}/retorno`, { retorno });
 }
 
+// ─── Ações administrativas por linha (Planilha de Mailing / gerenciar_leads) ──
+// Operam em qualquer lead, sem exigir que o admin seja o vendedor atribuído.
+
+export function adminAtualizarCampoLead(linhaId, dados) {
+  return apiPut(`/lead-planilhas/linhas/${linhaId}/campo`, dados);
+}
+
+export function adminMarcarFuturoClienteLead(linhaId, dados) {
+  return apiPost(`/lead-planilhas/linhas/${linhaId}/futuro-cliente`, dados);
+}
+
+export function adminMarcarVendaRecusadaLead(linhaId, motivo) {
+  return apiPost(`/lead-planilhas/linhas/${linhaId}/venda-recusada`, { motivo });
+}
+
+export function adminReverterVendaRecusadaLead(linhaId) {
+  return apiPost(`/lead-planilhas/linhas/${linhaId}/venda-recusada/reverter`, {});
+}
+
+export function adminMarcarClienteRecusouLead(linhaId, motivo) {
+  return apiPost(`/lead-planilhas/linhas/${linhaId}/cliente-recusou`, { motivo });
+}
+
+export function adminReverterClienteRecusouLead(linhaId) {
+  return apiPost(`/lead-planilhas/linhas/${linhaId}/cliente-recusou/reverter`, {});
+}
+
+export function adminMarcarChamadaNaoAtendidaLead(linhaId, motivo) {
+  return apiPost(`/lead-planilhas/linhas/${linhaId}/chamada-nao-atendida`, { motivo });
+}
+
+export function adminReverterChamadaNaoAtendidaLead(linhaId) {
+  return apiPost(`/lead-planilhas/linhas/${linhaId}/chamada-nao-atendida/reverter`, {});
+}
+
+export function adminMarcarRetornoLead(linhaId, retorno) {
+  return apiPost(`/lead-planilhas/linhas/${linhaId}/retorno`, { retorno });
+}
+
 export function listarQuadroFuturosClientes(filtros = {}) {
   return apiGet(`/lead-planilhas/futuros-clientes${montarQuery(filtros)}`);
 }
