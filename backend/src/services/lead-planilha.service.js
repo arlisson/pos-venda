@@ -17,6 +17,7 @@ const db = require('../database/connection');
 const { parseUtcDateTime } = require('../utils/datetime');
 const clienteAntigoService = require('./cliente-antigo.service');
 const { restaurarZerosCnpj } = require('./cnpj.service');
+const telegramService = require('./telegram.service');
 
 const IMPORT_DIR = process.env.LEAD_IMPORT_DIR
   ? path.resolve(process.env.LEAD_IMPORT_DIR)
@@ -1981,6 +1982,8 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
     throw criarHttpError(403, 'Você não pode atualizar este lead.');
   }
 
+  const eraFuturoCliente = Boolean(linha.futuro_cliente);
+
   const razaoSocial = String(dados.razao_social || '').trim().slice(0, 240) || null;
   const cnpj = String(dados.cnpj || '').trim().slice(0, 20) || null;
   const contatoNome = String(dados.contato_nome || '').trim();
@@ -2065,7 +2068,20 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}) {
     .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, usuario]]')
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
 
-  return { linha: formatarLinha(atualizada) };
+  const linhaFormatada = formatarLinha(atualizada);
+  if (!eraFuturoCliente) {
+    try {
+      await telegramService.enviarFuturoCliente(linhaFormatada);
+    } catch (error) {
+      // A indisponibilidade do Telegram nao pode desfazer o cadastro do lead.
+      console.error('Erro ao notificar futuro cliente no Telegram:', {
+        message: error.response?.data?.description || error.message,
+        status: error.response?.status
+      });
+    }
+  }
+
+  return { linha: linhaFormatada };
 }
 
 /**
