@@ -426,6 +426,22 @@ function getOperator(venda) {
 }
 
 /**
+ * Rotulos do resultado da verificacao com o 0800 (etapa 1 da conferencia).
+ */
+const ROTULOS_BASE_0800 = {
+  nao_e_base: 'Não é base',
+  base_claro: 'Base da Claro',
+  base_vivo: 'Base da Vivo'
+};
+
+/**
+ * Retorna o rotulo da base verificada no 0800, ou vazio se a etapa ainda nao foi concluida.
+ */
+function getBase0800(venda) {
+  return ROTULOS_BASE_0800[venda.etapa_0800_resultado] || '';
+}
+
+/**
  * Retorna plan a partir dos dados informados.
  */
 function getPlan(venda) {
@@ -794,6 +810,7 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
     client: getClient(venda),
     value: Number(venda.valor_total || 0),
     operator: getOperator(venda),
+    base0800: getBase0800(venda),
     plan: getPlan(venda),
     cpfCnpj: venda.cnpj || venda.cpf || '-',
     seller,
@@ -820,7 +837,7 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
 /**
  * Renderiza sale modal.
  */
-function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFullSale, openingFullSale, podeCancelar, podeReverterCancelamento, onCancelSale, onReverterCancelamento, podeEditarVenda, podeVerDocumentos, podeAdicionarDocumentos }) {
+function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFullSale, openingFullSale, podeCancelar, podeReverterCancelamento, onCancelSale, onReverterCancelamento, podeEditarVenda, podeVerDocumentos, podeAdicionarDocumentos, onEtapasAtualizadas = () => {} }) {
   const [tab, setTab] = useState('info');
   const [novaFase, setNovaFase] = useState(sale.stage);
   const [novaPrioridade, setNovaPrioridade] = useState(sale.priority || 'media');
@@ -1097,6 +1114,7 @@ function SaleModal({ sale, stages, stageLabels, onClose, onUpdateSale, onOpenFul
               podeEditar={podeEditarVenda}
               podeVisualizar={podeVerDocumentos}
               podeAdicionar={podeAdicionarDocumentos}
+              onEtapasAtualizadas={etapas => onEtapasAtualizadas(sale.id, etapas)}
             />
           )}
 
@@ -1664,6 +1682,14 @@ function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, 
         <span className="operator">{sale.operator}</span>
         <span>·</span>
         <span>{sale.plan}</span>
+        {sale.base0800 && (
+          <span
+            className={`sale-base-badge sale-base-badge--${sale.raw?.etapa_0800_resultado}`}
+            title={`Verificação com o 0800: ${sale.base0800}`}
+          >
+            {sale.base0800}
+          </span>
+        )}
         <span
           className={`sale-priority-badge sale-priority-badge--${priorityInfo.key}`}
           title={priorityInfo.label}
@@ -1914,6 +1940,23 @@ function FunilPage() {
     } finally {
       setAbrindoVendaCompletaId(null);
     }
+  }
+
+  /**
+   * Reflete no card do funil o resultado do 0800 alterado dentro do modal da venda.
+   */
+  function handleEtapasAtualizadas(saleId, etapas) {
+    const resultado = (etapas || []).find(etapa => etapa.chave === '0800')?.resultado || null;
+
+    setSales(prev => prev.map(sale => (
+      sale.id === saleId
+        ? {
+          ...sale,
+          base0800: ROTULOS_BASE_0800[resultado] || '',
+          raw: { ...sale.raw, etapa_0800_resultado: resultado }
+        }
+        : sale
+    )));
   }
 
   /**
@@ -2551,6 +2594,7 @@ function FunilPage() {
           podeEditarVenda={podeEditarVenda}
           podeVerDocumentos={podeVerDocumentosVenda}
           podeAdicionarDocumentos={podeAdicionarDocumentosVenda}
+          onEtapasAtualizadas={handleEtapasAtualizadas}
         />
       )}
       {vendaCompleta && (
@@ -2569,6 +2613,7 @@ function FunilPage() {
           podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
           usuarioLogado={usuario}
           modoEdicao={modalVendaModoEdicao}
+          onEtapasAtualizadas={etapas => handleEtapasAtualizadas(vendaCompleta.id, etapas)}
           onStartEdit={() => setModalVendaModoEdicao(true)}
           onClose={fecharVendaCompleta}
           onSave={salvarVendaCompleta}

@@ -229,12 +229,13 @@ export async function listarEtapasVenda(vendaId) {
 }
 
 /**
- * Marca ou desmarca a etapa 1 (verificacao com o 0800).
+ * Registra o resultado da etapa 1 (verificacao com o 0800).
+ * Enviar `null` volta a etapa para pendente.
  */
-export async function atualizarEtapa0800(vendaId, concluida) {
+export async function atualizarEtapa0800(vendaId, resultado) {
   return apiRequest(`/vendas/${vendaId}/etapas/0800`, {
     method: 'PATCH',
-    body: JSON.stringify({ concluida: Boolean(concluida) })
+    body: JSON.stringify({ resultado: resultado || null })
   });
 }
 

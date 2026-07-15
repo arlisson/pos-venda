@@ -399,14 +399,25 @@
 .clientes-leads-table th:nth-child(1),
 .clientes-leads-table td:nth-child(1) {
   left: 0;
-  width: 140px;
-  min-width: 140px;
-  max-width: 140px;
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
+}
+
+/* A tag do envio ocupa uma linha so; nome longo ganha reticencias (o title tem o valor completo). */
+.clientes-leads-table td.m-primary .tag,
+.futuros-clientes-table td.m-primary .tag {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .clientes-leads-table th:nth-child(2),
 .clientes-leads-table td:nth-child(2) {
-  left: 140px;
+  left: 160px;
   width: 170px;
   min-width: 170px;
   max-width: 170px;
@@ -414,7 +425,7 @@
 
 .clientes-leads-table--acoes th:nth-child(3),
 .clientes-leads-table--acoes td:nth-child(3) {
-  left: 310px;
+  left: 330px;
   width: 140px;
   min-width: 140px;
   max-width: 140px;
@@ -900,6 +911,76 @@
   padding: 3px 9px;
   font-size: 12px;
   font-weight: 700;
+}
+
+.futuro-cliente-notas__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.futuro-cliente-notas__opcional {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.futuro-cliente-notas__box {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.futuro-cliente-notas__box:hover {
+  border-color: var(--border-strong);
+}
+
+.futuro-cliente-notas__box:focus-within {
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.08);
+}
+
+.futuro-cliente-notas__input {
+  width: 100%;
+  display: block;
+  padding: 10px 12px 26px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.55;
+  outline: none;
+  resize: vertical;
+  min-height: 92px;
+}
+
+.futuro-cliente-notas__input::placeholder {
+  color: var(--text-3);
+}
+
+.futuro-cliente-notas__input:disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+.futuro-cliente-notas__box:has(.futuro-cliente-notas__input:disabled) {
+  background: var(--surface-2);
+}
+
+.futuro-cliente-notas__contador {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+  pointer-events: none;
 }
 
 .futuro-cliente-estimativa {
