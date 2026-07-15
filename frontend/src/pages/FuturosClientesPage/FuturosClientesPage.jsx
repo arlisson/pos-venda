@@ -2029,10 +2029,11 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
     ligacoes: acc.ligacoes + Number(item.ligacoes_realizadas || 0),
     retornos: acc.retornos + Number(item.retornos_agendados || 0),
     clientesRecusaram: acc.clientesRecusaram + Number(item.clientes_recusaram || 0),
+    chamadasNaoAtendidas: acc.chamadasNaoAtendidas + Number(item.chamadas_nao_atendidas || 0),
     vendidos: acc.vendidos + Number(item.vendidos || 0),
     recusados: acc.recusados + Number(item.recusados || 0),
     potencial: acc.potencial + Number(item.potencial_mensal || 0)
-  }), { ligacoes: 0, retornos: 0, clientesRecusaram: 0, vendidos: 0, recusados: 0, potencial: 0 }), [dias, periodoInvalido]);
+  }), { ligacoes: 0, retornos: 0, clientesRecusaram: 0, chamadasNaoAtendidas: 0, vendidos: 0, recusados: 0, potencial: 0 }), [dias, periodoInvalido]);
   const diasExibidos = periodoInvalido ? [] : dias;
 
   function selecionarPeriodo(inicio, fim) {
@@ -2091,6 +2092,7 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
             <div className="is-primary"><span>Ligações totais</span><strong>{carregando ? '...' : resumo.ligacoes}</strong></div>
             <div><span>Retornos agendados</span><strong>{carregando ? '...' : resumo.retornos}</strong></div>
             <div><span>Clientes recusaram</span><strong>{carregando ? '...' : resumo.clientesRecusaram}</strong></div>
+            <div><span>Chamadas não atendidas</span><strong>{carregando ? '...' : resumo.chamadasNaoAtendidas}</strong></div>
             <div><span>Vendas concluídas</span><strong>{carregando ? '...' : resumo.vendidos}</strong></div>
             <div><span>Vendas recusadas</span><strong>{carregando ? '...' : resumo.recusados}</strong></div>
             <div><span>Conversão</span><strong>{carregando ? '...' : resumo.ligacoes ? `${((resumo.vendidos / resumo.ligacoes) * 100).toFixed(1)}%` : '0%'}</strong></div>
@@ -2102,12 +2104,12 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
           <div className="list-table consultor-produtividade-table">
             <div className="scroll">
               <table>
-                <thead><tr><th>Data</th><th>Ligações totais</th><th>Qualificados para venda</th><th>Retornos</th><th>Clientes recusaram</th><th>Concluidas</th><th>Recusadas</th><th>Potencial mensal</th></tr></thead>
+                <thead><tr><th>Data</th><th>Ligações totais</th><th>Qualificados para venda</th><th>Retornos</th><th>Clientes recusaram</th><th>Chamadas não atendidas</th><th>Concluidas</th><th>Recusadas</th><th>Potencial mensal</th></tr></thead>
                 <tbody>
                   {carregando ? (
-                    <tr><td colSpan="8" className="muted">Carregando produtividade...</td></tr>
+                    <tr><td colSpan="9" className="muted">Carregando produtividade...</td></tr>
                   ) : diasExibidos.length === 0 ? (
-                    <tr><td colSpan="8" className="muted">Nenhuma ligação registrada neste período.</td></tr>
+                    <tr><td colSpan="9" className="muted">Nenhuma ligação registrada neste período.</td></tr>
                   ) : diasExibidos.map(item => (
                     <tr key={item.data}>
                       <td>{formatarDataIso(String(item.data).slice(0, 10))}</td>
@@ -2115,6 +2117,7 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
                       <td>{Number(item.qualificados || 0)}</td>
                       <td>{Number(item.retornos_agendados || 0)}</td>
                       <td>{Number(item.clientes_recusaram || 0)}</td>
+                      <td>{Number(item.chamadas_nao_atendidas || 0)}</td>
                       <td>{Number(item.vendidos || 0)}</td>
                       <td>{Number(item.recusados || 0)}</td>
                       <td>{Number(item.potencial_mensal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
@@ -2196,10 +2199,11 @@ function FuturosClientesMainView({ agora }) {
     qualificados: acc.qualificados + Number(item.qualificados || 0),
     retornos: acc.retornos + Number(item.retornos_agendados || 0),
     clientesRecusaram: acc.clientesRecusaram + Number(item.clientes_recusaram || 0),
+    chamadasNaoAtendidas: acc.chamadasNaoAtendidas + Number(item.chamadas_nao_atendidas || 0),
     vendidos: acc.vendidos + Number(item.vendidos || 0),
     recusados: acc.recusados + Number(item.recusados || 0),
     potencial: acc.potencial + Number(item.potencial_mensal || 0)
-  }), { ligacoes: 0, qualificados: 0, retornos: 0, clientesRecusaram: 0, vendidos: 0, recusados: 0, potencial: 0 }), [metricas]);
+  }), { ligacoes: 0, qualificados: 0, retornos: 0, clientesRecusaram: 0, chamadasNaoAtendidas: 0, vendidos: 0, recusados: 0, potencial: 0 }), [metricas]);
 
   useEffect(() => {
     if (!erro) return undefined;
@@ -2387,6 +2391,7 @@ function FuturosClientesMainView({ agora }) {
             <div><span>Qualificados para venda</span><strong>{resumoMetricas.qualificados}</strong></div>
             <div><span>Retornos agendados</span><strong>{resumoMetricas.retornos}</strong></div>
             <div><span>Clientes recusaram</span><strong>{resumoMetricas.clientesRecusaram}</strong></div>
+            <div><span>Chamadas não atendidas</span><strong>{resumoMetricas.chamadasNaoAtendidas}</strong></div>
             <div><span>Vendas concluídas</span><strong>{resumoMetricas.vendidos}</strong></div>
             <div><span>Vendas recusadas</span><strong>{resumoMetricas.recusados}</strong></div>
             <div><span>Conversao dos qualificados</span><strong>{resumoMetricas.qualificados ? `${((resumoMetricas.vendidos / resumoMetricas.qualificados) * 100).toFixed(1)}%` : '0%'}</strong></div>
@@ -2395,10 +2400,10 @@ function FuturosClientesMainView({ agora }) {
           <div className="list-table conversao-sondagem-table">
             <div className="scroll">
               <table>
-                <thead><tr><th>Consultor da primeira ligacao</th><th>Ligações totais</th><th>Qualificados para venda</th><th>Retornos agendados</th><th>Clientes recusaram</th><th>Vendas concluidas</th><th>Vendas recusadas</th><th>Conversao</th><th>Potencial mensal</th></tr></thead>
+                <thead><tr><th>Consultor da primeira ligacao</th><th>Ligações totais</th><th>Qualificados para venda</th><th>Retornos agendados</th><th>Clientes recusaram</th><th>Chamadas não atendidas</th><th>Vendas concluidas</th><th>Vendas recusadas</th><th>Conversao</th><th>Potencial mensal</th></tr></thead>
                 <tbody>
                   {metricas.length === 0 ? (
-                    <tr><td colSpan="9" className="muted">Ainda nao existem qualificacoes para calcular a conversao.</td></tr>
+                    <tr><td colSpan="10" className="muted">Ainda nao existem qualificacoes para calcular a conversao.</td></tr>
                   ) : metricas.map(item => {
                     const qualificados = Number(item.qualificados || 0);
                     const vendidos = Number(item.vendidos || 0);
@@ -2422,6 +2427,7 @@ function FuturosClientesMainView({ agora }) {
                         <td>{qualificados}</td>
                         <td>{Number(item.retornos_agendados || 0)}</td>
                         <td>{Number(item.clientes_recusaram || 0)}</td>
+                        <td>{Number(item.chamadas_nao_atendidas || 0)}</td>
                         <td>{vendidos}</td>
                         <td>{recusados}</td>
                         <td><span className="pill success">{qualificados ? `${((vendidos / qualificados) * 100).toFixed(1)}%` : '0%'}</span></td>

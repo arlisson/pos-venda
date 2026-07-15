@@ -2105,10 +2105,10 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
 
 async function obterMetricasFuturosClientes(filtros = {}) {
   await reconciliarVendasFuturosClientesSemOrigem();
-  const usuarioResponsavel = 'COALESCE(ll.futuro_cliente_marcado_por_id, ll.retorno_agendado_por_id, ll.cliente_recusou_por_id)';
+  const usuarioResponsavel = 'COALESCE(ll.futuro_cliente_marcado_por_id, ll.retorno_agendado_por_id, ll.cliente_recusou_por_id, ll.chamada_nao_atendida_por_id)';
   // A criacao do retorno nao tem data propria; enquanto ele estiver ativo, updated_at
   // indica o momento em que o consultor o agendou.
-  const dataPrimeiroContato = 'COALESCE(ll.futuro_cliente_marcado_em, ll.cliente_recusou_em, ll.updated_at)';
+  const dataPrimeiroContato = 'COALESCE(ll.futuro_cliente_marcado_em, ll.cliente_recusou_em, ll.chamada_nao_atendida_em, ll.updated_at)';
   const query = db('lead_linhas as ll')
     .leftJoin('lead_sondagens as ls', 'ls.lead_linha_id', 'll.id')
     .leftJoin('usuarios as u', function juntarUsuarioResponsavel() {
@@ -2117,7 +2117,8 @@ async function obterMetricasFuturosClientes(filtros = {}) {
     .where(builder => builder
       .where(subquery => subquery.where('ll.futuro_cliente', true).whereNull('ll.futuro_cliente_excluido_em'))
       .orWhereNotNull('ll.retorno_agendado_em')
-      .orWhere('ll.cliente_recusou', true));
+      .orWhere('ll.cliente_recusou', true)
+      .orWhere('ll.chamada_nao_atendida', true));
   if (filtros.usuario_id) query.whereRaw(`${usuarioResponsavel} = ?`, [Number(filtros.usuario_id)]);
   if (/^\d{4}-\d{2}-\d{2}$/.test(String(filtros.data_inicio || ''))) {
     query.whereRaw(`${dataPrimeiroContato} >= ?`, [`${filtros.data_inicio} 00:00:00`]);
@@ -2133,6 +2134,7 @@ async function obterMetricasFuturosClientes(filtros = {}) {
     .sum({ qualificados: db.raw('CASE WHEN ll.futuro_cliente = true THEN 1 ELSE 0 END') })
     .sum({ retornos_agendados: db.raw('CASE WHEN ll.retorno_agendado_em IS NOT NULL THEN 1 ELSE 0 END') })
     .sum({ clientes_recusaram: db.raw('CASE WHEN ll.cliente_recusou = true THEN 1 ELSE 0 END') })
+    .sum({ chamadas_nao_atendidas: db.raw('CASE WHEN ll.chamada_nao_atendida = true THEN 1 ELSE 0 END') })
     .sum({ potencial_mensal: db.raw('CASE WHEN ll.futuro_cliente = true THEN COALESCE(ls.valor_mensal_estimado, 0) ELSE 0 END') })
     .sum({ distribuidos_venda: db.raw("CASE WHEN ll.futuro_cliente = true AND ll.status_operacional IN ('distribuido_venda', 'vendido', 'perdido') THEN 1 ELSE 0 END") })
     .sum({ vendidos: db.raw("CASE WHEN ll.futuro_cliente = true AND (ll.status_operacional = 'vendido' OR ll.venda_id IS NOT NULL) THEN 1 ELSE 0 END") })
@@ -2210,12 +2212,12 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
   const periodo = descricaoPeriodoProdutividade(filtrosPeriodo);
 
   const wsResumo = workbook.addWorksheet('Resumo por consultor');
-  wsResumo.mergeCells('A1:I1');
+  wsResumo.mergeCells('A1:J1');
   wsResumo.getCell('A1').value = 'Produtividade da primeira ligação';
-  wsResumo.mergeCells('A2:I2');
+  wsResumo.mergeCells('A2:J2');
   wsResumo.getCell('A2').value = periodo;
   wsResumo.addRow([]);
-  wsResumo.addRow(['CONSULTOR', 'LIGA\u00c7\u00d5ES FEITAS', 'RETORNOS AGENDADOS', 'CLIENTES RECUSARAM', 'ENVIADOS PARA VENDA', 'VENDAS CONCLU\u00cdDAS', 'VENDAS RECUSADAS', 'CONVERS\u00c3O', 'POTENCIAL MENSAL']);
+  wsResumo.addRow(['CONSULTOR', 'LIGA\u00c7\u00d5ES FEITAS', 'RETORNOS AGENDADOS', 'CLIENTES RECUSARAM', 'CHAMADAS N\u00c3O ATENDIDAS', 'ENVIADOS PARA VENDA', 'VENDAS CONCLU\u00cdDAS', 'VENDAS RECUSADAS', 'CONVERS\u00c3O', 'POTENCIAL MENSAL']);
   resumo.forEach(item => {
     const ligacoes = Number(item.qualificados || 0);
     const vendas = Number(item.vendidos || 0);
@@ -2224,6 +2226,7 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
       ligacoes,
       Number(item.retornos_agendados || 0),
       Number(item.clientes_recusaram || 0),
+      Number(item.chamadas_nao_atendidas || 0),
       Number(item.distribuidos_venda || 0),
       vendas,
       Number(item.recusados || 0),
@@ -2235,16 +2238,18 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
     ligacoes: acc.ligacoes + Number(item.qualificados || 0),
     retornos: acc.retornos + Number(item.retornos_agendados || 0),
     clientesRecusaram: acc.clientesRecusaram + Number(item.clientes_recusaram || 0),
+    chamadasNaoAtendidas: acc.chamadasNaoAtendidas + Number(item.chamadas_nao_atendidas || 0),
     distribuidos: acc.distribuidos + Number(item.distribuidos_venda || 0),
     vendas: acc.vendas + Number(item.vendidos || 0),
     recusadas: acc.recusadas + Number(item.recusados || 0),
     potencial: acc.potencial + Number(item.potencial_mensal || 0)
-  }), { ligacoes: 0, retornos: 0, clientesRecusaram: 0, distribuidos: 0, vendas: 0, recusadas: 0, potencial: 0 });
+  }), { ligacoes: 0, retornos: 0, clientesRecusaram: 0, chamadasNaoAtendidas: 0, distribuidos: 0, vendas: 0, recusadas: 0, potencial: 0 });
   const linhaTotal = wsResumo.addRow([
     'TOTAL',
     totais.ligacoes,
     totais.retornos,
     totais.clientesRecusaram,
+    totais.chamadasNaoAtendidas,
     totais.distribuidos,
     totais.vendas,
     totais.recusadas,
@@ -2252,21 +2257,21 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
     totais.potencial
   ]);
   wsResumo.columns = [
-    { width: 30 }, { width: 18 }, { width: 21 }, { width: 21 }, { width: 23 }, { width: 21 }, { width: 18 }, { width: 14 }, { width: 20 }
+    { width: 30 }, { width: 18 }, { width: 21 }, { width: 21 }, { width: 23 }, { width: 23 }, { width: 21 }, { width: 18 }, { width: 14 }, { width: 20 }
   ];
-  wsResumo.getColumn(8).numFmt = '0.0%';
-  wsResumo.getColumn(9).numFmt = 'R$ #,##0.00';
-  estilizarPlanilhaProdutividade(wsResumo, 9);
+  wsResumo.getColumn(9).numFmt = '0.0%';
+  wsResumo.getColumn(10).numFmt = 'R$ #,##0.00';
+  estilizarPlanilhaProdutividade(wsResumo, 10);
   linhaTotal.font = { bold: true };
   linhaTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
 
   const wsDiario = workbook.addWorksheet('Detalhamento diário');
-  wsDiario.mergeCells('A1:J1');
+  wsDiario.mergeCells('A1:K1');
   wsDiario.getCell('A1').value = 'Detalhamento diário da primeira ligação';
-  wsDiario.mergeCells('A2:J2');
+  wsDiario.mergeCells('A2:K2');
   wsDiario.getCell('A2').value = periodo;
   wsDiario.addRow([]);
-  wsDiario.addRow(['DATA', 'CONSULTOR', 'LIGA\u00c7\u00d5ES FEITAS', 'RETORNOS AGENDADOS', 'CLIENTES RECUSARAM', 'ENVIADOS PARA VENDA', 'VENDAS CONCLU\u00cdDAS', 'VENDAS RECUSADAS', 'CONVERS\u00c3O', 'POTENCIAL MENSAL']);
+  wsDiario.addRow(['DATA', 'CONSULTOR', 'LIGA\u00c7\u00d5ES FEITAS', 'RETORNOS AGENDADOS', 'CLIENTES RECUSARAM', 'CHAMADAS N\u00c3O ATENDIDAS', 'ENVIADOS PARA VENDA', 'VENDAS CONCLU\u00cdDAS', 'VENDAS RECUSADAS', 'CONVERS\u00c3O', 'POTENCIAL MENSAL']);
   diario.forEach(item => {
     const ligacoes = Number(item.qualificados || 0);
     const vendas = Number(item.vendidos || 0);
@@ -2277,6 +2282,7 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
       ligacoes,
       Number(item.retornos_agendados || 0),
       Number(item.clientes_recusaram || 0),
+      Number(item.chamadas_nao_atendidas || 0),
       Number(item.distribuidos_venda || 0),
       vendas,
       Number(item.recusados || 0),
@@ -2285,11 +2291,11 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
     ]);
   });
   wsDiario.columns = [
-    { width: 14 }, { width: 30 }, { width: 18 }, { width: 21 }, { width: 21 }, { width: 23 }, { width: 21 }, { width: 18 }, { width: 14 }, { width: 20 }
+    { width: 14 }, { width: 30 }, { width: 18 }, { width: 21 }, { width: 21 }, { width: 23 }, { width: 23 }, { width: 21 }, { width: 18 }, { width: 14 }, { width: 20 }
   ];
-  wsDiario.getColumn(9).numFmt = '0.0%';
-  wsDiario.getColumn(10).numFmt = 'R$ #,##0.00';
-  estilizarPlanilhaProdutividade(wsDiario, 10);
+  wsDiario.getColumn(10).numFmt = '0.0%';
+  wsDiario.getColumn(11).numFmt = 'R$ #,##0.00';
+  estilizarPlanilhaProdutividade(wsDiario, 11);
   const sufixo = filtros.data_inicio || filtros.data_fim
     ? `${filtros.data_inicio || 'inicio'}-a-${filtros.data_fim || 'hoje'}`
     : 'todo-periodo';
