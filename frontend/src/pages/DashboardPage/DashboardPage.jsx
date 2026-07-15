@@ -61,6 +61,7 @@ const TIPOS_RETORNO_PAGINA_LEADS = [
   'lead_retorno_pre',
   'lead_retorno_due'
 ];
+const TIPOS_RETORNO_MAILING = ['lead_retorno_pre', 'lead_retorno_due'];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPO_VENDA_PARADA = 'venda_parada_funil';
@@ -1213,7 +1214,12 @@ function DashboardPage() {
     await marcarNotificacaoComoLidaLocal(notificacao);
 
     if (TIPOS_RETORNO_PAGINA_LEADS.includes(notificacao.tipo)) {
-      navigate('/futuros-clientes');
+      const linhaId = Number(notificacao.entidade_id || notificacao.dados?.lead_linha_id || 0);
+      if (TIPOS_RETORNO_MAILING.includes(notificacao.tipo)) {
+        navigate(linhaId > 0 ? `/futuros-clientes?aba=leads&linha_id=${linhaId}` : '/futuros-clientes?aba=leads');
+      } else {
+        navigate(linhaId > 0 ? `/futuros-clientes?linha_id=${linhaId}` : '/futuros-clientes');
+      }
       return;
     }
 
