@@ -1289,6 +1289,7 @@ input.is-invalid {
   color: var(--text-2);
   font-size: 11.5px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .venda-etapas-resumo--ok {
@@ -1443,18 +1444,101 @@ input.is-invalid {
   font-size: 11.5px;
 }
 
-.venda-etapa-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
+/* Uma linha so: o texto muda de tamanho conforme a base escolhida e nao pode empurrar a altura do card. */
+.venda-etapa-card__meta {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.venda-etapa-check input:disabled {
+.venda-etapa-opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.venda-etapa-opcoes__label {
+  flex-basis: 100%;
+  margin-bottom: 2px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Cada resultado do 0800 e um chip selecionavel (radio nativo escondido). */
+.venda-etapa-opcao {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.venda-etapa-opcao:hover:not(:has(input:disabled, input:checked)) {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+/* Marcador desenhado no lugar do radio do navegador: vazio quando pendente, "certinho" quando escolhido. */
+.venda-etapa-opcao::before {
+  content: '✓';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: transparent;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.venda-etapa-opcao input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+
+.venda-etapa-opcao:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.venda-etapa-opcao:has(input:checked)::before {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.venda-etapa-opcao:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px var(--surface-3);
+}
+
+.venda-etapa-opcao:has(input:disabled) {
+  opacity: 0.55;
   cursor: not-allowed;
+}
+
+.venda-etapa-opcoes__limpar {
+  margin-left: auto;
 }
 
 .venda-etapa-card__anexos {

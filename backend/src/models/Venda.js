@@ -117,6 +117,7 @@ class Venda extends Model {
         etapa_0800_concluida: { type: 'boolean' },
         etapa_0800_concluida_em: { type: ['string', 'null'] },
         etapa_0800_concluida_por_id: { type: ['integer', 'null'] },
+        etapa_0800_resultado: { type: ['string', 'null'], maxLength: 20 },
         etapa_abr_concluida: { type: 'boolean' },
         etapa_abr_concluida_em: { type: ['string', 'null'] },
         etapa_abr_concluida_por_id: { type: ['integer', 'null'] },

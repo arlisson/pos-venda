@@ -166,6 +166,8 @@ function sugerirColunaVenda(campo, opcoes) {
   return encontrada?.nome || '';
 }
 
+const NOTAS_MAX_LENGTH = 500;
+
 const CAMPOS_EMPRESA_FUTURO_CLIENTE = {
   razao_social: ['razao social', 'razão social', 'empresa', 'cliente', 'nome empresarial'],
   cnpj: ['cnpj', 'cpf/cnpj', 'documento']
@@ -1048,15 +1050,24 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                 <label>WhatsApp com DDD</label>
                 <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
               </div>
-              <div className="form-field">
-                <label>Notas sobre este cliente</label>
-                <textarea
-                  rows={3}
-                  value={notas}
-                  onChange={event => setNotas(event.target.value)}
-                  placeholder="Observações, interesses, histórico..."
-                  disabled={salvando}
-                />
+              <div className="form-field futuro-cliente-notas">
+                <div className="futuro-cliente-notas__head">
+                  <label htmlFor="futuro-cliente-notas">Notas sobre este cliente</label>
+                  <span className="futuro-cliente-notas__opcional">Opcional</span>
+                </div>
+                <div className="futuro-cliente-notas__box">
+                  <textarea
+                    id="futuro-cliente-notas"
+                    className="futuro-cliente-notas__input"
+                    rows={4}
+                    maxLength={NOTAS_MAX_LENGTH}
+                    value={notas}
+                    onChange={event => setNotas(event.target.value)}
+                    placeholder="Observações, interesses, histórico..."
+                    disabled={salvando}
+                  />
+                  <span className="futuro-cliente-notas__contador">{notas.length}/{NOTAS_MAX_LENGTH}</span>
+                </div>
               </div>
               <div className="form-field">
                 <label>Data de retorno</label>
@@ -1288,6 +1299,19 @@ function LeadsRecebidosView({ agora }) {
   }
 
   /**
+   * Recarrega apenas as metricas dos envios (barra de progresso do card),
+   * sem acionar o spinner geral, para refletir recusas/futuros clientes.
+   */
+  async function recarregarEnvios() {
+    try {
+      const data = await listarMeusLeadEnvios();
+      setEnvios(data);
+    } catch (error) {
+      setErro(error.message || 'Erro ao carregar leads recebidos.');
+    }
+  }
+
+  /**
    * Trata o evento de futuro cliente salvo.
    */
   function fecharModalAdicionar() {
@@ -1300,6 +1324,7 @@ function LeadsRecebidosView({ agora }) {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
     fecharModalAdicionar();
     setSucesso(mensagem);
+    recarregarEnvios();
   }
 
   /**
@@ -1344,6 +1369,7 @@ function LeadsRecebidosView({ agora }) {
         <div className="clientes-leads-docs">
           {envios.map(envio => {
             const progresso = calcularProgresso(envio.total_linhas, envio.total_trabalhados);
+            const recusados = Number(envio.total_recusados || 0);
             return (
               <button
                 key={envio.id}
@@ -1353,16 +1379,12 @@ function LeadsRecebidosView({ agora }) {
               >
                 <div className="clientes-leads-preview">
                   <span></span><span></span><span></span><span></span>
-                  <i
-                    className="clientes-leads-preview__progress"
-                    style={{ '--progresso-envio': `${progresso.percentual}%` }}
-                    aria-hidden="true"
-                  ></i>
                 </div>
                 <strong title={envio.nome}>{envio.nome}</strong>
                 <small>{formatDateValue(envio.created_at, undefined, '-')} - {envio.total_linhas} {envio.total_linhas === 1 ? 'cliente' : 'clientes'}</small>
                 <DocProgresso
                   {...progresso}
+                  recusados={recusados}
                   rotulo="trabalhados"
                   rotuloCompleto="Tudo trabalhado"
                 />
@@ -1418,7 +1440,7 @@ function LeadsRecebidosView({ agora }) {
                 linhas.map(linha => (
                   <tr key={linha.id} className={isFuturoClienteVendido(linha) ? 'lead-row-vendido' : (isFuturoClienteRecusado(linha) ? 'lead-row-recusado' : (isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : ''))}>
                     <td data-label="Envio" className="m-primary">
-                      <span className="tag">{linha.envio?.nome || '-'}</span>
+                      <span className="tag" title={linha.envio?.nome || ''}>{linha.envio?.nome || '-'}</span>
                       <details className="mobile-row-drawer">
                         <summary>Ver dados do lead</summary>
                         <dl>

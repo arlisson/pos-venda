@@ -2626,7 +2626,7 @@ function EtapaThumb({ vendaId, arquivo, podeExcluir, onExcluir }) {
 /**
  * Checklist de conferencia da venda (0800, ABR Telecom e VIVO) exibido na aba Documentos.
  */
-function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [], onArquivosAlterados = () => {} }) {
+function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [], onArquivosAlterados = () => {}, onEtapasAtualizadas = () => {} }) {
   const [etapas, setEtapas] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState('');
@@ -2661,15 +2661,16 @@ function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [],
   const atual = visiveis.find(etapa => !etapa.concluida) || null;
 
   /**
-   * Alterna a etapa 1 (0800).
+   * Registra o resultado da etapa 1 (0800). `null` volta a etapa para pendente.
    */
-  async function handleToggle0800(concluida) {
+  async function handleResultado0800(resultado) {
     setErro('');
     setSalvando('0800');
 
     try {
-      const data = await atualizarEtapa0800(venda.id, concluida);
+      const data = await atualizarEtapa0800(venda.id, resultado);
       setEtapas(data.etapas || []);
+      onEtapasAtualizadas(data.etapas || []);
     } catch (error) {
       setErro(error.message || 'Erro ao atualizar a etapa.');
     } finally {
@@ -2767,6 +2768,7 @@ function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [],
         {visiveis.map((etapa, idx) => {
           const arquivos = etapasArquivos.filter(item => item.categoria === etapa.categoria);
           const ocupado = salvando === etapa.chave;
+          const rotuloResultado = (etapa.opcoes || []).find(opcao => opcao.valor === etapa.resultado)?.rotulo || '';
 
           return (
             <div
@@ -2783,23 +2785,48 @@ function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [],
                 </span>
               </div>
 
-              {etapa.concluida && etapa.concluida_por && (
+              {/* A linha de meta e sempre renderizada nas etapas sem arquivo para o card nao mudar de altura ao trocar a base. */}
+              {(!etapa.requer_arquivo || (etapa.concluida && etapa.concluida_por)) && (
                 <div className="venda-etapa-card__meta">
-                  Por {etapa.concluida_por.nome}
-                  {etapa.concluida_em ? ` · ${formatarDataHora(etapa.concluida_em)}` : ''}
+                  {etapa.concluida ? (
+                    <>
+                      {rotuloResultado ? <strong>{rotuloResultado}</strong> : null}
+                      {rotuloResultado && etapa.concluida_por ? ' · ' : ''}
+                      {etapa.concluida_por ? `Por ${etapa.concluida_por.nome}` : ''}
+                      {etapa.concluida_por && etapa.concluida_em ? ` · ${formatarDataHora(etapa.concluida_em)}` : ''}
+                    </>
+                  ) : 'Nenhum resultado registrado.'}
                 </div>
               )}
 
               {!etapa.requer_arquivo ? (
-                <label className="venda-etapa-check">
-                  <input
-                    type="checkbox"
-                    checked={etapa.concluida}
-                    disabled={!podeAdicionar || ocupado}
-                    onChange={event => handleToggle0800(event.target.checked)}
-                  />
-                  <span>Marcar como concluída</span>
-                </label>
+                <div className="venda-etapa-opcoes">
+                  <span className="venda-etapa-opcoes__label">Resultado da verificação:</span>
+
+                  {(etapa.opcoes || []).map(opcao => (
+                    <label key={opcao.valor} className="venda-etapa-opcao">
+                      <input
+                        type="radio"
+                        name={`etapa-${etapa.chave}-resultado-${venda.id}`}
+                        checked={etapa.resultado === opcao.valor}
+                        disabled={!podeAdicionar || ocupado}
+                        onChange={() => handleResultado0800(opcao.valor)}
+                      />
+                      <span>{opcao.rotulo}</span>
+                    </label>
+                  ))}
+
+                  {podeAdicionar && (
+                    <button
+                      type="button"
+                      className="btn venda-etapa-opcoes__limpar"
+                      disabled={ocupado || !etapa.resultado}
+                      onClick={() => handleResultado0800(null)}
+                    >
+                      Limpar seleção
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="venda-etapa-card__anexos">
                   <input
@@ -2861,7 +2888,8 @@ export function ArquivosVendaTab({
   podeVisualizar,
   podeAdicionar,
   pendingArquivos = [],
-  onPendingArquivosChange = () => {}
+  onPendingArquivosChange = () => {},
+  onEtapasAtualizadas = () => {}
 }) {
   const inputRef = useRef(null);
   const [arquivos, setArquivos] = useState([]);
@@ -3123,6 +3151,7 @@ export function ArquivosVendaTab({
         podeAdicionar={podeAdicionar}
         etapasArquivos={etapasArquivos}
         onArquivosAlterados={carregar}
+        onEtapasAtualizadas={onEtapasAtualizadas}
       />
 
       <div className="venda-arquivos-toolbar">
@@ -3387,6 +3416,7 @@ function VendaModal({
   initialTab = 'venda',
   initialProblemaId = null,
   modoEdicao = true,
+  onEtapasAtualizadas = () => {},
   onStartEdit,
   onClose,
   onSave,
@@ -4693,6 +4723,7 @@ function VendaModal({
               podeAdicionar={podeAdicionarDocumentosVendaEfetivo}
               pendingArquivos={pendingArquivos}
               onPendingArquivosChange={setPendingArquivos}
+              onEtapasAtualizadas={onEtapasAtualizadas}
             />
           ) : abaAtiva === 'cancelamento' && vendaCancelada ? (
             <VendaCancelamentoTab venda={venda || form} />

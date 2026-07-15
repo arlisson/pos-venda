@@ -967,25 +967,29 @@ async function listarEnviosDoUsuario(usuarioId) {
       .count('id as total_linhas')
       .select(db.raw(
         'SUM(CASE WHEN (futuro_cliente = 1 AND futuro_cliente_excluido_em IS NULL) '
-        + 'OR venda_recusada_em IS NOT NULL THEN 1 ELSE 0 END) as total_trabalhados'
+        + 'OR venda_recusada_em IS NOT NULL OR cliente_recusou = 1 THEN 1 ELSE 0 END) as total_trabalhados'
       ))
+      .select(db.raw('SUM(CASE WHEN cliente_recusou = 1 THEN 1 ELSE 0 END) as total_recusados'))
       .whereIn('envio_id', envioIds)
       .where('atribuido_para_id', usuarioId)
       .groupBy('envio_id');
 
     totais.forEach(item => metricasPorEnvio.set(Number(item.envio_id), {
       totalLinhas: Number(item.total_linhas || 0),
-      totalTrabalhados: Number(item.total_trabalhados || 0)
+      totalTrabalhados: Number(item.total_trabalhados || 0),
+      totalRecusados: Number(item.total_recusados || 0)
     }));
   }
 
   return envios.map(envio => {
     const formatado = formatarEnvio(envio);
-    const metricas = metricasPorEnvio.get(Number(formatado.id)) || { totalLinhas: 0, totalTrabalhados: 0 };
+    const metricas = metricasPorEnvio.get(Number(formatado.id))
+      || { totalLinhas: 0, totalTrabalhados: 0, totalRecusados: 0 };
     return {
       ...formatado,
       total_linhas: metricas.totalLinhas,
       total_trabalhados: metricas.totalTrabalhados,
+      total_recusados: metricas.totalRecusados,
       total_a_trabalhar: Math.max(0, metricas.totalLinhas - metricas.totalTrabalhados)
     };
   });

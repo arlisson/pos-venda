@@ -163,7 +163,8 @@
       "PowerShell(npx eslint src/components/DocProgresso.jsx src/utils/progresso.js)",
       "Skill(run)",
       "Skill(run:*)",
-      "PowerShell(node --check c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\backend\\\\src\\\\services\\\\lead-planilha.service.js)"
+      "PowerShell(node --check c:\\\\Users\\\\USERs\\\\Documents\\\\GitHub\\\\pos-venda\\\\backend\\\\src\\\\services\\\\lead-planilha.service.js)",
+      "Bash(node --check src/services/lead-planilha.service.js)"
     ]
   }
 }

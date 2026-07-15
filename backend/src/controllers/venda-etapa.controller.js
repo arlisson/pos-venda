@@ -19,9 +19,9 @@ async function index(req, res) {
 }
 
 /**
- * Marca ou desmarca a etapa 1 (verificacao com o 0800).
+ * Registra o resultado da etapa 1 (verificacao com o 0800).
  *
- * @param {Object} req - Requisicao com { concluida } no body.
+ * @param {Object} req - Requisicao com { resultado } no body (null volta a etapa para pendente).
  * @param {Object} res - Resposta HTTP.
  * @returns {Promise.<Object>} Etapas atualizadas.
  */
@@ -29,7 +29,7 @@ async function update0800(req, res) {
   try {
     const etapas = await vendaEtapaService.definirEtapa0800(
       req.params.id,
-      Boolean(req.body?.concluida),
+      req.body?.resultado || null,
       req.usuario.id
     );
 

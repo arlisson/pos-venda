@@ -9,6 +9,16 @@ const { formatarDateTimeSQL } = arquivoService;
 const { garantirAcessoVenda } = vendaArquivoService;
 
 /**
+ * Resultados possiveis da verificacao com o 0800.
+ * A etapa e concluida ao registrar qualquer um deles.
+ */
+const RESULTADOS_0800 = [
+  { valor: 'nao_e_base', rotulo: 'Não é base' },
+  { valor: 'base_claro', rotulo: 'Base da Claro' },
+  { valor: 'base_vivo', rotulo: 'Base da Vivo' }
+];
+
+/**
  * Definicao das etapas de conferencia de uma venda.
  * A ordem do array e a ordem exibida no fluxo.
  */
@@ -18,6 +28,8 @@ const ETAPAS = [
     ordem: 1,
     titulo: 'Verificar com o 0800',
     coluna: 'etapa_0800_concluida',
+    coluna_resultado: 'etapa_0800_resultado',
+    opcoes: RESULTADOS_0800,
     categoria: null,
     requer_arquivo: false
   },
@@ -74,18 +86,23 @@ function etapasPendentes(venda) {
 
 /**
  * Aplica a conclusao (ou o retorno para pendente) de uma etapa na venda.
+ * Etapas com `coluna_resultado` tambem registram o resultado escolhido.
  */
-async function aplicarConclusao(vendaId, etapa, concluida, usuarioId) {
+async function aplicarConclusao(vendaId, etapa, concluida, usuarioId, resultado = null) {
   const agora = formatarDateTimeSQL();
 
-  await Venda.query()
-    .patch({
-      [etapa.coluna]: Boolean(concluida),
-      [`${etapa.coluna}_em`]: concluida ? agora : null,
-      [`${etapa.coluna}_por_id`]: concluida ? Number(usuarioId) : null,
-      updated_at: agora
-    })
-    .findById(vendaId);
+  const patch = {
+    [etapa.coluna]: Boolean(concluida),
+    [`${etapa.coluna}_em`]: concluida ? agora : null,
+    [`${etapa.coluna}_por_id`]: concluida ? Number(usuarioId) : null,
+    updated_at: agora
+  };
+
+  if (etapa.coluna_resultado) {
+    patch[etapa.coluna_resultado] = concluida ? resultado : null;
+  }
+
+  await Venda.query().patch(patch).findById(vendaId);
 }
 
 /**
@@ -117,13 +134,22 @@ async function sincronizarEtapaPorArquivos(vendaId, categoria, usuarioId) {
 }
 
 /**
- * Marca ou desmarca a etapa 1 (verificacao com o 0800).
+ * Registra o resultado da etapa 1 (verificacao com o 0800).
+ * Qualquer resultado valido conclui a etapa; `null` volta a etapa para pendente.
  */
-async function definirEtapa0800(vendaId, concluida, usuarioId) {
+async function definirEtapa0800(vendaId, resultado, usuarioId) {
   await garantirAcessoVenda(vendaId, usuarioId);
 
+  const valor = resultado || null;
+
+  if (valor && !RESULTADOS_0800.some(opcao => opcao.valor === valor)) {
+    const error = new Error('Resultado invalido para a etapa do 0800.');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const etapa = ETAPAS.find(item => item.chave === '0800');
-  await aplicarConclusao(vendaId, etapa, Boolean(concluida), usuarioId);
+  await aplicarConclusao(vendaId, etapa, Boolean(valor), usuarioId, valor);
 
   return obterEtapas(vendaId, usuarioId, { validarAcesso: false });
 }
@@ -165,6 +191,8 @@ async function obterEtapas(vendaId, usuarioId, opcoes = {}) {
       categoria: etapa.categoria,
       requer_arquivo: etapa.requer_arquivo,
       aplicavel: etapaAplicavel(etapa, venda),
+      opcoes: etapa.opcoes || null,
+      resultado: etapa.coluna_resultado ? (venda[etapa.coluna_resultado] || null) : null,
       concluida: Boolean(venda[etapa.coluna]),
       concluida_em: venda[`etapa_${etapa.chave}_concluida_em`] || null,
       concluida_por: autores.find(autor => Number(autor.id) === Number(autorId)) || null
@@ -174,6 +202,7 @@ async function obterEtapas(vendaId, usuarioId, opcoes = {}) {
 
 module.exports = {
   ETAPAS,
+  RESULTADOS_0800,
   CATEGORIAS_ETAPA,
   etapaPorCategoria,
   etapasPendentes,
