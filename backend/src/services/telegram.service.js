@@ -21,10 +21,13 @@ function formatarMoeda(valor) {
 }
 
 function formatarDataHora(valor) {
-  if (!valor) return 'Não agendado';
+  if (!valor) return 'Não informado';
+  const texto = String(valor);
+  const dataSemHora = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (dataSemHora) return `${dataSemHora[3]}/${dataSemHora[2]}/${dataSemHora[1]}`;
   const data = new Date(valor);
-  if (Number.isNaN(data.getTime())) return String(valor);
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(data);
+  if (Number.isNaN(data.getTime())) return texto;
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(data);
 }
 
 function montarMensagemFuturoCliente(linha = {}) {
@@ -46,6 +49,7 @@ function montarMensagemFuturoCliente(linha = {}) {
     `WhatsApp: ${formatarTelefone(telefone)}`, `Operadora atual: ${sondagem.operadoraAtual?.nome || 'Não informada'}`,
     `Chips atuais: ${descricaoChips}`, `Valor mensal estimado: ${formatarMoeda(sondagem.valor_mensal_estimado)}`,
     `Fixo: ${formatarTelefone(sondagem.telefone_fixo)}`, `Terminal: ${formatarTelefone(sondagem.terminal)}`,
+    `Data da ativacao: ${formatarDataHora(sondagem.data_ativacao)}`,
     `Operadora de interesse: ${sondagem.operadoraInteresse?.nome || 'Nao informada'}`,
     
     `Data do contato: ${formatarDataHora(sondagem.respondido_em || linha.futuro_cliente_marcado_em)}`,

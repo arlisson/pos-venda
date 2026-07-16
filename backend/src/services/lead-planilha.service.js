@@ -831,6 +831,29 @@ function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
     query.where('status_operacional', 'qualificado');
   }
 
+  const status = String(filtros.status || '').trim();
+  if (status === 'futuro_cliente') {
+    query.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em');
+  } else if (status === 'cliente_recusou') {
+    query.where('cliente_recusou', true);
+  } else if (status === 'retorno_agendado') {
+    query.whereNotNull('retorno_agendado_em').where('futuro_cliente', false);
+  } else if (status === 'chamada_nao_atendida') {
+    query.where('chamada_nao_atendida', true).where('futuro_cliente', false);
+  } else if (status === 'venda_registrada') {
+    query.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em')
+      .where(builder => builder.whereNotNull('venda_id').orWhere('status_operacional', 'vendido'));
+  } else if (status === 'venda_recusada') {
+    query.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em')
+      .where('status_operacional', 'perdido');
+  } else if (status === 'lixeira') {
+    query.where('futuro_cliente', true).whereNotNull('futuro_cliente_excluido_em');
+  } else if (status === 'pendente') {
+    query.where('futuro_cliente', false)
+      .where(builder => builder.whereNull('cliente_recusou').orWhere('cliente_recusou', false))
+      .where(builder => builder.whereNull('chamada_nao_atendida').orWhere('chamada_nao_atendida', false))
+      .whereNull('retorno_agendado_em');
+  }
   if (filtros.busca) {
     query.whereRaw('LOWER(CAST(dados_json AS CHAR)) LIKE ?', [`%${String(filtros.busca).toLowerCase()}%`]);
   }
@@ -2013,6 +2036,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
   };
   const telefoneFixo = normalizarTelefoneOpcional(dados.telefone_fixo);
   const terminal = normalizarTelefoneOpcional(dados.terminal);
+  const dataAtivacao = /^\d{4}-\d{2}-\d{2}$/.test(String(dados.data_ativacao || '')) ? dados.data_ativacao : null;
 
   if (!contatoNome) throw criarHttpError(400, 'Informe o nome de quem falou.');
   if (!['adm', 'rl'].includes(contatoTipo)) throw criarHttpError(400, 'Informe se o contato e ADM ou RL.');
@@ -2068,7 +2092,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
       quantidade_chips: quantidadeChips, chips_itens: JSON.stringify(chipsItens), preco_por_chip: precoPorChip,
       valor_mensal_estimado: valorMensalEstimado, whatsapp_ddd: whatsappDdd,
       whatsapp_numero: whatsappNumero, melhor_numero_contato: melhorNumeroContato, telefone_fixo: telefoneFixo,
-      terminal, observacoes: notas, retorno_em: retorno,
+      terminal, data_ativacao: dataAtivacao, observacoes: notas, retorno_em: retorno,
       respondido_em: formatarDateTimeSQL()
     };
     const existente = await LeadSondagem.query(trx).where('lead_linha_id', Number(linhaId)).first();

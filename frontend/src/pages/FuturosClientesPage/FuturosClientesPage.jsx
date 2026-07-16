@@ -172,7 +172,10 @@ const NOTAS_MAX_LENGTH = 500;
 
 const CAMPOS_EMPRESA_FUTURO_CLIENTE = {
   razao_social: ['razao social', 'razão social', 'empresa', 'cliente', 'nome empresarial'],
-  cnpj: ['cnpj', 'cpf/cnpj', 'documento']
+  cnpj: ['cnpj', 'cpf/cnpj', 'documento'],
+  telefone_fixo: ['fixo', 'telefone fixo', 'fone fixo'],
+  terminal: ['terminal'],
+  data_ativacao: ['data de ativacao', 'data ativacao', 'ativacao']
 };
 
 function encontrarValorLeadPorAliases(linha, aliases) {
@@ -191,7 +194,10 @@ function encontrarValorLeadPorAliases(linha, aliases) {
 function getDadosEmpresaFuturoCliente(linha, sondagem = null) {
   return {
     razao_social: String(sondagem?.razao_social || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.razao_social) || '').trim(),
-    cnpj: String(sondagem?.cnpj || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.cnpj) || '').trim()
+    cnpj: String(sondagem?.cnpj || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.cnpj) || '').trim(),
+    telefone_fixo: String(sondagem?.telefone_fixo || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.telefone_fixo) || '').trim(),
+    terminal: String(sondagem?.terminal || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.terminal) || '').trim(),
+    data_ativacao: String(sondagem?.data_ativacao || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.data_ativacao) || '').trim()
   };
 }
 
@@ -298,6 +304,16 @@ function isFuturoClienteNaLixeira(linha) {
  */
 function isFuturoClienteAtivo(linha) {
   return Boolean(linha?.futuro_cliente && !linha?.futuro_cliente_excluido_em);
+}
+
+function normalizarDataAtivacaoInput(valor) {
+  const texto = String(valor || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return texto;
+  const partes = texto.match(/^(\d{2})\/(\d{2})\/(\d{2}|\d{4})$/);
+  if (!partes) return '';
+  const ano = partes[3].length === 2 ? `20${partes[3]}` : partes[3];
+  const data = new Date(`${ano}-${partes[2]}-${partes[1]}T12:00:00`);
+  return Number.isNaN(data.getTime()) ? '' : `${ano}-${partes[2]}-${partes[1]}`;
 }
 
 function formatarWhatsappInput(valor) {
@@ -727,8 +743,9 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem());
   const [melhorNumeroContato, setMelhorNumeroContato] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [telefoneFixo, setTelefoneFixo] = useState('');
-  const [terminal, setTerminal] = useState('');
+  const [telefoneFixo, setTelefoneFixo] = useState(() => formatarWhatsappInput(dadosEmpresaInicial.telefone_fixo));
+  const [terminal, setTerminal] = useState(() => formatarWhatsappInput(dadosEmpresaInicial.terminal));
+  const [dataAtivacao, setDataAtivacao] = useState(() => normalizarDataAtivacaoInput(dadosEmpresaInicial.data_ativacao));
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
     + ((Number(item.quantidade) || 0) * moedaBRParaNumero(item.preco_por_chip)), 0);
 
@@ -882,7 +899,8 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
         melhor_numero_contato: melhorNumeroContato,
         whatsapp,
         telefone_fixo: telefoneFixo,
-        terminal
+        terminal,
+        data_ativacao: dataAtivacao
       });
       onFuturoClienteSalvo(resultado.linha);
     } catch (error) {
@@ -971,6 +989,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                         <div><span>Operadora de interesse</span><strong>{linha.sondagem.operadoraInteresse?.nome || '-'}</strong></div>
                         <div><span>Telefone fixo</span><strong>{formatarWhatsappInput(linha.sondagem.telefone_fixo) || '-'}</strong></div>
                         <div><span>Terminal</span><strong>{formatarWhatsappInput(linha.sondagem.terminal) || '-'}</strong></div>
+                        <div><span>Data da ativacao</span><strong>{formatarData(linha.sondagem.data_ativacao)}</strong></div>
                         <div><span>Chips / preço</span><strong>{formatarChipsSondagem(linha.sondagem)}</strong></div>
                         <div><span>Média mensal</span><strong>{formatarMoedaSondagem(linha.sondagem.valor_mensal_estimado)}</strong></div>
                         <div className="futuro-cliente-resumo__full"><span>Retorno</span><strong>{formatarDataHora(linha.sondagem.retorno_em || linha.futuro_cliente_retorno)}</strong></div>
@@ -1172,6 +1191,10 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                 <label>Terminal</label>
                 <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={terminal} onChange={event => setTerminal(formatarWhatsappInput(event.target.value))} disabled={salvando} />
               </div>
+            <div className="form-field">
+              <label>Data da ativacao</label>
+              <input type="date" value={dataAtivacao} onChange={event => setDataAtivacao(event.target.value)} disabled={salvando} />
+            </div>
               <div className="form-field futuro-cliente-notas">
                 <div className="futuro-cliente-notas__head">
                   <label htmlFor="futuro-cliente-notas">Notas sobre este cliente</label>
@@ -1233,6 +1256,7 @@ function LeadsRecebidosView({ agora }) {
   const [totalLinhas, setTotalLinhas] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
   const buscaDeferred = useDeferredValue(busca);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -1270,7 +1294,7 @@ function LeadsRecebidosView({ agora }) {
 
     let cancelado = false;
     setCarregando(true);
-    listarMinhasLeadLinhas({ envio_ids: selecionados, page: pagina, page_size: 200, busca: buscaDeferred, linha_id: linhaNotificacaoId || undefined })
+    listarMinhasLeadLinhas({ envio_ids: selecionados, page: pagina, page_size: 200, busca: buscaDeferred, status: filtroStatus || undefined, linha_id: linhaNotificacaoId || undefined })
       .then(data => {
         if (!cancelado) {
           setLinhas(data.data || []);
@@ -1280,7 +1304,7 @@ function LeadsRecebidosView({ agora }) {
       .catch(error => setErro(error.message || 'Erro ao carregar leads recebidos.'))
       .finally(() => !cancelado && setCarregando(false));
     return () => { cancelado = true; };
-  }, [selecionados, pagina, buscaDeferred, linhaNotificacaoId]);
+  }, [selecionados, pagina, buscaDeferred, filtroStatus, linhaNotificacaoId]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
@@ -1536,8 +1560,24 @@ function LeadsRecebidosView({ agora }) {
         <div className="clientes-leads-actions">
           <form className="clientes-search" onSubmit={event => event.preventDefault()}>
             <I.Search size={14} />
-            <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar no mailing recebido" />
+            <input value={busca} onChange={event => { setBusca(event.target.value); setPagina(1); }} placeholder="Buscar no mailing recebido" />
           </form>
+          <select
+            className="clientes-status-filter"
+            value={filtroStatus}
+            onChange={event => { setFiltroStatus(event.target.value); setPagina(1); }}
+            aria-label="Filtrar status do mailing selecionado"
+          >
+            <option value="">Todos os status</option>
+            <option value="pendente">Pendentes</option>
+            <option value="futuro_cliente">Futuros clientes</option>
+            <option value="cliente_recusou">Cancelados</option>
+            <option value="retorno_agendado">Agendados</option>
+            <option value="chamada_nao_atendida">Não atendidos</option>
+            <option value="venda_registrada">Vendas registradas</option>
+            <option value="venda_recusada">Vendas recusadas</option>
+            <option value="lixeira">Na lixeira</option>
+          </select>
         </div>
       </div>
 
@@ -1663,6 +1703,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   ));
   const [telefoneFixo, setTelefoneFixo] = useState(() => formatarWhatsappInput(linha.sondagem?.telefone_fixo || ''));
   const [terminal, setTerminal] = useState(() => formatarWhatsappInput(linha.sondagem?.terminal || ''));
+  const [dataAtivacao, setDataAtivacao] = useState(() => String(linha.sondagem?.data_ativacao || '').slice(0, 10));
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
     + ((Number(item.quantidade) || 0) * moedaBRParaNumero(item.preco_por_chip)), 0);
 
@@ -1722,7 +1763,8 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         melhor_numero_contato: melhorNumeroContato,
         whatsapp,
         telefone_fixo: telefoneFixo,
-        terminal
+        terminal,
+        data_ativacao: dataAtivacao
       });
       onAtualizado(resultado.linha);
     } catch (error) {
@@ -1839,6 +1881,10 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
             <div className="form-field">
               <label>Terminal</label>
               <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={terminal} onChange={event => setTerminal(formatarWhatsappInput(event.target.value))} disabled={salvando} />
+            </div>
+            <div className="form-field">
+              <label>Data da ativacao</label>
+              <input type="date" value={dataAtivacao} onChange={event => setDataAtivacao(event.target.value)} disabled={salvando} />
             </div>
             <div className="form-field">
               <label>Observações</label>
