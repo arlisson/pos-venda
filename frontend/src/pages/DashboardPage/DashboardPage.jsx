@@ -694,7 +694,10 @@ function getNotificationTarget(notificacao) {
   }
 
   if (TIPOS_RETORNO_PAGINA_LEADS.includes(notificacao.tipo)) {
-    return '/futuros-clientes';
+    const linhaId = Number(notificacao.entidade_id || notificacao.dados?.lead_linha_id || 0);
+    return TIPOS_RETORNO_MAILING.includes(notificacao.tipo)
+      ? (linhaId > 0 ? '/futuros-clientes?aba=leads&linha_id=' + linhaId : '/futuros-clientes?aba=leads')
+      : (linhaId > 0 ? '/futuros-clientes?linha_id=' + linhaId : '/futuros-clientes');
   }
 
   if (notificacao.tipo === 'cliente_fidelidade') {

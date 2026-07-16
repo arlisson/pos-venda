@@ -337,6 +337,36 @@ function aplicarBuscaFuturosClientes(query, busca) {
       .orWhereRaw('LOWER(COALESCE(futuro_cliente_notas, "")) LIKE ?', [`%${termo}%`]);
   });
 }
+/**
+ * Applies filters specific to the future-clients list.
+ */
+function aplicarFiltrosFuturosClientes(query, filtros = {}) {
+  const situacao = String(filtros.situacao || '').trim();
+  const retorno = String(filtros.retorno || '').trim();
+
+  if (situacao === 'em_negociacao') {
+    query.where(builder => builder
+      .whereNull('status_operacional')
+      .orWhereNotIn('status_operacional', ['vendido', 'perdido']));
+  } else if (situacao === 'venda_concluida') {
+    query.where(builder => builder
+      .where('status_operacional', 'vendido')
+      .orWhereNotNull('venda_id'));
+  } else if (situacao === 'venda_recusada') {
+    query.where('status_operacional', 'perdido');
+  }
+
+  if (retorno === 'com_retorno') {
+    query.whereNotNull('futuro_cliente_retorno');
+  } else if (retorno === 'sem_retorno') {
+    query.whereNull('futuro_cliente_retorno');
+  } else if (retorno === 'vencido') {
+    query.whereNotNull('futuro_cliente_retorno')
+      .where('futuro_cliente_retorno', '<', formatarDateTimeSQL());
+  }
+
+  return query;
+}
 
 /**
  * Converte json para o formato interno esperado.
@@ -2158,6 +2188,7 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
   }
 
   query = aplicarBuscaFuturosClientes(query, filtros.busca);
+  query = aplicarFiltrosFuturosClientes(query, filtros);
 
   const total = await query.clone().resultSize();
   const linhas = await query
@@ -2807,6 +2838,7 @@ async function listarFuturosClientesLixeira(filtros = {}, usuarioId) {
     .whereNotNull('futuro_cliente_excluido_em');
 
   query = aplicarBuscaFuturosClientes(query, filtros.busca);
+  query = aplicarFiltrosFuturosClientes(query, filtros);
 
   const total = await query.clone().resultSize();
   const linhas = await query

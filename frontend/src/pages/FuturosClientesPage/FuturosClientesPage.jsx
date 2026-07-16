@@ -1317,6 +1317,7 @@ function LeadsRecebidosView({ agora }) {
     const linha = linhas.find(item => Number(item.id) === linhaNotificacaoId);
     if (linha) {
       notificacaoAbertaRef.current = linhaNotificacaoId;
+      setErro('');
       setModalAdicionar(linha);
     } else if (totalLinhas === 0) {
       setErro('O lead desta notificacao nao esta mais disponivel.');
@@ -2252,6 +2253,8 @@ function FuturosClientesMainView({ agora }) {
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState('');
+  const [filtroSituacao, setFiltroSituacao] = useState('');
+  const [filtroRetorno, setFiltroRetorno] = useState('');
   const buscaDeferred = useDeferredValue(busca);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -2279,7 +2282,14 @@ function FuturosClientesMainView({ agora }) {
     const listar = modoLixeira
       ? listarFuturosClientesLixeira
       : (podeVerQuadroGeral ? listarQuadroFuturosClientes : listarFuturosClientesLeads);
-    listar({ page: pagina, page_size: 50, busca: buscaDeferred, linha_id: linhaNotificacaoId || undefined })
+    listar({
+      page: pagina,
+      page_size: 50,
+      busca: buscaDeferred,
+      situacao: filtroSituacao || undefined,
+      retorno: filtroRetorno || undefined,
+      linha_id: linhaNotificacaoId || undefined
+    })
       .then(data => {
         if (!cancelado) {
           setLinhas(data.data || []);
@@ -2289,7 +2299,7 @@ function FuturosClientesMainView({ agora }) {
       .catch(error => setErro(error.message || 'Erro ao carregar futuros clientes.'))
       .finally(() => !cancelado && setCarregando(false));
     return () => { cancelado = true; };
-  }, [pagina, buscaDeferred, modoLixeira, linhaNotificacaoId]);
+  }, [pagina, buscaDeferred, filtroSituacao, filtroRetorno, modoLixeira, linhaNotificacaoId]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   useEffect(() => {
@@ -2370,6 +2380,12 @@ function FuturosClientesMainView({ agora }) {
     setLinhaAtiva(null);
     setErro('');
     setSucesso('');
+  }
+  function limparFiltros() {
+    setBusca('');
+    setFiltroSituacao('');
+    setFiltroRetorno('');
+    setPagina(1);
   }
 
   /**
@@ -2556,6 +2572,31 @@ function FuturosClientesMainView({ agora }) {
             placeholder={modoLixeira ? 'Buscar na lixeira...' : 'Buscar futuros clientes...'}
           />
         </form>
+        <select
+          className="clientes-status-filter"
+          value={filtroSituacao}
+          onChange={event => { setFiltroSituacao(event.target.value); setPagina(1); }}
+          aria-label="Filtrar situacao dos futuros clientes"
+        >
+          <option value="">Todas as situacoes</option>
+          <option value="em_negociacao">Em negociacao</option>
+          <option value="venda_concluida">Vendas concluidas</option>
+          <option value="venda_recusada">Vendas recusadas</option>
+        </select>
+        <select
+          className="clientes-status-filter"
+          value={filtroRetorno}
+          onChange={event => { setFiltroRetorno(event.target.value); setPagina(1); }}
+          aria-label="Filtrar retorno dos futuros clientes"
+        >
+          <option value="">Todos os retornos</option>
+          <option value="com_retorno">Com retorno</option>
+          <option value="vencido">Retornos vencidos</option>
+          <option value="sem_retorno">Sem retorno</option>
+        </select>
+        {(busca || filtroSituacao || filtroRetorno) && (
+          <button type="button" className="btn btn-sm" onClick={limparFiltros}>Limpar filtros</button>
+        )}
         <div className="clientes-leads-actions">
           <div className="clientes-toolbar__meta">
             {total} {modoLixeira ? 'na lixeira' : 'futuro(s) cliente(s)'}
