@@ -1129,7 +1129,7 @@
 
 .consultor-periodo-filtros {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
   padding: 14px;
@@ -1141,7 +1141,9 @@
 .consultor-periodo-filtros .form-field { margin: 0; }
 
 .consultor-periodo-atalhos {
+  grid-column: 1 / -1;
   display: flex;
+  min-width: 0;
   gap: 6px;
   flex-wrap: wrap;
   padding-bottom: 1px;
