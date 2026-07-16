@@ -28,6 +28,7 @@ const TIPOS_RETORNO_MAILING = ['lead_retorno_pre', 'lead_retorno_due'];
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPOS_RETORNO_VENDA = ['venda_retorno_registrado'];
+const TIPO_FUTURO_CLIENTE_DISTRIBUIDO = 'futuro_cliente_distribuido';
 
 /**
  * Formata date para exibicao.
@@ -67,6 +68,11 @@ function tomNotificacao(notification) {
  * Retorna notification target a partir dos dados informados.
  */
 function getNotificationTarget(notification) {
+  if (notification.tipo === TIPO_FUTURO_CLIENTE_DISTRIBUIDO) {
+    const linhaId = Number(notification.entidade_id || notification.dados?.lead_linha_id || 0);
+    return linhaId > 0 ? '/futuros-clientes?aba=leads&linha_id=' + linhaId : '/futuros-clientes?aba=leads';
+  }
+
   if (TIPOS_RETORNO_PAGINA_LEADS.includes(notification.tipo)) {
     const linhaId = Number(notification.entidade_id || notification.dados?.lead_linha_id || 0);
     if (TIPOS_RETORNO_MAILING.includes(notification.tipo)) {
