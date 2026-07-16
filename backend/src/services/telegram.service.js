@@ -44,7 +44,10 @@ function montarMensagemFuturoCliente(linha = {}) {
     `Empresa: ${sondagem.razao_social || 'Não informada'}`, `CNPJ: ${sondagem.cnpj || 'Não informado'}`,
     `Contato: ${sondagem.contato_nome || 'Não informado'} (${tipoContato})`, `Melhor número para contato: ${formatarTelefone(sondagem.melhor_numero_contato)}`,
     `WhatsApp: ${formatarTelefone(telefone)}`, `Operadora atual: ${sondagem.operadoraAtual?.nome || 'Não informada'}`,
-    `Chips: ${descricaoChips}`, `Valor mensal estimado: ${formatarMoeda(sondagem.valor_mensal_estimado)}`,
+    `Chips atuais: ${descricaoChips}`, `Valor mensal estimado: ${formatarMoeda(sondagem.valor_mensal_estimado)}`,
+    `Fixo: ${formatarTelefone(sondagem.telefone_fixo)}`, `Terminal: ${formatarTelefone(sondagem.terminal)}`,
+    `Operadora de interesse: ${sondagem.operadoraInteresse?.nome || 'Nao informada'}`,
+    
     `Data do contato: ${formatarDataHora(sondagem.respondido_em || linha.futuro_cliente_marcado_em)}`,
     `Retorno: ${formatarDataHora(sondagem.retorno_em || linha.futuro_cliente_retorno)}`, `Observações: ${sondagem.observacoes || 'Nenhuma'}`
   ].join('\n');
@@ -56,6 +59,7 @@ async function enviarFuturoCliente(linha) {
   const resultado = await chamarApi('sendMessage', {
     chat_id: chatId,
     text: montarMensagemFuturoCliente(linha),
+    parse_mode: 'Markdown',
     disable_web_page_preview: true,
     reply_markup: { inline_keyboard: [[{ text: 'Encaminhar', callback_data: `fc:selecionar:${linha.id}` }]] }
   });
