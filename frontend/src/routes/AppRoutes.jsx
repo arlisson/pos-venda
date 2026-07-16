@@ -119,7 +119,7 @@ function AppRoutes() {
 
       <Route
         path="/futuros-clientes"
-        element={<PrivateRoute permission={['futuros_clientes_ver']}><FuturosClientesPage /></PrivateRoute>}
+        element={<PrivateRoute permission={['futuros_clientes_ver', 'vendas_criar']}><FuturosClientesPage /></PrivateRoute>}
       />
 
       <Route path="/retornos" element={<PrivateRoute permission={['vendas_ver_proprias', 'vendas_ver_todas', 'ver_vendas_compartilhadas']}><RetornosPage /></PrivateRoute>} />

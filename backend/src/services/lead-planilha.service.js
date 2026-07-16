@@ -2142,10 +2142,20 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
   let query = LeadLinha.query()
     .where('futuro_cliente', true)
     .whereNull('futuro_cliente_excluido_em');
-  if (usuarioId) query.where('futuro_cliente_marcado_por_id', usuarioId);
 
   const linhaId = Number(filtros.linha_id || 0);
-  if (Number.isInteger(linhaId) && linhaId > 0) query.where('id', linhaId);
+  const filtrarPorLinhaDaNotificacao = Number.isInteger(linhaId) && linhaId > 0;
+
+  if (filtrarPorLinhaDaNotificacao) {
+    query.where('id', linhaId);
+    if (usuarioId) {
+      query.where(builder => builder
+        .where('futuro_cliente_marcado_por_id', usuarioId)
+        .orWhere('atribuido_para_id', usuarioId));
+    }
+  } else if (usuarioId) {
+    query.where('futuro_cliente_marcado_por_id', usuarioId);
+  }
 
   query = aplicarBuscaFuturosClientes(query, filtros.busca);
 

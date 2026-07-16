@@ -10,8 +10,8 @@ router.use(authMiddleware);
 
 router.get('/me/envios', leadPlanilhaController.meusEnvios);
 router.get('/me/linhas', leadPlanilhaController.minhasLinhas);
-router.get('/me/futuros-clientes', exigirUmaPermissao(['futuros_clientes_ver']), leadPlanilhaController.listarFuturosClientes);
-router.get('/me/futuros-clientes/lixeira', exigirUmaPermissao(['futuros_clientes_ver']), leadPlanilhaController.listarFuturosClientesLixeira);
+router.get('/me/futuros-clientes', exigirUmaPermissao(['futuros_clientes_ver', 'vendas_criar']), leadPlanilhaController.listarFuturosClientes);
+router.get('/me/futuros-clientes/lixeira', exigirUmaPermissao(['futuros_clientes_ver', 'vendas_criar']), leadPlanilhaController.listarFuturosClientesLixeira);
 router.delete(
   '/me/futuros-clientes/:id',
   exigirUmaPermissao(['futuros_clientes_registrar']),

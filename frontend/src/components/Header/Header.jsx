@@ -70,7 +70,7 @@ function tomNotificacao(notification) {
 function getNotificationTarget(notification) {
   if (notification.tipo === TIPO_FUTURO_CLIENTE_DISTRIBUIDO) {
     const linhaId = Number(notification.entidade_id || notification.dados?.lead_linha_id || 0);
-    return linhaId > 0 ? '/futuros-clientes?aba=leads&linha_id=' + linhaId : '/futuros-clientes?aba=leads';
+    return linhaId > 0 ? '/futuros-clientes?linha_id=' + linhaId : '/futuros-clientes';
   }
 
   if (TIPOS_RETORNO_PAGINA_LEADS.includes(notification.tipo)) {

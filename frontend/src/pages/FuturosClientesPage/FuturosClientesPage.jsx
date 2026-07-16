@@ -2327,6 +2327,7 @@ function FuturosClientesMainView({ agora }) {
 
     const linha = linhas.find(item => Number(item.id) === linhaNotificacaoId);
     if (linha) {
+      setErro('');
       setLinhaAtiva(linha);
     } else if (total === 0) {
       setErro('O futuro cliente desta notificacao nao esta mais disponivel.');

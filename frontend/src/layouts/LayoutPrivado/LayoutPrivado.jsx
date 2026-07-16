@@ -455,8 +455,11 @@ function LayoutPrivado({ children }) {
     const entidadeId = notificacao.entidade_id || dados.entidade_id || '';
     const vendaId = dados.venda_id || (notificacao.entidade === 'vendas' ? entidadeId : '') || entidadeId;
     const clienteId = dados.cliente_id || (notificacao.entidade === 'clientes' ? entidadeId : '');
+    const linhaId = Number(notificacao.entidade_id || dados.lead_linha_id || 0);
 
     switch (notificacao.tipo) {
+      case 'futuro_cliente_distribuido':
+        return linhaId > 0 ? '/futuros-clientes?linha_id=' + linhaId : '/futuros-clientes';
       case 'venda_problema_aberto':
       case 'venda_problema_resolvido':
       case 'venda_problema_correcao':
