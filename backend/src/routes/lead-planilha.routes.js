@@ -290,6 +290,7 @@ router.put(
   leadPlanilhaController.atualizarNomeEnvio
 );
 router.post('/exportar', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.exportar);
+router.post('/exportar-xlsx/:id', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.exportarPlanilhaXlsx);
 router.get('/futuros-clientes', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.listarTodosFuturosClientes);
 router.get('/futuros-clientes/metricas', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.metricasFuturosClientes);
 router.get('/futuros-clientes/metricas/exportar', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.exportarMetricasFuturosClientes);

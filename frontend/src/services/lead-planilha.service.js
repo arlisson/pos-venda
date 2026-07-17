@@ -208,6 +208,10 @@ export function exportarLeadLinhas(dados = {}) {
   });
 }
 
+/** Baixa uma planilha individual em formato Excel. */
+export function exportarLeadPlanilhaXlsx(planilhaId) {
+  return apiBlob(`/lead-planilhas/exportar-xlsx/${planilhaId}`, { method: 'POST' });
+}
 /**
  * Processa dividir lead linhas conforme as regras do dominio.
  */

@@ -1,4 +1,4 @@
-﻿import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import * as I from '../../components/Icons';
 import DocProgresso from '../../components/DocProgresso';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
@@ -18,6 +18,7 @@ import {
   dividirLeadLinhas,
   excluirLeadPlanilha,
   exportarLeadLinhas,
+  exportarLeadPlanilhaXlsx,
   finalizarLeadPlanilha,
   importarLeadPlanilhaExcel,
   listarLeadLinhas,
@@ -1619,6 +1620,24 @@ function AdminLeadsPage() {
     URL.revokeObjectURL(url);
   }
 
+  /** Baixa uma planilha sem alterar a selecao atual da tela. */
+  async function baixarPlanilhaIndividual(planilha) {
+    try {
+      setErro('');
+      const blob = await exportarLeadPlanilhaXlsx(planilha.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const nomeSeguro = String(planilha.nome || 'mailing')
+        .replace(/[\\/:*?"<>|]/g, '-')
+        .replace(/\.(csv|xlsx)$/i, '');
+      link.href = url;
+      link.download = `${nomeSeguro || 'mailing'}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setErro(error.message || 'Erro ao baixar a planilha.');
+    }
+  }
   /**
    * Executa a acao de alterar tipo mantendo o estado da tela consistente.
    */
@@ -2054,6 +2073,18 @@ function AdminLeadsPage() {
                   }}
                 >
                   <I.Trash size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="lead-doc-download"
+                  title="Baixar planilha Excel com os status do mailing"
+                  aria-label={`Baixar ${planilha.nome}`}
+                  onClick={event => {
+                    event.stopPropagation();
+                    baixarPlanilhaIndividual(planilha);
+                  }}
+                >
+                  <I.Download size={14} />
                 </button>
                 <div className="lead-doc-preview">
                   <span></span><span></span><span></span><span></span>

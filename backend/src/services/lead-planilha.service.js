@@ -2007,6 +2007,21 @@ function csvEscape(valor) {
   return /[",;\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
 }
 
+/** Retorna os estados exibidos na coluna Status da tela de mailing. */
+function obterStatusExportacao(linha) {
+  const status = [linha.atribuido_para_id || linha.envio_id ? 'Enviado' : 'N\u00e3o enviado'];
+
+  if (linha.futuro_cliente && linha.futuro_cliente_excluido_em) status.push('Na lixeira');
+  if (linha.futuro_cliente && !linha.futuro_cliente_excluido_em) status.push('Futuro cliente');
+  if (linha.venda_id || linha.status_operacional === 'vendido' || linha.possui_venda_cliente) status.push('Venda registrada');
+  if (linha.status_operacional === 'perdido' || linha.venda_recusada_em || linha.venda_recusada_motivo) status.push('Venda recusada');
+  if (linha.cliente_recusou) status.push('Cliente recusou');
+  if (linha.chamada_nao_atendida) status.push('Chamada n\u00e3o atendida');
+  if (linha.retorno_agendado_em) status.push('Retorno marcado');
+
+  return status.join(' | ');
+}
+
 /**
  * Exporta csv no formato esperado.
  */
@@ -2018,7 +2033,10 @@ async function exportarCsv(filtros, res, opcoes = {}) {
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="leads.csv"');
-  res.write(`${colunas.map(coluna => csvEscape(coluna.label || coluna.nome || coluna)).join(';')}\n`);
+  const incluirStatus = filtros.incluir_status !== false;
+  const cabecalho = colunas.map(coluna => csvEscape(coluna.label || coluna.nome || coluna));
+  if (incluirStatus) cabecalho.push(csvEscape('Status do mailing'));
+  res.write(`${cabecalho.join(';')}\n`);
 
   let offset = 0;
   while (true) {
@@ -2035,6 +2053,7 @@ async function exportarCsv(filtros, res, opcoes = {}) {
         const source = coluna.sources?.find(item => Number(item.planilhaId) === Number(linha.planilha_id));
         return csvEscape(dados[source?.nome || coluna.nome || coluna]);
       });
+      if (incluirStatus) valores.push(csvEscape(obterStatusExportacao(linha)));
       res.write(`${valores.join(';')}\n`);
     });
 
@@ -2044,6 +2063,49 @@ async function exportarCsv(filtros, res, opcoes = {}) {
   res.end();
 }
 
+/**
+ * Gera uma planilha Excel individual, mantendo todos os campos como texto para
+ * evitar que CNPJ, telefones e codigos sejam convertidos pelo Excel.
+ */
+async function gerarPlanilhaXlsx(planilhaId) {
+  const planilha = await LeadPlanilha.query().findById(Number(planilhaId));
+  if (!planilha) throw criarHttpError(404, 'Planilha n\u00e3o encontrada.');
+
+  const colunas = parseJson(planilha.colunas, []);
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Pos Venda';
+  const worksheet = workbook.addWorksheet('Mailing', { views: [{ state: 'frozen', ySplit: 1 }] });
+  const cabecalhos = [...colunas, 'Status do mailing'];
+  const cabecalho = worksheet.addRow(cabecalhos);
+  cabecalho.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  cabecalho.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } };
+
+  let offset = 0;
+  while (true) {
+    const linhas = await LeadLinha.query()
+      .where('planilha_id', planilha.id)
+      .orderBy('row_index', 'asc')
+      .offset(offset)
+      .limit(SELECT_BATCH_SIZE);
+    if (!linhas.length) break;
+
+    linhas.forEach(linha => {
+      const dados = parseJson(linha.dados_json, {});
+      const valores = colunas.map(coluna => String(dados[coluna] ?? ''));
+      valores.push(obterStatusExportacao(linha));
+      const row = worksheet.addRow(valores);
+      row.eachCell(cell => { cell.numFmt = '@'; });
+    });
+    offset += linhas.length;
+  }
+
+  worksheet.columns.forEach((column, index) => {
+    const titulo = String(cabecalhos[index] || '');
+    column.width = Math.min(50, Math.max(14, titulo.length + 2));
+  });
+
+  return workbook.xlsx.writeBuffer();
+}
 /**
  * Marca como futuro cliente conforme a acao solicitada.
  */
@@ -2963,6 +3025,7 @@ module.exports = {
   atualizarNomeEnvio,
   dividirLeads,
   exportarCsv,
+  gerarPlanilhaXlsx,
   marcarComoFuturoCliente,
   listarFuturosClientes,
   obterMetricasFuturosClientes,

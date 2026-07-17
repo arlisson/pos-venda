@@ -293,6 +293,37 @@
   border-color: #fecaca;
 }
 
+.lead-doc-download {
+  position: absolute;
+  top: 8px;
+  right: 42px;
+  z-index: 3;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.92);
+  box-shadow: var(--shadow-sm);
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.lead-doc-card:hover .lead-doc-download,
+.lead-doc-card:focus-within .lead-doc-download {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.lead-doc-download:hover,
+.lead-doc-download:focus-visible {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
 .lead-doc-preview {
   width: 70px;
   height: 92px;
@@ -1302,7 +1333,7 @@
   display: flex;
   justify-content: flex-end;
 }
-/* ─── Linhas clicáveis + modal de detalhe/edição do lead ──────────────────── */
+/* --- Linhas clicáveis + modal de detalhe/edição do lead -------------------- */
 .lead-table tbody tr.lead-admin-row-clicavel {
   cursor: pointer;
 }

@@ -188,6 +188,18 @@ async function exportar(req, res) {
   }
 }
 
+/** Exporta uma planilha individual em Excel. */
+async function exportarPlanilhaXlsx(req, res) {
+  try {
+    const buffer = await leadPlanilhaService.gerarPlanilhaXlsx(req.params.id);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="mailing.xlsx"');
+    return res.send(buffer);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 500).json({ message: error.message || 'Erro ao exportar planilha Excel.' });
+  }
+}
 /**
  * Processa dividir conforme as regras do dominio.
  */
@@ -565,6 +577,7 @@ module.exports = {
   destroy,
   linhas,
   exportar,
+  exportarPlanilhaXlsx,
   dividir,
   envios,
   atualizarNomeEnvio,
