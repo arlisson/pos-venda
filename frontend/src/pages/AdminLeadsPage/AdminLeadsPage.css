@@ -1465,3 +1465,13 @@
   flex: 1;
   min-width: 0;
 }
+
+.lead-envio-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lead-envio-name .btn {
+  flex: 0 0 auto;
+}

@@ -1088,6 +1088,27 @@ async function listarTodosEnvios() {
 }
 
 /**
+ * Atualiza somente o nome de um envio, preservando suas distribuicoes e linhas.
+ */
+async function atualizarNomeEnvio(envioId, nome) {
+  const nomeNormalizado = String(nome || '').trim();
+  if (!nomeNormalizado) throw new Error('Informe um nome para o envio.');
+  if (nomeNormalizado.length > 240) throw new Error('O nome do envio deve ter no máximo 240 caracteres.');
+
+  const envio = await LeadEnvio.query().findById(envioId);
+  if (!envio) {
+    const error = new Error('Envio não encontrado.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const atualizado = await LeadEnvio.query()
+    .patchAndFetchById(envio.id, { nome: nomeNormalizado, updated_at: new Date() });
+
+  return formatarEnvio(atualizado);
+}
+
+/**
  * Monta alocacoes a partir dos dados informados.
  */
 function montarAlocacoes(usuarioIds, quantidadeTotal, alocacaoManual = {}) {
@@ -2937,6 +2958,7 @@ module.exports = {
   atualizarCampoLinhaRecebida,
   listarEnviosDoUsuario,
   listarTodosEnvios,
+  atualizarNomeEnvio,
   dividirLeads,
   exportarCsv,
   marcarComoFuturoCliente,

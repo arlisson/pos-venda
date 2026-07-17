@@ -225,6 +225,13 @@ export function listarLeadEnvios() {
 /**
  * Lista meus lead envios conforme os filtros e parametros informados.
  */
+/**
+ * Atualiza apenas o nome de um envio de mailing.
+ */
+export function atualizarNomeLeadEnvio(envioId, nome) {
+  return apiPut('/lead-planilhas/envios/' + envioId, { nome });
+}
+
 export function listarMeusLeadEnvios() {
   return apiGet('/lead-planilhas/me/envios');
 }

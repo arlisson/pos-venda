@@ -13,6 +13,7 @@ import {
   adminReverterChamadaNaoAtendidaLead,
   adminReverterClienteRecusouLead,
   adminReverterVendaRecusadaLead,
+  atualizarNomeLeadEnvio,
   atualizarLeadSchema,
   criarLeadPlanilha,
   dividirLeadLinhas,
@@ -629,6 +630,38 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
  * alterar os estados (reverter/marcar venda recusada, cliente recusou, chamada
  * não atendida e agendar retorno) mesmo sem ser o vendedor atribuído.
  */
+/**
+ * Permite renomear um envio sem afetar os clientes já distribuidos.
+ */
+function EditarNomeEnvioModal({ envio, onClose, onSave }) {
+  const [nome, setNome] = useState(envio.nome || '');
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  async function salvar(event) {
+    event.preventDefault();
+    const nomeNormalizado = nome.trim();
+    if (!nomeNormalizado) { setErro('Informe um nome para o envio.'); return; }
+    setSalvando(true); setErro('');
+    try { await onSave(nomeNormalizado); onClose(); }
+    catch (error) { setErro(error.message || 'Erro ao atualizar nome do envio.'); }
+    finally { setSalvando(false); }
+  }
+
+  return (
+    <div className="modal-overlay">
+      <form className="modal leads-edit-envio-modal" onSubmit={salvar}>
+        <div className="modal-header"><div className="modal-header-row">
+          <div><div className="modal-client">Editar nome do envio</div><div className="modal-sub">A distribuição dos clientes e o andamento dos vendedores não serão alterados.</div></div>
+          <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={salvando} title="Fechar"><I.Close size={14} /></button>
+        </div></div>
+        <div className="modal-body"><label><span>Nome do envio</span><input autoFocus value={nome} maxLength={240} onChange={event => setNome(event.target.value)} disabled={salvando} /></label>{erro && <div className="alert-error">{erro}</div>}</div>
+        <div className="modal-footer"><button type="button" className="btn" onClick={onClose} disabled={salvando}>Cancelar</button><button type="submit" className="btn btn-primary" disabled={salvando || !nome.trim()}>{salvando ? 'Salvando...' : 'Salvar nome'}</button></div>
+      </form>
+    </div>
+  );
+}
+
 function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -868,6 +901,7 @@ function AdminLeadsPage() {
   const [colunasMescladas, setColunasMescladas] = useState([]);
   const [modalMesclar, setModalMesclar] = useState(null);
   const [modalExcluir, setModalExcluir] = useState(null);
+  const [envioEditando, setEnvioEditando] = useState(null);
   const [linhaDetalhe, setLinhaDetalhe] = useState(null);
   const [excluindoId, setExcluindoId] = useState(null);
   const [erroExclusao, setErroExclusao] = useState('');
@@ -1478,6 +1512,18 @@ function AdminLeadsPage() {
   /**
    * Aplica a linha atualizada (após uma ação do modal) na tabela e no modal aberto.
    */
+  async function salvarNomeEnvio(nome) {
+    if (!envioEditando) return;
+    const envioAtualizado = await atualizarNomeLeadEnvio(envioEditando.id, nome);
+    setLinhas(prev => prev.map(linha => (
+      Number(linha.envio_id) === Number(envioAtualizado.id) ? { ...linha, envio: { ...(linha.envio || {}), ...envioAtualizado } } : linha
+    )));
+    setLinhaDetalhe(atual => (
+      atual && Number(atual.envio_id) === Number(envioAtualizado.id) ? { ...atual, envio: { ...(atual.envio || {}), ...envioAtualizado } } : atual
+    ));
+    setSucesso('Nome do envio atualizado com sucesso.');
+  }
+
   function atualizarLinhaNaLista(linhaAtualizada) {
     if (!linhaAtualizada) return;
     setLinhas(prev => prev.map(item => (item.id === linhaAtualizada.id ? { ...item, ...linhaAtualizada } : item)));
@@ -1699,6 +1745,10 @@ function AdminLeadsPage() {
           }}
           onConfirm={confirmarExclusaoPlanilha}
         />
+      )}
+
+      {envioEditando && (
+        <EditarNomeEnvioModal envio={envioEditando} onClose={() => setEnvioEditando(null)} onSave={salvarNomeEnvio} />
       )}
 
       {linhaDetalhe && (
@@ -2041,7 +2091,16 @@ function AdminLeadsPage() {
                         </div>
                       </td>
                       <td>{linha.atribuidoPara?.nome || '-'}</td>
-                      <td>{linha.envio?.nome || '-'}</td>
+                      <td>
+                        {linha.envio?.nome ? (
+                          <div className="lead-envio-name">
+                            <span>{linha.envio.nome}</span>
+                            <button type="button" className="btn btn-icon btn-ghost" title="Editar nome do envio" aria-label={'Editar nome do envio ' + linha.envio.nome} onClick={event => { event.stopPropagation(); setEnvioEditando(linha.envio); }}>
+                              <I.Edit size={13} />
+                            </button>
+                          </div>
+                        ) : '-'}
+                      </td>
                       {colunas.map(coluna => <td key={coluna.id}>{getValorColuna(linha, coluna) || '-'}</td>)}
                     </tr>
                   ))
