@@ -172,7 +172,10 @@ const NOTAS_MAX_LENGTH = 500;
 
 const CAMPOS_EMPRESA_FUTURO_CLIENTE = {
   razao_social: ['razao social', 'razão social', 'empresa', 'cliente', 'nome empresarial'],
-  cnpj: ['cnpj', 'cpf/cnpj', 'documento']
+  cnpj: ['cnpj', 'cpf/cnpj', 'documento'],
+  telefone_fixo: ['fixo', 'telefone fixo', 'fone fixo'],
+  terminal: ['terminal'],
+  data_ativacao: ['data de ativacao', 'data ativacao', 'ativacao']
 };
 
 function encontrarValorLeadPorAliases(linha, aliases) {
@@ -191,7 +194,10 @@ function encontrarValorLeadPorAliases(linha, aliases) {
 function getDadosEmpresaFuturoCliente(linha, sondagem = null) {
   return {
     razao_social: String(sondagem?.razao_social || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.razao_social) || '').trim(),
-    cnpj: String(sondagem?.cnpj || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.cnpj) || '').trim()
+    cnpj: String(sondagem?.cnpj || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.cnpj) || '').trim(),
+    telefone_fixo: String(sondagem?.telefone_fixo || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.telefone_fixo) || '').trim(),
+    terminal: String(sondagem?.terminal || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.terminal) || '').trim(),
+    data_ativacao: String(sondagem?.data_ativacao || encontrarValorLeadPorAliases(linha, CAMPOS_EMPRESA_FUTURO_CLIENTE.data_ativacao) || '').trim()
   };
 }
 
@@ -298,6 +304,16 @@ function isFuturoClienteNaLixeira(linha) {
  */
 function isFuturoClienteAtivo(linha) {
   return Boolean(linha?.futuro_cliente && !linha?.futuro_cliente_excluido_em);
+}
+
+function normalizarDataAtivacaoInput(valor) {
+  const texto = String(valor || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return texto;
+  const partes = texto.match(/^(\d{2})\/(\d{2})\/(\d{2}|\d{4})$/);
+  if (!partes) return '';
+  const ano = partes[3].length === 2 ? `20${partes[3]}` : partes[3];
+  const data = new Date(`${ano}-${partes[2]}-${partes[1]}T12:00:00`);
+  return Number.isNaN(data.getTime()) ? '' : `${ano}-${partes[2]}-${partes[1]}`;
 }
 
 function formatarWhatsappInput(valor) {
@@ -723,8 +739,13 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [contatoNome, setContatoNome] = useState('');
   const [contatoTipo, setContatoTipo] = useState('');
   const [operadoraAtualId, setOperadoraAtualId] = useState('');
+  const [operadoraInteresseId, setOperadoraInteresseId] = useState('');
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem());
+  const [melhorNumeroContato, setMelhorNumeroContato] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [telefoneFixo, setTelefoneFixo] = useState(() => formatarWhatsappInput(dadosEmpresaInicial.telefone_fixo));
+  const [terminal, setTerminal] = useState(() => formatarWhatsappInput(dadosEmpresaInicial.terminal));
+  const [dataAtivacao, setDataAtivacao] = useState(() => normalizarDataAtivacaoInput(dadosEmpresaInicial.data_ativacao));
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
     + ((Number(item.quantidade) || 0) * moedaBRParaNumero(item.preco_por_chip)), 0);
 
@@ -873,8 +894,13 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
+        operadora_interesse_id: operadoraInteresseId ? Number(operadoraInteresseId) : null,
         chips_itens: chipsItensParaEnvio(chipsItens),
-        whatsapp
+        melhor_numero_contato: melhorNumeroContato,
+        whatsapp,
+        telefone_fixo: telefoneFixo,
+        terminal,
+        data_ativacao: dataAtivacao
       });
       onFuturoClienteSalvo(resultado.linha);
     } catch (error) {
@@ -953,12 +979,20 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                       <div className="futuro-cliente-resumo__grid">
                         <div><span>Razão social</span><strong>{linha.sondagem.razao_social || '-'}</strong></div>
                         <div><span>CNPJ</span><strong>{linha.sondagem.cnpj || '-'}</strong></div>
+                        <div><span>Primeira ligacao</span><strong>{linha.sondagem.usuario?.nome || '-'}</strong></div>
+                        <div><span>Data do contato</span><strong>{formatarDataHora(linha.sondagem.respondido_em || linha.futuro_cliente_marcado_em)}</strong></div>
                         <div><span>Pessoa contatada</span><strong>{linha.sondagem.contato_nome || '-'}</strong></div>
                         <div><span>Perfil do contato</span><strong>{String(linha.sondagem.contato_tipo || '-').toUpperCase()}</strong></div>
+                        <div><span>Melhor numero para contato</span><strong>{formatarWhatsappInput(linha.sondagem.melhor_numero_contato) || '-'}</strong></div>
+                        <div><span>WhatsApp</span><strong>{formatarWhatsappSondagem(linha.sondagem)}</strong></div>
                         <div><span>Operadora atual</span><strong>{linha.sondagem.operadoraAtual?.nome || '-'}</strong></div>
+                        <div><span>Operadora de interesse</span><strong>{linha.sondagem.operadoraInteresse?.nome || '-'}</strong></div>
+                        <div><span>Telefone fixo</span><strong>{formatarWhatsappInput(linha.sondagem.telefone_fixo) || '-'}</strong></div>
+                        <div><span>Terminal</span><strong>{formatarWhatsappInput(linha.sondagem.terminal) || '-'}</strong></div>
+                        <div><span>Data da ativacao</span><strong>{formatarData(linha.sondagem.data_ativacao)}</strong></div>
                         <div><span>Chips / preço</span><strong>{formatarChipsSondagem(linha.sondagem)}</strong></div>
                         <div><span>Média mensal</span><strong>{formatarMoedaSondagem(linha.sondagem.valor_mensal_estimado)}</strong></div>
-                        <div><span>WhatsApp</span><strong>{formatarWhatsappSondagem(linha.sondagem)}</strong></div>
+                        <div className="futuro-cliente-resumo__full"><span>Retorno</span><strong>{formatarDataHora(linha.sondagem.retorno_em || linha.futuro_cliente_retorno)}</strong></div>
                         <div className="futuro-cliente-resumo__full"><span>Observações</span><strong>{linha.sondagem.observacoes || linha.futuro_cliente_notas || '-'}</strong></div>
                       </div>
                     </div>
@@ -1130,15 +1164,37 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                   {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
                 </select>
               </div>
-              <ChipsItensSondagem itens={chipsItens} onChange={setChipsItens} disabled={salvando} />
+              <ChipsItensSondagem itens={chipsItens} onChange={setChipsItens} disabled={salvando} />              <div className="form-field">
+                <label>Operadora de interesse</label>
+                <select value={operadoraInteresseId} onChange={event => setOperadoraInteresseId(event.target.value)} disabled={salvando}>
+                  <option value="">Selecione</option>
+                  {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
+                </select>
+              </div>
               <div className="futuro-cliente-estimativa">
                 <span>Media mensal estimada</span>
                 <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
               </div>
               <div className="form-field">
+                <label>Melhor número para contato (pode ser o mesmo do whatsapp)</label>
+                <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={melhorNumeroContato} onChange={event => setMelhorNumeroContato(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
+              </div>
+              <div className="form-field">
                 <label>WhatsApp com DDD</label>
                 <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
               </div>
+              <div className="form-field">
+                <label>Fixo com DDD</label>
+                <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 3333-4444" value={telefoneFixo} onChange={event => setTelefoneFixo(formatarWhatsappInput(event.target.value))} disabled={salvando} />
+              </div>
+              <div className="form-field">
+                <label>Terminal</label>
+                <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={terminal} onChange={event => setTerminal(formatarWhatsappInput(event.target.value))} disabled={salvando} />
+              </div>
+            <div className="form-field">
+              <label>Data da ativacao</label>
+              <input type="date" value={dataAtivacao} onChange={event => setDataAtivacao(event.target.value)} disabled={salvando} />
+            </div>
               <div className="form-field futuro-cliente-notas">
                 <div className="futuro-cliente-notas__head">
                   <label htmlFor="futuro-cliente-notas">Notas sobre este cliente</label>
@@ -1200,6 +1256,7 @@ function LeadsRecebidosView({ agora }) {
   const [totalLinhas, setTotalLinhas] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
   const buscaDeferred = useDeferredValue(busca);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -1237,7 +1294,7 @@ function LeadsRecebidosView({ agora }) {
 
     let cancelado = false;
     setCarregando(true);
-    listarMinhasLeadLinhas({ envio_ids: selecionados, page: pagina, page_size: 200, busca: buscaDeferred, linha_id: linhaNotificacaoId || undefined })
+    listarMinhasLeadLinhas({ envio_ids: selecionados, page: pagina, page_size: 200, busca: buscaDeferred, status: filtroStatus || undefined, linha_id: linhaNotificacaoId || undefined })
       .then(data => {
         if (!cancelado) {
           setLinhas(data.data || []);
@@ -1247,7 +1304,7 @@ function LeadsRecebidosView({ agora }) {
       .catch(error => setErro(error.message || 'Erro ao carregar leads recebidos.'))
       .finally(() => !cancelado && setCarregando(false));
     return () => { cancelado = true; };
-  }, [selecionados, pagina, buscaDeferred, linhaNotificacaoId]);
+  }, [selecionados, pagina, buscaDeferred, filtroStatus, linhaNotificacaoId]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
@@ -1260,6 +1317,7 @@ function LeadsRecebidosView({ agora }) {
     const linha = linhas.find(item => Number(item.id) === linhaNotificacaoId);
     if (linha) {
       notificacaoAbertaRef.current = linhaNotificacaoId;
+      setErro('');
       setModalAdicionar(linha);
     } else if (totalLinhas === 0) {
       setErro('O lead desta notificacao nao esta mais disponivel.');
@@ -1503,8 +1561,24 @@ function LeadsRecebidosView({ agora }) {
         <div className="clientes-leads-actions">
           <form className="clientes-search" onSubmit={event => event.preventDefault()}>
             <I.Search size={14} />
-            <input value={busca} onChange={event => setBusca(event.target.value)} placeholder="Buscar no mailing recebido" />
+            <input value={busca} onChange={event => { setBusca(event.target.value); setPagina(1); }} placeholder="Buscar no mailing recebido" />
           </form>
+          <select
+            className="clientes-status-filter"
+            value={filtroStatus}
+            onChange={event => { setFiltroStatus(event.target.value); setPagina(1); }}
+            aria-label="Filtrar status do mailing selecionado"
+          >
+            <option value="">Todos os status</option>
+            <option value="pendente">Pendentes</option>
+            <option value="futuro_cliente">Futuros clientes</option>
+            <option value="cliente_recusou">Cancelados</option>
+            <option value="retorno_agendado">Agendados</option>
+            <option value="chamada_nao_atendida">Não atendidos</option>
+            <option value="venda_registrada">Vendas registradas</option>
+            <option value="venda_recusada">Vendas recusadas</option>
+            <option value="lixeira">Na lixeira</option>
+          </select>
         </div>
       </div>
 
@@ -1620,12 +1694,17 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   const [contatoNome, setContatoNome] = useState(linha.sondagem?.contato_nome || '');
   const [contatoTipo, setContatoTipo] = useState(linha.sondagem?.contato_tipo || '');
   const [operadoraAtualId, setOperadoraAtualId] = useState(String(linha.sondagem?.operadora_atual_id || ''));
+  const [operadoraInteresseId, setOperadoraInteresseId] = useState(String(linha.sondagem?.operadora_interesse_id || ''));
   const [chipsItens, setChipsItens] = useState(() => criarChipsItensSondagem(linha.sondagem));
+  const [melhorNumeroContato, setMelhorNumeroContato] = useState(() => formatarWhatsappInput(linha.sondagem?.melhor_numero_contato || ''));
   const [whatsapp, setWhatsapp] = useState(() => (
     linha.sondagem?.whatsapp_ddd
       ? formatarWhatsappInput(`${linha.sondagem.whatsapp_ddd}${linha.sondagem.whatsapp_numero || ''}`)
       : ''
   ));
+  const [telefoneFixo, setTelefoneFixo] = useState(() => formatarWhatsappInput(linha.sondagem?.telefone_fixo || ''));
+  const [terminal, setTerminal] = useState(() => formatarWhatsappInput(linha.sondagem?.terminal || ''));
+  const [dataAtivacao, setDataAtivacao] = useState(() => String(linha.sondagem?.data_ativacao || '').slice(0, 10));
   const valorMensalEstimado = chipsItens.reduce((total, item) => total
     + ((Number(item.quantidade) || 0) * moedaBRParaNumero(item.preco_por_chip)), 0);
 
@@ -1680,8 +1759,13 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         contato_nome: contatoNome,
         contato_tipo: contatoTipo,
         operadora_atual_id: Number(operadoraAtualId),
+        operadora_interesse_id: operadoraInteresseId ? Number(operadoraInteresseId) : null,
         chips_itens: chipsItensParaEnvio(chipsItens),
-        whatsapp
+        melhor_numero_contato: melhorNumeroContato,
+        whatsapp,
+        telefone_fixo: telefoneFixo,
+        terminal,
+        data_ativacao: dataAtivacao
       });
       onAtualizado(resultado.linha);
     } catch (error) {
@@ -1733,12 +1817,21 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
             <div className="adicionar-lead-dados">
               <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Razão social</span><span className="adicionar-lead-campo__valor">{linha.sondagem.razao_social || '-'}</span></div>
               <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">CNPJ</span><span className="adicionar-lead-campo__valor">{linha.sondagem.cnpj || '-'}</span></div>
-              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Pessoa contatada</span><span className="adicionar-lead-campo__valor">{linha.sondagem.contato_nome} ({String(linha.sondagem.contato_tipo || '').toUpperCase()})</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Primeira ligação</span><span className="adicionar-lead-campo__valor">{linha.sondagem.usuario?.nome || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Data do contato</span><span className="adicionar-lead-campo__valor">{formatarDataHora(linha.sondagem.respondido_em || linha.futuro_cliente_marcado_em)}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Pessoa contatada</span><span className="adicionar-lead-campo__valor">{linha.sondagem.contato_nome || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Perfil do contato</span><span className="adicionar-lead-campo__valor">{String(linha.sondagem.contato_tipo || '-').toUpperCase()}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Melhor número para contato</span><span className="adicionar-lead-campo__valor">{formatarWhatsappInput(linha.sondagem.melhor_numero_contato) || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">WhatsApp</span><span className="adicionar-lead-campo__valor">{formatarWhatsappSondagem(linha.sondagem)}</span></div>
               <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Operadora atual</span><span className="adicionar-lead-campo__valor">{linha.sondagem.operadoraAtual?.nome || '-'}</span></div>
-              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Chips / preco</span><span className="adicionar-lead-campo__valor">{linha.sondagem.quantidade_chips} × {Number(linha.sondagem.preco_por_chip).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
-              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Media mensal</span><span className="adicionar-lead-campo__valor">{Number(linha.sondagem.valor_mensal_estimado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
-              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">WhatsApp</span><span className="adicionar-lead-campo__valor">({linha.sondagem.whatsapp_ddd}) {linha.sondagem.whatsapp_numero}</span></div>
-              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Sondagem feita por</span><span className="adicionar-lead-campo__valor">{linha.sondagem.usuario?.nome || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Operadora de interesse</span><span className="adicionar-lead-campo__valor">{linha.sondagem.operadoraInteresse?.nome || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Telefone fixo</span><span className="adicionar-lead-campo__valor">{formatarWhatsappInput(linha.sondagem.telefone_fixo) || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Terminal</span><span className="adicionar-lead-campo__valor">{formatarWhatsappInput(linha.sondagem.terminal) || '-'}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Data da ativação</span><span className="adicionar-lead-campo__valor">{formatarData(linha.sondagem.data_ativacao)}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Chips / preço</span><span className="adicionar-lead-campo__valor">{formatarChipsSondagem(linha.sondagem)}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Média mensal</span><span className="adicionar-lead-campo__valor">{formatarMoedaSondagem(linha.sondagem.valor_mensal_estimado)}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Retorno</span><span className="adicionar-lead-campo__valor">{formatarDataHora(linha.sondagem.retorno_em || linha.futuro_cliente_retorno)}</span></div>
+              <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Observações</span><span className="adicionar-lead-campo__valor">{linha.sondagem.observacoes || linha.futuro_cliente_notas || '-'}</span></div>
             </div>
           )}
 
@@ -1772,14 +1865,36 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
                 {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
               </select>
             </div>
-              <ChipsItensSondagem itens={chipsItens} onChange={setChipsItens} disabled={salvando} />
+              <ChipsItensSondagem itens={chipsItens} onChange={setChipsItens} disabled={salvando} />              <div className="form-field">
+                <label>Operadora de interesse</label>
+                <select value={operadoraInteresseId} onChange={event => setOperadoraInteresseId(event.target.value)} disabled={salvando}>
+                  <option value="">Selecione</option>
+                  {operadoras.map(operadora => <option key={operadora.id} value={operadora.id}>{operadora.nome}</option>)}
+                </select>
+              </div>
             <div className="futuro-cliente-estimativa">
               <span>Media mensal estimada</span>
               <strong>{valorMensalEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
             </div>
             <div className="form-field">
+              <label>Melhor número para contato</label>
+              <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={melhorNumeroContato} onChange={event => setMelhorNumeroContato(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
+            </div>
+            <div className="form-field">
               <label>WhatsApp com DDD</label>
               <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={whatsapp} onChange={event => setWhatsapp(formatarWhatsappInput(event.target.value))} required disabled={salvando} />
+            </div>
+            <div className="form-field">
+              <label>Fixo com DDD</label>
+              <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 3333-4444" value={telefoneFixo} onChange={event => setTelefoneFixo(formatarWhatsappInput(event.target.value))} disabled={salvando} />
+            </div>
+            <div className="form-field">
+              <label>Terminal</label>
+              <input type="tel" inputMode="numeric" maxLength="15" autoComplete="tel" placeholder="(11) 99999-9999" value={terminal} onChange={event => setTerminal(formatarWhatsappInput(event.target.value))} disabled={salvando} />
+            </div>
+            <div className="form-field">
+              <label>Data da ativacao</label>
+              <input type="date" value={dataAtivacao} onChange={event => setDataAtivacao(event.target.value)} disabled={salvando} />
             </div>
             <div className="form-field">
               <label>Observações</label>
@@ -2147,6 +2262,8 @@ function FuturosClientesMainView({ agora }) {
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState('');
+  const [filtroSituacao, setFiltroSituacao] = useState('');
+  const [filtroRetorno, setFiltroRetorno] = useState('');
   const buscaDeferred = useDeferredValue(busca);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -2174,7 +2291,14 @@ function FuturosClientesMainView({ agora }) {
     const listar = modoLixeira
       ? listarFuturosClientesLixeira
       : (podeVerQuadroGeral ? listarQuadroFuturosClientes : listarFuturosClientesLeads);
-    listar({ page: pagina, page_size: 50, busca: buscaDeferred, linha_id: linhaNotificacaoId || undefined })
+    listar({
+      page: pagina,
+      page_size: 50,
+      busca: buscaDeferred,
+      situacao: filtroSituacao || undefined,
+      retorno: filtroRetorno || undefined,
+      linha_id: linhaNotificacaoId || undefined
+    })
       .then(data => {
         if (!cancelado) {
           setLinhas(data.data || []);
@@ -2184,7 +2308,7 @@ function FuturosClientesMainView({ agora }) {
       .catch(error => setErro(error.message || 'Erro ao carregar futuros clientes.'))
       .finally(() => !cancelado && setCarregando(false));
     return () => { cancelado = true; };
-  }, [pagina, buscaDeferred, modoLixeira, linhaNotificacaoId]);
+  }, [pagina, buscaDeferred, filtroSituacao, filtroRetorno, modoLixeira, linhaNotificacaoId]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   useEffect(() => {
@@ -2222,6 +2346,7 @@ function FuturosClientesMainView({ agora }) {
 
     const linha = linhas.find(item => Number(item.id) === linhaNotificacaoId);
     if (linha) {
+      setErro('');
       setLinhaAtiva(linha);
     } else if (total === 0) {
       setErro('O futuro cliente desta notificacao nao esta mais disponivel.');
@@ -2264,6 +2389,12 @@ function FuturosClientesMainView({ agora }) {
     setLinhaAtiva(null);
     setErro('');
     setSucesso('');
+  }
+  function limparFiltros() {
+    setBusca('');
+    setFiltroSituacao('');
+    setFiltroRetorno('');
+    setPagina(1);
   }
 
   /**
@@ -2450,6 +2581,31 @@ function FuturosClientesMainView({ agora }) {
             placeholder={modoLixeira ? 'Buscar na lixeira...' : 'Buscar futuros clientes...'}
           />
         </form>
+        <select
+          className="clientes-status-filter"
+          value={filtroSituacao}
+          onChange={event => { setFiltroSituacao(event.target.value); setPagina(1); }}
+          aria-label="Filtrar situacao dos futuros clientes"
+        >
+          <option value="">Todas as situacoes</option>
+          <option value="em_negociacao">Em negociacao</option>
+          <option value="venda_concluida">Vendas concluidas</option>
+          <option value="venda_recusada">Vendas recusadas</option>
+        </select>
+        <select
+          className="clientes-status-filter"
+          value={filtroRetorno}
+          onChange={event => { setFiltroRetorno(event.target.value); setPagina(1); }}
+          aria-label="Filtrar retorno dos futuros clientes"
+        >
+          <option value="">Todos os retornos</option>
+          <option value="com_retorno">Com retorno</option>
+          <option value="vencido">Retornos vencidos</option>
+          <option value="sem_retorno">Sem retorno</option>
+        </select>
+        {(busca || filtroSituacao || filtroRetorno) && (
+          <button type="button" className="btn btn-sm" onClick={limparFiltros}>Limpar filtros</button>
+        )}
         <div className="clientes-leads-actions">
           <div className="clientes-toolbar__meta">
             {total} {modoLixeira ? 'na lixeira' : 'futuro(s) cliente(s)'}

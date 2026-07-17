@@ -21,6 +21,7 @@ const mensagemRoutes = require('./routes/mensagem.routes');
 const notaRoutes = require('./routes/nota.routes');
 const fechamentoRoutes = require('./routes/fechamento.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const telegramRoutes = require('./routes/telegram.routes');
 const { securityHeadersMiddleware } = require('./middlewares/security-headers.middleware');
 
 const app = express();
@@ -62,11 +63,12 @@ app.use('/api/mensagens', mensagemRoutes);
 app.use('/api/notas', notaRoutes);
 app.use('/api/fechamento', fechamentoRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/telegram', telegramRoutes);
 
 app.get('/api/health', (req, res) => {
   return res.json({
     ok: true,
-    message: 'API do sistema Pós-venda está funcionando.'
+    message: 'API do sistema PÃ³s-venda estÃ¡ funcionando.'
   });
 });
 
@@ -76,7 +78,7 @@ app.get('/api/db-test', async (req, res) => {
 
     return res.json({
       ok: true,
-      message: 'Conexão com o banco funcionando.',
+      message: 'ConexÃ£o com o banco funcionando.',
       result: result[0]
     });
   } catch (error) {

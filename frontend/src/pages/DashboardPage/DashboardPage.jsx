@@ -62,6 +62,7 @@ const TIPOS_RETORNO_PAGINA_LEADS = [
   'lead_retorno_due'
 ];
 const TIPOS_RETORNO_MAILING = ['lead_retorno_pre', 'lead_retorno_due'];
+const TIPO_FUTURO_CLIENTE_DISTRIBUIDO = 'futuro_cliente_distribuido';
 const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
 const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
 const TIPO_VENDA_PARADA = 'venda_parada_funil';
@@ -687,8 +688,16 @@ function getInitials(name) {
  * Retorna notification target a partir dos dados informados.
  */
 function getNotificationTarget(notificacao) {
+  if (notificacao.tipo === TIPO_FUTURO_CLIENTE_DISTRIBUIDO) {
+    const linhaId = Number(notificacao.entidade_id || notificacao.dados?.lead_linha_id || 0);
+    return linhaId > 0 ? `/futuros-clientes?linha_id=${linhaId}` : '/futuros-clientes';
+  }
+
   if (TIPOS_RETORNO_PAGINA_LEADS.includes(notificacao.tipo)) {
-    return '/futuros-clientes';
+    const linhaId = Number(notificacao.entidade_id || notificacao.dados?.lead_linha_id || 0);
+    return TIPOS_RETORNO_MAILING.includes(notificacao.tipo)
+      ? (linhaId > 0 ? '/futuros-clientes?aba=leads&linha_id=' + linhaId : '/futuros-clientes?aba=leads')
+      : (linhaId > 0 ? '/futuros-clientes?linha_id=' + linhaId : '/futuros-clientes');
   }
 
   if (notificacao.tipo === 'cliente_fidelidade') {
@@ -1212,6 +1221,12 @@ function DashboardPage() {
    */
   async function abrirNotificacaoNoDashboard(notificacao) {
     await marcarNotificacaoComoLidaLocal(notificacao);
+
+    if (notificacao.tipo === TIPO_FUTURO_CLIENTE_DISTRIBUIDO) {
+      const linhaId = Number(notificacao.entidade_id || notificacao.dados?.lead_linha_id || 0);
+      navigate(linhaId > 0 ? `/futuros-clientes?linha_id=${linhaId}` : '/futuros-clientes');
+      return;
+    }
 
     if (TIPOS_RETORNO_PAGINA_LEADS.includes(notificacao.tipo)) {
       const linhaId = Number(notificacao.entidade_id || notificacao.dados?.lead_linha_id || 0);

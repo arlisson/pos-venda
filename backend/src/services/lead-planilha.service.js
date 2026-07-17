@@ -17,6 +17,7 @@ const db = require('../database/connection');
 const { parseUtcDateTime } = require('../utils/datetime');
 const clienteAntigoService = require('./cliente-antigo.service');
 const { restaurarZerosCnpj } = require('./cnpj.service');
+const telegramService = require('./telegram.service');
 
 const IMPORT_DIR = process.env.LEAD_IMPORT_DIR
   ? path.resolve(process.env.LEAD_IMPORT_DIR)
@@ -335,6 +336,36 @@ function aplicarBuscaFuturosClientes(query, busca) {
       .whereRaw('LOWER(dados_json) LIKE ?', [`%${termo}%`])
       .orWhereRaw('LOWER(COALESCE(futuro_cliente_notas, "")) LIKE ?', [`%${termo}%`]);
   });
+}
+/**
+ * Applies filters specific to the future-clients list.
+ */
+function aplicarFiltrosFuturosClientes(query, filtros = {}) {
+  const situacao = String(filtros.situacao || '').trim();
+  const retorno = String(filtros.retorno || '').trim();
+
+  if (situacao === 'em_negociacao') {
+    query.where(builder => builder
+      .whereNull('status_operacional')
+      .orWhereNotIn('status_operacional', ['vendido', 'perdido']));
+  } else if (situacao === 'venda_concluida') {
+    query.where(builder => builder
+      .where('status_operacional', 'vendido')
+      .orWhereNotNull('venda_id'));
+  } else if (situacao === 'venda_recusada') {
+    query.where('status_operacional', 'perdido');
+  }
+
+  if (retorno === 'com_retorno') {
+    query.whereNotNull('futuro_cliente_retorno');
+  } else if (retorno === 'sem_retorno') {
+    query.whereNull('futuro_cliente_retorno');
+  } else if (retorno === 'vencido') {
+    query.whereNotNull('futuro_cliente_retorno')
+      .where('futuro_cliente_retorno', '<', formatarDateTimeSQL());
+  }
+
+  return query;
 }
 
 /**
@@ -830,6 +861,29 @@ function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
     query.where('status_operacional', 'qualificado');
   }
 
+  const status = String(filtros.status || '').trim();
+  if (status === 'futuro_cliente') {
+    query.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em');
+  } else if (status === 'cliente_recusou') {
+    query.where('cliente_recusou', true);
+  } else if (status === 'retorno_agendado') {
+    query.whereNotNull('retorno_agendado_em').where('futuro_cliente', false);
+  } else if (status === 'chamada_nao_atendida') {
+    query.where('chamada_nao_atendida', true).where('futuro_cliente', false);
+  } else if (status === 'venda_registrada') {
+    query.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em')
+      .where(builder => builder.whereNotNull('venda_id').orWhere('status_operacional', 'vendido'));
+  } else if (status === 'venda_recusada') {
+    query.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em')
+      .where('status_operacional', 'perdido');
+  } else if (status === 'lixeira') {
+    query.where('futuro_cliente', true).whereNotNull('futuro_cliente_excluido_em');
+  } else if (status === 'pendente') {
+    query.where('futuro_cliente', false)
+      .where(builder => builder.whereNull('cliente_recusou').orWhere('cliente_recusou', false))
+      .where(builder => builder.whereNull('chamada_nao_atendida').orWhere('chamada_nao_atendida', false))
+      .whereNull('retorno_agendado_em');
+  }
   if (filtros.busca) {
     query.whereRaw('LOWER(CAST(dados_json AS CHAR)) LIKE ?', [`%${String(filtros.busca).toLowerCase()}%`]);
   }
@@ -881,7 +935,7 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
     .whereNull('futuro_cliente_excluido_em')
     .resultSize();
   const linhas = await baseQuery
-    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, usuario]]')
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, operadoraInteresse, usuario]]')
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'))
     .orderBy('planilha_id', 'asc')
     .orderBy('row_index', 'asc')
@@ -1031,6 +1085,27 @@ async function listarTodosEnvios() {
     .orderBy('id', 'desc');
 
   return envios.map(formatarEnvio);
+}
+
+/**
+ * Atualiza somente o nome de um envio, preservando suas distribuicoes e linhas.
+ */
+async function atualizarNomeEnvio(envioId, nome) {
+  const nomeNormalizado = String(nome || '').trim();
+  if (!nomeNormalizado) throw new Error('Informe um nome para o envio.');
+  if (nomeNormalizado.length > 240) throw new Error('O nome do envio deve ter no máximo 240 caracteres.');
+
+  const envio = await LeadEnvio.query().findById(envioId);
+  if (!envio) {
+    const error = new Error('Envio não encontrado.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const atualizado = await LeadEnvio.query()
+    .patchAndFetchById(envio.id, { nome: nomeNormalizado, updated_at: new Date() });
+
+  return formatarEnvio(atualizado);
 }
 
 /**
@@ -1982,11 +2057,14 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
   }
   const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
+  const eraFuturoCliente = Boolean(linha.futuro_cliente);
+
   const razaoSocial = String(dados.razao_social || '').trim().slice(0, 240) || null;
   const cnpj = String(dados.cnpj || '').trim().slice(0, 20) || null;
   const contatoNome = String(dados.contato_nome || '').trim();
   const contatoTipo = String(dados.contato_tipo || '').trim().toLowerCase();
   const operadoraAtualId = Number(dados.operadora_atual_id || 0);
+  const operadoraInteresseId = dados.operadora_interesse_id ? Number(dados.operadora_interesse_id) : null;
   const chipsRecebidos = Array.isArray(dados.chips_itens) ? dados.chips_itens : [];
   const chipsItens = (chipsRecebidos.length ? chipsRecebidos : [{
     quantidade: dados.quantidade_chips,
@@ -1999,10 +2077,24 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
   const whatsapp = telefoneDigitos.startsWith('55') && telefoneDigitos.length > 11 ? telefoneDigitos.slice(2) : telefoneDigitos;
   const whatsappDdd = whatsapp.slice(0, 2);
   const whatsappNumero = whatsapp.slice(2);
+  const melhorNumeroContatoDigitos = String(dados.melhor_numero_contato || '').replace(/\D/g, '');
+  const melhorNumeroContato = melhorNumeroContatoDigitos.startsWith('55') && melhorNumeroContatoDigitos.length > 11
+    ? melhorNumeroContatoDigitos.slice(2)
+    : melhorNumeroContatoDigitos;
+  const normalizarTelefoneOpcional = valor => {
+    const digitos = String(valor || '').replace(/\D/g, '');
+    return digitos.startsWith('55') && digitos.length > 11 ? digitos.slice(2) : digitos;
+  };
+  const telefoneFixo = normalizarTelefoneOpcional(dados.telefone_fixo);
+  const terminal = normalizarTelefoneOpcional(dados.terminal);
+  const dataAtivacao = /^\d{4}-\d{2}-\d{2}$/.test(String(dados.data_ativacao || '')) ? dados.data_ativacao : null;
 
   if (!contatoNome) throw criarHttpError(400, 'Informe o nome de quem falou.');
   if (!['adm', 'rl'].includes(contatoTipo)) throw criarHttpError(400, 'Informe se o contato e ADM ou RL.');
   if (!Number.isInteger(operadoraAtualId) || operadoraAtualId <= 0) throw criarHttpError(400, 'Informe a operadora atual.');
+  if (operadoraInteresseId !== null && (!Number.isInteger(operadoraInteresseId) || operadoraInteresseId <= 0)) {
+    throw criarHttpError(400, 'Informe uma operadora de interesse valida.');
+  }
   if (!chipsItens.length || chipsItens.some(item => !Number.isInteger(item.quantidade) || item.quantidade <= 0)) {
     throw criarHttpError(400, 'Informe quantidades de chips validas.');
   }
@@ -2012,6 +2104,11 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
   if (whatsappDdd.length !== 2 || whatsappNumero.length < 8 || whatsappNumero.length > 9) {
     throw criarHttpError(400, 'Informe um WhatsApp com DDD valido.');
   }
+  if (melhorNumeroContato.length < 10 || melhorNumeroContato.length > 11) {
+    throw criarHttpError(400, 'Informe o melhor numero para contato com DDD valido.');
+  }
+  if (telefoneFixo && (telefoneFixo.length < 10 || telefoneFixo.length > 11)) throw criarHttpError(400, 'Informe um telefone fixo com DDD valido.');
+  if (terminal && (terminal.length < 10 || terminal.length > 11)) throw criarHttpError(400, 'Informe um terminal com DDD valido.');
 
   const quantidadeChips = chipsItens.reduce((total, item) => total + item.quantidade, 0);
   const valorMensalEstimado = Math.round(chipsItens.reduce((total, item) => total + (item.quantidade * item.preco_por_chip), 0) * 100) / 100;
@@ -2042,9 +2139,11 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
       lead_linha_id: Number(linhaId), atribuicao_id: atribuicao.id, usuario_id: donoId,
       razao_social: razaoSocial, cnpj,
       contato_nome: contatoNome, contato_tipo: contatoTipo, operadora_atual_id: operadoraAtualId,
+      operadora_interesse_id: operadoraInteresseId,
       quantidade_chips: quantidadeChips, chips_itens: JSON.stringify(chipsItens), preco_por_chip: precoPorChip,
       valor_mensal_estimado: valorMensalEstimado, whatsapp_ddd: whatsappDdd,
-      whatsapp_numero: whatsappNumero, observacoes: notas, retorno_em: retorno,
+      whatsapp_numero: whatsappNumero, melhor_numero_contato: melhorNumeroContato, telefone_fixo: telefoneFixo,
+      terminal, data_ativacao: dataAtivacao, observacoes: notas, retorno_em: retorno,
       respondido_em: formatarDateTimeSQL()
     };
     const existente = await LeadSondagem.query(trx).where('lead_linha_id', Number(linhaId)).first();
@@ -2063,10 +2162,23 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
 
   const atualizada = await LeadLinha.query()
     .findById(linhaId)
-    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, usuario]]')
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, operadoraInteresse, usuario]]')
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
 
-  return { linha: formatarLinha(atualizada) };
+  const linhaFormatada = formatarLinha(atualizada);
+  if (!eraFuturoCliente) {
+    try {
+      await telegramService.enviarFuturoCliente(linhaFormatada);
+    } catch (error) {
+      // A indisponibilidade do Telegram nao pode desfazer o cadastro do lead.
+      console.error('Erro ao notificar futuro cliente no Telegram:', {
+        message: error.response?.data?.description || error.message,
+        status: error.response?.status
+      });
+    }
+  }
+
+  return { linha: linhaFormatada };
 }
 
 /**
@@ -2081,16 +2193,27 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
   let query = LeadLinha.query()
     .where('futuro_cliente', true)
     .whereNull('futuro_cliente_excluido_em');
-  if (usuarioId) query.where('futuro_cliente_marcado_por_id', usuarioId);
 
   const linhaId = Number(filtros.linha_id || 0);
-  if (Number.isInteger(linhaId) && linhaId > 0) query.where('id', linhaId);
+  const filtrarPorLinhaDaNotificacao = Number.isInteger(linhaId) && linhaId > 0;
+
+  if (filtrarPorLinhaDaNotificacao) {
+    query.where('id', linhaId);
+    if (usuarioId) {
+      query.where(builder => builder
+        .where('futuro_cliente_marcado_por_id', usuarioId)
+        .orWhere('atribuido_para_id', usuarioId));
+    }
+  } else if (usuarioId) {
+    query.where('futuro_cliente_marcado_por_id', usuarioId);
+  }
 
   query = aplicarBuscaFuturosClientes(query, filtros.busca);
+  query = aplicarFiltrosFuturosClientes(query, filtros);
 
   const total = await query.clone().resultSize();
   const linhas = await query
-    .withGraphFetched('[planilha, envio, sondagem.[operadoraAtual, usuario]]')
+    .withGraphFetched('[planilha, envio, sondagem.[operadoraAtual, operadoraInteresse, usuario]]')
     .orderBy('futuro_cliente_marcado_em', 'desc')
     .orderBy('id', 'desc')
     .offset((page - 1) * pageSize)
@@ -2457,7 +2580,7 @@ async function marcarVendaRecusadaLead(linhaId, usuarioId, dados = {}, opcoes = 
 
   const atualizada = await LeadLinha.query()
     .findById(linha.id)
-    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, usuario]]')
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, operadoraInteresse, usuario]]')
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
 
   return { linha: formatarLinha(atualizada) };
@@ -2507,7 +2630,7 @@ async function reverterVendaRecusadaLead(linhaId, usuarioId, opcoes = {}) {
 async function buscarLinhaFormatada(linhaId) {
   const atualizada = await LeadLinha.query()
     .findById(Number(linhaId))
-    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, usuario]]')
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, operadoraInteresse, usuario]]')
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
 
   return { linha: formatarLinha(atualizada) };
@@ -2736,6 +2859,7 @@ async function listarFuturosClientesLixeira(filtros = {}, usuarioId) {
     .whereNotNull('futuro_cliente_excluido_em');
 
   query = aplicarBuscaFuturosClientes(query, filtros.busca);
+  query = aplicarFiltrosFuturosClientes(query, filtros);
 
   const total = await query.clone().resultSize();
   const linhas = await query
@@ -2834,6 +2958,7 @@ module.exports = {
   atualizarCampoLinhaRecebida,
   listarEnviosDoUsuario,
   listarTodosEnvios,
+  atualizarNomeEnvio,
   dividirLeads,
   exportarCsv,
   marcarComoFuturoCliente,

@@ -23,6 +23,7 @@ const TIPO_NOTA_RETORNO_DUE = 'nota_retorno_due';
 const TIPO_FUTURO_RETORNO_PRE = 'futuro_cliente_retorno_pre';
 const TIPO_FUTURO_RETORNO_DUE = 'futuro_cliente_retorno_due';
 const TIPOS_FUTURO_RETORNO = [TIPO_FUTURO_RETORNO_PRE, TIPO_FUTURO_RETORNO_DUE];
+const TIPO_FUTURO_CLIENTE_DISTRIBUIDO = 'futuro_cliente_distribuido';
 const TIPO_LEAD_RETORNO_PRE = 'lead_retorno_pre';
 const TIPO_LEAD_RETORNO_DUE = 'lead_retorno_due';
 const TIPOS_LEAD_RETORNO = [TIPO_LEAD_RETORNO_PRE, TIPO_LEAD_RETORNO_DUE];
@@ -500,6 +501,32 @@ async function salvarNotificacaoRetornoFuturoCliente(linha, etapa, agora) {
   return notificacao;
 }
 
+/** Notificacao interna da distribuicao para venda via Telegram. */
+async function criarNotificacaoFuturoClienteDistribuido(dados, trx = null) {
+  const knex = trx || db;
+  const linhaId = Number(dados.leadLinhaId);
+  const vendedoraId = Number(dados.vendedoraId);
+  const sourceKey = TIPO_FUTURO_CLIENTE_DISTRIBUIDO + ':' + linhaId;
+  const agora = new Date();
+  const payload = {
+    tipo: TIPO_FUTURO_CLIENTE_DISTRIBUIDO,
+    titulo: 'Novo futuro cliente encaminhado',
+    mensagem: (dados.nomeEmpresa || ('Futuro cliente #' + linhaId)) + ' foi encaminhado para voce.',
+    nivel: 'info',
+    entidade: 'lead_linhas',
+    entidade_id: linhaId,
+    source_key: sourceKey,
+    dados: JSON.stringify({ lead_linha_id: linhaId, encaminhado_por_telegram_id: String(dados.gerenteTelegramId || ''), encaminhado_em: agora.toISOString() }),
+    ativa: true,
+    updated_at: agora
+  };
+  await knex('notificacoes').insert(payload).onConflict('source_key').merge(payload);
+  const notificacao = await Notificacao.query(trx).where('source_key', sourceKey).first();
+  await knex('notificacao_destinatarios').where('notificacao_id', notificacao.id).delete();
+  await knex('notificacao_destinatarios').insert({ notificacao_id: notificacao.id, usuario_id: vendedoraId });
+  return notificacao;
+}
+
 async function sincronizarRetornosFuturosClientes() {
   const agora = new Date();
   const linhas = await db('lead_sondagens as ls')
@@ -660,6 +687,7 @@ function aplicarFiltroTiposVisiveis(query, { podeReceberTodas, podeVerTudo, pode
       TIPO_NOTA_RETORNO_PRE,
       TIPO_NOTA_RETORNO_DUE,
       ...TIPOS_FUTURO_RETORNO,
+      TIPO_FUTURO_CLIENTE_DISTRIBUIDO,
       ...TIPOS_LEAD_RETORNO,
       ...(podeVerAprovacoes ? TIPOS_OPERACIONAIS_VENDA : TIPOS_BASE_VENDA),
       ...(podeVerVendasParadas ? [TIPO_VENDA_PARADA] : [])
@@ -990,6 +1018,7 @@ module.exports = {
   TIPOS_PROBLEMA_VENDA,
   TIPOS_APROVACAO_VENDA,
   TIPOS_RETORNO_VENDA,
+  TIPO_FUTURO_CLIENTE_DISTRIBUIDO,
   listarAdminsAtivos,
   listarNotificacoes,
   listarUrgentes,
@@ -1001,6 +1030,7 @@ module.exports = {
   desativarNotificacoesRetornoNota,
   sincronizarRetornosNotas,
   sincronizarRetornosFuturosClientes,
+  criarNotificacaoFuturoClienteDistribuido,
   sincronizarRetornosLeads,
   limparNotificacoesSemObjetoReferente
 };

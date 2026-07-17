@@ -10,8 +10,8 @@ router.use(authMiddleware);
 
 router.get('/me/envios', leadPlanilhaController.meusEnvios);
 router.get('/me/linhas', leadPlanilhaController.minhasLinhas);
-router.get('/me/futuros-clientes', exigirUmaPermissao(['futuros_clientes_ver']), leadPlanilhaController.listarFuturosClientes);
-router.get('/me/futuros-clientes/lixeira', exigirUmaPermissao(['futuros_clientes_ver']), leadPlanilhaController.listarFuturosClientesLixeira);
+router.get('/me/futuros-clientes', exigirUmaPermissao(['futuros_clientes_ver', 'vendas_criar']), leadPlanilhaController.listarFuturosClientes);
+router.get('/me/futuros-clientes/lixeira', exigirUmaPermissao(['futuros_clientes_ver', 'vendas_criar']), leadPlanilhaController.listarFuturosClientesLixeira);
 router.delete(
   '/me/futuros-clientes/:id',
   exigirUmaPermissao(['futuros_clientes_registrar']),
@@ -278,6 +278,17 @@ router.post(
   leadPlanilhaController.adminMarcarRetorno
 );
 router.get('/envios', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.envios);
+router.put(
+  '/envios/:id',
+  exigirUmaPermissao(['gerenciar_leads']),
+  auditar({
+    acao: 'lead_envio.nome_atualizado',
+    entidade: 'lead_envios',
+    entidade_id: (req, envio) => envio?.id || req.params.id,
+    dados: req => ({ envio_id: req.params.id, nome: req.body?.nome })
+  }),
+  leadPlanilhaController.atualizarNomeEnvio
+);
 router.post('/exportar', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.exportar);
 router.get('/futuros-clientes', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.listarTodosFuturosClientes);
 router.get('/futuros-clientes/metricas', exigirUmaPermissao(['gerenciar_leads']), leadPlanilhaController.metricasFuturosClientes);

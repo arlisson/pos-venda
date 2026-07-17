@@ -12,6 +12,11 @@ class LeadSondagem extends Model {
         modelClass: Operadora,
         join: { from: 'lead_sondagens.operadora_atual_id', to: 'operadoras.id' }
       },
+      operadoraInteresse: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Operadora,
+        join: { from: 'lead_sondagens.operadora_interesse_id', to: 'operadoras.id' }
+      },
       usuario: {
         relation: Model.BelongsToOneRelation,
         modelClass: Usuario,

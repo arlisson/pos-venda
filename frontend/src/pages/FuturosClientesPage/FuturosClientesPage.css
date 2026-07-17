@@ -119,6 +119,21 @@
   font-size: 13.5px;
 }
 
+.clientes-status-filter {
+  height: 38px;
+  max-width: 190px;
+  padding: 0 30px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  outline: 0;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13.5px;
+}
+
+.clientes-status-filter:focus {
+  border-color: var(--border-strong);
+}
 .futuros-clientes-table {
   flex: 0 0 auto;
   display: flex;
@@ -489,6 +504,10 @@
 
   .clientes-search {
     width: 100%;
+  }
+  .clientes-status-filter {
+    width: 100%;
+    max-width: none;
   }
 
   .lead-doc-strip {
@@ -1093,7 +1112,7 @@
 
 .consultor-periodo-filtros {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
   padding: 14px;
@@ -1105,7 +1124,9 @@
 .consultor-periodo-filtros .form-field { margin: 0; }
 
 .consultor-periodo-atalhos {
+  grid-column: 1 / -1;
   display: flex;
+  min-width: 0;
   gap: 6px;
   flex-wrap: wrap;
   padding-bottom: 1px;

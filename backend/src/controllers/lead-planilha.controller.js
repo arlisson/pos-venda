@@ -215,6 +215,18 @@ async function envios(req, res) {
 /**
  * Processa meus envios conforme as regras do dominio.
  */
+/**
+ * Atualiza o nome de um envio sem alterar a distribuicao existente.
+ */
+async function atualizarNomeEnvio(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.atualizarNomeEnvio(req.params.id, req.body?.nome));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao atualizar nome do envio.' });
+  }
+}
+
 async function meusEnvios(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarEnviosDoUsuario(req.usuario.id));
@@ -555,6 +567,7 @@ module.exports = {
   exportar,
   dividir,
   envios,
+  atualizarNomeEnvio,
   meusEnvios,
   minhasLinhas,
   atualizarMeuCampo,
