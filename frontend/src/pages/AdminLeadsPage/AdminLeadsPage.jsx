@@ -5,7 +5,6 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { calcularProgresso } from '../../utils/progresso';
 import { listarVendedoras } from '../../services/venda.service';
 import {
-  adminAtualizarCampoLead,
   adminMarcarChamadaNaoAtendidaLead,
   adminMarcarClienteRecusouLead,
   adminMarcarRetornoLead,
@@ -26,7 +25,7 @@ import {
   salvarLeadLinhas
 } from '../../services/lead-planilha.service';
 import { previewPlanilhaClientesAntigos } from '../../services/cliente-antigo.service';
-import { toLocalDateTimeInputFromUtc } from '../../utils/datetime';
+import { formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
 import './AdminLeadsPage.css';
 
 const MAPEAMENTO_CLIENTES_ANTIGOS = {
@@ -142,6 +141,75 @@ function getStatusDistribuicao(linha) {
 
 function isLeadVendaRecusada(linha) {
   return Boolean(linha?.status_operacional === 'perdido' || linha?.venda_recusada_em || linha?.venda_recusada_motivo);
+}
+
+/**
+ * Indica se o lead possui uma venda vinculada.
+ */
+function isLeadVendaRegistrada(linha) {
+  return Boolean(linha?.venda_id || linha?.status_operacional === 'vendido' || linha?.possui_venda_cliente);
+}
+
+/**
+ * Indica se o lead foi qualificado como futuro cliente e nao esta na lixeira.
+ */
+function isLeadQualificado(linha) {
+  return Boolean(linha?.futuro_cliente && !linha?.futuro_cliente_excluido_em);
+}
+
+/**
+ * Indica se o futuro cliente foi enviado para a lixeira.
+ */
+function isLeadNaLixeira(linha) {
+  return Boolean(linha?.futuro_cliente && linha?.futuro_cliente_excluido_em);
+}
+
+/**
+ * Chips do estado atual de um lead. Usado na listagem e no modal de detalhe.
+ * Compartilha rotulos, cores e formato (.pill) com a aba "Mailing recebido" da
+ * pagina de futuros clientes para que o mesmo estado apareca igual nas duas telas.
+ */
+export function LeadStatusChips({ linha }) {
+  const distribuicao = getStatusDistribuicao(linha);
+
+  return (
+    <div className="lead-status-stack">
+      {distribuicao === 'Enviado' ? (
+        <span className="pill success lead-status-pill"><span className="pill-dot"></span>Enviado</span>
+      ) : (
+        <span className="pill lead-status-pill muted">Não enviado</span>
+      )}
+      {isLeadNaLixeira(linha) && (
+        <span className="pill lead-status-pill muted">Na lixeira</span>
+      )}
+      {isLeadQualificado(linha) && (
+        <span className="pill success lead-status-pill" title="Futuro cliente"><span className="pill-dot"></span>Futuro cliente</span>
+      )}
+      {isLeadVendaRegistrada(linha) && (
+        <span className="pill lead-status-pill sold" title="Este futuro cliente possui uma venda vinculada"><span className="pill-dot"></span>Venda registrada</span>
+      )}
+      {isLeadVendaRecusada(linha) && (
+        <span className="pill lead-status-pill refused" title={linha.venda_recusada_motivo ? `Motivo: ${linha.venda_recusada_motivo}` : 'Venda recusada'}>
+          <span className="pill-dot"></span>Venda recusada
+        </span>
+      )}
+      {Boolean(linha.cliente_recusou) && (
+        <span className="pill lead-status-pill refused" title={linha.cliente_recusou_motivo ? `Motivo: ${linha.cliente_recusou_motivo}` : 'Cliente recusou'}>
+          <span className="pill-dot"></span>Cliente recusou
+        </span>
+      )}
+      {Boolean(linha.chamada_nao_atendida) && (
+        <span className="pill warn lead-status-pill" title={linha.chamada_nao_atendida_motivo ? `Motivo: ${linha.chamada_nao_atendida_motivo}` : 'Chamada não atendida'}>
+          <span className="pill-dot"></span>Chamada não atendida
+        </span>
+      )}
+      {Boolean(linha.retorno_agendado_em) && (
+        <span className="pill warn lead-status-pill" title={`Retorno: ${formatUtcDateTime(linha.retorno_agendado_em)}`}>
+          <span className="pill-dot"></span>Retorno marcado
+        </span>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -624,25 +692,58 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
 }
 
 /**
- * Modal de detalhe/edição de um lead para quem tem acesso à Planilha de Mailing.
- * Permite ver todas as informações da linha, editar valores das colunas e
- * alterar os estados (reverter/marcar venda recusada, cliente recusou, chamada
- * não atendida e agendar retorno) mesmo sem ser o vendedor atribuído.
+ * Modal de detalhe de um lead para quem tem acesso à Planilha de Mailing.
+ * Mostra os motivos das recusas registradas e permite alterar os estados
+ * (reverter/marcar venda recusada, cliente recusou, chamada não atendida e
+ * agendar retorno) mesmo sem ser o vendedor atribuído.
+ *
+ * As colunas vindas da planilha são exibidas apenas para leitura: só os dados
+ * que o usuário preenche no sistema podem ser alterados.
  */
-function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
+/**
+ * Rotulos dos campos de motivo exibidos quando um estado e marcado no rascunho.
+ * Apenas a venda recusada exige motivo (o backend rejeita motivo vazio).
+ */
+const LEAD_CAMPOS_MOTIVO = [
+  { chave: 'vendaRecusada', label: 'Motivo da venda recusada (obrigatório)' },
+  { chave: 'clienteRecusou', label: 'Motivo da recusa do cliente (opcional)' },
+  { chave: 'chamadaNaoAtendida', label: 'Motivo da chamada não atendida (opcional)' }
+];
+
+/**
+ * Retorna os motivos zerados para um rascunho novo.
+ */
+function motivosVazios() {
+  return { vendaRecusada: '', clienteRecusou: '', chamadaNaoAtendida: '' };
+}
+
+export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
-  const [acaoAtiva, setAcaoAtiva] = useState(null); // 'venda-recusada' | 'cliente-recusou' | 'chamada'
-  const [motivo, setMotivo] = useState('');
-  const [retorno, setRetorno] = useState(() => toLocalDateTimeInputFromUtc(linha.retorno_agendado_em));
-  const [campoEditando, setCampoEditando] = useState(null);
-  const [campoValor, setCampoValor] = useState('');
+  const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
 
-  const vendaRecusada = isLeadVendaRecusada(linha);
-  const vendaRegistrada = Boolean(linha.venda_id || linha.status_operacional === 'vendido' || linha.possui_venda_cliente);
-  const clienteRecusou = Boolean(linha.cliente_recusou);
-  const chamadaNaoAtendida = Boolean(linha.chamada_nao_atendida);
-  const qualificado = Boolean(linha.futuro_cliente && !linha.futuro_cliente_excluido_em);
+  const vendaRegistrada = isLeadVendaRegistrada(linha);
+
+  // Estado ja gravado no servidor: base do diff feito pelo "Salvar alteracoes".
+  const original = useMemo(() => ({
+    vendaRecusada: isLeadVendaRecusada(linha),
+    clienteRecusou: Boolean(linha.cliente_recusou),
+    chamadaNaoAtendida: Boolean(linha.chamada_nao_atendida),
+    retorno: toLocalDateTimeInputFromUtc(linha.retorno_agendado_em)
+  }), [linha]);
+
+  const [rascunho, setRascunho] = useState(original);
+  const [motivosNovos, setMotivosNovos] = useState(motivosVazios);
+  const [linhaBase, setLinhaBase] = useState(linha);
+
+  // A linha so troca de identidade quando este modal grava (o pai a substitui em
+  // atualizarLinhaNaLista), entao re-sincronizar aqui nunca descarta edicao em andamento.
+  if (linha !== linhaBase) {
+    setLinhaBase(linha);
+    setRascunho(original);
+    setMotivosNovos(motivosVazios());
+    setConfirmandoDescarte(false);
+  }
 
   const campos = useMemo(() => {
     const dados = linha.dados_json || {};
@@ -655,45 +756,101 @@ function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
       }));
   }, [linha]);
 
-  async function executar(promessa) {
+  const motivos = useMemo(() => ([
+    { ativo: original.vendaRecusada, label: 'Venda recusada', motivo: linha.venda_recusada_motivo, em: linha.venda_recusada_em },
+    { ativo: original.clienteRecusou, label: 'Cliente recusou', motivo: linha.cliente_recusou_motivo, em: linha.cliente_recusou_em },
+    { ativo: original.chamadaNaoAtendida, label: 'Chamada não atendida', motivo: linha.chamada_nao_atendida_motivo, em: linha.chamada_nao_atendida_em }
+  ].filter(item => item.ativo)), [linha, original]);
+
+  // Chips espelham o rascunho para o admin ver o efeito antes de gravar.
+  // isLeadVendaRecusada olha status_operacional, _em e _motivo: para o chip sumir
+  // na previa os tres precisam ser limpos juntos.
+  const linhaPreview = useMemo(() => ({
+    ...linha,
+    status_operacional: !rascunho.vendaRecusada && linha.status_operacional === 'perdido' ? null : linha.status_operacional,
+    venda_recusada_em: rascunho.vendaRecusada ? (linha.venda_recusada_em || 'pendente') : null,
+    venda_recusada_motivo: rascunho.vendaRecusada ? linha.venda_recusada_motivo : null,
+    cliente_recusou: rascunho.clienteRecusou ? 1 : 0,
+    chamada_nao_atendida: rascunho.chamadaNaoAtendida ? 1 : 0
+  }), [linha, rascunho]);
+
+  // So entram no lote os estados que mudaram: os endpoints de reverter respondem
+  // 400 quando o estado nao esta marcado, entao um no-op quebraria o save.
+  // A ordem importa: marcarClienteRecusou zera o retorno agendado no backend, por
+  // isso o retorno vai por ultimo e prevalece quando os dois mudam juntos.
+  const acoes = useMemo(() => {
+    const lista = [];
+
+    if (rascunho.vendaRecusada !== original.vendaRecusada) {
+      lista.push(rascunho.vendaRecusada
+        ? () => adminMarcarVendaRecusadaLead(linha.id, motivosNovos.vendaRecusada.trim())
+        : () => adminReverterVendaRecusadaLead(linha.id));
+    }
+    if (rascunho.clienteRecusou !== original.clienteRecusou) {
+      lista.push(rascunho.clienteRecusou
+        ? () => adminMarcarClienteRecusouLead(linha.id, motivosNovos.clienteRecusou.trim())
+        : () => adminReverterClienteRecusouLead(linha.id));
+    }
+    if (rascunho.chamadaNaoAtendida !== original.chamadaNaoAtendida) {
+      lista.push(rascunho.chamadaNaoAtendida
+        ? () => adminMarcarChamadaNaoAtendidaLead(linha.id, motivosNovos.chamadaNaoAtendida.trim())
+        : () => adminReverterChamadaNaoAtendidaLead(linha.id));
+    }
+    if (rascunho.retorno !== original.retorno) {
+      lista.push(() => adminMarcarRetornoLead(linha.id, rascunho.retorno ? new Date(rascunho.retorno).toISOString() : null));
+    }
+
+    return lista;
+  }, [linha.id, original, rascunho, motivosNovos]);
+
+  const temAlteracoes = acoes.length > 0;
+  const faltaMotivo = rascunho.vendaRecusada && !original.vendaRecusada && !motivosNovos.vendaRecusada.trim();
+
+  /**
+   * Liga/desliga um estado no rascunho, sem tocar na API.
+   */
+  function alternar(chave) {
+    setErro('');
+    setRascunho(prev => ({ ...prev, [chave]: !prev[chave] }));
+    setMotivosNovos(prev => ({ ...prev, [chave]: '' }));
+  }
+
+  /**
+   * Grava o lote. Sem endpoint em lote no backend, as acoes vao em sequencia:
+   * cada uma responde a linha inteira relida, entao em paralelo a ultima resposta
+   * poderia nao conter as escritas das outras.
+   */
+  async function salvar() {
     setSalvando(true);
     setErro('');
+    let ultima = null;
+
     try {
-      const resultado = await promessa;
-      if (resultado?.linha) onAtualizado(resultado.linha);
-      setAcaoAtiva(null);
-      setMotivo('');
-      setCampoEditando(null);
+      for (const acao of acoes) {
+        const resultado = await acao();
+        if (resultado?.linha) ultima = resultado.linha;
+      }
     } catch (error) {
-      setErro(error.message || 'Erro ao atualizar o lead.');
+      setErro(error.message || 'Erro ao salvar as alterações.');
     } finally {
+      // Mesmo em falha parcial as acoes anteriores ja persistiram: propaga o que
+      // foi gravado para a tela nao continuar mostrando o estado antigo.
+      if (ultima) onAtualizado(ultima);
       setSalvando(false);
     }
   }
 
-  function confirmarAcaoComMotivo() {
-    if (acaoAtiva === 'venda-recusada') return executar(adminMarcarVendaRecusadaLead(linha.id, motivo.trim()));
-    if (acaoAtiva === 'cliente-recusou') return executar(adminMarcarClienteRecusouLead(linha.id, motivo.trim()));
-    if (acaoAtiva === 'chamada') return executar(adminMarcarChamadaNaoAtendidaLead(linha.id, motivo.trim()));
-    return undefined;
-  }
-
-  function salvarRetorno() {
-    executar(adminMarcarRetornoLead(linha.id, retorno ? new Date(retorno).toISOString() : null));
-  }
-
-  function salvarCampo() {
-    if (!campoValor.trim()) {
-      setErro('Informe a informação atualizada.');
+  function tentarFechar() {
+    if (salvando) return;
+    if (temAlteracoes) {
+      setConfirmandoDescarte(true);
       return;
     }
-    executar(adminAtualizarCampoLead(linha.id, { coluna: campoEditando, valor: campoValor.trim() }));
+    onClose();
   }
 
-  const motivoObrigatorio = acaoAtiva === 'venda-recusada';
-
   return (
-    <div className="modal-overlay" onClick={event => !salvando && event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && tentarFechar()}>
       <div className="modal lead-detalhe-admin-modal">
         <div className="modal-header">
           <div className="modal-header-row">
@@ -705,7 +862,7 @@ function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
                 {linha.atribuidoPara?.nome ? ` · ${linha.atribuidoPara.nome}` : ''}
               </div>
             </div>
-            <button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={salvando}>
+            <button type="button" className="btn btn-icon btn-ghost" aria-label="Fechar" onClick={tentarFechar} disabled={salvando}>
               <I.Close size={14} />
             </button>
           </div>
@@ -714,91 +871,97 @@ function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
         <div className="modal-body">
           <div className="lead-detalhe-estado">
             <span className="lead-detalhe-estado__titulo">Estado atual</span>
-            <div className="lead-status-stack">
-              <span className={`lead-send-status ${getStatusDistribuicao(linha) === 'Enviado' ? 'sent' : 'pending'}`}>
-                {getStatusDistribuicao(linha)}
-              </span>
-              {qualificado && <span className="lead-send-status qualified">Qualificado venda</span>}
-              {vendaRegistrada && <span className="lead-send-status sold">Venda registrada</span>}
-              {vendaRecusada && (
-                <span className="lead-send-status refused" title={linha.venda_recusada_motivo || 'Venda recusada'}>Venda recusada</span>
-              )}
-              {clienteRecusou && (
-                <span className="lead-send-status refused" title={linha.cliente_recusou_motivo || 'Cliente recusou'}>Cliente recusou</span>
-              )}
-              {chamadaNaoAtendida && (
-                <span className="lead-send-status pending" title={linha.chamada_nao_atendida_motivo || 'Chamada não atendida'}>Chamada não atendida</span>
-              )}
-            </div>
+            <LeadStatusChips linha={linhaPreview} />
           </div>
 
           <div className="lead-detalhe-acoes">
-            {vendaRecusada ? (
-              <button type="button" className="btn" disabled={salvando} onClick={() => executar(adminReverterVendaRecusadaLead(linha.id))}>
+            {rascunho.vendaRecusada ? (
+              <button type="button" className="btn" disabled={salvando} onClick={() => alternar('vendaRecusada')}>
                 Reverter venda recusada
               </button>
             ) : (
               !vendaRegistrada && (
-                <button type="button" className="btn" disabled={salvando} onClick={() => { setAcaoAtiva('venda-recusada'); setMotivo(''); }}>
+                <button type="button" className="btn btn-lead-danger" disabled={salvando} onClick={() => alternar('vendaRecusada')}>
                   Marcar venda recusada
                 </button>
               )
             )}
 
-            {clienteRecusou ? (
-              <button type="button" className="btn" disabled={salvando} onClick={() => executar(adminReverterClienteRecusouLead(linha.id))}>
+            {rascunho.clienteRecusou ? (
+              <button type="button" className="btn" disabled={salvando} onClick={() => alternar('clienteRecusou')}>
                 Reverter recusa do cliente
               </button>
             ) : (
               !vendaRegistrada && (
-                <button type="button" className="btn" disabled={salvando} onClick={() => { setAcaoAtiva('cliente-recusou'); setMotivo(''); }}>
+                <button type="button" className="btn btn-lead-danger" disabled={salvando} onClick={() => alternar('clienteRecusou')}>
                   Marcar cliente recusou
                 </button>
               )
             )}
 
-            {chamadaNaoAtendida ? (
-              <button type="button" className="btn" disabled={salvando} onClick={() => executar(adminReverterChamadaNaoAtendidaLead(linha.id))}>
+            {rascunho.chamadaNaoAtendida ? (
+              <button type="button" className="btn" disabled={salvando} onClick={() => alternar('chamadaNaoAtendida')}>
                 Reverter chamada não atendida
               </button>
             ) : (
-              <button type="button" className="btn" disabled={salvando} onClick={() => { setAcaoAtiva('chamada'); setMotivo(''); }}>
+              <button type="button" className="btn btn-lead-warn" disabled={salvando} onClick={() => alternar('chamadaNaoAtendida')}>
                 Marcar chamada não atendida
               </button>
             )}
           </div>
 
-          {acaoAtiva && (
-            <div className="lead-detalhe-motivo">
-              <label>{motivoObrigatorio ? 'Motivo (obrigatório)' : 'Motivo (opcional)'}</label>
+          {LEAD_CAMPOS_MOTIVO.filter(campo => rascunho[campo.chave] && !original[campo.chave]).map(campo => (
+            <div key={campo.chave} className="lead-detalhe-motivo">
+              <label htmlFor={`lead-motivo-${campo.chave}`}>{campo.label}</label>
               <textarea
-                value={motivo}
+                id={`lead-motivo-${campo.chave}`}
+                value={motivosNovos[campo.chave]}
                 maxLength={1000}
                 rows={2}
-                onChange={event => setMotivo(event.target.value)}
+                disabled={salvando}
+                onChange={event => setMotivosNovos(prev => ({ ...prev, [campo.chave]: event.target.value }))}
                 placeholder="Descreva o motivo"
               />
-              <div className="lead-detalhe-motivo__acoes">
-                <button type="button" className="btn" disabled={salvando} onClick={() => { setAcaoAtiva(null); setMotivo(''); }}>Cancelar</button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={salvando || (motivoObrigatorio && !motivo.trim())}
-                  onClick={confirmarAcaoComMotivo}
-                >
-                  Confirmar
-                </button>
-              </div>
+            </div>
+          ))}
+
+          {motivos.length > 0 && (
+            <div className="lead-detalhe-motivos">
+              <span className="lead-detalhe-estado__titulo">Motivos</span>
+              {motivos.map(item => {
+                const em = formatUtcDateTime(item.em);
+                return (
+                  <div key={item.label} className="lead-detalhe-motivos__item">
+                    <span className="lead-detalhe-motivos__label">
+                      {item.label}
+                      {em ? ` · ${em}` : ''}
+                    </span>
+                    <span className="lead-detalhe-motivos__texto">
+                      {item.motivo || 'Motivo não informado.'}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
 
           <div className="lead-detalhe-retorno">
-            <label>Retorno agendado</label>
+            <label htmlFor="lead-detalhe-retorno">Retorno agendado</label>
             <div className="lead-detalhe-retorno__linha">
-              <input type="datetime-local" value={retorno} onChange={event => setRetorno(event.target.value)} disabled={salvando} />
-              <button type="button" className="btn" disabled={salvando} onClick={salvarRetorno}>Salvar retorno</button>
-              {retorno && (
-                <button type="button" className="btn btn-ghost" disabled={salvando} onClick={() => { setRetorno(''); executar(adminMarcarRetornoLead(linha.id, null)); }}>
+              <input
+                id="lead-detalhe-retorno"
+                type="datetime-local"
+                value={rascunho.retorno}
+                disabled={salvando}
+                onChange={event => setRascunho(prev => ({ ...prev, retorno: event.target.value }))}
+              />
+              {rascunho.retorno && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={salvando}
+                  onClick={() => setRascunho(prev => ({ ...prev, retorno: '' }))}
+                >
                   Limpar
                 </button>
               )}
@@ -811,23 +974,7 @@ function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
             {campos.map(campo => (
               <div key={campo.label} className="lead-detalhe-campo">
                 <span className="lead-detalhe-campo__label">{campo.label}{campo.atualizado ? ' (atualizado)' : ''}</span>
-                {campoEditando === campo.label ? (
-                  <div className="lead-detalhe-campo__editor">
-                    <input value={campoValor} onChange={event => setCampoValor(event.target.value)} disabled={salvando} autoFocus />
-                    <button type="button" className="btn btn-primary btn-sm" disabled={salvando} onClick={salvarCampo}>Salvar</button>
-                    <button type="button" className="btn btn-sm" disabled={salvando} onClick={() => setCampoEditando(null)}>Cancelar</button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="lead-detalhe-campo__valor"
-                    title="Clique para editar"
-                    disabled={salvando}
-                    onClick={() => { setCampoEditando(campo.label); setCampoValor(String(campo.valor ?? '')); setErro(''); }}
-                  >
-                    {String(campo.valor ?? '') || '-'}
-                  </button>
-                )}
+                <span className="lead-detalhe-campo__valor">{String(campo.valor ?? '') || '-'}</span>
               </div>
             ))}
           </div>
@@ -836,7 +983,32 @@ function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
         </div>
 
         <div className="modal-footer">
-          <button type="button" className="btn" onClick={onClose} disabled={salvando}>Fechar</button>
+          {confirmandoDescarte ? (
+            <div className="lead-detalhe-descarte">
+              <span className="lead-detalhe-descarte__texto">Descartar alterações não salvas?</span>
+              <div className="lead-detalhe-descarte__acoes">
+                <button type="button" className="btn" onClick={() => setConfirmandoDescarte(false)}>Continuar editando</button>
+                <button type="button" className="btn btn-lead-danger" onClick={onClose}>Descartar</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {temAlteracoes && (
+                <span className="lead-detalhe-pendencias">
+                  {acoes.length === 1 ? '1 alteração não salva' : `${acoes.length} alterações não salvas`}
+                </span>
+              )}
+              <button type="button" className="btn" onClick={tentarFechar} disabled={salvando}>Fechar</button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={salvando || !temAlteracoes || faltaMotivo}
+                onClick={salvar}
+              >
+                {salvando ? 'Salvando...' : 'Salvar alterações'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1965,7 +2137,7 @@ function AdminLeadsPage() {
               <strong>{formatarNumero(resumoLeads.enviados)}</strong>
             </div>
             <div className="lead-summary-card qualified">
-              <span>Qualificados</span>
+              <span>Futuros clientes</span>
               <strong>{formatarNumero(resumoLeads.qualificados)}</strong>
             </div>
             <div className="lead-summary-card pending">
@@ -2023,22 +2195,7 @@ function AdminLeadsPage() {
                     >
                       <td><span className="tag">{linha.planilha?.nome || '-'}</span></td>
                       <td>
-                        <div className="lead-status-stack">
-                          <span className={`lead-send-status ${getStatusDistribuicao(linha) === 'Enviado' ? 'sent' : 'pending'}`}>
-                            {getStatusDistribuicao(linha)}
-                          </span>
-                          {Boolean(linha.futuro_cliente) && !linha.futuro_cliente_excluido_em && (
-                            <span className="lead-send-status qualified" title="Qualificado para venda">Qualificado venda</span>
-                          )}
-                          {(Boolean(linha.venda_id) || linha.status_operacional === 'vendido' || linha.possui_venda_cliente) && (
-                            <span className="lead-send-status sold" title="Este futuro cliente possui uma venda vinculada">Venda registrada</span>
-                          )}
-                          {isLeadVendaRecusada(linha) && (
-                            <span className="lead-send-status refused" title={linha.venda_recusada_motivo ? `Motivo: ${linha.venda_recusada_motivo}` : 'Venda recusada'}>
-                              Venda recusada
-                            </span>
-                          )}
-                        </div>
+                        <LeadStatusChips linha={linha} />
                       </td>
                       <td>{linha.atribuidoPara?.nome || '-'}</td>
                       <td>{linha.envio?.nome || '-'}</td>

@@ -672,50 +672,12 @@
   background: var(--surface-2);
 }
 
-.lead-send-status {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.lead-send-status.sent {
-  color: var(--success);
-  background: var(--success-bg);
-  border-color: #bbf7d0;
-}
-
-.lead-send-status.pending {
-  color: var(--text-2);
-  background: var(--surface-2);
-}
-
+/* Os chips de estado usam .pill/.lead-status-pill do global.css, compartilhados
+   com a pagina de futuros clientes. Aqui fica so o container do empilhamento. */
 .lead-status-stack {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-}
-
-.lead-send-status.qualified {
-  color: #6d28d9;
-  background: #f3e8ff;
-  border-color: #d8b4fe;
-}
-
-.lead-send-status.sold {
-  color: #1d4ed8;
-  background: #dbeafe;
-  border-color: #93c5fd;
-}
-
-.lead-send-status.refused {
-  color: #991b1b;
-  background: #fee2e2;
-  border-color: #fecaca;
 }
 
 .lead-table tbody tr.lead-admin-row-sold td {
@@ -1357,14 +1319,119 @@
   width: 100%;
 }
 
+.lead-detalhe-admin-modal .modal-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* .btn nao tem estado :disabled no global.css e este modal desabilita tudo
+   enquanto salva; escopado para nao mudar os botoes do resto do sistema. */
+.lead-detalhe-admin-modal .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lead-detalhe-admin-modal .btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.lead-detalhe-admin-modal .btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.lead-detalhe-admin-modal .btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Variantes tingidas seguindo o padrao .pill do global.css. O .btn-danger global
+   nao serve aqui: e vermelho solido e usa !important em todas as propriedades. */
+.lead-detalhe-admin-modal .btn-lead-danger {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: #fecaca;
+}
+
+.lead-detalhe-admin-modal .btn-lead-danger:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.lead-detalhe-admin-modal .btn-lead-warn {
+  color: var(--warn);
+  background: var(--warn-bg);
+  border-color: #fde68a;
+}
+
+.lead-detalhe-admin-modal .btn-lead-warn:hover:not(:disabled) {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+/* Empurra os botoes do rodape para a direita (o .modal-footer e flex-end). */
+.lead-detalhe-pendencias {
+  margin-right: auto;
+  align-self: center;
+  font-size: 12px;
+  color: var(--warn);
+}
+
+.lead-detalhe-descarte {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lead-detalhe-descarte__texto {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.lead-detalhe-descarte__acoes {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Nao existe regra global para input/textarea (global.css:49 so define a
+   fonte), entao os campos deste modal precisam do estilo completo aqui. */
+.lead-detalhe-admin-modal textarea,
+.lead-detalhe-admin-modal input[type='datetime-local'] {
+  padding: 7px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+
+.lead-detalhe-admin-modal textarea:focus-visible,
+.lead-detalhe-admin-modal input[type='datetime-local']:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.lead-detalhe-admin-modal textarea:disabled,
+.lead-detalhe-admin-modal input[type='datetime-local']:disabled {
+  background: var(--surface-2);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
 .lead-detalhe-estado__titulo {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-2);
-  margin-bottom: 6px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: 10px;
 }
 
 .lead-detalhe-estado {
@@ -1375,30 +1442,34 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .lead-detalhe-motivo,
 .lead-detalhe-retorno {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px;
+  gap: 8px;
+  padding: 14px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 14px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
   background: var(--surface-2);
+  box-shadow: var(--shadow-sm);
 }
 
 .lead-detalhe-motivo label,
 .lead-detalhe-retorno label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
 }
 
 .lead-detalhe-motivo textarea {
   width: 100%;
+  min-height: 64px;
   resize: vertical;
 }
 
@@ -1415,53 +1486,94 @@
   gap: 8px;
 }
 
-.lead-detalhe-campos {
+.lead-detalhe-motivos {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 16px;
+}
+
+.lead-detalhe-motivos__item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-left: 3px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.lead-detalhe-motivos__label {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.lead-detalhe-motivos__texto {
+  color: var(--text);
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Espelha o padrao .detail-grid/.detail-item do global.css:1079. O titulo e o
+   estado vazio sao filhos diretos do grid, por isso ocupam a linha inteira. */
+.lead-detalhe-campos {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 24px;
+}
+
+.lead-detalhe-campos > .lead-detalhe-estado__titulo,
+.lead-detalhe-campos > .muted {
+  grid-column: 1 / -1;
 }
 
 .lead-detalhe-campo {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 0;
 }
 
 .lead-detalhe-campo__label {
-  font-size: 13px;
-  color: var(--text-2);
-  flex: 0 0 40%;
+  flex: none;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
   word-break: break-word;
 }
 
 .lead-detalhe-campo__valor {
-  flex: 1;
-  text-align: right;
-  background: none;
-  border: none;
+  flex: none;
+  font-size: 13.5px;
   color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  padding: 2px 6px;
-  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
   word-break: break-word;
 }
 
-.lead-detalhe-campo__valor:hover {
-  background: var(--surface-2);
+/* Restrito ao desktop: em <=640px o global.css aplica pv-sheet-up no .modal
+   (bottom sheet) e esta animacao sobrescreveria a de la. */
+@media (min-width: 641px) and (prefers-reduced-motion: no-preference) {
+  .lead-detalhe-admin-modal {
+    animation: lead-detalhe-entrada 140ms ease-out;
+  }
 }
 
-.lead-detalhe-campo__editor {
-  display: flex;
-  flex: 1;
-  gap: 6px;
-  justify-content: flex-end;
+@keyframes lead-detalhe-entrada {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-.lead-detalhe-campo__editor input {
-  flex: 1;
-  min-width: 0;
+@media (max-width: 640px) {
+  .lead-detalhe-campos {
+    grid-template-columns: 1fr;
+  }
 }

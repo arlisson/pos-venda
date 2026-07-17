@@ -1048,6 +1048,13 @@ input, select, textarea { font-family: inherit; }
 .pill.danger { background: var(--danger-bg); color: var(--danger); border-color: #fecaca; }
 .pill.danger .pill-dot { background: var(--danger); }
 
+/* Pill de estado de lead/futuro cliente. Compartilhado pela aba "Mailing recebido"
+   de futuros clientes e pela tabela de leads (LeadStatusChips). */
+.lead-status-pill { white-space: nowrap; }
+.lead-status-pill.refused { color: #991b1b; background: #fee2e2; border-color: #fecaca; }
+.lead-status-pill.sold { color: #1d4ed8; background: #dbeafe; border-color: #93c5fd; }
+.lead-status-pill.muted { color: var(--text-2); background: var(--surface-2); border-color: var(--border); }
+
 /* Progresso dos cards de planilha (leads e futuros clientes) */
 .doc-progresso { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3px 6px; width: 100%; }
 .doc-progresso__track { height: 4px; overflow: hidden; border-radius: 999px; background: var(--surface-3); }

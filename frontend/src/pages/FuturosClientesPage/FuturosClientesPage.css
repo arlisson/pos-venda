@@ -281,11 +281,8 @@
   box-shadow: inset 3px 0 0 var(--danger, #dc2626);
 }
 
-.lead-status-pill.refused {
-  color: #991b1b;
-  background: #fee2e2;
-  border-color: #fecaca;
-}
+/* .lead-status-pill (base + variantes refused/muted/sold) foi movido para
+   global.css para ser compartilhado com a tabela de leads (LeadStatusChips). */
 
 .lead-status-cell {
   display: flex;
@@ -293,16 +290,6 @@
   align-items: center;
   gap: 4px;
   min-width: 150px;
-}
-
-.lead-status-pill {
-  white-space: nowrap;
-}
-
-.lead-status-pill.muted {
-  color: var(--text-2);
-  background: var(--surface-2);
-  border-color: var(--border);
 }
 
 .lead-status-return {
@@ -899,11 +886,7 @@
 .chips-sondagem-remove { margin-bottom: 1px; color: var(--danger); }
 .chips-sondagem-add { align-self: flex-start; }
 
-.lead-status-pill.sold {
-  color: #1d4ed8;
-  background: #dbeafe;
-  border-color: #93c5fd;
-}
+/* .lead-status-pill.sold movido para global.css (compartilhado com LeadStatusChips). */
 
 .clientes-toolbar__meta-sold {
   color: #1d4ed8;
