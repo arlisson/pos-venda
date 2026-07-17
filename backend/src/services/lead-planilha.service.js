@@ -306,9 +306,11 @@ function formatarDateTimeSQL(data = new Date()) {
 function parseDataHoraRetorno(valor) {
   if (!valor) return null;
 
-  const data = new Date(String(valor).trim().replace(' ', 'T'));
+  // Datas sem sufixo de fuso tambem representam UTC no banco. Usar o parser
+  // central evita que a configuracao de fuso do servidor altere o horario.
+  const data = parseUtcDateTime(valor);
 
-  if (Number.isNaN(data.getTime())) {
+  if (!data) {
     throw criarHttpError(400, 'Data de retorno invalida.');
   }
 

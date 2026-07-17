@@ -111,7 +111,7 @@ export function getUtcDateTimeTimestamp(value, fallback = 0) {
  */
 export function formatUtcDateTime(value, options = DEFAULT_DATE_TIME_OPTIONS, fallback = '') {
   const date = parseUtcDateTime(value);
-  return date ? date.toLocaleString('pt-BR', options) : fallback;
+  return date ? date.toLocaleString('pt-BR', { ...options, timeZone: 'UTC' }) : fallback;
 }
 
 /**

@@ -24,7 +24,7 @@ import {
   reverterChamadaNaoAtendidaLead,
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
-import { formatDateValue, formatUtcDateTime, parseUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
+import { formatDateValue, formatUtcDateTime, parseUtcDateTime } from '../../utils/datetime';
 import { calcularProgresso } from '../../utils/progresso';
 import { listarOperadoras } from '../../services/config.service';
 import './FuturosClientesPage.css';
@@ -270,7 +270,7 @@ function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
 function formatarDataHora(valor) {
   return formatUtcDateTime(valor, {
     day: '2-digit', month: '2-digit', year: '2-digit',
-    hour: '2-digit', minute: '2-digit'
+    hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
   }, '-');
 }
 
@@ -444,7 +444,18 @@ function renderLeadStatus(linha, agora = Date.now()) {
  * Formata para datetime local para exibicao ou envio.
  */
 function formatarParaDatetimeLocal(valor) {
-  return toLocalDateTimeInputFromUtc(valor);
+  const data = parseUtcDateTime(valor);
+  if (!data) return '';
+
+  const pad = parte => String(parte).padStart(2, '0');
+  return [
+    data.getUTCFullYear(),
+    pad(data.getUTCMonth() + 1),
+    pad(data.getUTCDate())
+  ].join('-') + 'T' + [
+    pad(data.getUTCHours()),
+    pad(data.getUTCMinutes())
+  ].join(':');
 }
 
 /**
@@ -453,8 +464,18 @@ function formatarParaDatetimeLocal(valor) {
 function datetimeRetornoParaIso(valor) {
   if (!valor) return null;
 
-  const data = new Date(valor);
-  return isNaN(data.getTime()) ? null : data.toISOString();
+  const partes = String(valor).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!partes) return null;
+
+  const [, ano, mes, dia, hora, minuto] = partes.map(Number);
+  const data = new Date(Date.UTC(ano, mes - 1, dia, hora, minuto));
+  const valida = data.getUTCFullYear() === ano
+    && data.getUTCMonth() === mes - 1
+    && data.getUTCDate() === dia
+    && data.getUTCHours() === hora
+    && data.getUTCMinutes() === minuto;
+
+  return valida ? data.toISOString() : null;
 }
 
 /**
