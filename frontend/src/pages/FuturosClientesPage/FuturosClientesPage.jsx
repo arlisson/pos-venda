@@ -27,6 +27,7 @@ import {
 import { formatDateValue, formatUtcDateTime, parseUtcDateTime } from '../../utils/datetime';
 import { calcularProgresso } from '../../utils/progresso';
 import { listarOperadoras } from '../../services/config.service';
+import { buscarGooglePlacesFuturosClientes, consultarCnpj } from '../../services/cnpj.service';
 import './FuturosClientesPage.css';
 
 // ─── Helpers de colunas de lead ──────────────────────────────────────────────
@@ -736,6 +737,79 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
 /**
  * Renderiza adicionar lead modal.
  */
+/** Permite pesquisar no Google Places usando os dados do lead selecionado. */
+function BuscarTelefoneGoogleModal({ linha, onClose }) {
+  const dadosEmpresa = useMemo(() => getDadosEmpresaFuturoCliente(linha, linha.sondagem), [linha]);
+  const [modo, setModo] = useState(dadosEmpresa.cnpj ? 'cnpj' : 'texto');
+  const [texto, setTexto] = useState(dadosEmpresa.cnpj || dadosEmpresa.razao_social);
+  const [resultado, setResultado] = useState(null);
+  const [resultadoReceita, setResultadoReceita] = useState(null);
+  const [erroReceita, setErroReceita] = useState('');
+  const [buscando, setBuscando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  function mudarModo(proximoModo) {
+    setModo(proximoModo);
+    setTexto(proximoModo === 'cnpj' ? dadosEmpresa.cnpj : dadosEmpresa.razao_social);
+    setResultado(null);
+    setResultadoReceita(null);
+    setErroReceita('');
+    setErro('');
+  }
+
+  async function buscar(event) {
+    event.preventDefault();
+    if (!texto.trim()) return;
+    setBuscando(true);
+    setErro('');
+    setErroReceita('');
+    setResultado(null);
+    setResultadoReceita(null);
+    try {
+      let dadosReceita = null;
+      if (modo === 'cnpj') {
+        try {
+          dadosReceita = await consultarCnpj(texto.trim());
+          setResultadoReceita(dadosReceita);
+        } catch (error) {
+          setErroReceita(error.message || 'Nao foi possivel consultar o CNPJ nas fontes da Receita.');
+        }
+      }
+      const buscaGoogle = dadosReceita?.razaoSocial || dadosReceita?.nomeFantasia || texto.trim();
+      setResultado(await buscarGooglePlacesFuturosClientes(buscaGoogle, {
+        razaoSocial: dadosReceita?.razaoSocial || dadosEmpresa.razao_social,
+        nomeFantasia: dadosReceita?.nomeFantasia || ''
+      }));
+    } catch (error) {
+      setErro(error.message || 'Erro ao buscar no Google.');
+    } finally {
+      setBuscando(false);
+    }
+  }
+
+  const candidatos = resultado?.candidatos || (resultado?.place ? [resultado.place] : []);
+  return (
+    <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={event => !buscando && event.target === event.currentTarget && onClose()}>
+      <form className="modal lead-update-modal" onSubmit={buscar}>
+        <div className="modal-header"><div className="modal-header-row"><div><div className="modal-client">Buscar telefone no Google</div><div className="modal-sub">Consulta do cliente selecionado</div></div><button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={buscando}><I.Close size={14} /></button></div></div>
+        <div className="modal-body">
+          <div className="form-field"><label>Buscar por</label><select value={modo} onChange={event => mudarModo(event.target.value)} disabled={buscando}><option value="cnpj" disabled={!dadosEmpresa.cnpj}>CNPJ do cliente</option><option value="texto">Texto / razo social</option></select></div>
+          <div className="form-field" style={{ marginTop: 12 }}><label>{modo === 'cnpj' ? 'CNPJ' : 'Texto para busca'}</label><input value={texto} onChange={event => setTexto(event.target.value)} placeholder={modo === 'cnpj' ? 'CNPJ do cliente' : 'Razo social ou termo de busca'} maxLength="240" disabled={buscando} required /></div>
+          {resultadoReceita && <div className="adicionar-lead-dados" style={{ marginTop: 12 }}>
+            <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Razao social (Receita)</span><span className="adicionar-lead-campo__valor">{resultadoReceita.razaoSocial || '-'}</span></div>
+            <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Telefone (Receita)</span><span className="adicionar-lead-campo__valor">{formatarWhatsappInput(resultadoReceita.telefone) || 'Nao informado'}</span></div>
+          </div>}
+          {erroReceita && <div className="alert-error" style={{ marginTop: 12 }}>{erroReceita}</div>}          {resultado?.query && <div className="muted" style={{ marginTop: 12 }}>Busca enviada: {resultado.query}</div>}
+          {resultado?.telefone && <div className="alert-success" style={{ marginTop: 12 }}>Telefone encontrado: <strong>{formatarWhatsappInput(resultado.telefone)}</strong></div>}
+          {resultado && !resultado.telefone && <div className="alert-error" style={{ marginTop: 12 }}>{resultado.message || 'Nenhum telefone foi encontrado para esta busca.'}</div>}
+          {candidatos.length > 0 && <div className="adicionar-lead-dados" style={{ marginTop: 12 }}>{candidatos.map((candidato, index) => <div className="adicionar-lead-campo" key={candidato.id || `${candidato.nome}-${index}`}><span className="adicionar-lead-campo__label">{candidato.nome || 'Resultado do Google'}</span><span className="adicionar-lead-campo__valor">{candidato.telefone ? formatarWhatsappInput(candidato.telefone) : candidato.endereco || 'Telefone no informado'}</span></div>)}</div>}
+          {erro && <div className="alert-error" style={{ marginTop: 12 }}>{erro}</div>}
+        </div>
+        <div className="modal-footer"><button type="button" className="btn" onClick={onClose} disabled={buscando}>Fechar</button><button type="submit" className="btn btn-primary" disabled={buscando || !texto.trim()}>{buscando ? 'Buscando...' : modo === 'cnpj' ? 'Buscar Receita e Google' : 'Buscar no Google'}</button></div>
+      </form>
+    </div>
+  );
+}
 function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda, onFuturoClienteSalvo, onLinhaAtualizada }) {
   const vendaRegistrada = isFuturoClienteVendido(linha);
   const vendaRecusada = isFuturoClienteRecusado(linha);
@@ -753,7 +827,9 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [sucessoRetorno, setSucessoRetorno] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [buscaGoogleAberta, setBuscaGoogleAberta] = useState(false);
   const [operadoras, setOperadoras] = useState([]);
+  const podeBuscarGoogle = temPermissao(usuario, 'futuros_clientes_buscar_telefone_google');
   const dadosEmpresaInicial = useMemo(() => getDadosEmpresaFuturoCliente(linha), [linha]);
   const [razaoSocial, setRazaoSocial] = useState(() => dadosEmpresaInicial.razao_social);
   const [cnpj, setCnpj] = useState(() => dadosEmpresaInicial.cnpj);
@@ -1051,6 +1127,11 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                     <strong>Chamada não atendida em {formatarDataHora(linha.chamada_nao_atendida_em)}</strong>
                     <span>{linha.chamada_nao_atendida_motivo || 'Sem observação.'}</span>
                     <div className="futuro-cliente-recusa__acoes">
+                      {podeBuscarGoogle && (
+                        <button type="button" className="btn" onClick={() => setBuscaGoogleAberta(true)} disabled={salvando}>
+                          Buscar telefone no Google
+                        </button>
+                      )}
                       <button type="button" className="btn" onClick={reverterChamada} disabled={salvando}>
                         <I.Refresh size={14} /> {salvando ? 'Desfazendo...' : 'Desfazer'}
                       </button>
@@ -1259,6 +1340,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
           )}
         </div>
       </div>
+      {buscaGoogleAberta && <BuscarTelefoneGoogleModal linha={linha} onClose={() => setBuscaGoogleAberta(false)} />}
     </div>
   );
 }

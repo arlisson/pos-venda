@@ -35,6 +35,7 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   const [usuario, setUsuario] = useState(null);
   const [permissoes, setPermissoes] = useState([]);
   const [selecionadas, setSelecionadas] = useState([]);
+  const [buscaPermissao, setBuscaPermissao] = useState('');
   const [usuarioOrigemId, setUsuarioOrigemId] = useState('');
   const [avisoCopia, setAvisoCopia] = useState('');
   const [carregando, setCarregando] = useState(true);
@@ -135,6 +136,8 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
   }
 
   const gruposPermissoesCompartilhados = montarGruposPermissoesCompartilhados(permissoes);
+  const termoBuscaPermissao = buscaPermissao.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+  const gruposFiltrados = !termoBuscaPermissao ? gruposPermissoesCompartilhados : gruposPermissoesCompartilhados.map(grupo => ({ ...grupo, secoes: grupo.secoes.map(secao => ({ ...secao, itens: secao.itens.filter(item => [grupo.titulo, grupo.descricao, secao.titulo, item.chave, item.nome, item.descricao].some(texto => String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(termoBuscaPermissao))) })).filter(secao => secao.itens.length > 0) })).filter(grupo => grupo.secoes.length > 0);
   const totalSelecionadas = selecionadas.length;
   const usuariosOrigem = usuarios.filter(item => Number(item.id) !== Number(usuarioId));
 
@@ -186,8 +189,13 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
 
               {avisoCopia && <div className="permissions-copy__notice">{avisoCopia}</div>}
 
+              <div className="permissions-search">
+                <I.Search size={15} aria-hidden="true" />
+                <input type="search" value={buscaPermissao} onChange={(event) => setBuscaPermissao(event.target.value)} placeholder="Buscar permissão" aria-label="Buscar permissão" />
+              </div>
+
               <div className="permissions-grid">
-                {gruposPermissoesCompartilhados.map(grupo => (
+                {gruposFiltrados.map(grupo => (
                   <PermissaoGrupoCompartilhado
                     key={grupo.id}
                     grupo={grupo}
@@ -197,6 +205,9 @@ function ModalPermissoes({ usuarioId, usuarios, onClose, onSave }) {
                   />
                 ))}
 
+                {termoBuscaPermissao && gruposFiltrados.length === 0 && (
+                  <div className="permissions-search__empty">Nenhuma permissão encontrada.</div>
+                )}
               </div>
 
               {erro && <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 12 }}>{erro}</div>}

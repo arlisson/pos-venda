@@ -285,6 +285,11 @@ const PERMISSOES = [
     descricao: 'Permite marcar um lead recebido como futuro cliente com notas e data de retorno.'
   },
   {
+    chave: 'futuros_clientes_buscar_telefone_google',
+    nome: 'Futuros clientes: buscar telefone no Google',
+    descricao: 'Permite buscar no Google o telefone de leads cuja primeira chamada não foi atendida.'
+  },
+  {
     chave: 'chat_usar',
     nome: 'Chat: usar',
     descricao: 'Permite acessar o chat interno e enviar mensagens a outros usuÃ¡rios.'

@@ -1,5 +1,6 @@
 const cnpjService = require('../services/cnpj.service');
 const cnpjImportacaoService = require('../services/cnpj-importacao.service');
+const googlePlacesService = require('../services/google-places.service');
 
 /**
  * Converte codigos de erro do servico de CNPJ em status HTTP.
@@ -227,10 +228,32 @@ async function removerGooglePlacesKey(req, res) {
   }
 }
 
+/** Busca empresas no Google Places a partir de um CNPJ ou texto informado. */
+async function buscarGooglePlaces(req, res) {
+  const texto = String(req.body?.texto || '').trim();
+  if (!texto) return res.status(400).json({ message: 'Informe um CNPJ ou texto para buscar no Google.' });
+  if (texto.length > 240) return res.status(400).json({ message: 'A busca pode ter no mximo 240 caracteres.' });
+
+  try {
+    const referencia = req.body?.referencia || {};
+    const resultado = await googlePlacesService.buscarEmpresasPorTexto({
+      queryGoogle: texto,
+      razaoSocial: String(referencia.razaoSocial || '').trim(),
+      nomeFantasia: String(referencia.nomeFantasia || '').trim()
+    });
+    return res.json(resultado);
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao buscar no Google Places.'
+    });
+  }
+}
 module.exports = {
   adicionarLeads,
   adicionarGooglePlacesKey,
   atualizarGooglePlacesKey,
+  buscarGooglePlaces,
   consultar,
   consultarPlanilha,
   consultarPlanilhaStream,

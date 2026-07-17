@@ -226,6 +226,12 @@
   font-size: 12px;
 }
 
+.permissions-search { display: flex; align-items: center; gap: 8px; height: 38px; margin-bottom: 12px; padding: 0 11px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text-3); }
+.permissions-search:focus-within { border-color: var(--border-strong); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12); }
+.permissions-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 13.5px; }
+.permissions-search input::placeholder { color: var(--text-3); }
+.permissions-search__empty { padding: 20px 12px; border: 1px dashed var(--border-strong); border-radius: var(--radius); color: var(--text-3); font-size: 13px; text-align: center; }
+
 .permissions-group {
   border: 1px solid var(--border);
   border-radius: var(--radius);

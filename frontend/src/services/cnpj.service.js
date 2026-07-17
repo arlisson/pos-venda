@@ -105,6 +105,14 @@ export async function consultarCnpj(valor) {
   return apiGet(`/cnpj/${cnpj}`);
 }
 
+export async function buscarGooglePlaces(texto, referencia = {}) {
+  return apiPost('/cnpj/google-places/buscar', { texto, referencia });
+}
+
+export async function buscarGooglePlacesFuturosClientes(texto, referencia = {}) {
+  return apiPost('/cnpj/google-places/buscar-futuros-clientes', { texto, referencia });
+}
+
 export async function listarGooglePlacesKeys() {
   return apiGet('/cnpj/google-places/keys');
 }

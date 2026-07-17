@@ -255,6 +255,9 @@ async function marcarKeyEsgotada(item, resultado) {
 }
 
 function montarQueryEmpresa(dados = {}) {
+  const buscaInformada = primeiroValor(dados.queryGoogle, dados.textoBusca);
+  if (buscaInformada) return buscaInformada;
+
   const nome = primeiroValor(dados.nomeFantasia, dados.razaoSocial);
   const local = [
     dados.endereco,
