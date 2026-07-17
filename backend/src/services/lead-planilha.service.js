@@ -513,6 +513,7 @@ async function listarPlanilhas() {
     const metricas = await LeadLinha.query()
       .select('planilha_id')
       .select(db.raw('SUM(CASE WHEN cliente_recusou = 1 THEN 1 ELSE 0 END) as total_recusados'))
+      .select(db.raw('SUM(CASE WHEN chamada_nao_atendida = 1 THEN 1 ELSE 0 END) as total_nao_atendidos'))
       .select(db.raw(
         'SUM(CASE WHEN futuro_cliente = 1 AND futuro_cliente_excluido_em IS NULL '
         + 'THEN 1 ELSE 0 END) as total_futuros'
@@ -521,6 +522,7 @@ async function listarPlanilhas() {
       .groupBy('planilha_id');
     metricas.forEach(item => metricasPorPlanilha.set(Number(item.planilha_id), {
       totalRecusados: Number(item.total_recusados || 0),
+      totalNaoAtendidos: Number(item.total_nao_atendidos || 0),
       totalFuturos: Number(item.total_futuros || 0)
     }));
   }
@@ -540,6 +542,7 @@ async function listarPlanilhas() {
       total_enviados: totalEnviados,
       total_pendentes: Math.max(0, formatada.total_linhas - totalEnviados),
       total_recusados: metricas.totalRecusados,
+      total_nao_atendidos: metricas.totalNaoAtendidos,
       total_futuros: metricas.totalFuturos
     };
   });
@@ -1042,9 +1045,10 @@ async function listarEnviosDoUsuario(usuarioId) {
       .count('id as total_linhas')
       .select(db.raw(
         'SUM(CASE WHEN (futuro_cliente = 1 AND futuro_cliente_excluido_em IS NULL) '
-        + 'OR venda_recusada_em IS NOT NULL OR cliente_recusou = 1 THEN 1 ELSE 0 END) as total_trabalhados'
+        + 'OR venda_recusada_em IS NOT NULL OR cliente_recusou = 1 OR chamada_nao_atendida = 1 THEN 1 ELSE 0 END) as total_trabalhados'
       ))
       .select(db.raw('SUM(CASE WHEN cliente_recusou = 1 THEN 1 ELSE 0 END) as total_recusados'))
+      .select(db.raw('SUM(CASE WHEN chamada_nao_atendida = 1 THEN 1 ELSE 0 END) as total_nao_atendidos'))
       .select(db.raw(
         'SUM(CASE WHEN futuro_cliente = 1 AND futuro_cliente_excluido_em IS NULL '
         + 'THEN 1 ELSE 0 END) as total_futuros'
@@ -1057,6 +1061,7 @@ async function listarEnviosDoUsuario(usuarioId) {
       totalLinhas: Number(item.total_linhas || 0),
       totalTrabalhados: Number(item.total_trabalhados || 0),
       totalRecusados: Number(item.total_recusados || 0),
+      totalNaoAtendidos: Number(item.total_nao_atendidos || 0),
       totalFuturos: Number(item.total_futuros || 0)
     }));
   }
@@ -1064,12 +1069,13 @@ async function listarEnviosDoUsuario(usuarioId) {
   return envios.map(envio => {
     const formatado = formatarEnvio(envio);
     const metricas = metricasPorEnvio.get(Number(formatado.id))
-      || { totalLinhas: 0, totalTrabalhados: 0, totalRecusados: 0, totalFuturos: 0 };
+      || { totalLinhas: 0, totalTrabalhados: 0, totalRecusados: 0, totalNaoAtendidos: 0, totalFuturos: 0 };
     return {
       ...formatado,
       total_linhas: metricas.totalLinhas,
       total_trabalhados: metricas.totalTrabalhados,
       total_recusados: metricas.totalRecusados,
+      total_nao_atendidos: metricas.totalNaoAtendidos,
       total_futuros: metricas.totalFuturos,
       total_a_trabalhar: Math.max(0, metricas.totalLinhas - metricas.totalTrabalhados)
     };

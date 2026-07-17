@@ -1380,3 +1380,39 @@
     align-items: flex-start;
   }
 }
+
+.futuros-clientes-page .clientes-leads-doc {
+  position: relative;
+}
+
+.clientes-leads-doc__tooltip {
+  position: absolute;
+  inset: 7px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px 9px;
+  border-radius: var(--radius);
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.97);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.clientes-leads-doc:hover .clientes-leads-doc__tooltip,
+.clientes-leads-doc:focus-visible .clientes-leads-doc__tooltip {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.clientes-leads-doc__tooltip b {
+  display: block;
+  font-size: 12px;
+}

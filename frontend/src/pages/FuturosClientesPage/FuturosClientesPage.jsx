@@ -1620,7 +1620,11 @@ function LeadsRecebidosView({ agora }) {
           {envios.map(envio => {
             const progresso = calcularProgresso(envio.total_linhas, envio.total_trabalhados);
             const recusados = Number(envio.total_recusados || 0);
+            const naoAtendidos = Number(envio.total_nao_atendidos || 0);
             const futuros = Number(envio.total_futuros || 0);
+            const percentualCategoria = quantidade => progresso.total
+              ? Math.round((quantidade / progresso.total) * 100)
+              : 0;
             return (
               <button
                 key={envio.id}
@@ -1640,6 +1644,11 @@ function LeadsRecebidosView({ agora }) {
                   rotulo="trabalhados"
                   rotuloCompleto="Tudo trabalhado"
                 />
+                <span className="clientes-leads-doc__tooltip" role="status">
+                  <span>N&atilde;o atendidos: <b>{naoAtendidos} - {percentualCategoria(naoAtendidos)}%</b></span>
+                  <span>Qualificados: <b>{futuros} - {percentualCategoria(futuros)}%</b></span>
+                  <span>Recusados: <b>{recusados} - {percentualCategoria(recusados)}%</b></span>
+                </span>
               </button>
             );
           })}
