@@ -2370,6 +2370,7 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
 function FuturosClientesMainView({ agora }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const hojeMetricas = useMemo(() => dataLocalIso(new Date(agora)), [agora]);
   const [linhas, setLinhas] = useState([]);
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -2387,6 +2388,10 @@ function FuturosClientesMainView({ agora }) {
   const [metricas, setMetricas] = useState([]);
   const [consultorAtivo, setConsultorAtivo] = useState(null);
   const [exportacaoAberta, setExportacaoAberta] = useState(false);
+  const [tipoPeriodoMetricas, setTipoPeriodoMetricas] = useState('hoje');
+  const [mesMetricas, setMesMetricas] = useState(() => dataLocalIso().slice(0, 7));
+  const [dataInicioMetricas, setDataInicioMetricas] = useState(() => dataLocalIso());
+  const [dataFimMetricas, setDataFimMetricas] = useState(() => dataLocalIso());
 
   const usuario = useMemo(() => getUsuarioLocal(), []);
   const podeGerenciar = temPermissao(usuario, 'futuros_clientes_registrar');
@@ -2395,6 +2400,19 @@ function FuturosClientesMainView({ agora }) {
     const id = Number(searchParams.get('linha_id'));
     return Number.isInteger(id) && id > 0 ? id : null;
   }, [searchParams]);
+  const periodoMetricasInvalido = tipoPeriodoMetricas === 'periodo'
+    && Boolean(dataInicioMetricas && dataFimMetricas && dataInicioMetricas > dataFimMetricas);
+  const filtrosMetricas = useMemo(() => {
+    if (tipoPeriodoMetricas === 'hoje') {
+      return { data_inicio: hojeMetricas, data_fim: hojeMetricas };
+    }
+    if (tipoPeriodoMetricas === 'mes' && /^\d{4}-\d{2}$/.test(mesMetricas)) {
+      const [ano, mes] = mesMetricas.split('-').map(Number);
+      const ultimoDia = new Date(ano, mes, 0).getDate();
+      return { data_inicio: `${mesMetricas}-01`, data_fim: `${mesMetricas}-${String(ultimoDia).padStart(2, '0')}` };
+    }
+    return { data_inicio: dataInicioMetricas, data_fim: dataFimMetricas };
+  }, [tipoPeriodoMetricas, hojeMetricas, mesMetricas, dataInicioMetricas, dataFimMetricas]);
 
   /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -2424,11 +2442,11 @@ function FuturosClientesMainView({ agora }) {
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   useEffect(() => {
-    if (!podeVerQuadroGeral || modoLixeira) return;
-    listarMetricasFuturosClientes()
+    if (!podeVerQuadroGeral || modoLixeira || periodoMetricasInvalido) return;
+    listarMetricasFuturosClientes(filtrosMetricas)
       .then(data => setMetricas(Array.isArray(data) ? data : []))
       .catch(() => setMetricas([]));
-  }, [podeVerQuadroGeral, modoLixeira, linhas]);
+  }, [podeVerQuadroGeral, modoLixeira, linhas, filtrosMetricas, periodoMetricasInvalido]);
 
   const resumoMetricas = useMemo(() => metricas.reduce((acc, item) => ({
     ligacoes: acc.ligacoes + Number(item.ligacoes_realizadas || 0),
@@ -2629,6 +2647,35 @@ function FuturosClientesMainView({ agora }) {
               <I.Download size={15} /> Baixar Excel
             </button>
           </div>
+          <div className="conversao-periodo-filtros">
+            <label className="form-field">
+              <span>Exibir métricas de</span>
+              <select value={tipoPeriodoMetricas} onChange={event => setTipoPeriodoMetricas(event.target.value)}>
+                <option value="hoje">Hoje</option>
+                <option value="mes">Mês</option>
+                <option value="periodo">Período específico</option>
+              </select>
+            </label>
+            {tipoPeriodoMetricas === 'mes' && (
+              <label className="form-field">
+                <span>Mes</span>
+                <input type="month" value={mesMetricas} max={hojeMetricas.slice(0, 7)} onChange={event => setMesMetricas(event.target.value)} />
+              </label>
+            )}
+            {tipoPeriodoMetricas === 'periodo' && (
+              <>
+                <label className="form-field">
+                  <span>Data inicial</span>
+                  <input type="date" value={dataInicioMetricas} max={dataFimMetricas || hojeMetricas} onChange={event => setDataInicioMetricas(event.target.value)} />
+                </label>
+                <label className="form-field">
+                  <span>Data final</span>
+                  <input type="date" value={dataFimMetricas} min={dataInicioMetricas || undefined} max={hojeMetricas} onChange={event => setDataFimMetricas(event.target.value)} />
+                </label>
+              </>
+            )}
+          </div>
+          {periodoMetricasInvalido && <div className="alert-error">A data inicial deve ser anterior ou igual a data final.</div>}
           <div className="futuros-clientes-metricas">
             <div><span>Ligações totais</span><strong>{resumoMetricas.ligacoes}</strong></div>
             <div><span>Qualificados para venda</span><strong>{resumoMetricas.qualificados}</strong></div>
@@ -2637,16 +2684,16 @@ function FuturosClientesMainView({ agora }) {
             <div><span>Chamadas não atendidas</span><strong>{resumoMetricas.chamadasNaoAtendidas}</strong></div>
             <div><span>Vendas concluídas</span><strong>{resumoMetricas.vendidos}</strong></div>
             <div><span>Vendas recusadas</span><strong>{resumoMetricas.recusados}</strong></div>
-            <div><span>Conversao dos qualificados</span><strong>{resumoMetricas.qualificados ? `${((resumoMetricas.vendidos / resumoMetricas.qualificados) * 100).toFixed(1)}%` : '0%'}</strong></div>
+            <div><span>Conversão dos qualificados</span><strong>{resumoMetricas.qualificados ? `${((resumoMetricas.vendidos / resumoMetricas.qualificados) * 100).toFixed(1)}%` : '0%'}</strong></div>
             <div><span>Potencial mensal</span><strong>{resumoMetricas.potencial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></div>
           </div>
           <div className="list-table conversao-sondagem-table">
             <div className="scroll">
               <table>
-                <thead><tr><th>Consultor da primeira ligacao</th><th>Ligações totais</th><th>Qualificados para venda</th><th>Retornos agendados</th><th>Clientes recusaram</th><th>Chamadas não atendidas</th><th>Vendas concluidas</th><th>Vendas recusadas</th><th>Conversao</th><th>Potencial mensal</th></tr></thead>
+                <thead><tr><th>Consultor da primeira ligação</th><th>Ligações totais</th><th>Qualificados para venda</th><th>Retornos agendados</th><th>Clientes recusaram</th><th>Chamadas não atendidas</th><th>Vendas concluidas</th><th>Vendas recusadas</th><th>Conversao</th><th>Potencial mensal</th></tr></thead>
                 <tbody>
                   {metricas.length === 0 ? (
-                    <tr><td colSpan="10" className="muted">Ainda nao existem qualificacoes para calcular a conversao.</td></tr>
+                    <tr><td colSpan="10" className="muted">Ainda não existem qualificações para calcular a conversão.</td></tr>
                   ) : metricas.map(item => {
                     const qualificados = Number(item.qualificados || 0);
                     const vendidos = Number(item.vendidos || 0);
