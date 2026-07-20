@@ -420,9 +420,9 @@ async function reconciliarPlanilhaProcessando(planilha) {
 
   let motivo = null;
   if (arquivoSumiu && semProgresso) {
-    motivo = 'Arquivo temporário não encontrado; o processamento pode ter sido interrompido por reinício do servidor ou falha antes de registrar o erro.';
+    motivo = 'Arquivo temporÃ¡rio nÃ£o encontrado; o processamento pode ter sido interrompido por reinÃ­cio do servidor ou falha antes de registrar o erro.';
   } else if (travado) {
-    motivo = `Processamento sem atualização há ${Math.round(tempoOcioso / 1000)}s; provavelmente o processo foi encerrado (reinicio do servidor, falta de memoria ou falha silenciosa).`;
+    motivo = `Processamento sem atualizaÃ§Ã£o hÃ¡ ${Math.round(tempoOcioso / 1000)}s; provavelmente o processo foi encerrado (reinicio do servidor, falta de memoria ou falha silenciosa).`;
   }
 
   if (!motivo) return planilha;
@@ -592,7 +592,7 @@ async function criarPlanilha(dados, usuarioId) {
  */
 async function salvarLinhasLote(planilhaId, linhas = []) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
-  if (!planilha) throw new Error('Planilha não encontrada.');
+  if (!planilha) throw new Error('Planilha nÃ£o encontrada.');
 
   const payload = linhas.map((linha, index) => ({
     planilha_id: Number(planilhaId),
@@ -629,7 +629,7 @@ async function salvarLinhasLote(planilhaId, linhas = []) {
  */
 async function finalizarPlanilha(planilhaId, dados = {}) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
-  if (!planilha) throw criarHttpError(404, 'Planilha não encontrada.');
+  if (!planilha) throw criarHttpError(404, 'Planilha nÃ£o encontrada.');
 
   const colunas = Array.isArray(dados.colunas) ? dados.colunas : null;
   const schemaColunas = dados.schema_colunas && typeof dados.schema_colunas === 'object'
@@ -657,7 +657,7 @@ async function finalizarPlanilha(planilhaId, dados = {}) {
  */
 async function marcarErroPlanilha(planilhaId, mensagem) {
   const planilha = await LeadPlanilha.query().findById(planilhaId);
-  if (!planilha) throw criarHttpError(404, 'Planilha não encontrada.');
+  if (!planilha) throw criarHttpError(404, 'Planilha nÃ£o encontrada.');
 
   const atualizada = await withDbRetry(planilhaId, 'marcarErroPlanilha', () => (
     LeadPlanilha.query().patchAndFetchById(planilhaId, {
@@ -688,7 +688,7 @@ async function excluirPlanilha(planilhaId) {
   let planilha = await LeadPlanilha.query().findById(planilhaId);
 
   if (!planilha) {
-    throw criarHttpError(404, 'Planilha não encontrada.');
+    throw criarHttpError(404, 'Planilha nÃ£o encontrada.');
   }
 
   if (planilha.status === 'processando') {
@@ -756,9 +756,10 @@ function normalizarStatusReenvio(valor) {
 }
 
 /** Limita a consulta aos leads que possuem ao menos um dos estados escolhidos. */
-function aplicarStatusReenvio(query, statusReenvio) {
+function aplicarStatusReenvio(query, statusReenvio, excluir = false) {
   if (!statusReenvio.length) return;
-  query.where(builder => {
+  const aplicar = excluir ? 'whereNot' : 'where';
+  query[aplicar](builder => {
     statusReenvio.forEach((status, index) => {
       const metodo = index === 0 ? 'where' : 'orWhere';
       if (status === 'cliente_recusou') builder[metodo]('cliente_recusou', true);
@@ -768,7 +769,7 @@ function aplicarStatusReenvio(query, statusReenvio) {
   });
 }
 
-/** Preserva o resultado original para as m�tricas mesmo depois de reabrir o lead. */
+/** Preserva o resultado original para as métricas mesmo depois de reabrir o lead. */
 function montarHistoricoPrimeiraLigacao(statusReenvio) {
   const camposPorStatus = {
     chamada_nao_atendida: ['chamada_nao_atendida = 1', 'chamada_nao_atendida_em', 'chamada_nao_atendida_por_id'],
@@ -912,7 +913,7 @@ function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
   if (Number.isInteger(linhaId) && linhaId > 0) query.where('id', linhaId);
   if (opcoes.usuarioId) query.where('atribuido_para_id', Number(opcoes.usuarioId));
   if (filtros.somente_enviados === true || filtros.somente_enviados === 'true') query.where(builder => builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id'));
-  aplicarStatusReenvio(query, normalizarStatusReenvio(filtros.status_reenvio));
+  aplicarStatusReenvio(query, normalizarStatusReenvio(filtros.status_reenvio), filtros.status_reenvio_modo === 'excluir');
   if (filtros.etapa) query.where('etapa_atual', String(filtros.etapa));
   if (filtros.somente_qualificados === true || filtros.somente_qualificados === 'true') {
     query.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em');
@@ -1038,21 +1039,21 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
  */
 async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
-  if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
+  if (!linha) throw criarHttpError(404, 'Lead nÃ£o encontrado.');
 
   if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
-    throw criarHttpError(403, 'Você não pode atualizar este lead.');
+    throw criarHttpError(403, 'VocÃª nÃ£o pode atualizar este lead.');
   }
 
   const coluna = String(dados.coluna || '').trim();
   const valor = String(dados.valor || '').trim();
   if (!coluna) throw criarHttpError(400, 'Informe a coluna que sera atualizada.');
-  if (coluna.endsWith(UPDATED_COLUMN_SUFFIX)) throw criarHttpError(400, 'Atualize a coluna original, não a coluna atualizada.');
+  if (coluna.endsWith(UPDATED_COLUMN_SUFFIX)) throw criarHttpError(400, 'Atualize a coluna original, nÃ£o a coluna atualizada.');
   if (!valor) throw criarHttpError(400, 'Informe a informacao atualizada.');
 
   const dadosJson = parseJson(linha.dados_json, {});
   if (!Object.prototype.hasOwnProperty.call(dadosJson, coluna)) {
-    throw criarHttpError(400, 'Coluna não encontrada neste lead.');
+    throw criarHttpError(400, 'Coluna nÃ£o encontrada neste lead.');
   }
 
   const colunaAtualizada = `${coluna}${UPDATED_COLUMN_SUFFIX}`;
@@ -1156,11 +1157,11 @@ async function listarTodosEnvios() {
 async function atualizarNomeEnvio(envioId, nome) {
   const nomeNormalizado = String(nome || '').trim();
   if (!nomeNormalizado) throw new Error('Informe um nome para o envio.');
-  if (nomeNormalizado.length > 240) throw new Error('O nome do envio deve ter no máximo 240 caracteres.');
+  if (nomeNormalizado.length > 240) throw new Error('O nome do envio deve ter no mÃ¡ximo 240 caracteres.');
 
   const envio = await LeadEnvio.query().findById(envioId);
   if (!envio) {
-    const error = new Error('Envio não encontrado.');
+    const error = new Error('Envio nÃ£o encontrado.');
     error.statusCode = 404;
     throw error;
   }
@@ -1221,6 +1222,7 @@ async function buscarIdsPorCriterios(dados, quantidadeTotal) {
 
   const incluirEnviados = dados.incluir_enviados === true;
   const statusReenvio = normalizarStatusReenvio(dados.status_reenvio);
+  const excluirStatusReenvio = dados.status_reenvio_modo === 'excluir';
   const query = LeadLinha.query().select('id');
   aplicarFiltrosQuery(query, dados.filtros || {});
 
@@ -1228,8 +1230,8 @@ async function buscarIdsPorCriterios(dados, quantidadeTotal) {
     query.whereNull('envio_id');
   }
   if (statusReenvio.length) {
-    query.where(builder => builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id'));
-    aplicarStatusReenvio(query, statusReenvio);
+    if (!excluirStatusReenvio) query.where(builder => builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id'));
+    aplicarStatusReenvio(query, statusReenvio, excluirStatusReenvio);
   }
 
   const rows = await query
@@ -1249,6 +1251,7 @@ async function dividirLeads(dados, usuarioId) {
   const quantidadeTotal = Number(dados.quantidade_total || 0);
   const etapa = dados.etapa === 'venda' ? 'venda' : 'sondagem';
   const statusReenvio = normalizarStatusReenvio(dados.status_reenvio);
+  const excluirStatusReenvio = dados.status_reenvio_modo === 'excluir';
 
   if (!String(dados.nome || '').trim()) throw new Error('Informe um nome para o envio.');
   if (usuarioIds.length === 0) throw new Error('Selecione ao menos um vendedor.');
@@ -1261,9 +1264,9 @@ async function dividirLeads(dados, usuarioId) {
       throw new Error(`Ha somente ${linhaIds.length} futuro(s) cliente(s) qualificado(s) e disponivel(is) para venda.`);
     }
     if (dados.incluir_enviados === true) {
-      throw new Error('Não há mailing suficiente para a quantidade solicitada.');
+      throw new Error('NÃ£o hÃ¡ mailing suficiente para a quantidade solicitada.');
     }
-    throw new Error('Não há mailing não enviado suficiente. Ative incluir mailing já enviado para transferir linhas distribuídas.');
+    throw new Error('NÃ£o hÃ¡ mailing nÃ£o enviado suficiente. Ative incluir mailing jÃ¡ enviado para transferir linhas distribuÃ­das.');
   }
 
   const totalJaEnviados = dados.incluir_enviados === true
@@ -1294,8 +1297,9 @@ async function dividirLeads(dados, usuarioId) {
     });
 
     let cursor = 0;
-    const limpezaStatus = montarLimpezaStatusReenvio(statusReenvio);
-    const historicoPrimeiraLigacao = montarHistoricoPrimeiraLigacao(statusReenvio);
+    const statusParaLimpar = excluirStatusReenvio ? [] : statusReenvio;
+    const limpezaStatus = montarLimpezaStatusReenvio(statusParaLimpar);
+    const historicoPrimeiraLigacao = montarHistoricoPrimeiraLigacao(statusParaLimpar);
     for (const usuarioAlvoId of usuarioIds) {
       const quantidade = Number(alocacao.alocacoes[usuarioAlvoId] || 0);
       const idsUsuario = linhaIds.slice(cursor, cursor + quantidade);
@@ -1458,7 +1462,7 @@ async function __PROCESSAR_REMOVIDO_INI__(planilhaId, arquivoPath, tamanhoBytes)
     await flush();
 
     if (!colunas || colunas.length === 0) {
-      throw new Error('CSV sem cabeçalho válido.');
+      throw new Error('CSV sem cabeÃ§alho vÃ¡lido.');
     }
 
     await atualizarProgresso(planilhaId, {
@@ -2049,7 +2053,7 @@ function iniciarUpload(req, usuarioId) {
 
     busboy.on('finish', async () => {
       try {
-        if (!uploadPromise) throw new Error('Arquivo CSV não enviado.');
+        if (!uploadPromise) throw new Error('Arquivo CSV nÃ£o enviado.');
         const planilha = await uploadPromise;
         resolvido = true;
         resolve(planilha);
@@ -2183,13 +2187,13 @@ async function gerarPlanilhaXlsx(planilhaId) {
  */
 async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
-  if (!linha) throw criarHttpError(404, 'Lead não encontrado.');
+  if (!linha) throw criarHttpError(404, 'Lead nÃ£o encontrado.');
   if (!opcoes.comoAdmin && linha.futuro_cliente && Number(linha.futuro_cliente_marcado_por_id) !== Number(usuarioId)) {
     throw criarHttpError(409, 'Este lead ja foi qualificado na primeira ligacao e nao pode ser qualificado novamente.');
   }
 
   if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
-    throw criarHttpError(403, 'Você não pode atualizar este lead.');
+    throw criarHttpError(403, 'VocÃª nÃ£o pode atualizar este lead.');
   }
   const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
@@ -2366,7 +2370,7 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
 async function obterMetricasFuturosClientes(filtros = {}) {
   await reconciliarVendasFuturosClientesSemOrigem();
   const usuarioResponsavel = 'COALESCE(ll.primeira_ligacao_usuario_id, ll.futuro_cliente_marcado_por_id, ll.retorno_agendado_por_id, ll.cliente_recusou_por_id, ll.chamada_nao_atendida_por_id)';
-  // O hist�rico � preenchido no reenvio para que a m�trica continue refletindo a
+  // O histórico é preenchido no reenvio para que a métrica continue refletindo a
   // primeira tentativa, mesmo que o status operacional da linha seja reaberto.
   const dataPrimeiroContato = 'COALESCE(ll.primeira_ligacao_em, ll.futuro_cliente_marcado_em, ll.cliente_recusou_em, ll.chamada_nao_atendida_em, ll.updated_at)';
   const query = db('lead_linhas as ll')
@@ -2442,16 +2446,16 @@ function descricaoPeriodoProdutividade(filtros = {}) {
   if (filtros.data_inicio && filtros.data_fim) {
     return filtros.data_inicio === filtros.data_fim
       ? `Data: ${filtros.data_inicio.split('-').reverse().join('/')}`
-      : `Período: ${filtros.data_inicio.split('-').reverse().join('/')} a ${filtros.data_fim.split('-').reverse().join('/')}`;
+      : `PerÃ­odo: ${filtros.data_inicio.split('-').reverse().join('/')} a ${filtros.data_fim.split('-').reverse().join('/')}`;
   }
   if (filtros.data_inicio) return `A partir de: ${filtros.data_inicio.split('-').reverse().join('/')}`;
-  if (filtros.data_fim) return `Até: ${filtros.data_fim.split('-').reverse().join('/')}`;
-  return 'Período: todos os registros';
+  if (filtros.data_fim) return `AtÃ©: ${filtros.data_fim.split('-').reverse().join('/')}`;
+  return 'PerÃ­odo: todos os registros';
 }
 
 async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
   if (filtros.data_inicio && filtros.data_fim && filtros.data_inicio > filtros.data_fim) {
-    throw criarHttpError(400, 'A data inicial deve ser anterior ou igual à data final.');
+    throw criarHttpError(400, 'A data inicial deve ser anterior ou igual Ã  data final.');
   }
 
   const filtrosPeriodo = {
@@ -2474,7 +2478,7 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
 
   const wsResumo = workbook.addWorksheet('Resumo por consultor');
   wsResumo.mergeCells('A1:J1');
-  wsResumo.getCell('A1').value = 'Produtividade da primeira ligação';
+  wsResumo.getCell('A1').value = 'Produtividade da primeira ligaÃ§Ã£o';
   wsResumo.mergeCells('A2:J2');
   wsResumo.getCell('A2').value = periodo;
   wsResumo.addRow([]);
@@ -2483,7 +2487,7 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
     const ligacoes = Number(item.qualificados || 0);
     const vendas = Number(item.vendidos || 0);
     wsResumo.addRow([
-      item.usuario_nome || 'Usuário removido',
+      item.usuario_nome || 'UsuÃ¡rio removido',
       ligacoes,
       Number(item.retornos_agendados || 0),
       Number(item.clientes_recusaram || 0),
@@ -2526,9 +2530,9 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
   linhaTotal.font = { bold: true };
   linhaTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
 
-  const wsDiario = workbook.addWorksheet('Detalhamento diário');
+  const wsDiario = workbook.addWorksheet('Detalhamento diÃ¡rio');
   wsDiario.mergeCells('A1:K1');
-  wsDiario.getCell('A1').value = 'Detalhamento diário da primeira ligação';
+  wsDiario.getCell('A1').value = 'Detalhamento diÃ¡rio da primeira ligaÃ§Ã£o';
   wsDiario.mergeCells('A2:K2');
   wsDiario.getCell('A2').value = periodo;
   wsDiario.addRow([]);
@@ -2539,7 +2543,7 @@ async function gerarXlsxProdutividadePrimeiraLigacao(filtros = {}) {
     const data = dataMetricaIso(item.data);
     wsDiario.addRow([
       /^\d{4}-\d{2}-\d{2}$/.test(data) ? data.split('-').reverse().join('/') : data,
-      item.usuario_nome || 'Usuário removido',
+      item.usuario_nome || 'UsuÃ¡rio removido',
       ligacoes,
       Number(item.retornos_agendados || 0),
       Number(item.clientes_recusaram || 0),

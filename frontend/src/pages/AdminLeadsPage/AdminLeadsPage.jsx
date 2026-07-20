@@ -284,6 +284,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   const [erro, setErro] = useState('');
   const [incluirEnviados, setIncluirEnviados] = useState(false);
   const [statusReenvio, setStatusReenvio] = useState([]);
+  const [modoStatusReenvio, setModoStatusReenvio] = useState('incluir');
   const [disponiveisReenvio, setDisponiveisReenvio] = useState(null);
   const [etapa, setEtapa] = useState('sondagem');
   const [disponiveisVenda, setDisponiveisVenda] = useState(null);
@@ -317,11 +318,11 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   useEffect(() => {
     if (!incluirEnviados || etapa !== 'sondagem' || statusReenvio.length === 0) { setDisponiveisReenvio(null); return; }
     let cancelado = false;
-    listarLeadLinhas({ ...filtrosDivisao, filters: JSON.stringify(filtrosDivisao?.filters || []), somente_enviados: true, status_reenvio: statusReenvio, page: 1, page_size: 1 })
+    listarLeadLinhas({ ...filtrosDivisao, filters: JSON.stringify(filtrosDivisao?.filters || []), somente_enviados: true, status_reenvio: statusReenvio, status_reenvio_modo: modoStatusReenvio, page: 1, page_size: 1 })
       .then(resultado => { if (!cancelado) setDisponiveisReenvio(Number(resultado?.total || 0)); })
       .catch(error => { if (!cancelado) setErro(error.message || 'Erro ao contar mailing para reenvio.'); });
     return () => { cancelado = true; };
-  }, [incluirEnviados, etapa, filtrosDivisao, statusReenvio]);
+  }, [incluirEnviados, etapa, filtrosDivisao, statusReenvio, modoStatusReenvio]);
 
   useEffect(() => {
     if (incluirEnviados && etapa === 'sondagem' && statusReenvio.length > 0 && disponiveisReenvio !== null) {
@@ -371,6 +372,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
         colunas_visiveis: colunasVisiveis,
         incluir_enviados: incluirEnviados,
         status_reenvio: statusReenvio,
+        status_reenvio_modo: modoStatusReenvio,
         etapa,
         alocacao_manual: manual?.valores || {}
       });
@@ -504,9 +506,13 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
               <div className="leads-warning">Mailing já enviados que entrarem nesta divisão serão transferidos para o novo vendedor e novo envio.</div>
               {etapa === 'sondagem' && (
                 <div className="leads-retry-status">
-                  <strong>Reenviar por status (opcional)</strong>
-                  <small>Os registros com os status selecionados serão reenviados e esses marcadores serão limpos para uma nova tentativa.</small>
-                  <div className="leads-seller-grid">
+                  <strong>Filtrar reenvio por status (opcional)</strong>
+                  <small>Escolha se deseja reenviar somente os marcados ou manter os marcados fora deste novo envio.</small>
+                  <div className="leads-retry-options">
+                    <label className="leads-check-card"><input type="radio" name="modo-status-reenvio" checked={modoStatusReenvio === 'incluir'} onChange={() => setModoStatusReenvio('incluir')} /><span>Reenviar somente os marcados</span></label>
+                    <label className="leads-check-card"><input type="radio" name="modo-status-reenvio" checked={modoStatusReenvio === 'excluir'} onChange={() => setModoStatusReenvio('excluir')} /><span>{'Não reenviar os marcados'}</span></label>
+                  </div>
+                  <div className="leads-retry-statuses">
                     {[['chamada_nao_atendida', 'Chamada não atendida'], ['cliente_recusou', 'Cliente recusou'], ['retorno_agendado', 'Retorno marcado']].map(([status, rotulo]) => (
                       <label key={status} className="leads-check-card"><input type="checkbox" checked={statusReenvio.includes(status)} onChange={() => toggleStatusReenvio(status)} /><span>{rotulo}</span></label>
                     ))}

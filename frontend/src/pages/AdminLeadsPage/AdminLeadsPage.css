@@ -1,4 +1,4 @@
-﻿.admin-leads-page {
+.admin-leads-page {
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -1115,7 +1115,7 @@
   }
 }
 
-/* ===== Mobile (<= 640px) â€” refatoraÃ§Ã£o ===== */
+/* ===== Mobile (<= 640px) — refatoração ===== */
 @media (max-width: 640px) {
   .admin-leads-page {
     padding: 12px;
@@ -1135,7 +1135,7 @@
     scroll-snap-align: start;
   }
 
-  /* Lead table mantÃ©m scroll horizontal (escape hatch jÃ¡ marcado no JSX) */
+  /* Lead table mantém scroll horizontal (escape hatch já marcado no JSX) */
   .admin-leads-page .lead-table table { min-width: 720px !important; }
 
   .lead-table th,
@@ -1333,7 +1333,7 @@
   display: flex;
   justify-content: flex-end;
 }
-/* --- Linhas clicáveis + modal de detalhe/edição do lead -------------------- */
+/* --- Linhas clic�veis + modal de detalhe/edi��o do lead -------------------- */
 .lead-table tbody tr.lead-admin-row-clicavel {
   cursor: pointer;
 }
@@ -1617,4 +1617,44 @@
 
 .lead-envio-name .btn {
   flex: 0 0 auto;
+}
+
+.leads-retry-status {
+  display: grid;
+  gap: 8px;
+}
+
+.leads-retry-status > strong,
+.leads-retry-status > small {
+  display: block;
+}
+
+.leads-retry-status > small {
+  color: var(--text-3);
+  line-height: 1.35;
+}
+
+.leads-retry-options,
+.leads-retry-statuses {
+  display: grid;
+  gap: 8px;
+}
+
+.leads-retry-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.leads-retry-statuses {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.leads-retry-options .leads-check-card,
+.leads-retry-statuses .leads-check-card {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .leads-retry-statuses {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
