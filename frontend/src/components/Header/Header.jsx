@@ -8,7 +8,7 @@ import {
   marcarTodasNotificacoesLidas
 } from '../../services/notificacao.service';
 import { temPermissao } from '../../services/auth.service';
-import { formatDateValue } from '../../utils/datetime';
+import { formatUtcDateTime } from '../../utils/datetime';
 
 const TIPOS_RETORNO_NOTA = [
   'nota_retorno_pre',
@@ -33,8 +33,14 @@ const TIPO_FUTURO_CLIENTE_DISTRIBUIDO = 'futuro_cliente_distribuido';
 /**
  * Formata date para exibicao.
  */
-function formatDate(value) {
-  return formatDateValue(value, { day: '2-digit', month: '2-digit', year: '2-digit' });
+function formatNotificationDateTime(value) {
+  return formatUtcDateTime(value, {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 /**
@@ -149,6 +155,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationOrder, setNotificationOrder] = useState('data_hora_desc');
   const linksMenuRef = useRef(null);
   const notificationsMenuRef = useRef(null);
   const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
@@ -204,9 +211,9 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
   /**
    * Carrega notificacoes e atualiza o estado relacionado.
    */
-  async function carregarNotificacoes() {
+  async function carregarNotificacoes(ordem = notificationOrder) {
     try {
-      const dados = await listarNotificacoes({ limit: 50 });
+      const dados = await listarNotificacoes({ limit: 50, ordem });
       setNotifications(dados.notificacoes || []);
       setUnreadCount(Number(dados.unread_count || 0));
     } catch {
@@ -281,6 +288,14 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
     window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
   }
 
+  /**
+   * Atualiza a ordem de exibicao das notificacoes pela data e hora.
+   */
+  function handleNotificationOrderChange(event) {
+    const ordem = event.target.value;
+    setNotificationOrder(ordem);
+    carregarNotificacoes(ordem);
+  }
   return (
     <header className="header">
       {onMenuClick && (
@@ -364,11 +379,19 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
             <div className="notification-popover" role="menu">
               <div className="notification-popover__header">
                 <strong>Notificações</strong>
-                {unreadCount > 0 && (
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={handleMarkAllRead}>
-                    Marcar lidas
-                  </button>
-                )}
+                <div className="notification-popover__actions">
+                  <label className="notification-order">
+                    <select value={notificationOrder} onChange={handleNotificationOrderChange} aria-label="Ordenar notificacoes por data e hora">
+                      <option value="data_hora_desc">Mais recentes</option>
+                      <option value="data_hora_asc">Mais antigas</option>
+                    </select>
+                  </label>
+                  {unreadCount > 0 && (
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={handleMarkAllRead}>
+                      Marcar lidas
+                    </button>
+                  )}
+                </div>
               </div>
 
               {notifications.length === 0 ? (
@@ -388,7 +411,7 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
                       <span className="notification-item__body">
                         <strong>{notification.titulo}</strong>
                         <span>{notification.mensagem}</span>
-                        <em>{formatDate(notification.dados?.fidelidade_fim || notification.dados?.retorno_agendado_para || notification.updated_at)}</em>
+                        <em>{formatNotificationDateTime(notification.updated_at)}</em>
                       </span>
                     </button>
                   ))}

@@ -785,10 +785,11 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
   const podeVerVendasParadas = usuarioTemPermissaoLocal(usuario, PERMISSAO_VENDAS_PARADAS);
 
   const limit = Math.min(Number(filtros.limit || 20), 50);
+  const ordemDataHora = filtros.ordem === 'data_hora_asc' ? 'asc' : 'desc';
   const query = aplicarJoinDestinatarioUsuario(Notificacao.query().alias('n'), usuarioId)
     .where('n.ativa', true)
-    .orderByRaw('nd.lida_em IS NULL DESC')
-    .orderBy('n.updated_at', 'desc')
+    .orderBy('n.updated_at', ordemDataHora)
+    .orderBy('n.id', ordemDataHora)
     .limit(limit)
     .select(
       'nd.id as destinatario_id',
