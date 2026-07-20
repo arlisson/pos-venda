@@ -215,6 +215,8 @@ async function dividir(req, res) {
 /**
  * Processa envios conforme as regras do dominio.
  */
+async function destinatariosEnviosPlanilha(req, res) { try { return res.json(await leadPlanilhaService.listarDestinatariosEnviosPlanilha(req.params.id)); } catch (error) { console.error(error); return res.status(error.statusCode || 500).json({ message: error.message || 'Erro ao listar destinatarios do mailing.' }); } }
+async function cancelarEnviosPlanilha(req, res) { try { return res.json(await leadPlanilhaService.cancelarEnviosPlanilha(req.params.id, req.body?.usuario_id, req.usuario.id)); } catch (error) { console.error(error); return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao cancelar envios do mailing.' }); } }
 async function envios(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarTodosEnvios());
@@ -578,6 +580,8 @@ module.exports = {
   linhas,
   exportar,
   exportarPlanilhaXlsx,
+  destinatariosEnviosPlanilha,
+  cancelarEnviosPlanilha,
   dividir,
   envios,
   atualizarNomeEnvio,

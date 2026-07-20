@@ -13,6 +13,7 @@ import {
   adminReverterClienteRecusouLead,
   adminReverterVendaRecusadaLead,
   atualizarNomeLeadEnvio,
+  cancelarEnviosPlanilha,
   atualizarLeadSchema,
   criarLeadPlanilha,
   dividirLeadLinhas,
@@ -22,6 +23,7 @@ import {
   finalizarLeadPlanilha,
   importarLeadPlanilhaExcel,
   listarLeadLinhas,
+  listarDestinatariosEnviosPlanilha,
   listarLeadPlanilhas,
   marcarErroLeadPlanilha,
   salvarLeadLinhas
@@ -684,6 +686,11 @@ function MesclarColunasModal({ grupos, defaultSelecionadas, onClose, onConfirm }
 /**
  * Renderiza excluir planilha modal.
  */
+function CancelarEnviosModal({ planilha, destinatarios, carregando, erro, onClose, onConfirm }) {
+  const [usuarioId, setUsuarioId] = useState('');
+  if (!planilha) return null;
+  return (<div className="modal-overlay"><div className="modal leads-delete-modal"><div className="modal-header"><div className="modal-header-row"><div><div className="modal-client">Cancelar envio de mailing?</div><div className="modal-sub">As linhas canceladas voltam para a fila, sem apagar os status ou o histórico de contato.</div></div><button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={carregando}><I.Close size={14} /></button></div></div><div className="modal-body"><div className="form-field"><label>Cancelar para</label><select value={usuarioId} onChange={event => setUsuarioId(event.target.value)} disabled={carregando}><option value="">Todas as vendedoras ({destinatarios.reduce((total, item) => total + Number(item.total_linhas || 0), 0)} linhas)</option>{destinatarios.map(item => <option key={item.usuario_id} value={item.usuario_id}>{item.usuario_nome} ({item.total_linhas} linhas)</option>)}</select></div>{erro && <div className="alert-error">{erro}</div>}</div><div className="modal-footer"><button type="button" className="btn" onClick={onClose} disabled={carregando}>Voltar</button><button type="button" className="btn btn-danger" onClick={() => onConfirm(usuarioId || null)} disabled={carregando}><I.Close size={13} /> {carregando ? 'Cancelando...' : 'Cancelar envio'}</button></div></div></div>);
+}
 function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }) {
   if (!planilha) return null;
 
@@ -1115,6 +1122,10 @@ function AdminLeadsPage() {
   const [colunasMescladas, setColunasMescladas] = useState([]);
   const [modalMesclar, setModalMesclar] = useState(null);
   const [modalExcluir, setModalExcluir] = useState(null);
+  const [modalCancelarEnvios, setModalCancelarEnvios] = useState(null);
+  const [destinatariosCancelamento, setDestinatariosCancelamento] = useState([]);
+  const [cancelandoEnvios, setCancelandoEnvios] = useState(false);
+  const [erroCancelamento, setErroCancelamento] = useState('');
   const [envioEditando, setEnvioEditando] = useState(null);
   const [linhaDetalhe, setLinhaDetalhe] = useState(null);
   const [excluindoId, setExcluindoId] = useState(null);
@@ -1714,6 +1725,18 @@ function AdminLeadsPage() {
   /**
    * Executa a acao de confirmar exclusao planilha mantendo o estado da tela consistente.
    */
+  async function abrirCancelamentoEnvios(planilha) {
+    setErro(''); setErroCancelamento('');
+    try { const destinatarios = await listarDestinatariosEnviosPlanilha(planilha.id); setDestinatariosCancelamento(destinatarios || []); setModalCancelarEnvios(planilha); }
+    catch (error) { setErro(error.message || 'Erro ao carregar destinatarios do mailing.'); }
+  }
+  async function confirmarCancelamentoEnvios(usuarioId) {
+    if (!modalCancelarEnvios) return;
+    setCancelandoEnvios(true); setErroCancelamento(''); setErro('');
+    try { const resultado = await cancelarEnviosPlanilha(modalCancelarEnvios.id, usuarioId); setModalCancelarEnvios(null); await carregarBase(); setSucesso(`${resultado.total_cancelado || 0} linha(s) de mailing cancelada(s).`); }
+    catch (error) { const mensagem = error.message || 'Erro ao cancelar envios do mailing.'; setErroCancelamento(mensagem); setErro(mensagem); }
+    finally { setCancelandoEnvios(false); }
+  }
   async function confirmarExclusaoPlanilha() {
     if (!modalExcluir) return;
 
@@ -1965,6 +1988,7 @@ function AdminLeadsPage() {
         />
       )}
 
+      {modalCancelarEnvios && (<CancelarEnviosModal planilha={modalCancelarEnvios} destinatarios={destinatariosCancelamento} carregando={cancelandoEnvios} erro={erroCancelamento} onClose={() => { if (!cancelandoEnvios) setModalCancelarEnvios(null); }} onConfirm={confirmarCancelamentoEnvios} />)}
       {modalExcluir && (
         <ExcluirPlanilhaModal
           planilha={modalExcluir}
@@ -2102,7 +2126,7 @@ function AdminLeadsPage() {
                   }
                 }}
               >
-                <button
+                                <button type="button" className="lead-doc-cancel" title="Cancelar envio de mailing" aria-label={`Cancelar envio de ${planilha.nome}`} onClick={event => { event.stopPropagation(); abrirCancelamentoEnvios(planilha); }}><I.Close size={14} /></button><button
                   type="button"
                   className="lead-doc-delete"
                   title="Excluir planilha"

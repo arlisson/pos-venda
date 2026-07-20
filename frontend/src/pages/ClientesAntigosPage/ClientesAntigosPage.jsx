@@ -167,7 +167,7 @@ function ClienteAntigoEditModal({ venda, salvando, excluindo, erro, onClose, onS
                 <input value={form.telefone} onChange={event => alterar('telefone', event.target.value)} maxLength={80} />
               </div>
               <div className="form-field">
-                <label>Data da venda</label>
+                <label>Data da venda/Ativação</label>
                 <input type="date" value={form.data_venda} onChange={event => alterar('data_venda', event.target.value)} />
               </div>
               <div className="form-field">
@@ -470,7 +470,7 @@ function ClientesAntigosPage() {
                                 <th>Operadora</th>
                                 <th>Responsável</th>
                                 <th>Terminal</th>
-                                <th>Data da venda</th>
+                                <th>Data da venda/Ativação</th>
                                 <th>Fidelidade</th>
                                 <th>Chips</th>
                               </tr>
@@ -508,7 +508,7 @@ function ClientesAntigosPage() {
                                   <th>Operadora</th>
                                   <th>Responsável</th>
                                 <th>Terminal</th>
-                                <th>Data da venda</th>
+                                <th>Data da venda/Ativação</th>
                                   <th>Fidelidade</th>
                                   <th>Chips</th>
                                   {podeEditarAntigos && <th>Acoes</th>}
@@ -558,7 +558,7 @@ function ClientesAntigosPage() {
                                   <th>Operadora</th>
                                   <th>Responsável</th>
                                 <th>Terminal</th>
-                                <th>Data da venda</th>
+                                <th>Data da venda/Ativação</th>
                                   <th>Fidelidade</th>
                                   <th>Chips</th>
                                   {podeEditarAntigos && <th>Acoes</th>}

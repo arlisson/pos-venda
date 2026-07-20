@@ -281,8 +281,8 @@
     transform 0.15s ease;
 }
 
-.lead-doc-card:hover .lead-doc-delete,
-.lead-doc-card:focus-within .lead-doc-delete {
+.lead-doc-card.active:hover .lead-doc-delete,
+.lead-doc-card.active:focus-within .lead-doc-delete {
   opacity: 1;
   transform: scale(1);
 }
@@ -313,8 +313,8 @@
   transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 
-.lead-doc-card:hover .lead-doc-download,
-.lead-doc-card:focus-within .lead-doc-download {
+.lead-doc-card.active:hover .lead-doc-download,
+.lead-doc-card.active:focus-within .lead-doc-download {
   opacity: 1;
   transform: scale(1);
 }
@@ -1658,3 +1658,23 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+.lead-doc-cancel {
+  position: absolute;
+  top: 8px;
+  right: 42px;
+  z-index: 3;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-3);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: scale(.92);
+  transition: opacity .15s ease, color .15s ease, background .15s ease, transform .15s ease;
+}
+.lead-doc-card.active:hover .lead-doc-cancel, .lead-doc-card.active:focus-within .lead-doc-cancel { opacity: 1; transform: scale(1); }
+.lead-doc-cancel:hover { color: var(--danger); background: var(--danger-bg); border-color: #fecaca; }
+.lead-doc-card .lead-doc-download { right: 76px; }

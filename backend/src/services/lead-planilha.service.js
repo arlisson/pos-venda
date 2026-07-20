@@ -1244,6 +1244,22 @@ async function buscarIdsPorCriterios(dados, quantidadeTotal) {
 /**
  * Processa dividir leads conforme as regras do dominio.
  */
+async function listarDestinatariosEnviosPlanilha(planilhaId) {
+  return LeadLinha.query().where('planilha_id', Number(planilhaId)).whereNotNull('envio_id').whereNotNull('atribuido_para_id').joinRelated('atribuidoPara').select('atribuido_para_id as usuario_id', 'atribuidoPara.nome as usuario_nome', 'atribuidoPara.email as usuario_email').count('lead_linhas.id as total_linhas').groupBy('atribuido_para_id', 'atribuidoPara.nome', 'atribuidoPara.email').orderBy('atribuidoPara.nome', 'asc');
+}
+async function cancelarEnviosPlanilha(planilhaId, usuarioAlvoId, canceladoPorId) {
+  const planilha = await LeadPlanilha.query().findById(Number(planilhaId));
+  if (!planilha) throw criarHttpError(404, 'Planilha nao encontrada.');
+  return LeadEnvio.transaction(async trx => {
+    const query = LeadLinha.query(trx).where('planilha_id', planilha.id).whereNotNull('envio_id').whereNotNull('atribuido_para_id'); if (usuarioAlvoId) query.where('atribuido_para_id', Number(usuarioAlvoId));
+    const linhas = await query.select('id', 'envio_id'); if (!linhas.length) throw criarHttpError(400, 'Nao ha envios ativos para cancelar nesta selecao.');
+    const linhaIds = linhas.map(linha => Number(linha.id)); const envioIds = [...new Set(linhas.map(linha => Number(linha.envio_id)).filter(Boolean))]; const agora = new Date();
+    for (let i = 0; i < linhaIds.length; i += SELECT_BATCH_SIZE) await LeadLinha.query(trx).whereIn('id', linhaIds.slice(i, i + SELECT_BATCH_SIZE)).patch({ atribuido_para_id: null, envio_id: null, updated_at: agora });
+    await trx('lead_atribuicoes').whereIn('lead_linha_id', linhaIds).whereIn('envio_id', envioIds).where('status', 'atribuido').update({ status: 'cancelado', finalizado_em: agora, updated_at: agora });
+    for (const envioId of envioIds) { const distribuicao = await LeadLinha.query(trx).where('envio_id', envioId).whereNotNull('atribuido_para_id').select('atribuido_para_id as usuario_id').count('id as quantidade').groupBy('atribuido_para_id'); await LeadEnvioUsuario.query(trx).where('envio_id', envioId).delete(); if (distribuicao.length) await LeadEnvioUsuario.query(trx).insert(distribuicao.map(item => ({ envio_id: envioId, usuario_id: Number(item.usuario_id), quantidade: Number(item.quantidade || 0) }))); else await LeadEnvio.query(trx).patchAndFetchById(envioId, { cancelado_em: agora, cancelado_por_id: canceladoPorId, updated_at: agora }); }
+    return { total_cancelado: linhaIds.length, usuario_id: usuarioAlvoId ? Number(usuarioAlvoId) : null };
+  });
+}
 async function dividirLeads(dados, usuarioId) {
   const usuarioIds = Array.isArray(dados.usuario_ids)
     ? dados.usuario_ids.map(Number).filter(Boolean)
@@ -3100,6 +3116,8 @@ module.exports = {
   listarEnviosDoUsuario,
   listarTodosEnvios,
   atualizarNomeEnvio,
+  listarDestinatariosEnviosPlanilha,
+  cancelarEnviosPlanilha,
   dividirLeads,
   exportarCsv,
   gerarPlanilhaXlsx,
