@@ -1172,6 +1172,33 @@ function AdminLeadsPage() {
 
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  useEffect(() => {
+    function limparSelecao() {
+      setSelecionadas([]);
+      setFiltros([]);
+      setNovoFiltro({ coluna: '', op: 'contains', valor: '', valor2: '' });
+      setColunasMescladas([]);
+      setPagina(1);
+    }
+
+    function handlePointerDown(event) {
+      if (selecionadas.length === 0) return;
+      const elemento = event.target instanceof Element ? event.target : null;
+      if (elemento?.closest('.lead-doc-card, .modal-overlay')) return;
+      limparSelecao();
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape' && selecionadas.length > 0) limparSelecao();
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selecionadas.length]);
   const planilhasSelecionadas = useMemo(() => (
     planilhas.filter(planilha => selecionadas.includes(planilha.id))
   ), [planilhas, selecionadas]);
@@ -2175,6 +2202,23 @@ function AdminLeadsPage() {
                     rotuloCompleto="Tudo enviado"
                   />
                 )}
+                {planilha.status !== 'processando' && (() => {
+                  const total = Number(planilha.total_linhas || 0);
+                  const percentualCategoria = quantidade => total
+                    ? Math.round((Number(quantidade || 0) / total) * 100)
+                    : 0;
+                  const naoAtendidos = Number(planilha.total_nao_atendidos || 0);
+                  const qualificados = Number(planilha.total_futuros || 0);
+                  const recusados = Number(planilha.total_recusados || 0);
+
+                  return (
+                    <span className="lead-doc-card__tooltip" role="status">
+                      <span>Não atendidos: <b>{naoAtendidos} - {percentualCategoria(naoAtendidos)}%</b></span>
+                      <span>Qualificados: <b>{qualificados} - {percentualCategoria(qualificados)}%</b></span>
+                      <span>Recusados: <b>{recusados} - {percentualCategoria(recusados)}%</b></span>
+                    </span>
+                  );
+                })()}
               </div>
             ))}
 
