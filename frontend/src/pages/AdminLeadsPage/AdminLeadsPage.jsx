@@ -283,6 +283,8 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [incluirEnviados, setIncluirEnviados] = useState(false);
+  const [statusReenvio, setStatusReenvio] = useState([]);
+  const [disponiveisReenvio, setDisponiveisReenvio] = useState(null);
   const [etapa, setEtapa] = useState('sondagem');
   const [disponiveisVenda, setDisponiveisVenda] = useState(null);
   const [carregandoDisponiveis, setCarregandoDisponiveis] = useState(false);
@@ -312,11 +314,30 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
     return () => { cancelado = true; };
   }, [etapa, filtrosDivisao]);
 
+  useEffect(() => {
+    if (!incluirEnviados || etapa !== 'sondagem' || statusReenvio.length === 0) { setDisponiveisReenvio(null); return; }
+    let cancelado = false;
+    listarLeadLinhas({ ...filtrosDivisao, filters: JSON.stringify(filtrosDivisao?.filters || []), somente_enviados: true, status_reenvio: statusReenvio, page: 1, page_size: 1 })
+      .then(resultado => { if (!cancelado) setDisponiveisReenvio(Number(resultado?.total || 0)); })
+      .catch(error => { if (!cancelado) setErro(error.message || 'Erro ao contar mailing para reenvio.'); });
+    return () => { cancelado = true; };
+  }, [incluirEnviados, etapa, filtrosDivisao, statusReenvio]);
+
+  useEffect(() => {
+    if (incluirEnviados && etapa === 'sondagem' && statusReenvio.length > 0 && disponiveisReenvio !== null) {
+      setQuantidade(String(disponiveisReenvio));
+    }
+  }, [incluirEnviados, etapa, statusReenvio, disponiveisReenvio]);
+
   /**
    * Alterna usuario no estado atual.
    */
   function toggleUsuario(id) {
     setUsuarios(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+  }
+
+  function toggleStatusReenvio(status) {
+    setStatusReenvio(prev => prev.includes(status) ? prev.filter(item => item !== status) : [...prev, status]);
   }
 
   /**
@@ -349,6 +370,7 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
           : filtrosDivisao,
         colunas_visiveis: colunasVisiveis,
         incluir_enviados: incluirEnviados,
+        status_reenvio: statusReenvio,
         etapa,
         alocacao_manual: manual?.valores || {}
       });
@@ -379,7 +401,9 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
   const totalResumo = Number(resumoLeads?.total || totalLinhas || 0);
   const capacidadeAtual = etapa === 'venda'
     ? Number(disponiveisVenda || 0)
-    : (incluirEnviados ? totalResumo : disponiveisPadrao);
+    : (incluirEnviados && statusReenvio.length > 0)
+      ? Number(disponiveisReenvio || 0)
+      : (incluirEnviados ? totalResumo : disponiveisPadrao);
   const vaiTransferir = incluirEnviados
     ? Math.max(0, quantidadeNumerica - disponiveisPadrao)
     : 0;
@@ -476,9 +500,20 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
           </label>
 
           {incluirEnviados && (
-            <div className="leads-warning">
-              Mailing já enviados que entrarem nesta divisão serão transferidos para o novo vendedor e novo envio.
-            </div>
+            <>
+              <div className="leads-warning">Mailing já enviados que entrarem nesta divisão serão transferidos para o novo vendedor e novo envio.</div>
+              {etapa === 'sondagem' && (
+                <div className="leads-retry-status">
+                  <strong>Reenviar por status (opcional)</strong>
+                  <small>Os registros com os status selecionados serão reenviados e esses marcadores serão limpos para uma nova tentativa.</small>
+                  <div className="leads-seller-grid">
+                    {[['chamada_nao_atendida', 'Chamada não atendida'], ['cliente_recusou', 'Cliente recusou'], ['retorno_agendado', 'Retorno marcado']].map(([status, rotulo]) => (
+                      <label key={status} className="leads-check-card"><input type="checkbox" checked={statusReenvio.includes(status)} onChange={() => toggleStatusReenvio(status)} /><span>{rotulo}</span></label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <div className="leads-block-title">Vendedores</div>

@@ -743,6 +743,59 @@ function idsFromQuery(valor) {
 /**
  * Retorna json value expr a partir dos dados informados.
  */
+const STATUS_REENVIO_PERMITIDOS = new Set([
+  'cliente_recusou',
+  'chamada_nao_atendida',
+  'retorno_agendado'
+]);
+
+/** Normaliza os estados que podem ser reabertos em um reenvio de sondagem. */
+function normalizarStatusReenvio(valor) {
+  const valores = Array.isArray(valor) ? valor : String(valor || '').split(',');
+  return [...new Set(valores.map(item => String(item).trim()).filter(item => STATUS_REENVIO_PERMITIDOS.has(item)))];
+}
+
+/** Limita a consulta aos leads que possuem ao menos um dos estados escolhidos. */
+function aplicarStatusReenvio(query, statusReenvio) {
+  if (!statusReenvio.length) return;
+  query.where(builder => {
+    statusReenvio.forEach((status, index) => {
+      const metodo = index === 0 ? 'where' : 'orWhere';
+      if (status === 'cliente_recusou') builder[metodo]('cliente_recusou', true);
+      if (status === 'chamada_nao_atendida') builder[metodo]('chamada_nao_atendida', true);
+      if (status === 'retorno_agendado') builder[metodo](subquery => subquery.whereNotNull('retorno_agendado_em'));
+    });
+  });
+}
+
+/** Preserva o resultado original para as métricas mesmo depois de reabrir o lead. */
+function montarHistoricoPrimeiraLigacao(statusReenvio) {
+  const camposPorStatus = {
+    chamada_nao_atendida: ['chamada_nao_atendida = 1', 'chamada_nao_atendida_em', 'chamada_nao_atendida_por_id'],
+    cliente_recusou: ['cliente_recusou = 1', 'cliente_recusou_em', 'cliente_recusou_por_id'],
+    retorno_agendado: ['retorno_agendado_em IS NOT NULL', 'updated_at', 'retorno_agendado_por_id']
+  };
+  const selecionados = statusReenvio.map(status => [status, camposPorStatus[status]]).filter(([, campos]) => campos);
+  if (!selecionados.length) return {};
+
+  const caso = indice => selecionados.map(([status, campos]) => `WHEN ${campos[0]} THEN '${status}'`).join(' ');
+  const campo = indice => selecionados.map(([, campos]) => `WHEN ${campos[0]} THEN ${campos[indice]}`).join(' ');
+  return {
+    primeira_ligacao_status: db.raw(`COALESCE(primeira_ligacao_status, CASE ${caso(0)} ELSE NULL END)`),
+    primeira_ligacao_em: db.raw(`COALESCE(primeira_ligacao_em, CASE ${campo(1)} ELSE NULL END)`),
+    primeira_ligacao_usuario_id: db.raw(`COALESCE(primeira_ligacao_usuario_id, CASE ${campo(2)} ELSE NULL END)`)
+  };
+}
+
+/** Campos que voltam ao estado pendente quando o administrador reabre um status. */
+function montarLimpezaStatusReenvio(statusReenvio) {
+  const limpeza = {};
+  if (statusReenvio.includes('cliente_recusou')) Object.assign(limpeza, { cliente_recusou: false, cliente_recusou_motivo: null, cliente_recusou_em: null, cliente_recusou_por_id: null });
+  if (statusReenvio.includes('chamada_nao_atendida')) Object.assign(limpeza, { chamada_nao_atendida: false, chamada_nao_atendida_motivo: null, chamada_nao_atendida_em: null, chamada_nao_atendida_por_id: null });
+  if (statusReenvio.includes('retorno_agendado')) Object.assign(limpeza, { retorno_agendado_em: null, retorno_agendado_por_id: null });
+  return limpeza;
+}
+
 function getJsonValueExpr(coluna) {
   const pathSeguro = String(coluna || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   return `JSON_UNQUOTE(JSON_EXTRACT(dados_json, '$."${pathSeguro}"'))`;
@@ -858,6 +911,8 @@ function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
   const linhaId = Number(filtros.linha_id || 0);
   if (Number.isInteger(linhaId) && linhaId > 0) query.where('id', linhaId);
   if (opcoes.usuarioId) query.where('atribuido_para_id', Number(opcoes.usuarioId));
+  if (filtros.somente_enviados === true || filtros.somente_enviados === 'true') query.where(builder => builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id'));
+  aplicarStatusReenvio(query, normalizarStatusReenvio(filtros.status_reenvio));
   if (filtros.etapa) query.where('etapa_atual', String(filtros.etapa));
   if (filtros.somente_qualificados === true || filtros.somente_qualificados === 'true') {
     query.where('futuro_cliente', true).whereNull('futuro_cliente_excluido_em');
@@ -1165,11 +1220,16 @@ async function buscarIdsPorCriterios(dados, quantidadeTotal) {
   }
 
   const incluirEnviados = dados.incluir_enviados === true;
+  const statusReenvio = normalizarStatusReenvio(dados.status_reenvio);
   const query = LeadLinha.query().select('id');
   aplicarFiltrosQuery(query, dados.filtros || {});
 
   if (!incluirEnviados) {
     query.whereNull('envio_id');
+  }
+  if (statusReenvio.length) {
+    query.where(builder => builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id'));
+    aplicarStatusReenvio(query, statusReenvio);
   }
 
   const rows = await query
@@ -1188,10 +1248,12 @@ async function dividirLeads(dados, usuarioId) {
     : [];
   const quantidadeTotal = Number(dados.quantidade_total || 0);
   const etapa = dados.etapa === 'venda' ? 'venda' : 'sondagem';
+  const statusReenvio = normalizarStatusReenvio(dados.status_reenvio);
 
   if (!String(dados.nome || '').trim()) throw new Error('Informe um nome para o envio.');
   if (usuarioIds.length === 0) throw new Error('Selecione ao menos um vendedor.');
   if (quantidadeTotal <= 0) throw new Error('Quantidade de clientes invalida.');
+  if (statusReenvio.length && (!dados.incluir_enviados || etapa !== 'sondagem')) throw new Error('A selecao de status e permitida somente ao reenviar mailing de sondagem ja enviado.');
 
   const linhaIds = await buscarIdsPorCriterios(dados, quantidadeTotal);
   if (linhaIds.length < quantidadeTotal) {
@@ -1232,6 +1294,8 @@ async function dividirLeads(dados, usuarioId) {
     });
 
     let cursor = 0;
+    const limpezaStatus = montarLimpezaStatusReenvio(statusReenvio);
+    const historicoPrimeiraLigacao = montarHistoricoPrimeiraLigacao(statusReenvio);
     for (const usuarioAlvoId of usuarioIds) {
       const quantidade = Number(alocacao.alocacoes[usuarioAlvoId] || 0);
       const idsUsuario = linhaIds.slice(cursor, cursor + quantidade);
@@ -1251,6 +1315,8 @@ async function dividirLeads(dados, usuarioId) {
             envio_id: envio.id,
             etapa_atual: etapa,
             status_operacional: etapa === 'venda' ? 'distribuido_venda' : 'pendente',
+            ...historicoPrimeiraLigacao,
+            ...limpezaStatus,
             updated_at: new Date()
           });
       }
@@ -2299,10 +2365,10 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
 
 async function obterMetricasFuturosClientes(filtros = {}) {
   await reconciliarVendasFuturosClientesSemOrigem();
-  const usuarioResponsavel = 'COALESCE(ll.futuro_cliente_marcado_por_id, ll.retorno_agendado_por_id, ll.cliente_recusou_por_id, ll.chamada_nao_atendida_por_id)';
-  // A criacao do retorno nao tem data propria; enquanto ele estiver ativo, updated_at
-  // indica o momento em que o consultor o agendou.
-  const dataPrimeiroContato = 'COALESCE(ll.futuro_cliente_marcado_em, ll.cliente_recusou_em, ll.chamada_nao_atendida_em, ll.updated_at)';
+  const usuarioResponsavel = 'COALESCE(ll.primeira_ligacao_usuario_id, ll.futuro_cliente_marcado_por_id, ll.retorno_agendado_por_id, ll.cliente_recusou_por_id, ll.chamada_nao_atendida_por_id)';
+  // O histórico é preenchido no reenvio para que a métrica continue refletindo a
+  // primeira tentativa, mesmo que o status operacional da linha seja reaberto.
+  const dataPrimeiroContato = 'COALESCE(ll.primeira_ligacao_em, ll.futuro_cliente_marcado_em, ll.cliente_recusou_em, ll.chamada_nao_atendida_em, ll.updated_at)';
   const query = db('lead_linhas as ll')
     .leftJoin('lead_sondagens as ls', 'ls.lead_linha_id', 'll.id')
     .leftJoin('usuarios as u', function juntarUsuarioResponsavel() {
@@ -2312,7 +2378,8 @@ async function obterMetricasFuturosClientes(filtros = {}) {
       .where(subquery => subquery.where('ll.futuro_cliente', true).whereNull('ll.futuro_cliente_excluido_em'))
       .orWhereNotNull('ll.retorno_agendado_em')
       .orWhere('ll.cliente_recusou', true)
-      .orWhere('ll.chamada_nao_atendida', true));
+      .orWhere('ll.chamada_nao_atendida', true)
+      .orWhereNotNull('ll.primeira_ligacao_status'));
   if (filtros.usuario_id) query.whereRaw(`${usuarioResponsavel} = ?`, [Number(filtros.usuario_id)]);
   if (/^\d{4}-\d{2}-\d{2}$/.test(String(filtros.data_inicio || ''))) {
     query.whereRaw(`${dataPrimeiroContato} >= ?`, [`${filtros.data_inicio} 00:00:00`]);
@@ -2326,9 +2393,9 @@ async function obterMetricasFuturosClientes(filtros = {}) {
     .select(db.raw(`${usuarioResponsavel} as usuario_id`), 'u.nome as usuario_nome')
     .count({ ligacoes_realizadas: 'll.id' })
     .sum({ qualificados: db.raw('CASE WHEN ll.futuro_cliente = true THEN 1 ELSE 0 END') })
-    .sum({ retornos_agendados: db.raw('CASE WHEN ll.retorno_agendado_em IS NOT NULL THEN 1 ELSE 0 END') })
-    .sum({ clientes_recusaram: db.raw('CASE WHEN ll.cliente_recusou = true THEN 1 ELSE 0 END') })
-    .sum({ chamadas_nao_atendidas: db.raw('CASE WHEN ll.chamada_nao_atendida = true THEN 1 ELSE 0 END') })
+    .sum({ retornos_agendados: db.raw("CASE WHEN ll.retorno_agendado_em IS NOT NULL OR ll.primeira_ligacao_status = 'retorno_agendado' THEN 1 ELSE 0 END") })
+    .sum({ clientes_recusaram: db.raw("CASE WHEN ll.cliente_recusou = true OR ll.primeira_ligacao_status = 'cliente_recusou' THEN 1 ELSE 0 END") })
+    .sum({ chamadas_nao_atendidas: db.raw("CASE WHEN ll.chamada_nao_atendida = true OR ll.primeira_ligacao_status = 'chamada_nao_atendida' THEN 1 ELSE 0 END") })
     .sum({ potencial_mensal: db.raw('CASE WHEN ll.futuro_cliente = true THEN COALESCE(ls.valor_mensal_estimado, 0) ELSE 0 END') })
     .sum({ distribuidos_venda: db.raw("CASE WHEN ll.futuro_cliente = true AND ll.status_operacional IN ('distribuido_venda', 'vendido', 'perdido') THEN 1 ELSE 0 END") })
     .sum({ vendidos: db.raw("CASE WHEN ll.futuro_cliente = true AND (ll.status_operacional = 'vendido' OR ll.venda_id IS NOT NULL) THEN 1 ELSE 0 END") })
