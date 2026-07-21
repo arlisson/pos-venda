@@ -1184,7 +1184,11 @@ function AdminLeadsPage() {
     function handlePointerDown(event) {
       if (selecionadas.length === 0) return;
       const elemento = event.target instanceof Element ? event.target : null;
-      if (elemento?.closest('.lead-doc-card, .modal-overlay')) return;
+      if (elemento?.closest(
+        '.lead-doc-card, .modal-overlay, .admin-leads-toolbar, ' +
+        '.lead-filter-chips, .lead-schema-panel, .lead-results-meta, ' +
+        '.lead-summary-panel, .lead-table, button, input, select, textarea, a, label'
+      )) return;
       limparSelecao();
     }
 
