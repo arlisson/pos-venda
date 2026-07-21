@@ -620,7 +620,7 @@ function RegistrarVendaLeadModal({ linha, colunas, usuario, onClose, onConfirm }
   }
 
   return (
-    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <form className="modal lead-sale-modal" onSubmit={submit}>
         <div className="modal-header">
           <div className="modal-header-row">
@@ -690,7 +690,7 @@ function LeadAtualizacaoModal({ dados, salvando, erro, onClose, onSave }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={event => !salvando && event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <form className="modal lead-update-modal" onSubmit={submit}>
         <div className="modal-header">
           <div className="modal-header-row">
@@ -791,7 +791,7 @@ function BuscarTelefoneGoogleModal({ linha, onClose }) {
 
   const candidatos = resultado?.candidatos || (resultado?.place ? [resultado.place] : []);
   return (
-    <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={event => !buscando && event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay" style={{ zIndex: 1100 }}>
       <form className="modal lead-update-modal" onSubmit={buscar}>
         <div className="modal-header"><div className="modal-header-row"><div><div className="modal-client">Buscar telefone no Google</div><div className="modal-sub">Consulta do cliente selecionado</div></div><button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={onClose} disabled={buscando}><I.Close size={14} /></button></div></div>
         <div className="modal-body">
@@ -1021,7 +1021,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   }
 
   return (
-    <div className="modal-overlay" onClick={event => !salvando && event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="modal adicionar-lead-modal">
         <div className="modal-header">
           <div className="modal-header-row">
@@ -1902,7 +1902,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   }
 
   return (
-    <div className="modal-overlay" onClick={event => !salvando && event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <form className="modal adicionar-lead-modal" onSubmit={salvar}>
         <div className="modal-header">
           <div className="modal-header-row">
@@ -2086,7 +2086,7 @@ function ConfirmarFuturoClienteLixeiraModal({ linha, tipo, processando, onClose,
     : 'Este futuro cliente ficara na lixeira por 30 dias antes da exclusao definitiva.';
 
   return (
-    <div className="modal-overlay" onClick={event => !processando && event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="modal trash-confirm-modal">
         <div className="modal-header">
           <div className="modal-header-row">
@@ -2168,7 +2168,7 @@ function ExportarProdutividadeModal({ onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={event => !baixando && event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="modal exportar-produtividade-modal" role="dialog" aria-modal="true" aria-labelledby="exportar-produtividade-titulo">
         <div className="modal-header">
           <div className="modal-header-row">
@@ -2283,7 +2283,7 @@ function ConsultorPrimeiraLigacaoModal({ consultor, onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className="modal consultor-produtividade-modal" role="dialog" aria-modal="true" aria-labelledby="consultor-produtividade-titulo">
         <div className="modal-header">
           <div className="modal-header-row">
