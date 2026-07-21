@@ -44,13 +44,13 @@ const MAPEAMENTO_CLIENTES_ANTIGOS = {
 const PAGE_SIZE = 200;
 const OPS = {
   string: [
-    ['contains', 'Contém'],
+    ['contains', 'ContÃ©m'],
     ['exact', 'Exato'],
     ['starts', 'Comeca com'],
     ['ends', 'Termina com']
   ],
   number: [
-    ['contains', 'Contém'],
+    ['contains', 'ContÃ©m'],
     ['exact', 'Exato'],
     ['starts', 'Comeca com'],
     ['ends', 'Termina com']
@@ -140,7 +140,7 @@ function getValorColuna(linha, coluna) {
 function getStatusDistribuicao(linha) {
   return linha.atribuido_para_id || linha.atribuidoPara || linha.envio_id || linha.envio
     ? 'Enviado'
-    : 'Não enviado';
+    : 'NÃ£o enviado';
 }
 
 function isLeadVendaRecusada(linha) {
@@ -181,7 +181,7 @@ export function LeadStatusChips({ linha }) {
       {distribuicao === 'Enviado' ? (
         <span className="pill success lead-status-pill"><span className="pill-dot"></span>Enviado</span>
       ) : (
-        <span className="pill lead-status-pill muted">Não enviado</span>
+        <span className="pill lead-status-pill muted">NÃ£o enviado</span>
       )}
       {isLeadNaLixeira(linha) && (
         <span className="pill lead-status-pill muted">Na lixeira</span>
@@ -203,8 +203,8 @@ export function LeadStatusChips({ linha }) {
         </span>
       )}
       {Boolean(linha.chamada_nao_atendida) && (
-        <span className="pill warn lead-status-pill" title={linha.chamada_nao_atendida_motivo ? `Motivo: ${linha.chamada_nao_atendida_motivo}` : 'Chamada não atendida'}>
-          <span className="pill-dot"></span>Chamada não atendida
+        <span className="pill warn lead-status-pill" title={linha.chamada_nao_atendida_motivo ? `Motivo: ${linha.chamada_nao_atendida_motivo}` : 'Chamada nÃ£o atendida'}>
+          <span className="pill-dot"></span>Chamada nÃ£o atendida
         </span>
       )}
       {Boolean(linha.retorno_agendado_em) && (
@@ -463,11 +463,11 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
 
           <div className="leads-divide-summary">
             <div>
-              <span>Disponíveis agora</span>
+              <span>DisponÃ­veis agora</span>
               <strong>{formatarNumero(disponiveisPadrao)}</strong>
             </div>
             <div>
-              <span>Já enviados</span>
+              <span>JÃ¡ enviados</span>
               <strong>{formatarNumero(jaEnviados)}</strong>
             </div>
             <div>
@@ -486,8 +486,8 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
                 ? 'Contando futuros clientes qualificados e disponiveis...'
                 : `${formatarNumero(capacidadeAtual)} futuro(s) cliente(s) qualificado(s) estao disponiveis para esta distribuicao.`)
               : incluirEnviados
-              ? `Este envio pode usar mailing novo e transferir até ${formatarNumero(Math.min(vaiTransferir, jaEnviados))} registro(s) já enviados.`
-              : 'O envio automático começa no próximo registro ainda não enviado e ignora os mailing já distribuídos.'}
+              ? `Este envio pode usar mailing novo e transferir atÃ© ${formatarNumero(Math.min(vaiTransferir, jaEnviados))} registro(s) jÃ¡ enviados.`
+              : 'O envio automÃ¡tico comeÃ§a no prÃ³ximo registro ainda nÃ£o enviado e ignora os mailing jÃ¡ distribuÃ­dos.'}
           </div>
 
           <label className="leads-transfer-toggle">
@@ -498,24 +498,24 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
               disabled={etapa === 'venda'}
             />
             <span>
-              <strong>Incluir mailing já enviados</strong>
-              <small>Use para transferir mailing que já foram enviados para outro vendedor.</small>
+              <strong>Incluir mailing jÃ¡ enviados</strong>
+              <small>Use para transferir mailing que jÃ¡ foram enviados para outro vendedor.</small>
             </span>
           </label>
 
           {incluirEnviados && (
             <>
-              <div className="leads-warning">Mailing já enviados que entrarem nesta divisão serão transferidos para o novo vendedor e novo envio.</div>
+              <div className="leads-warning">Mailing jÃ¡ enviados que entrarem nesta divisÃ£o serÃ£o transferidos para o novo vendedor e novo envio.</div>
               {etapa === 'sondagem' && (
                 <div className="leads-retry-status">
                   <strong>Filtrar reenvio por status (opcional)</strong>
                   <small>Escolha se deseja reenviar somente os marcados ou manter os marcados fora deste novo envio.</small>
                   <div className="leads-retry-options">
                     <label className="leads-check-card"><input type="radio" name="modo-status-reenvio" checked={modoStatusReenvio === 'incluir'} onChange={() => setModoStatusReenvio('incluir')} /><span>Reenviar somente os marcados</span></label>
-                    <label className="leads-check-card"><input type="radio" name="modo-status-reenvio" checked={modoStatusReenvio === 'excluir'} onChange={() => setModoStatusReenvio('excluir')} /><span>{'Não reenviar os marcados'}</span></label>
+                    <label className="leads-check-card"><input type="radio" name="modo-status-reenvio" checked={modoStatusReenvio === 'excluir'} onChange={() => setModoStatusReenvio('excluir')} /><span>{'NÃ£o reenviar os marcados'}</span></label>
                   </div>
                   <div className="leads-retry-statuses">
-                    {[['chamada_nao_atendida', 'Chamada não atendida'], ['cliente_recusou', 'Cliente recusou'], ['retorno_agendado', 'Retorno marcado']].map(([status, rotulo]) => (
+                    {[['chamada_nao_atendida', 'Chamada nÃ£o atendida'], ['cliente_recusou', 'Cliente recusou'], ['retorno_agendado', 'Retorno marcado']].map(([status, rotulo]) => (
                       <label key={status} className="leads-check-card"><input type="checkbox" checked={statusReenvio.includes(status)} onChange={() => toggleStatusReenvio(status)} /><span>{rotulo}</span></label>
                     ))}
                   </div>
@@ -531,8 +531,8 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
               value={buscaUsuario}
               onChange={event => setBuscaUsuario(event.target.value)}
               onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }}
-              placeholder="Buscar usuário"
-              aria-label="Buscar usuário para receber o mailing"
+              placeholder="Buscar usuÃ¡rio"
+              aria-label="Buscar usuÃ¡rio para receber o mailing"
             />
           </label>
           <div className="leads-seller-grid">
@@ -544,12 +544,12 @@ function DividirModal({ totalLinhas, resumoLeads, colunas, vendedoras, filtrosDi
             ))}
           </div>
           {vendedorasFiltradas.length === 0 && (
-            <div className="leads-seller-empty">Nenhum usuário encontrado.</div>
+            <div className="leads-seller-empty">Nenhum usuÃ¡rio encontrado.</div>
           )}
 
           {manual && (
             <div className="leads-warning">
-              A divisão deixou {manual.sobra} cliente(s) sobrando. Distribua manualmente a sobra abaixo. Base: {manual.base} por vendedor.
+              A divisÃ£o deixou {manual.sobra} cliente(s) sobrando. Distribua manualmente a sobra abaixo. Base: {manual.base} por vendedor.
               <div className="leads-manual-grid">
                 {usuarios.map(id => {
                   const vendedor = vendedoras.find(item => item.id === id);
@@ -689,7 +689,7 @@ function MesclarColunasModal({ grupos, defaultSelecionadas, onClose, onConfirm }
 function CancelarEnviosModal({ planilha, destinatarios, carregando, erro, onClose, onConfirm }) {
   const [usuarioId, setUsuarioId] = useState('');
   if (!planilha) return null;
-  return (<div className="modal-overlay"><div className="modal leads-delete-modal"><div className="modal-header"><div className="modal-header-row"><div><div className="modal-client">Cancelar envio de mailing?</div><div className="modal-sub">As linhas canceladas voltam para a fila, sem apagar os status ou o histórico de contato.</div></div><button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={carregando}><I.Close size={14} /></button></div></div><div className="modal-body"><div className="form-field"><label>Cancelar para</label><select value={usuarioId} onChange={event => setUsuarioId(event.target.value)} disabled={carregando}><option value="">Todas as vendedoras ({destinatarios.reduce((total, item) => total + Number(item.total_linhas || 0), 0)} linhas)</option>{destinatarios.map(item => <option key={item.usuario_id} value={item.usuario_id}>{item.usuario_nome} ({item.total_linhas} linhas)</option>)}</select></div>{erro && <div className="alert-error">{erro}</div>}</div><div className="modal-footer"><button type="button" className="btn" onClick={onClose} disabled={carregando}>Voltar</button><button type="button" className="btn btn-danger" onClick={() => onConfirm(usuarioId || null)} disabled={carregando}><I.Close size={13} /> {carregando ? 'Cancelando...' : 'Cancelar envio'}</button></div></div></div>);
+  return (<div className="modal-overlay"><div className="modal leads-delete-modal"><div className="modal-header"><div className="modal-header-row"><div><div className="modal-client">Cancelar envio de mailing?</div><div className="modal-sub">As linhas canceladas voltam para a fila, sem apagar os status ou o histÃ³rico de contato.</div></div><button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={carregando}><I.Close size={14} /></button></div></div><div className="modal-body"><div className="form-field"><label>Cancelar para</label><select value={usuarioId} onChange={event => setUsuarioId(event.target.value)} disabled={carregando}><option value="">Todas as vendedoras ({destinatarios.reduce((total, item) => total + Number(item.total_linhas || 0), 0)} linhas)</option>{destinatarios.map(item => <option key={item.usuario_id} value={item.usuario_id}>{item.usuario_nome} ({item.total_linhas} linhas)</option>)}</select></div>{erro && <div className="alert-error">{erro}</div>}</div><div className="modal-footer"><button type="button" className="btn" onClick={onClose} disabled={carregando}>Voltar</button><button type="button" className="btn btn-danger" onClick={() => onConfirm(usuarioId || null)} disabled={carregando}><I.Close size={13} /> {carregando ? 'Cancelando...' : 'Cancelar envio'}</button></div></div></div>);
 }
 function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }) {
   if (!planilha) return null;
@@ -701,7 +701,7 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
           <div className="modal-header-row">
             <div>
               <div className="modal-client">Excluir planilha?</div>
-              <div className="modal-sub">Essa ação remove a planilha, suas linhas importadas e o mailing enviado aos usuários.</div>
+              <div className="modal-sub">Essa aÃ§Ã£o remove a planilha, suas linhas importadas e o mailing enviado aos usuÃ¡rios.</div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={carregando}>
               <I.Close size={14} />
@@ -717,9 +717,9 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
             <div>
               <strong>{planilha.nome}</strong>
               <span>{planilha.total_linhas || 0} {(planilha.total_linhas || 0) === 1 ? 'linha' : 'linhas'}</span>
-              <small>Se houver mailing distribuído, ele deixará de aparecer para os vendedores.</small>
+              <small>Se houver mailing distribuÃ­do, ele deixarÃ¡ de aparecer para os vendedores.</small>
               {planilha.status === 'processando' && (
-                <small>A planilha ainda está processando e o backend vai bloquear a exclusão.</small>
+                <small>A planilha ainda estÃ¡ processando e o backend vai bloquear a exclusÃ£o.</small>
               )}
             </div>
             <button type="button" className="leads-delete-trash-icon" disabled={carregando} onClick={onConfirm} title="Excluir planilha">
@@ -742,22 +742,22 @@ function ExcluirPlanilhaModal({ planilha, carregando, erro, onClose, onConfirm }
 }
 
 /**
- * Modal de detalhe de um lead para quem tem acesso à Planilha de Mailing.
+ * Modal de detalhe de um lead para quem tem acesso Ã  Planilha de Mailing.
  * Mostra os motivos das recusas registradas e permite alterar os estados
- * (reverter/marcar venda recusada, cliente recusou, chamada não atendida e
- * agendar retorno) mesmo sem ser o vendedor atribuído.
+ * (reverter/marcar venda recusada, cliente recusou, chamada nÃ£o atendida e
+ * agendar retorno) mesmo sem ser o vendedor atribuÃ­do.
  *
- * As colunas vindas da planilha são exibidas apenas para leitura: só os dados
- * que o usuário preenche no sistema podem ser alterados.
+ * As colunas vindas da planilha sÃ£o exibidas apenas para leitura: sÃ³ os dados
+ * que o usuÃ¡rio preenche no sistema podem ser alterados.
  */
 /**
  * Rotulos dos campos de motivo exibidos quando um estado e marcado no rascunho.
  * Apenas a venda recusada exige motivo (o backend rejeita motivo vazio).
  */
 const LEAD_CAMPOS_MOTIVO = [
-  { chave: 'vendaRecusada', label: 'Motivo da venda recusada (obrigatório)' },
+  { chave: 'vendaRecusada', label: 'Motivo da venda recusada (obrigatÃ³rio)' },
   { chave: 'clienteRecusou', label: 'Motivo da recusa do cliente (opcional)' },
-  { chave: 'chamadaNaoAtendida', label: 'Motivo da chamada não atendida (opcional)' }
+  { chave: 'chamadaNaoAtendida', label: 'Motivo da chamada nÃ£o atendida (opcional)' }
 ];
 
 /**
@@ -768,7 +768,7 @@ function motivosVazios() {
 }
 
 /**
- * Permite renomear um envio sem afetar os clientes já distribuidos.
+ * Permite renomear um envio sem afetar os clientes jÃ¡ distribuidos.
  */
 function EditarNomeEnvioModal({ envio, onClose, onSave }) {
   const [nome, setNome] = useState(envio.nome || '');
@@ -789,7 +789,7 @@ function EditarNomeEnvioModal({ envio, onClose, onSave }) {
     <div className="modal-overlay">
       <form className="modal leads-edit-envio-modal" onSubmit={salvar}>
         <div className="modal-header"><div className="modal-header-row">
-          <div><div className="modal-client">Editar nome do envio</div><div className="modal-sub">A distribuição dos clientes e o andamento dos vendedores não serão alterados.</div></div>
+          <div><div className="modal-client">Editar nome do envio</div><div className="modal-sub">A distribuiÃ§Ã£o dos clientes e o andamento dos vendedores nÃ£o serÃ£o alterados.</div></div>
           <button type="button" className="btn btn-icon btn-ghost" onClick={onClose} disabled={salvando} title="Fechar"><I.Close size={14} /></button>
         </div></div>
         <div className="modal-body"><label><span>Nome do envio</span><input autoFocus value={nome} maxLength={240} onChange={event => setNome(event.target.value)} disabled={salvando} /></label>{erro && <div className="alert-error">{erro}</div>}</div>
@@ -841,7 +841,7 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
   const motivos = useMemo(() => ([
     { ativo: original.vendaRecusada, label: 'Venda recusada', motivo: linha.venda_recusada_motivo, em: linha.venda_recusada_em },
     { ativo: original.clienteRecusou, label: 'Cliente recusou', motivo: linha.cliente_recusou_motivo, em: linha.cliente_recusou_em },
-    { ativo: original.chamadaNaoAtendida, label: 'Chamada não atendida', motivo: linha.chamada_nao_atendida_motivo, em: linha.chamada_nao_atendida_em }
+    { ativo: original.chamadaNaoAtendida, label: 'Chamada nÃ£o atendida', motivo: linha.chamada_nao_atendida_motivo, em: linha.chamada_nao_atendida_em }
   ].filter(item => item.ativo)), [linha, original]);
 
   // Chips espelham o rascunho para o admin ver o efeito antes de gravar.
@@ -913,7 +913,7 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
         if (resultado?.linha) ultima = resultado.linha;
       }
     } catch (error) {
-      setErro(error.message || 'Erro ao salvar as alterações.');
+      setErro(error.message || 'Erro ao salvar as alteraÃ§Ãµes.');
     } finally {
       // Mesmo em falha parcial as acoes anteriores ja persistiram: propaga o que
       // foi gravado para a tela nao continuar mostrando o estado antigo.
@@ -940,8 +940,8 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
               <div className="modal-client">Detalhe do cliente</div>
               <div className="modal-sub">
                 {linha.planilha?.nome || 'Lead'}
-                {linha.envio?.nome ? ` · ${linha.envio.nome}` : ''}
-                {linha.atribuidoPara?.nome ? ` · ${linha.atribuidoPara.nome}` : ''}
+                {linha.envio?.nome ? ` Â· ${linha.envio.nome}` : ''}
+                {linha.atribuidoPara?.nome ? ` Â· ${linha.atribuidoPara.nome}` : ''}
               </div>
             </div>
             <button type="button" className="btn btn-icon btn-ghost" aria-label="Fechar" onClick={tentarFechar} disabled={salvando}>
@@ -983,11 +983,11 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
 
             {rascunho.chamadaNaoAtendida ? (
               <button type="button" className="btn" disabled={salvando} onClick={() => alternar('chamadaNaoAtendida')}>
-                Reverter chamada não atendida
+                Reverter chamada nÃ£o atendida
               </button>
             ) : (
               <button type="button" className="btn btn-lead-warn" disabled={salvando} onClick={() => alternar('chamadaNaoAtendida')}>
-                Marcar chamada não atendida
+                Marcar chamada nÃ£o atendida
               </button>
             )}
           </div>
@@ -1016,10 +1016,10 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
                   <div key={item.label} className="lead-detalhe-motivos__item">
                     <span className="lead-detalhe-motivos__label">
                       {item.label}
-                      {em ? ` · ${em}` : ''}
+                      {em ? ` Â· ${em}` : ''}
                     </span>
                     <span className="lead-detalhe-motivos__texto">
-                      {item.motivo || 'Motivo não informado.'}
+                      {item.motivo || 'Motivo nÃ£o informado.'}
                     </span>
                   </div>
                 );
@@ -1051,7 +1051,7 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
           </div>
 
           <div className="lead-detalhe-campos">
-            <span className="lead-detalhe-estado__titulo">Informações</span>
+            <span className="lead-detalhe-estado__titulo">InformaÃ§Ãµes</span>
             {campos.length === 0 && <div className="muted">Sem colunas para este lead.</div>}
             {campos.map(campo => (
               <div key={campo.label} className="lead-detalhe-campo">
@@ -1067,7 +1067,7 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
         <div className="modal-footer">
           {confirmandoDescarte ? (
             <div className="lead-detalhe-descarte">
-              <span className="lead-detalhe-descarte__texto">Descartar alterações não salvas?</span>
+              <span className="lead-detalhe-descarte__texto">Descartar alteraÃ§Ãµes nÃ£o salvas?</span>
               <div className="lead-detalhe-descarte__acoes">
                 <button type="button" className="btn" onClick={() => setConfirmandoDescarte(false)}>Continuar editando</button>
                 <button type="button" className="btn btn-lead-danger" onClick={onClose}>Descartar</button>
@@ -1077,7 +1077,7 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
             <>
               {temAlteracoes && (
                 <span className="lead-detalhe-pendencias">
-                  {acoes.length === 1 ? '1 alteração não salva' : `${acoes.length} alterações não salvas`}
+                  {acoes.length === 1 ? '1 alteraÃ§Ã£o nÃ£o salva' : `${acoes.length} alteraÃ§Ãµes nÃ£o salvas`}
                 </span>
               )}
               <button type="button" className="btn" onClick={tentarFechar} disabled={salvando}>Fechar</button>
@@ -1087,7 +1087,7 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
                 disabled={salvando || !temAlteracoes || faltaMotivo}
                 onClick={salvar}
               >
-                {salvando ? 'Salvando...' : 'Salvar alterações'}
+                {salvando ? 'Salvando...' : 'Salvar alteraÃ§Ãµes'}
               </button>
             </>
           )}
@@ -1746,7 +1746,7 @@ function AdminLeadsPage() {
     });
     if (!resultado?.requires_manual_allocation) {
       setSucesso(resultado?.total_reenviados > 0
-        ? `Mailing enviado. ${resultado.total_reenviados} registro(s) já enviados foram transferidos.`
+        ? `Mailing enviado. ${resultado.total_reenviados} registro(s) jÃ¡ enviados foram transferidos.`
         : 'Mailing enviado para os vendedores.');
       setSelecionadas([...selecionadas]);
     }
@@ -1785,7 +1785,7 @@ function AdminLeadsPage() {
       setPagina(1);
       setModalExcluir(null);
       await carregarBase();
-      setSucesso('Planilha excluída com sucesso.');
+      setSucesso('Planilha excluÃ­da com sucesso.');
     } catch (error) {
       const mensagem = error.message || 'Erro ao excluir planilha.';
       setErroExclusao(mensagem);
@@ -1796,7 +1796,7 @@ function AdminLeadsPage() {
   }
 
   /**
-   * Aplica a linha atualizada (após uma ação do modal) na tabela e no modal aberto.
+   * Aplica a linha atualizada (apÃ³s uma aÃ§Ã£o do modal) na tabela e no modal aberto.
    */
   async function salvarNomeEnvio(nome) {
     if (!envioEditando) return;
@@ -2110,7 +2110,7 @@ function AdminLeadsPage() {
               aria-label="Status de envio"
             >
               <option value="todos">Todos os envios</option>
-              <option value="nao_enviados">Não enviados</option>
+              <option value="nao_enviados">NÃ£o enviados</option>
               <option value="parciais">Parcialmente enviados</option>
               <option value="concluidos">Todos enviados</option>
             </select>
@@ -2119,16 +2119,16 @@ function AdminLeadsPage() {
               min="0"
               value={filtroPlanilhas.totalMinimo}
               onChange={event => setFiltroPlanilhas(prev => ({ ...prev, totalMinimo: event.target.value }))}
-              placeholder="Mín. clientes"
-              aria-label="Quantidade mínima de clientes"
+              placeholder="MÃ­n. clientes"
+              aria-label="Quantidade mÃ­nima de clientes"
             />
             <input
               type="number"
               min="0"
               value={filtroPlanilhas.enviadosMinimo}
               onChange={event => setFiltroPlanilhas(prev => ({ ...prev, enviadosMinimo: event.target.value }))}
-              placeholder="Mín. enviados"
-              aria-label="Quantidade mínima enviada"
+              placeholder="MÃ­n. enviados"
+              aria-label="Quantidade mÃ­nima enviada"
             />
             {(filtroPlanilhas.nome || filtroPlanilhas.statusEnvio !== 'todos' || filtroPlanilhas.totalMinimo || filtroPlanilhas.enviadosMinimo) && (
               <button
@@ -2206,6 +2206,11 @@ function AdminLeadsPage() {
                     rotuloCompleto="Tudo enviado"
                   />
                 )}
+                <span className="lead-doc-card__tooltip" role="status">
+                  <span>Não atendidos: <b>{Number(planilha.total_nao_atendidos || 0)} - {planilha.total_linhas ? Math.round((Number(planilha.total_nao_atendidos || 0) / Number(planilha.total_linhas)) * 100) : 0}%</b></span>
+                  <span>Qualificados: <b>{Number(planilha.total_futuros || 0)} - {planilha.total_linhas ? Math.round((Number(planilha.total_futuros || 0) / Number(planilha.total_linhas)) * 100) : 0}%</b></span>
+                  <span>Recusados: <b>{Number(planilha.total_recusados || 0)} - {planilha.total_linhas ? Math.round((Number(planilha.total_recusados || 0) / Number(planilha.total_linhas)) * 100) : 0}%</b></span>
+                </span>
               </div>
             ))}
 
@@ -2263,7 +2268,7 @@ function AdminLeadsPage() {
           <div className="lead-filter-chips">
             {filtros.map(filtro => (
               <button key={filtro.id} className="filter-chip active" type="button" onClick={() => setFiltros(prev => prev.filter(item => item.id !== filtro.id))}>
-                {colunas.find(coluna => coluna.id === filtro.coluna)?.label || filtro.coluna}: {filtro.valor}{filtro.valor2 ? ` até ${filtro.valor2}` : ''} x
+                {colunas.find(coluna => coluna.id === filtro.coluna)?.label || filtro.coluna}: {filtro.valor}{filtro.valor2 ? ` atÃ© ${filtro.valor2}` : ''} x
               </button>
             ))}
           </div>
@@ -2280,7 +2285,7 @@ function AdminLeadsPage() {
                       <span>{coluna}</span>
                       <select value={planilha.schema_colunas?.[coluna] || 'string'} onChange={event => alterarTipo(planilha, coluna, event.target.value)}>
                         <option value="string">Texto</option>
-                        <option value="number">Número</option>
+                        <option value="number">NÃºmero</option>
                         <option value="date">Data</option>
                       </select>
                     </label>
@@ -2396,8 +2401,8 @@ function AdminLeadsPage() {
 
         <div className="lead-pagination">
           <button className="btn" type="button" disabled={pagina <= 1} onClick={() => setPagina(prev => Math.max(1, prev - 1))}>Anterior</button>
-          <span>Página {pagina} de {totalPaginas}</span>
-          <button className="btn" type="button" disabled={pagina >= totalPaginas} onClick={() => setPagina(prev => Math.min(totalPaginas, prev + 1))}>Próxima</button>
+          <span>PÃ¡gina {pagina} de {totalPaginas}</span>
+          <button className="btn" type="button" disabled={pagina >= totalPaginas} onClick={() => setPagina(prev => Math.min(totalPaginas, prev + 1))}>PrÃ³xima</button>
         </div>
       </div>
     </LayoutPrivado>
