@@ -5,6 +5,8 @@ import DocProgresso from '../../components/DocProgresso';
 import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
+  adminMarcarFuturoClienteLead,
+  adminMarcarVendaRecusadaLead,
   atualizarCampoLeadRecebido,
   excluirFuturoCliente,
   excluirFuturoClienteDefinitivo,
@@ -1825,6 +1827,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
   }, []);
 
   const usuario = useMemo(() => getUsuarioLocal(), []);
+  const comoAdmin = useMemo(() => temPermissao(usuario, 'gerenciar_leads'), [usuario]);
 
   const camposLead = useMemo(() => {
     const dados = linha.dados_json || {};
@@ -1839,7 +1842,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
     setSalvando(true);
     setErro('');
     try {
-      const resultado = await marcarVendaRecusadaLead(linha.id, motivoRecusa);
+      const resultado = await (comoAdmin ? adminMarcarVendaRecusadaLead : marcarVendaRecusadaLead)(linha.id, motivoRecusa);
       onAtualizado(resultado.linha);
     } catch (error) {
       setErro(error.message || 'Erro ao marcar venda recusada.');
@@ -1863,7 +1866,7 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
         return;
       }
 
-      const resultado = await marcarFuturoClienteLead(linha.id, {
+      const resultado = await (comoAdmin ? adminMarcarFuturoClienteLead : marcarFuturoClienteLead)(linha.id, {
         notas,
         retorno: retornoIso,
         razao_social: razaoSocial,
