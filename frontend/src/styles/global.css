@@ -159,6 +159,12 @@ input, select, textarea { font-family: inherit; }
 .external-links-popover .external-link:hover {
   transform: translateX(2px);
 }
+.external-links-popover .external-link--custom-color:hover {
+  color: var(--link-color);
+  border-color: color-mix(in srgb, var(--link-color) 30%, white);
+  background: color-mix(in srgb, var(--link-color) 8%, white);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--link-color) 12%, transparent);
+}
 .external-links-popover .external-link--gov:hover {
   color: #166534;
   border-color: #bbf7d0;

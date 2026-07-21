@@ -46,11 +46,20 @@ const FORM_SIMPLES = {
   ativo: true
 };
 
+const CORES_MARCADOR = {
+  vivo: '#5e0a8a',
+  tim: '#003a8c',
+  claro: '#c8102e',
+  gov: '#1f7a1f',
+  abr: '#0f766e'
+};
+
 const LINK_VAZIO = {
   chave: '',
   nome: '',
   url: '',
   dot: '',
+  cor: '#0f766e',
   ativo: true
 };
 
@@ -458,6 +467,7 @@ function ConfiguracoesPage() {
         nome: item.nome || '',
         url: item.url || '',
         dot: item.dot || '',
+        cor: item.cor || CORES_MARCADOR[item.dot] || '#0f766e',
         ativo: Boolean(item.ativo)
       });
       return;
@@ -672,6 +682,10 @@ function ConfiguracoesPage() {
             <label>Marcador</label>
             <input value={linkForm.dot} onChange={e => setLinkForm({ ...linkForm, dot: e.target.value })} placeholder="vivo, tim, claro, gov, abr" />
           </div>
+          <div className="form-field">
+            <label>Cor do marcador</label>
+            <input type="color" value={linkForm.cor} onChange={e => setLinkForm({ ...linkForm, cor: e.target.value })} aria-label="Cor do marcador" />
+          </div>
           <label className="config-toggle">
             <input type="checkbox" checked={linkForm.ativo} onChange={e => setLinkForm({ ...linkForm, ativo: e.target.checked })} />
             Ativo
@@ -689,7 +703,7 @@ function ConfiguracoesPage() {
 
         <div className="list-table config-table">
           <table>
-            <thead><tr><th>Nome</th><th>URL</th><th>Marcador</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>URL</th><th>Marcador</th><th>Cor</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {listaAtual.map(item => (
                 <tr key={item.id}>
@@ -707,6 +721,9 @@ function ConfiguracoesPage() {
                   </td>
                   <td data-label="URL" data-mobile-hidden="true" className="muted">{item.url}</td>
                   <td data-label="Marcador" data-mobile-hidden="true">{item.dot}</td>
+                  <td data-label="Cor" data-mobile-hidden="true">
+                    <span className="config-link-color" style={{ backgroundColor: item.cor || CORES_MARCADOR[item.dot] || undefined }} title={item.cor || 'Cor definida pelo marcador'} />
+                  </td>
                   <td data-label="Status" className="m-meta"><StatusPill ativo={item.ativo} /></td>
                   <td data-label="Acoes" className="row-actions m-actions">
                     <button type="button" className="btn btn-sm config-edit" onClick={() => editarItem(item)}><I.Edit size={13} /> Editar</button>
