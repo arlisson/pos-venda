@@ -7,7 +7,7 @@ import {
   excluirNota,
   listarNotasEntidade
 } from '../services/nota.service';
-import { formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../utils/datetime';
+import { formatUtcDateTime, localDateTimeInputToUtc, toLocalDateTimeInputFromUtc } from '../utils/datetime';
 
 const NOTA_VAZIA = { titulo: '', conteudo: '', retorno_agendado_para: null };
 
@@ -42,6 +42,14 @@ function montarDraftNota(nota = NOTA_VAZIA) {
   };
 }
 
+function montarPayloadNota(nota) {
+  return {
+    ...nota,
+    retorno_agendado_para: nota.retorno_agendado_para
+      ? localDateTimeInputToUtc(nota.retorno_agendado_para)
+      : nota.retorno_agendado_para
+  };
+}
 /**
  * Processa nota editor conforme as regras do dominio.
  */
@@ -203,7 +211,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
     setErro('');
 
     try {
-      const nota = await criarNotaEntidade(tipo, entidadeId, draftNova);
+      const nota = await criarNotaEntidade(tipo, entidadeId, montarPayloadNota(draftNova));
       const novasNotas = [nota, ...notas];
       setNotas(novasNotas);
       setCriando(false);
@@ -226,7 +234,7 @@ function NotasEntidadeTab({ tipo, entidadeId, pendingNotas = [], onPendingNotasC
     setErro('');
 
     try {
-      const nota = await atualizarNota(editandoId, draftEdicao);
+      const nota = await atualizarNota(editandoId, montarPayloadNota(draftEdicao));
       const novasNotas = notas.map(item => item.id === nota.id ? nota : item);
       setNotas(novasNotas);
       setEditandoId(null);

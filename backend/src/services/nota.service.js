@@ -2,6 +2,7 @@
  * Servico de notas vinculadas a entidades do sistema.
  */
 const db = require('../database/connection');
+const { parseUtcDateTime } = require('../utils/datetime');
 const clienteService = require('./cliente.service');
 const clienteSecretoService = require('./cliente-secreto.service');
 const vendaService = require('./venda.service');
@@ -44,9 +45,9 @@ function formatarDateTimeSQL(data = new Date()) {
 function parseDataHoraRetorno(valor) {
   if (!valor) return null;
 
-  const data = new Date(String(valor).trim().replace(' ', 'T'));
+  const data = parseUtcDateTime(valor);
 
-  if (Number.isNaN(data.getTime())) {
+  if (!data) {
     throw new Error('Data e hora de retorno invalidas.');
   }
 

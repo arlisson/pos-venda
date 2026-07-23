@@ -26,7 +26,7 @@ import {
   reverterChamadaNaoAtendidaLead,
   restaurarFuturoCliente
 } from '../../services/lead-planilha.service';
-import { formatDateValue, formatUtcDateTime, parseUtcDateTime } from '../../utils/datetime';
+import { formatDateValue, formatUtcDateTime, localDateTimeInputToUtc, parseUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
 import { calcularProgresso } from '../../utils/progresso';
 import { listarOperadoras } from '../../services/config.service';
 import { buscarGooglePlacesFuturosClientes, consultarCnpj } from '../../services/cnpj.service';
@@ -273,7 +273,7 @@ function montarVendaPreenchidaDoLead(linha, mapeamento, usuario) {
 function formatarDataHora(valor) {
   return formatUtcDateTime(valor, {
     day: '2-digit', month: '2-digit', year: '2-digit',
-    hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+    hour: '2-digit', minute: '2-digit'
   }, '-');
 }
 
@@ -447,40 +447,14 @@ function renderLeadStatus(linha, agora = Date.now()) {
  * Formata para datetime local para exibicao ou envio.
  */
 function formatarParaDatetimeLocal(valor) {
-  const data = parseUtcDateTime(valor);
-  if (!data) return '';
-
-  const pad = parte => String(parte).padStart(2, '0');
-  return [
-    data.getUTCFullYear(),
-    pad(data.getUTCMonth() + 1),
-    pad(data.getUTCDate())
-  ].join('-') + 'T' + [
-    pad(data.getUTCHours()),
-    pad(data.getUTCMinutes())
-  ].join(':');
+  return toLocalDateTimeInputFromUtc(valor);
 }
 
 /**
  * Retorna datetime retorno para iso no formato esperado pelo fluxo.
  */
 function datetimeRetornoParaIso(valor) {
-  if (!valor) return null;
-
-  const partes = String(valor).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
-  if (!partes) return null;
-
-  const [, ano, mes, dia, hora, minuto] = partes.map(Number);
-  // O input datetime-local representa o fuso da consultora. Converte para UTC
-  // somente ao enviar, preservando o horario que ela selecionou.
-  const data = new Date(ano, mes - 1, dia, hora, minuto);
-  const valida = data.getFullYear() === ano
-    && data.getMonth() === mes - 1
-    && data.getDate() === dia
-    && data.getHours() === hora
-    && data.getMinutes() === minuto;
-
-  return valida ? data.toISOString() : null;
+  return valor ? localDateTimeInputToUtc(valor) : null;
 }
 
 /**

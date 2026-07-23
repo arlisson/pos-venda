@@ -29,7 +29,7 @@ import {
   salvarLeadLinhas
 } from '../../services/lead-planilha.service';
 import { previewPlanilhaClientesAntigos } from '../../services/cliente-antigo.service';
-import { formatUtcDateTime, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
+import { formatUtcDateTime, localDateTimeInputToUtc, toLocalDateTimeInputFromUtc } from '../../utils/datetime';
 import './AdminLeadsPage.css';
 
 const MAPEAMENTO_CLIENTES_ANTIGOS = {
@@ -879,7 +879,7 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
         : () => adminReverterChamadaNaoAtendidaLead(linha.id));
     }
     if (rascunho.retorno !== original.retorno) {
-      lista.push(() => adminMarcarRetornoLead(linha.id, rascunho.retorno ? new Date(rascunho.retorno).toISOString() : null));
+      lista.push(() => adminMarcarRetornoLead(linha.id, rascunho.retorno ? localDateTimeInputToUtc(rascunho.retorno) : null));
     }
 
     return lista;
