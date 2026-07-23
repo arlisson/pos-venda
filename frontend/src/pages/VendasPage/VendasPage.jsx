@@ -330,6 +330,39 @@ function normalizarStatusFunilFiltros(etapas = []) {
 }
 
 /**
+ * Retorna o nome configurado para uma etapa do funil.
+ */
+function obterNomeEtapaFunil(codigo, etapas = []) {
+  if (!codigo) return '';
+  if (codigo === 'retorno') return 'Retorno';
+
+  const etapa = etapas.find(item => String(item.codigo || item.id) === String(codigo));
+  return etapa?.nome || etapa?.name || String(codigo);
+}
+
+/**
+ * Monta o resumo visual da etapa atual e das etapas percorridas pela venda.
+ */
+function obterResumoFunilVenda(venda, etapas = []) {
+  const etapaAtual = venda?.status_funil;
+  if (!etapaAtual) return null;
+
+  const codigos = (Array.isArray(venda.historico) ? venda.historico : [])
+    .map(item => item.status_novo)
+    .filter(Boolean);
+
+  if (!codigos.includes(etapaAtual)) codigos.push(etapaAtual);
+
+  const etapasPercorridas = [...new Set(codigos)]
+    .map(codigo => ({ codigo, nome: obterNomeEtapaFunil(codigo, etapas) }))
+    .filter(etapa => etapa.nome);
+
+  return {
+    atual: obterNomeEtapaFunil(etapaAtual, etapas),
+    etapasPercorridas
+  };
+}
+/**
  * Converte input date para o formato esperado.
  */
 function toInputDate(value) {
@@ -3552,6 +3585,7 @@ function VendasPage() {
                   vendas.map(venda => {
                     const solicitacaoAprovacao = obterSolicitacaoAprovacaoAtual(venda);
                     const vendaCancelada = Boolean(venda.cancelada_em);
+                    const resumoFunil = obterResumoFunilVenda(venda, etapasFunil);
 
                     return (
                     <tr
@@ -3589,6 +3623,26 @@ function VendasPage() {
                                 Recusada pelo ADM
                               </span>
                             )}
+                            {resumoFunil && (
+                              <span
+                                className="vendas-etapa-funil-badge"
+                                tabIndex={0}
+                                title={`Etapa atual: ${resumoFunil.atual}`}
+                              >
+                                <span className="vendas-etapa-funil-badge__dot" />
+                                Etapa: {resumoFunil.atual}
+                                <span className="vendas-etapa-funil-tooltip" role="tooltip">
+                                  <strong>Etapas j&aacute; percorridas</strong>
+                                  <ul>
+                                    {resumoFunil.etapasPercorridas.map(etapa => (
+                                      <li key={etapa.codigo} className={etapa.codigo === venda.status_funil ? 'is-current' : ''}>
+                                        {etapa.nome}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </span>
+                              </span>
+                            )}
                             {etapasFinaisSet.has(venda.status_funil) && (
                               <span className="vendas-cliente-concluidas-badge">
                                 <I.Check size={11} />
@@ -3608,6 +3662,15 @@ function VendasPage() {
                               <span className="vendas-retorno-badge">
                                 <I.AlertTriangle size={11} />
                                 Retorno
+                              </span>
+                            )}
+                            {venda.origem_lead_linha_id && (
+                              <span
+                                className="vendas-primeira-ligacao-badge"
+                                title={`Cliente qualificado na primeira liga\u00e7\u00e3o${venda.origemSondador?.nome ? ` por ${venda.origemSondador.nome}` : ''}`}
+                              >
+                                <I.User size={11} />
+                                1&ordf; liga&ccedil;&atilde;o{venda.origemSondador?.nome ? `: ${venda.origemSondador.nome}` : ''}
                               </span>
                             )}
                             {venda.cliente_excluido_permanentemente_em && (

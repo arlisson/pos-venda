@@ -216,6 +216,14 @@ class Venda extends Model {
           to: 'usuarios.id'
         }
       },
+      origemSondador: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Usuario,
+        join: {
+          from: 'vendas.origem_sondador_id',
+          to: 'usuarios.id'
+        }
+      },
       historico: {
         relation: Model.HasManyRelation,
         modelClass: VendaHistorico,

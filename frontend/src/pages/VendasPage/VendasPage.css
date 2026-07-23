@@ -403,6 +403,120 @@
   flex: 0 0 15px;
 }
 
+.vendas-etapa-funil-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid #7dd3fc;
+  border-radius: 999px;
+  background: #f0f9ff;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: help;
+  outline: none;
+}
+
+.vendas-etapa-funil-badge:focus-visible {
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.24);
+}
+
+.vendas-etapa-funil-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.vendas-etapa-funil-tooltip {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  display: none;
+  min-width: 190px;
+  max-width: 280px;
+  padding: 9px 11px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.22);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.vendas-etapa-funil-tooltip::before {
+  position: absolute;
+  top: -5px;
+  left: 14px;
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid #bae6fd;
+  border-left: 1px solid #bae6fd;
+  background: #0f172a;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.vendas-etapa-funil-tooltip strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #bae6fd;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.vendas-etapa-funil-tooltip ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vendas-etapa-funil-tooltip li::before {
+  display: inline-block;
+  width: 12px;
+  color: #7dd3fc;
+  content: 'o';
+}
+
+.vendas-etapa-funil-tooltip li.is-current {
+  color: #fef08a;
+  font-weight: 700;
+}
+
+.vendas-etapa-funil-tooltip li.is-current::before {
+  color: #fef08a;
+  content: '>';
+}
+
+.vendas-etapa-funil-badge:hover .vendas-etapa-funil-tooltip,
+.vendas-etapa-funil-badge:focus .vendas-etapa-funil-tooltip {
+  display: block;
+}
+.vendas-primeira-ligacao-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid #c4b5fd;
+  border-radius: 999px;
+  background: #f5f3ff;
+  color: #6d28d9;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
 .vendas-cliente-excluido-badge {
   display: inline-flex;
   align-items: center;
@@ -3457,6 +3571,8 @@ input.is-invalid {
   .vendas-page .list-table .vendas-cliente-concluidas-badge,
   .vendas-page .list-table .vendas-cancelada-badge,
   .vendas-page .list-table .vendas-retorno-badge,
+  .vendas-page .list-table .vendas-etapa-funil-badge,
+  .vendas-page .list-table .vendas-primeira-ligacao-badge,
   .vendas-page .list-table .vendas-cliente-excluido-badge {
     font-size: 10px;
     padding: 1px 6px;

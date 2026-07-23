@@ -1893,9 +1893,11 @@ async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
-    .withGraphFetched('[cliente.[operadoraAtual, operadorasAtuais.operadora], vendedora, vendedoras, operadora, tipoVenda, servico, criador, aprovacaoSolicitacoes]')
+    .withGraphFetched('[cliente.[operadoraAtual, operadorasAtuais.operadora], vendedora, vendedoras, origemSondador, operadora, tipoVenda, servico, criador, historico, aprovacaoSolicitacoes]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
+    .modifyGraph('origemSondador', builder => builder.select('id', 'nome'))
+    .modifyGraph('historico', builder => builder.select('id', 'venda_id', 'status_novo', 'created_at').whereNotNull('status_novo').orderBy('created_at', 'asc').orderBy('id', 'asc'))
     .modifyGraph('aprovacaoSolicitacoes', builder => builder.select('id', 'venda_id', 'status', 'motivos', 'created_at').whereNot('status', 'obsoleta').orderBy('id', 'desc'))
     .whereNull('excluido_em')
     .orderBy('data_venda', 'desc')
@@ -2699,9 +2701,10 @@ async function buscarVendaPorId(id, usuarioId) {
   const query = Venda.query()
     .findById(id)
     .whereNull('excluido_em')
-    .withGraphFetched('[cliente.[operadoraAtual, operadorasAtuais.operadora], vendedora, vendedoras, operadora, tipoVenda, servico, criador, historico.usuario, aprovacaoSolicitacoes]')
+    .withGraphFetched('[cliente.[operadoraAtual, operadorasAtuais.operadora], vendedora, vendedoras, origemSondador, operadora, tipoVenda, servico, criador, historico.usuario, aprovacaoSolicitacoes]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
+    .modifyGraph('origemSondador', builder => builder.select('id', 'nome'))
     .modifyGraph('historico', builder => builder.orderBy('created_at', 'desc').orderBy('id', 'desc'))
     .modifyGraph('historico.usuario', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('aprovacaoSolicitacoes', builder => builder.orderBy('id', 'desc'));
