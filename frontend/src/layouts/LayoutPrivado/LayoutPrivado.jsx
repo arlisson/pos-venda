@@ -1,5 +1,5 @@
 import { matchPath, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import Header from '../../components/Header/Header';
 import * as I from '../../components/Icons';
@@ -296,6 +296,7 @@ function LayoutPrivado({ children }) {
 
   const [alertasUrgentes, setAlertasUrgentes] = useState([]);
   const [aparenciasNotificacao, setAparenciasNotificacao] = useState([]);
+  const carregandoAlertasUrgentesRef = useRef(false);
   const [aprovacoesPendentes, setAprovacoesPendentes] = useState(0);
   const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
   const podeVerAprovacoes = usuario && temPermissao(usuario, 'vendas_aprovacoes_visualizar');
@@ -370,11 +371,20 @@ function LayoutPrivado({ children }) {
   function estiloAlerta(n) { const cor = aparenciasNotificacao.find(item => item.tipo === n.tipo)?.cor; return cor ? { '--tone-color': cor } : undefined; }
 
   async function carregarAlertasUrgentes() {
+    // Em producao a sincronizacao no servidor pode levar mais que o intervalo
+    // de consulta. Evita requisicoes concorrentes que atrasam a fila de popups.
+    if (carregandoAlertasUrgentesRef.current) return;
+
+    carregandoAlertasUrgentesRef.current = true;
     try {
       const dados = await listarNotificacoesUrgentes();
       setAlertasUrgentes(dados.notificacoes || []);
-    } catch {
-      setAlertasUrgentes([]);
+    } catch (error) {
+      // Conserva o ultimo resultado valido; apagar a pilha em uma falha temporaria
+      // torna o problema invisivel e faz parecer que a notificacao nao chegou.
+      console.error('Erro ao carregar alertas urgentes:', error);
+    } finally {
+      carregandoAlertasUrgentesRef.current = false;
     }
   }
 
