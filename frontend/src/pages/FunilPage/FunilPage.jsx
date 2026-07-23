@@ -569,6 +569,32 @@ function mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabe
 }
 
 /**
+ * Conta quantas entradas a venda teve em cada etapa do funil.
+ */
+function contarPassagensEtapas(venda, stage, stageLabels = STAGE_LABELS) {
+  const contagens = new Map();
+  const historico = Array.isArray(venda.historico) ? venda.historico : [];
+
+  historico.forEach(item => {
+    const codigo = item.status_novo;
+    if (!codigo) return;
+
+    contagens.set(codigo, (contagens.get(codigo) || 0) + 1);
+  });
+
+  // Vendas antigas podem não ter o registro de criação no histórico.
+  if (contagens.size === 0 && stage) {
+    contagens.set(stage, 1);
+  }
+
+  return [...contagens].map(([codigo, quantidade]) => ({
+    codigo,
+    nome: stageLabels[codigo] || codigo,
+    quantidade
+  }));
+}
+
+/**
  * Retorna etapas puladas a partir dos dados informados.
  */
 function getEtapasPuladas(item, stages) {
@@ -831,6 +857,7 @@ function mapVendaToSale(venda, stageLabels = STAGE_LABELS) {
     motivoCancelamento: venda.motivo_cancelamento || null,
     canceladaPorId: venda.cancelada_por_id || null,
     historico: mapHistoricoVenda(venda, stage, updated, created, sellerName, stageLabels),
+    passagensEtapas: contarPassagensEtapas(venda, stage, stageLabels),
   };
 }
 
@@ -1662,12 +1689,39 @@ function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, 
   const priorityInfo = getPriorityInfo(sale.priority);
   const cancelada = Boolean(sale.canceladaEm);
   const classeStatus = cancelada ? ' sale-card-cancelada' : finalizada ? ' sale-card-finalizada' : '';
+  const cardRef = useRef(null);
+  const [tooltipPosicao, setTooltipPosicao] = useState(null);
+
+  function exibirTooltip() {
+    const card = cardRef.current;
+    if (!card) return;
+
+    const rect = card.getBoundingClientRect();
+    const largura = 260;
+    const alturaEstimada = 130;
+    const esquerda = Math.min(
+      Math.max(rect.left + (rect.width / 2), (largura / 2) + 8),
+      window.innerWidth - (largura / 2) - 8
+    );
+    const abaixo = rect.bottom + alturaEstimada + 8 <= window.innerHeight;
+
+    setTooltipPosicao({
+      left: esquerda,
+      top: abaixo ? rect.bottom + 8 : Math.max(8, rect.top - alturaEstimada - 8)
+    });
+  }
+
   return (
+    <>
     <div
+      ref={cardRef}
       className={`sale-card sale-card-priority-${priorityInfo.key}${classeStatus}`}
       onClick={onClick}
+      onMouseEnter={exibirTooltip}
+      onMouseLeave={() => setTooltipPosicao(null)}
       title={cancelada && sale.motivoCancelamento ? `Cancelada: ${sale.motivoCancelamento}` : finalizada ? `Venda na etapa final - ${priorityInfo.label}` : priorityInfo.label}
     >
+
       {cancelada && (
         <span className="sale-card-cancelada-tag">Cancelada</span>
       )}
@@ -1766,6 +1820,25 @@ function SaleCard({ sale, finalizada = false, onClick, onEmail, gerandoEmailId, 
         </div>
       </div>
     </div>
+    {tooltipPosicao && createPortal(
+      <div
+        className="sale-stage-history-tooltip"
+        role="tooltip"
+        style={{ left: tooltipPosicao.left, top: tooltipPosicao.top }}
+      >
+        <strong>Passagens pelas etapas</strong>
+        <ul>
+          {sale.passagensEtapas.map(etapa => (
+            <li key={etapa.codigo}>
+              <span>{etapa.nome}</span>
+              <b>{etapa.quantidade}x</b>
+            </li>
+          ))}
+        </ul>
+      </div>,
+      document.body
+    )}
+    </>
   );
 }
 
