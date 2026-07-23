@@ -406,12 +406,27 @@ function LayoutPrivado({ children }) {
       .catch(() => {});
   }
 
+  /** Retorna se o alerta so pode ser encerrado por uma acao no registro. */
+  function alertaExigeAcao(notificacao) {
+    return [
+      'lead_retorno_pre',
+      'lead_retorno_due',
+      'futuro_cliente_retorno_pre',
+      'futuro_cliente_retorno_due',
+      'futuro_cliente_distribuido'
+    ].includes(notificacao?.tipo);
+  }
   /**
    * Fecha alerta urgente e limpa o estado relacionado.
    */
   function fecharAlertaUrgente(notificacao) {
     ocultarAlertaUrgente(notificacao);
-    confirmarPopupNotificacao(notificacao);
+
+    // Alertas operacionais voltam no proximo ciclo de atualizacao enquanto a
+    // condicao existir; somente uma acao valida no registro os encerra.
+    if (!alertaExigeAcao(notificacao)) {
+      confirmarPopupNotificacao(notificacao);
+    }
   }
 
   /**
@@ -515,7 +530,6 @@ function LayoutPrivado({ children }) {
     const rota = montarRotaAlerta(notificacao);
     ocultarAlertaUrgente(notificacao);
     navigate(rota);
-    confirmarPopupNotificacao(notificacao);
   }
 
   return (
@@ -612,7 +626,7 @@ function LayoutPrivado({ children }) {
               </div>
               <div className="urgent-alert-card__actions">
                 <button type="button" className="btn btn-sm" onClick={() => abrirVendaAlerta(alerta)}>
-                  {alerta.entidade === 'clientes' ? 'Abrir cliente' : 'Abrir'}
+                  {['lead_retorno_pre', 'lead_retorno_due', 'futuro_cliente_retorno_pre', 'futuro_cliente_retorno_due', 'futuro_cliente_distribuido'].includes(alerta.tipo) ? 'Atender agora' : (alerta.entidade === 'clientes' ? 'Abrir cliente' : 'Abrir')}
                 </button>
                 <button
                   type="button"

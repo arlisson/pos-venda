@@ -314,6 +314,10 @@ function parseDataHoraRetorno(valor) {
     throw criarHttpError(400, 'Data de retorno invalida.');
   }
 
+  if (data <= new Date()) {
+    throw criarHttpError(400, 'A data e hora do retorno deve estar no futuro.');
+  }
+
   return formatarDateTimeSQL(data);
 }
 
@@ -2893,6 +2897,8 @@ async function reverterClienteRecusouLead(linhaId, usuarioId, opcoes = {}) {
 async function marcarChamadaNaoAtendidaLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const motivo = String(dados.motivo || dados.chamada_nao_atendida_motivo || '').trim();
   if (motivo.length > 1000) throw criarHttpError(400, 'O motivo deve ter no maximo 1000 caracteres.');
+  const retorno = parseDataHoraRetorno(dados.retorno);
+  if (!retorno) throw criarHttpError(400, 'Informe a nova data e hora de retorno.');
 
   const linha = await LeadLinha.query().findById(Number(linhaId));
   if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
@@ -2907,8 +2913,13 @@ async function marcarChamadaNaoAtendidaLead(linhaId, usuarioId, dados = {}, opco
     chamada_nao_atendida: true,
     chamada_nao_atendida_motivo: motivo || null,
     chamada_nao_atendida_em: formatarDateTimeSQL(),
-    chamada_nao_atendida_por_id: usuarioId
+    chamada_nao_atendida_por_id: usuarioId,
+    retorno_agendado_em: retorno,
+    retorno_agendado_por_id: Number(opcoes.comoAdmin ? (linha.atribuido_para_id || usuarioId) : usuarioId)
   });
+
+  await desativarAlertasObrigatoriosDaLinha(linha.id);
+  await sincronizarNotificacoesRetornoLeads();
 
   return buscarLinhaFormatada(linha.id);
 }
@@ -2952,6 +2963,8 @@ async function marcarRetornoLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
 
   const retorno = parseDataHoraRetorno(dados.retorno);
 
+  await desativarAlertasObrigatoriosDaLinha(linha.id);
+
   await LeadLinha.query().patchAndFetchById(linha.id, {
     retorno_agendado_em: retorno,
     retorno_agendado_por_id: retorno ? donoId : null
@@ -2971,6 +2984,10 @@ async function sincronizarNotificacoesRetornoLeads() {
   } catch (error) {
     console.error('Erro ao sincronizar notificacoes de retorno de leads:', error);
   }
+}
+/** Encerra alertas obrigatorios somente depois de uma alteracao real da linha. */
+async function desativarAlertasObrigatoriosDaLinha(linhaId) {
+  await require('./notificacao.service').desativarAlertasObrigatoriosDaLinha(linhaId);
 }
 
 /**

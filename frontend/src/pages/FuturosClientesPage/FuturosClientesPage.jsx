@@ -471,12 +471,14 @@ function datetimeRetornoParaIso(valor) {
   if (!partes) return null;
 
   const [, ano, mes, dia, hora, minuto] = partes.map(Number);
-  const data = new Date(Date.UTC(ano, mes - 1, dia, hora, minuto));
-  const valida = data.getUTCFullYear() === ano
-    && data.getUTCMonth() === mes - 1
-    && data.getUTCDate() === dia
-    && data.getUTCHours() === hora
-    && data.getUTCMinutes() === minuto;
+  // O input datetime-local representa o fuso da consultora. Converte para UTC
+  // somente ao enviar, preservando o horario que ela selecionou.
+  const data = new Date(ano, mes - 1, dia, hora, minuto);
+  const valida = data.getFullYear() === ano
+    && data.getMonth() === mes - 1
+    && data.getDate() === dia
+    && data.getHours() === hora
+    && data.getMinutes() === minuto;
 
   return valida ? data.toISOString() : null;
 }
@@ -916,7 +918,12 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
     setSalvando(true);
     setErro('');
     try {
-      const resultado = await marcarChamadaNaoAtendidaLead(linha.id, motivoChamada.trim());
+      const retornoIso = datetimeRetornoParaIso(retornoAgendado);
+      if (!retornoIso) {
+        setErro('Antes de registrar a tentativa, marque uma nova data e hora de retorno.');
+        return;
+      }
+      const resultado = await marcarChamadaNaoAtendidaLead(linha.id, { motivo: motivoChamada.trim(), retorno: retornoIso });
       onLinhaAtualizada(resultado.linha);
       setFormChamadaAberto(false);
       setMotivoChamada('');
