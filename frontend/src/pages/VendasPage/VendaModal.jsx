@@ -3485,6 +3485,12 @@ function VendaModal({
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
   const [tipoBusca, setTipoBusca] = useState(() => sanitizarCnpj(form.cnpj).length === 11 ? 'cpf' : 'cnpj');
+  const [documentosPorTipo, setDocumentosPorTipo] = useState(() => {
+    const documento = form.cnpj || '';
+    return sanitizarCnpj(documento).length === 11
+      ? { cnpj: '', cpf: documento }
+      : { cnpj: documento, cpf: '' };
+  });
   const [aceiteMode, setAceiteMode] = useState(() => (form.dia_aceite_fixo || form.horario_aceite_fixo) ? 'fixo' : 'janela');
   const [clienteSolicitouQuantidadeAberta, setClienteSolicitouQuantidadeAberta] = useState(false);
   const [clienteSolicitouNumerosAberto, setClienteSolicitouNumerosAberto] = useState(false);
@@ -3737,6 +3743,7 @@ function VendaModal({
     setCnpjDados(null);
     setCnpjSugestoes({});
     setTipoBusca('cnpj');
+    setDocumentosPorTipo({ cnpj: '', cpf: '' });
     setAceiteMode('janela');
     setClienteSolicitouQuantidadeAberta(false);
     setClienteSolicitouNumerosAberto(false);
@@ -3755,6 +3762,10 @@ function VendaModal({
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
     const valorFormatado = formatarCampoVenda(campo, valor);
+
+    if (campo === 'cnpj') {
+      setDocumentosPorTipo(prev => ({ ...prev, [tipoBusca]: valorFormatado }));
+    }
 
     setForm(prev => {
       const proximo = {
@@ -3862,6 +3873,9 @@ function VendaModal({
     });
 
     setTipoBusca(documentoDigitos.length === 11 ? 'cpf' : 'cnpj');
+    setDocumentosPorTipo(documentoDigitos.length === 11
+      ? { cnpj: '', cpf: dadosCliente.cnpj || '' }
+      : { cnpj: dadosCliente.cnpj || '', cpf: '' });
     setCnpjStatus({ tipo: '', mensagem: '' });
     setCnpjDados(null);
     setCnpjSugestoes({});
@@ -4126,8 +4140,14 @@ function VendaModal({
    * Executa a acao de alterar tipo busca mantendo o estado da tela consistente.
    */
   function alterarTipoBusca(tipo) {
+    if (tipo === tipoBusca) return;
+
+    const documentoAtual = form.cnpj || '';
+    const documentoDestino = documentosPorTipo[tipo] || '';
+
     setTipoBusca(tipo);
-    setForm(prev => ({ ...prev, cnpj: '' }));
+    setDocumentosPorTipo(prev => ({ ...prev, [tipoBusca]: documentoAtual }));
+    setForm(prev => ({ ...prev, cnpj: documentoDestino }));
     setCnpjStatus({ tipo: '', mensagem: '' });
     setCnpjDados(null);
     setCnpjSugestoes({});
@@ -4832,7 +4852,12 @@ function VendaModal({
                             inputMode="numeric"
                             maxLength={14}
                             value={form[campo.name] ?? ''}
-                            onChange={e => { if (!somenteVisualizacao && !vendaBloqueadaParaUsuario) setForm(prev => ({ ...prev, cnpj: formatarCpf(e.target.value) })); }}
+                            onChange={e => {
+                              if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+                              const cpfFormatado = formatarCpf(e.target.value);
+                              setDocumentosPorTipo(prev => ({ ...prev, cpf: cpfFormatado }));
+                              setForm(prev => ({ ...prev, cnpj: cpfFormatado }));
+                            }}
                             placeholder="000.000.000-00"
                           />
                           {(() => {

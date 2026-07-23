@@ -6,6 +6,10 @@ import { apiDelete, apiGet, apiPost, apiPut } from './api';
 /**
  * Lista operadoras conforme os filtros e parametros informados.
  */
+export async function listarAparenciasNotificacao() { return apiGet('/config/notificacao-aparencias'); }
+export async function listarAparenciasNotificacaoAdmin() { return apiGet('/config/notificacao-aparencias'); }
+export async function atualizarAparenciaNotificacao(id, dados) { return apiPut('/config/admin/notificacao-aparencias/' + id, dados); }
+
 export async function listarOperadoras() {
   return apiGet('/config/operadoras');
 }

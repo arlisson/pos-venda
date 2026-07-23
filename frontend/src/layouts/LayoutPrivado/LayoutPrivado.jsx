@@ -7,7 +7,7 @@ import { buscarPerfil, getUsuarioLocal, logout, temPermissao } from '../../servi
 import VendaModal from '../../pages/VendasPage/VendaModal';
 import ClienteModal from '../../pages/Clientes/ClienteModal';
 import { listarClientesSelect } from '../../services/cliente.service';
-import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
+import { listarAparenciasNotificacao, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { criarVenda, listarAprovacoesVenda, listarVendedoras, obterReferenciasClientesVendas, uploadArquivoVenda } from '../../services/venda.service';
 import { criarNotaEntidade } from '../../services/nota.service';
 import {
@@ -295,6 +295,7 @@ function LayoutPrivado({ children }) {
   }
 
   const [alertasUrgentes, setAlertasUrgentes] = useState([]);
+  const [aparenciasNotificacao, setAparenciasNotificacao] = useState([]);
   const [aprovacoesPendentes, setAprovacoesPendentes] = useState(0);
   const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
   const podeVerAprovacoes = usuario && temPermissao(usuario, 'vendas_aprovacoes_visualizar');
@@ -364,6 +365,10 @@ function LayoutPrivado({ children }) {
   /**
    * Carrega alertas urgentes e atualiza o estado relacionado.
    */
+  async function carregarAparenciasNotificacao() { try { setAparenciasNotificacao(await listarAparenciasNotificacao()); } catch { setAparenciasNotificacao([]); } }
+  useEffect(() => { carregarAparenciasNotificacao(); window.addEventListener('pos-venda:notificacao-aparencias-atualizar', carregarAparenciasNotificacao); return () => window.removeEventListener('pos-venda:notificacao-aparencias-atualizar', carregarAparenciasNotificacao); }, []);
+  function estiloAlerta(n) { const cor = aparenciasNotificacao.find(item => item.tipo === n.tipo)?.cor; return cor ? { '--tone-color': cor } : undefined; }
+
   async function carregarAlertasUrgentes() {
     try {
       const dados = await listarNotificacoesUrgentes();
@@ -597,7 +602,7 @@ function LayoutPrivado({ children }) {
       {alertasUrgentes.length > 0 && (
         <div className="urgent-alert-stack" aria-live="assertive">
           {alertasUrgentes.map(alerta => (
-            <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card urgent-alert-card--${tomAlerta(alerta)}`}>
+            <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card urgent-alert-card--${tomAlerta(alerta)}`} style={estiloAlerta(alerta)}>
               <div className="urgent-alert-card__icon">
                 <I.AlertTriangle size={18} />
               </div>

@@ -3,6 +3,7 @@ import LayoutPrivado from '../../layouts/LayoutPrivado/LayoutPrivado';
 import * as I from '../../components/Icons';
 import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
+  atualizarAparenciaNotificacao,
   atualizarLinkExterno,
   atualizarOperadora,
   atualizarRegraComissao,
@@ -19,6 +20,7 @@ import {
   excluirServico,
   excluirTipoVenda,
   listarOperadoras,
+  listarAparenciasNotificacaoAdmin,
   listarLinksExternosAdmin,
   listarOperadorasAdmin,
   listarRegrasComissaoAdmin,
@@ -231,7 +233,8 @@ function ConfiguracoesPage() {
     tiposVenda: temPermissao(usuario, 'crud_tipos_venda'),
     servicos: temPermissao(usuario, 'crud_servicos'),
     links: temPermissao(usuario, 'crud_links'),
-    regrasComissao: temPermissao(usuario, 'crud_regras_comissao')
+    regrasComissao: temPermissao(usuario, 'crud_regras_comissao'),
+    notificacoes: temPermissao(usuario, 'configurar_notificacoes')
   };
 
   const abas = useMemo(() => [
@@ -240,12 +243,14 @@ function ConfiguracoesPage() {
     { id: 'servicos', label: 'Serviços', permitido: permissoes.servicos },
     { id: 'links', label: 'Links externos', permitido: permissoes.links },
     { id: 'regrasComissao', label: 'Comissões', permitido: permissoes.regrasComissao },
+    { id: 'notificacoes', label: 'Notificações', permitido: permissoes.notificacoes },
   ].filter(abaItem => abaItem.permitido), [
     permissoes.operadoras,
     permissoes.tiposVenda,
     permissoes.servicos,
     permissoes.links,
-    permissoes.regrasComissao
+    permissoes.regrasComissao,
+    permissoes.notificacoes
   ]);
 
   const [aba, setAba] = useState(abas[0]?.id || '');
@@ -254,7 +259,8 @@ function ConfiguracoesPage() {
     tiposVenda: [],
     servicos: [],
     links: [],
-    regrasComissao: []
+    regrasComissao: [],
+    notificacoes: []
   });
   const [formSimples, setFormSimples] = useState(FORM_SIMPLES);
   const [linkForm, setLinkForm] = useState(LINK_VAZIO);
@@ -265,6 +271,7 @@ function ConfiguracoesPage() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [carregando, setCarregando] = useState(true);
+  const [notificacaoSalvandoId, setNotificacaoSalvandoId] = useState(null);
 
   // Estado da aba "Clientes antigos" (upload de planilha).
   const [caArquivo, setCaArquivo] = useState(null);
@@ -410,7 +417,7 @@ function ConfiguracoesPage() {
     setCarregando(true);
 
     try {
-      const [operadoras, tiposVenda, servicos, links, regrasComissao] = await Promise.all([
+      const [operadoras, tiposVenda, servicos, links, regrasComissao, notificacoes] = await Promise.all([
         permissoes.operadoras
           ? listarOperadorasAdmin()
           : permissoes.regrasComissao
@@ -419,10 +426,11 @@ function ConfiguracoesPage() {
         permissoes.tiposVenda ? listarTiposVendaAdmin() : Promise.resolve([]),
         permissoes.servicos ? listarServicosAdmin() : Promise.resolve([]),
         permissoes.links ? listarLinksExternosAdmin() : Promise.resolve([]),
-        permissoes.regrasComissao ? listarRegrasComissaoAdmin() : Promise.resolve([])
+        permissoes.regrasComissao ? listarRegrasComissaoAdmin() : Promise.resolve([]),
+        permissoes.notificacoes ? listarAparenciasNotificacaoAdmin() : Promise.resolve([])
       ]);
 
-      setDados({ operadoras, tiposVenda, servicos, links, regrasComissao });
+      setDados({ operadoras, tiposVenda, servicos, links, regrasComissao, notificacoes });
     } catch (error) {
       setErro(error.message || 'Erro ao carregar configurações.');
     } finally {
@@ -936,6 +944,14 @@ function ConfiguracoesPage() {
     );
   }
 
+  async function salvarCorNotificacao(item, cor) {
+    setNotificacaoSalvandoId(item.id);
+    try { const atualizado = await atualizarAparenciaNotificacao(item.id, { cor }); setDados(prev => ({ ...prev, notificacoes: prev.notificacoes.map(atual => atual.id === item.id ? atualizado : atual) })); window.dispatchEvent(new CustomEvent('pos-venda:notificacao-aparencias-atualizar')); setSucesso('Cor da notificação atualizada com sucesso.'); } catch (error) { setErro(error.message || 'Erro ao atualizar a cor da notificação.'); } finally { setNotificacaoSalvandoId(null); }
+  }
+
+  function renderNotificacoes(listaAtual) {
+    return <div className="list-table config-table"><table><thead><tr><th>Tipo de notificação</th><th>Cor</th><th></th></tr></thead><tbody>{listaAtual.map(item => <tr key={item.id}><td className="m-primary">{item.nome}</td><td><input type="color" value={item.cor} onChange={event => salvarCorNotificacao(item, event.target.value)} disabled={notificacaoSalvandoId === item.id} /></td><td className="muted">{item.cor}</td></tr>)}</tbody></table></div>;
+  }
   function renderClientesAntigos() {
     const colunas = caColunasSelecionadas;
     const abasPlanilha = caPreview?.abas || [];
@@ -1160,6 +1176,8 @@ function ConfiguracoesPage() {
                 renderLinks(listaAtual)
               ) : aba === 'regrasComissao' ? (
                 renderRegrasComissao(listaAtual)
+              ) : aba === 'notificacoes' ? (
+                renderNotificacoes(listaAtual)
               ) : (
                 renderSimples(listaAtual)
               )}

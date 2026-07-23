@@ -1,4 +1,5 @@
 const LinkExterno = require('../models/LinkExterno');
+const NotificacaoAparencia = require('../models/NotificacaoAparencia');
 /**
  * Servico de configuracoes, cadastros auxiliares, funil e regras de comissao.
  */
@@ -51,6 +52,14 @@ function normalizarCorLink(cor) {
 /**
  * Lista operadoras conforme os filtros e parametros informados.
  */
+async function listarAparenciasNotificacao() {
+  return NotificacaoAparencia.query().select('id', 'tipo', 'nome', 'cor', 'created_at', 'updated_at').orderBy('nome', 'asc');
+}
+
+async function atualizarAparenciaNotificacao(id, dados) {
+  const cor = normalizarCorLink(dados.cor);
+  return NotificacaoAparencia.query().patchAndFetchById(id, { cor });
+}
 async function listarOperadoras() {
   return orderConfig(selectConfig(Operadora.query()));
 }
@@ -676,5 +685,7 @@ module.exports = {
   listarLinksExternosAtivos,
   criarLinkExterno,
   atualizarLinkExterno,
-  excluirLinkExterno
+  excluirLinkExterno,
+  listarAparenciasNotificacao,
+  atualizarAparenciaNotificacao
 };
