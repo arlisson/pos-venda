@@ -3049,9 +3049,9 @@ function VendasPage() {
   /**
    * Envia pos venda para processamento.
    */
-  async function enviarPosVenda(venda) {
+  async function enviarPosVenda(venda, dados = {}) {
     setErro('');
-    const resultado = await enviarVendaParaPosVenda(venda.id);
+    const resultado = await enviarVendaParaPosVenda(venda.id, dados);
     limparRotaModalVenda();
     setModalAberto(false);
     setModalVenda(null);

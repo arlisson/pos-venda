@@ -34,7 +34,6 @@ const STATUS_CLASS = {
 
 const MOTIVO_LABEL = {
   venda_compartilhada: 'Venda compartilhada',
-  cliente_com_venda_existente: 'Cliente com venda existente'
 };
 
 /**
@@ -329,7 +328,7 @@ function VendasAprovacoesPage() {
                     </td>
                   </tr>
                 ) : solicitacoesOrdenadas.map(solicitacao => (
-                  <tr key={solicitacao.id} className={String(solicitacao.id) === String(solicitacaoFoco) ? 'row-highlight' : ''}>
+                  <tr key={solicitacao.id} className={`clickable-row is-tappable ${String(solicitacao.id) === String(solicitacaoFoco) ? 'row-highlight' : ''}`} role="button" tabIndex={0} onClick={() => abrirVenda(solicitacao)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); abrirVenda(solicitacao); } }}>
                     <td data-label="Venda" className="m-primary">
                       <div className="vendas-table-name">
                         <div className="vendas-table-name__title">
@@ -341,6 +340,8 @@ function VendasAprovacoesPage() {
                           <dl>
                             <dt>Motivos</dt>
                             <dd>{(solicitacao.motivos || []).map(motivo => MOTIVO_LABEL[motivo] || motivo).join(', ') || '-'}</dd>
+                            <dt>Descrição</dt>
+                            <dd>{solicitacao.motivo_descricao || '-'}</dd>
                             <dt>Vendedoras</dt>
                             <dd>{nomesVendedoras(solicitacao.venda)}</dd>
                             <dt>Solicitante</dt>
@@ -386,22 +387,13 @@ function VendasAprovacoesPage() {
                     </td>
                     <td data-label="Acoes" className="aprovacoes-actions-col m-actions">
                       <div className="aprovacoes-actions">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost aprovacao-action-open"
-                          disabled={carregandoVendaId === solicitacao.venda_id}
-                          onClick={() => abrirVenda(solicitacao)}
-                        >
-                          {carregandoVendaId === solicitacao.venda_id ? 'Abrindo...' : 'Abrir venda'}
-                        </button>
-
-                        {podeDecidir && solicitacao.status === 'pendente' && (
+{podeDecidir && solicitacao.status === 'pendente' && (
                           <>
                             <button
                               type="button"
                               className="btn btn-sm btn-primary aprovacao-action-approve"
                               disabled={salvandoId === solicitacao.id}
-                              onClick={() => aprovar(solicitacao)}
+                              onClick={event => { event.stopPropagation(); aprovar(solicitacao); }}
                             >
                               Aprovar
                             </button>
@@ -409,7 +401,8 @@ function VendasAprovacoesPage() {
                               type="button"
                               className="btn btn-sm btn-ghost aprovacao-action-reject"
                               disabled={salvandoId === solicitacao.id}
-                              onClick={() => {
+                              onClick={event => {
+                                event.stopPropagation();
                                 setRecusando(solicitacao);
                                 setObservacao('');
                               }}
@@ -481,6 +474,7 @@ function VendasAprovacoesPage() {
           podeVerDocumentosVenda={podeVerDocumentosVenda}
           podeAdicionarDocumentosVenda={podeAdicionarDocumentosVenda}
           usuarioLogado={usuario}
+          motivoLiberacaoAprovacao={solicitacaoModal?.motivo_descricao || ''}
           initialTab="venda"
           initialProblemaId={null}
           modoEdicao={modalModoEdicao}

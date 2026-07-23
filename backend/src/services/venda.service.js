@@ -2954,7 +2954,7 @@ async function atualizarVenda(id, dados, usuarioId) {
       Object.prototype.hasOwnProperty.call(payload, 'cliente_id')
       || vendedorasIds !== null
     ) {
-      await vendaAprovacaoService.validarEnvioPosVenda(id, usuarioId, trx);
+      await vendaAprovacaoService.validarEnvioPosVenda(id, usuarioId, {}, trx);
     }
 
     return venda;
@@ -3267,7 +3267,7 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
 /**
  * Envia venda para pos venda para processamento.
  */
-async function enviarVendaParaPosVenda(id, usuarioId) {
+async function enviarVendaParaPosVenda(id, usuarioId, dados = {}) {
   const permitido = await usuarioPodeEditarVenda(id, usuarioId);
 
   if (!permitido) {
@@ -3289,7 +3289,7 @@ async function enviarVendaParaPosVenda(id, usuarioId) {
 
   const vendaAtualizada = await Venda.transaction(async trx => {
     if (!podeEnviarSemAprovacao) {
-      const validacaoAprovacao = await vendaAprovacaoService.validarEnvioPosVenda(id, usuarioId, trx);
+      const validacaoAprovacao = await vendaAprovacaoService.validarEnvioPosVenda(id, usuarioId, dados, trx);
 
       if (validacaoAprovacao.status !== 'liberada') {
         return validacaoAprovacao;

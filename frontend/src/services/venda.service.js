@@ -295,8 +295,8 @@ export async function atualizarVenda(id, dados) {
 /**
  * Envia venda para pos venda para processamento.
  */
-export async function enviarVendaParaPosVenda(id) {
-  return apiPost(`/vendas/${id}/enviar-pos-venda`, {});
+export async function enviarVendaParaPosVenda(id, dados = {}) {
+  return apiPost(`/vendas/${id}/enviar-pos-venda`, dados);
 }
 
 /**

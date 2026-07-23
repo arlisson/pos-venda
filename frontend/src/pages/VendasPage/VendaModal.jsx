@@ -3422,6 +3422,7 @@ function VendaModal({
   onSave,
   onSendToPosVenda,
   sendToPosVendaLabel = 'Enviar para o pós-venda',
+  motivoLiberacaoAprovacao = '',
   onCreateClient,
   onResolveClient,
   clientePreenchido = null,
@@ -3477,6 +3478,8 @@ function VendaModal({
   // Usar hook para persistência de rascunhos
   const { clearDraft } = useFormDraft(editando ? null : draftKey, form, editando);
   const [salvando, setSalvando] = useState(false);
+  const [liberacaoAberta, setLiberacaoAberta] = useState(false);
+  const [motivoLiberacao, setMotivoLiberacao] = useState('');
   const [erro, setErro] = useState('');
   const [cepStatus, setCepStatus] = useState('');
   const [cepRealStatus, setCepRealStatus] = useState('');
@@ -3568,6 +3571,17 @@ function VendaModal({
   }, [abaAtiva]);
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
   const enviadaPosVenda = Boolean(venda?.enviada_pos_venda_em || form.enviada_pos_venda_em);
+  const vendedorasDaVenda = Array.isArray(venda?.vendedoras) && venda.vendedoras.length > 0
+    ? venda.vendedoras
+    : (venda?.vendedora ? [venda.vendedora] : []);
+  const registroVenda = venda?.criado_em || venda?.created_at;
+  const dataRegistroVenda = registroVenda ? new Date(registroVenda) : null;
+  const limiteLiberacao = new Date();
+  limiteLiberacao.setMonth(limiteLiberacao.getMonth() - 24);
+  const requerLiberacao = vendedorasDaVenda.length > 1
+    && dataRegistroVenda
+    && !Number.isNaN(dataRegistroVenda.getTime())
+    && dataRegistroVenda > limiteLiberacao;
   const usuarioPosVenda = temPermissao(usuarioLogado, 'pos_venda');
   const usuarioAdmin = usuarioLogado?.role?.nome === 'admin';
   const usuarioEhResponsavelVenda = Boolean(venda && usuarioLogado?.id && (
@@ -4614,18 +4628,32 @@ function VendaModal({
   /**
    * Trata o evento de enviar pos venda.
    */
-  async function handleEnviarPosVenda() {
-    if (!venda?.id || salvando || enviadaPosVenda) return;
-
+  async function enviarParaPosVenda(dadosLiberacao = {}) {
     setErro('');
     setSalvando(true);
-
     try {
-      await onSendToPosVenda(venda);
+      await onSendToPosVenda(venda, dadosLiberacao);
     } catch (error) {
       setErro(error.message || 'Erro ao enviar venda para o pós-venda.');
       setSalvando(false);
     }
+  }
+
+  async function handleEnviarPosVenda() {
+    if (!venda?.id || salvando || enviadaPosVenda) return;
+    if (requerLiberacao) {
+      const nomes = vendedorasDaVenda.map(item => item.nome).filter(Boolean);
+      setMotivoLiberacao(nomes.length > 0 ? 'Venda compartilhada entre ' + nomes.join(' e ') + '.' : 'Venda compartilhada.');
+      setLiberacaoAberta(true);
+      return;
+    }
+    await enviarParaPosVenda();
+  }
+
+  async function confirmarLiberacao() {
+    if (!motivoLiberacao.trim() || salvando) return;
+    setLiberacaoAberta(false);
+    await enviarParaPosVenda({ motivo_descricao: motivoLiberacao });
   }
 
   return (
@@ -4699,6 +4727,14 @@ function VendaModal({
             <I.AlertTriangle size={14} /> Problema
           </button>
         </div>
+
+
+        {motivoLiberacaoAprovacao && (
+          <div className="venda-pos-venda-banner" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+            <I.Note size={14} />
+            <span><strong>Motivo da liberação:</strong> {motivoLiberacaoAprovacao}</span>
+          </div>
+        )}
 
         {erro && (abaAtiva === 'venda' || abaAtiva === 'solicitacao') && (
           <div className="venda-modal-alert" role="alert" aria-live="assertive">
@@ -5186,6 +5222,15 @@ function VendaModal({
           )}
         </div>
       </form>
+      {liberacaoAberta && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: 560 }}>
+            <div className="modal-header"><div className="modal-header-row"><div><div className="modal-client">Solicitar liberação</div><div className="modal-sub">Uma liberação ADM será solicitada para esta venda compartilhada.</div></div><button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={() => setLiberacaoAberta(false)}><I.Close size={14} /></button></div></div>
+            <div className="modal-body"><div className="form-field"><label>Motivo da liberação</label><textarea value={motivoLiberacao} onChange={event => setMotivoLiberacao(event.target.value)} rows={5} maxLength={5000} placeholder="Descreva o motivo da liberação" /></div></div>
+            <div className="modal-footer"><button type="button" className="btn" onClick={() => setLiberacaoAberta(false)}>Cancelar</button><button type="button" className="btn btn-primary" disabled={!motivoLiberacao.trim()} onClick={confirmarLiberacao}>Solicitar liberação</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -16,7 +16,7 @@ const STATUS_APROVADA = 'aprovada';
 const STATUS_RECUSADA = 'recusada';
 const STATUS_OBSOLETA = 'obsoleta';
 const MOTIVO_VENDA_COMPARTILHADA = 'venda_compartilhada';
-const MOTIVO_CLIENTE_COM_VENDA_EXISTENTE = 'cliente_com_venda_existente';
+const MESES_LIMITE_REGISTRO = 24;
 const TIPO_NOTIFICACAO_APROVACAO = 'venda_aprovacao_pendente';
 const PERMISSAO_VISUALIZAR = 'vendas_aprovacoes_visualizar';
 const PERMISSAO_DECIDIR = 'vendas_aprovacoes_decidir';
@@ -93,7 +93,6 @@ function nomeVenda(venda) {
  */
 function descreverMotivo(motivo) {
   if (motivo === MOTIVO_VENDA_COMPARTILHADA) return 'venda compartilhada';
-  if (motivo === MOTIVO_CLIENTE_COM_VENDA_EXISTENTE) return 'cliente com venda existente';
   return motivo;
 }
 
@@ -103,7 +102,34 @@ function descreverMotivo(motivo) {
 function montarMensagemMotivos(motivos) {
   return normalizarMotivos(motivos).map(descreverMotivo).join(' e ');
 }
+/**
+ * Verifica se a venda foi registrada ha menos de 24 meses.
+ */
+function vendaTemMenosDe24MesesDeRegistro(venda, agora = new Date()) {
+  const registro = venda?.criado_em || venda?.created_at;
+  const dataRegistro = registro ? new Date(registro) : null;
 
+  if (!dataRegistro || Number.isNaN(dataRegistro.getTime())) return false;
+
+  const limite = new Date(agora);
+  limite.setMonth(limite.getMonth() - MESES_LIMITE_REGISTRO);
+  return dataRegistro > limite;
+}
+
+/**
+ * Normaliza a descricao escrita pelo solicitante.
+ */
+function normalizarMotivoDescricao(valor, venda) {
+  const descricao = String(valor || '').trim().slice(0, 5000);
+  if (descricao) return descricao;
+
+  const nomes = (Array.isArray(venda?.vendedoras) ? venda.vendedoras : [])
+    .map(item => item.nome)
+    .filter(Boolean);
+  return nomes.length > 0
+    ? `Venda compartilhada entre ${nomes.join(' e ')}.`
+    : 'Venda compartilhada.';
+}
 /**
  * Registra historico venda no historico ou log.
  */
@@ -146,23 +172,10 @@ async function avaliarRequisitosVenda(vendaId, trx = null) {
     ? venda.vendedoras
     : (venda.vendedora_id ? [{ id: venda.vendedora_id }] : []);
 
-  if (vendedoras.length > 1) {
+  if (vendedoras.length > 1 && vendaTemMenosDe24MesesDeRegistro(venda)) {
     motivos.push(MOTIVO_VENDA_COMPARTILHADA);
   }
 
-  if (venda.cliente?.base_anterior_sistema) {
-    motivos.push(MOTIVO_CLIENTE_COM_VENDA_EXISTENTE);
-  } else if (venda.cliente_id) {
-    const vendaExistente = await Venda.query(trx)
-      .where('cliente_id', venda.cliente_id)
-      .whereNot('id', venda.id)
-      .whereNull('excluido_em')
-      .first();
-
-    if (vendaExistente) {
-      motivos.push(MOTIVO_CLIENTE_COM_VENDA_EXISTENTE);
-    }
-  }
 
   return { venda, motivos: normalizarMotivos(motivos) };
 }
@@ -280,7 +293,7 @@ async function desativarNotificacaoSolicitacao(solicitacaoId, trx = null) {
 /**
  * Valida envio pos venda e retorna o resultado esperado.
  */
-async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
+async function validarEnvioPosVenda(vendaId, usuarioId, dados = {}, trx = null) {
   const { venda, motivos } = await avaliarRequisitosVenda(vendaId, trx);
 
   if (!venda) {
@@ -302,7 +315,7 @@ async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
   if (atual && !motivosIguais(motivosAtuais, motivos)) {
     await obsoletarSolicitacoes(venda.id, trx);
     await desativarNotificacaoSolicitacao(atual.id, trx);
-    return criarSolicitacaoPendente(venda, motivos, usuarioId, trx);
+    return criarSolicitacaoPendente(venda, motivos, usuarioId, dados, trx);
   }
 
   if (atual?.status === STATUS_APROVADA) {
@@ -312,7 +325,7 @@ async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
   if (atual?.status === STATUS_RECUSADA) {
     await obsoletarSolicitacoes(venda.id, trx);
     await desativarNotificacaoSolicitacao(atual.id, trx);
-    return criarSolicitacaoPendente(venda, motivos, usuarioId, trx);
+    return criarSolicitacaoPendente(venda, motivos, usuarioId, dados, trx);
   }
 
   if (atual?.status === STATUS_PENDENTE) {
@@ -325,18 +338,19 @@ async function validarEnvioPosVenda(vendaId, usuarioId, trx = null) {
     };
   }
 
-  return criarSolicitacaoPendente(venda, motivos, usuarioId, trx);
+  return criarSolicitacaoPendente(venda, motivos, usuarioId, dados, trx);
 }
 
 /**
  * Cria solicitacao pendente com os dados informados.
  */
-async function criarSolicitacaoPendente(venda, motivos, usuarioId, trx = null) {
+async function criarSolicitacaoPendente(venda, motivos, usuarioId, dados = {}, trx = null) {
   const agora = formatarDateTimeSQL();
   const solicitacao = await VendaAprovacaoSolicitacao.query(trx).insertAndFetch({
     venda_id: venda.id,
     status: STATUS_PENDENTE,
     motivos: JSON.stringify(normalizarMotivos(motivos)),
+    motivo_descricao: normalizarMotivoDescricao(dados?.motivo_descricao, venda),
     solicitado_por_id: usuarioId,
     solicitado_em: agora
   });
