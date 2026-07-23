@@ -896,8 +896,9 @@ async function listarUrgentes(usuarioId) {
   const query = aplicarJoinDestinatarioUsuario(Notificacao.query().alias('n'), usuarioId)
     .where('n.ativa', true)
     .whereNull('nd.popup_visto_em')
-    // Mantem a fila estavel: alertas mais antigos seguem visiveis ate a resolucao.
-    .orderBy('n.updated_at', 'asc')
+    // A sincronizacao atualiza updated_at a cada consulta. A fila usa a criacao
+    // para manter os alertas estaveis ate que uma acao os resolva.
+    .orderBy('n.created_at', 'asc')
     .orderBy('n.id', 'asc')
     .limit(5)
     .select(
