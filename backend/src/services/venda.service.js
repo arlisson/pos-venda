@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servico principal de vendas, funil, relatorios, importacoes e pos-venda.
  */
 const Venda = require('../models/Venda');
@@ -38,6 +38,7 @@ const CAMPOS = [
   'numeros_ativados',
   'gb',
   'valores_unitarios_chips',
+  'cliente_da_base',
   'cliente_solicitou_servicos',
   'cliente_solicitou_bloqueio_qtd',
   'cliente_solicitou_cancelamento_qtd',
@@ -732,7 +733,7 @@ async function validarPermissaoCompartilharVenda({ usuarioId, vendedorasIds = []
 
   const podeCompartilhar = await usuarioTemPermissao(usuarioId, 'compartilhar_venda');
   if (!podeCompartilhar) {
-    const error = new Error('Você não tem permissão para compartilhar vendas com outras vendedoras.');
+    const error = new Error('VocÃª nÃ£o tem permissÃ£o para compartilhar vendas com outras vendedoras.');
     error.statusCode = 403;
     throw error;
   }
@@ -740,7 +741,7 @@ async function validarPermissaoCompartilharVenda({ usuarioId, vendedorasIds = []
   // compartilhar_venda: pode adicionar outros, mas deve se manter na venda
   const incluiSiMesmo = vendedorasIds.some(id => Number(id) === Number(usuarioId));
   if (!incluiSiMesmo) {
-    const error = new Error('Você precisa da permissão "Atribuir qualquer vendedor" para registrar vendas sem se incluir.');
+    const error = new Error('VocÃª precisa da permissÃ£o "Atribuir qualquer vendedor" para registrar vendas sem se incluir.');
     error.statusCode = 403;
     throw error;
   }
@@ -793,7 +794,7 @@ function validarCamposObrigatoriosCadastroVenda(payload, dados) {
   }
 
   if (normalizarClienteSolicitouServicos(dados.cliente_solicitou_servicos).length === 0) {
-    throw new Error('Informe o que o cliente solicitou (Bloqueio, Cancelamento ou Nenhum serviço).');
+    throw new Error('Informe o que o cliente solicitou (Bloqueio, Cancelamento ou Nenhum serviÃ§o).');
   }
 }
 
@@ -898,6 +899,10 @@ function montarPayload(dados) {
 
   if (payload.endereco_real_divergente !== undefined) {
     payload.endereco_real_divergente = Boolean(payload.endereco_real_divergente);
+  }
+
+  if (payload.cliente_da_base !== undefined && payload.cliente_da_base !== null) {
+    payload.cliente_da_base = payload.cliente_da_base === true || Number(payload.cliente_da_base) === 1;
   }
 
   if (payload.promessa_cumprida !== undefined && payload.promessa_cumprida !== null) {
@@ -1157,7 +1162,7 @@ async function validarProtocoloCliente(payload, usuarioId, vendaAtual = null) {
     }
   }
 
-  // Protocolo pertence a venda. Outras vendas do mesmo cliente podem ter protocolos próprios.
+  // Protocolo pertence a venda. Outras vendas do mesmo cliente podem ter protocolos prÃ³prios.
 }
 
 /**
@@ -2550,7 +2555,7 @@ function montarMotivosRetornoRelatorio(vendasRetorno) {
 
   vendasRetorno.forEach(venda => {
     const motivoBruto = (venda.motivo_retorno || '').trim();
-    const motivo = motivoBruto || 'Não informado';
+    const motivo = motivoBruto || 'NÃ£o informado';
     mapa.set(motivo, (mapa.get(motivo) || 0) + 1);
   });
 
@@ -2763,7 +2768,7 @@ async function criarVenda(dados, usuarioId) {
     const cliente = await buscarClienteParaPayloadVenda(payload.cliente_id, usuarioId);
 
     if (!cliente) {
-      throw new Error('Cliente não encontrado.');
+      throw new Error('Cliente nÃ£o encontrado.');
     }
 
     payload = aplicarDadosClienteNaVenda(payload, cliente);
@@ -2880,7 +2885,7 @@ async function atualizarVenda(id, dados, usuarioId) {
   const usuarioPodeOperarPosVenda = await usuarioTemPermissao(usuarioId, 'pos_venda');
 
   if (vendaAtual.enviada_pos_venda_em && !usuarioPodeOperarPosVenda) {
-    const error = new Error('Venda já enviada ao pós-venda. Apenas usuários com permissão de pós-venda podem editar.');
+    const error = new Error('Venda jÃ¡ enviada ao pÃ³s-venda. Apenas usuÃ¡rios com permissÃ£o de pÃ³s-venda podem editar.');
     error.statusCode = 403;
     throw error;
   }
@@ -2931,7 +2936,7 @@ async function atualizarVenda(id, dados, usuarioId) {
     const cliente = await buscarClienteParaPayloadVenda(payload.cliente_id, usuarioId, vendaAtual);
 
     if (!cliente) {
-      throw new Error('Cliente não encontrado.');
+      throw new Error('Cliente nÃ£o encontrado.');
     }
 
     payload = aplicarDadosClienteNaVenda(payload, cliente);
@@ -3009,7 +3014,7 @@ async function validarBarreiraConferencia(venda, statusDestino) {
     return null;
   }
 
-  return `Conclua as etapas de conferência antes de avançar: ${pendentes.map(etapa => etapa.titulo).join(', ')}.`;
+  return `Conclua as etapas de conferÃªncia antes de avanÃ§ar: ${pendentes.map(etapa => etapa.titulo).join(', ')}.`;
 }
 
 /**
@@ -3029,11 +3034,11 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   }
 
   if (venda.cancelada_em) {
-    return { status: 'invalid', message: 'Venda cancelada não pode ser movimentada no funil.' };
+    return { status: 'invalid', message: 'Venda cancelada nÃ£o pode ser movimentada no funil.' };
   }
 
   if (!venda.enviada_pos_venda_em) {
-    return { status: 'invalid', message: 'Envie a venda ao pós-venda antes de movimentar no funil.' };
+    return { status: 'invalid', message: 'Envie a venda ao pÃ³s-venda antes de movimentar no funil.' };
   }
 
   const agora = formatarDateTimeSQL();
@@ -3050,11 +3055,11 @@ async function atualizarStatusVenda(id, dados, usuarioId) {
   const retornoVoltandoParaOrigem = venda.status_funil === 'retorno' && status === (venda.status_anterior_retorno || 'aprovacao');
 
   if (!retornoVoltandoParaOrigem && !await usuarioTemPermissao(usuarioId, 'pos_venda')) {
-    return { status: 'forbidden', message: 'Apenas usuários com permissão de pós-venda podem movimentar vendas no funil.' };
+    return { status: 'forbidden', message: 'Apenas usuÃ¡rios com permissÃ£o de pÃ³s-venda podem movimentar vendas no funil.' };
   }
 
   if (!retornoVoltandoParaOrigem && !await validarStatusFunil(status)) {
-    return { status: 'invalid', message: 'Status do funil inválido.' };
+    return { status: 'invalid', message: 'Status do funil invÃ¡lido.' };
   }
 
   if (!FUNIL_PRIORIDADES.includes(prioridade)) {

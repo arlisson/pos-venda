@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+﻿import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
@@ -75,6 +75,7 @@ const VENDA_VAZIA = {
   gb: '',
   valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' }],
   tipos_servico: ['novo'],
+  cliente_da_base: false,
   valor_total: '',
   cliente_solicitou_servicos: [],
   cliente_solicitou_bloqueio_qtd: '',
@@ -297,6 +298,7 @@ const CAMPOS = [
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
   { name: 'tipos_servico', label: 'Serviço', type: 'serviceType', span: true },
+  { name: 'cliente_da_base', label: 'Classificação do cliente', type: 'clientBase', span: true },
   { name: 'cliente_solicitou_servicos', label: 'Cliente solicitou', type: 'clientRequested', span: true, required: true },
   { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitários', type: 'chips', span: true },
   { name: 'numeros_ativados', label: 'Números ativados', type: 'activatedNumbers', span: true },
@@ -1200,6 +1202,9 @@ function normalizarVenda(venda) {
     tipos_servico: Array.isArray(venda.tipos_servico) && venda.tipos_servico.length > 0
       ? venda.tipos_servico
       : inferirTiposServicoDeChips(parseItensChips(venda.valores_unitarios_chips, venda.gb, tipoLinhaPadrao)),
+    cliente_da_base: venda.cliente_da_base === null || venda.cliente_da_base === undefined
+      ? null
+      : (venda.cliente_da_base === true || Number(venda.cliente_da_base) === 1),
     numeros_portados: parseNumerosPortados(venda.numeros_portados),
     numeros_ativados: parseNumerosAtivados(venda.numeros_ativados),
     cliente_solicitou_servicos: parseClienteSolicitouServicos(venda.cliente_solicitou_servicos),
@@ -1354,6 +1359,25 @@ function TiposServicoInput({ value, onChange }) {
 }
 
 /**
+ * Renderiza a classificação do cliente em relação à base da operadora.
+ */
+function ClienteDaBaseInput({ value, onChange, disabled }) {
+  const clienteDaBase = value === true || Number(value) === 1;
+
+  return (
+    <label className={`tipos-servico-opcao cliente-base-opcao${clienteDaBase ? ' tipos-servico-opcao--ativo' : ''}`}>
+      <input type="checkbox" checked={clienteDaBase} disabled={disabled} onChange={event => onChange(event.target.checked)} />
+      <span>Cliente da base</span>
+      <span className="cliente-base-ajuda" tabIndex={0} aria-label="Entenda a classificação do cliente">
+        ?
+        <span className="cliente-base-ajuda__tooltip" role="tooltip">
+          Cliente da base: já possui o mesmo produto na operadora, seja por portabilidade ou novo. Cliente de fora da base: não possui o mesmo produto.
+        </span>
+      </span>
+    </label>
+  );
+}
+/**
  * Renderiza itens chips input.
  */
 function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 0, tiposServico = ['novo'] }) {
@@ -1489,7 +1513,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
                   value={item.vendedora_id || ''}
                   onChange={val => atualizarItem(index, 'vendedora_id', val)}
                   options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
-                  placeholder="—"
+                  placeholder="�"
                 />
               </label>
             )}
@@ -4998,6 +5022,12 @@ function VendaModal({
                       vendedoras={vendedorasOpcoesModal.filter(v => (form.vendedoras || []).includes(String(v.id)))}
                       limiteQuantidade={form.quantidade_linhas}
                       tiposServico={form.tipos_servico}
+                    />
+                  ) : campo.type === 'clientBase' ? (
+                    <ClienteDaBaseInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
                     />
                   ) : campo.type === 'clientRequested' ? (
                     <ClienteSolicitouInput
