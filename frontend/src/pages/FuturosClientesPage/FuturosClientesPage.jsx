@@ -892,12 +892,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
     setSalvando(true);
     setErro('');
     try {
-      const retornoIso = datetimeRetornoParaIso(retornoAgendado);
-      if (!retornoIso) {
-        setErro('Antes de registrar a tentativa, marque uma nova data e hora de retorno.');
-        return;
-      }
-      const resultado = await marcarChamadaNaoAtendidaLead(linha.id, { motivo: motivoChamada.trim(), retorno: retornoIso });
+      const resultado = await marcarChamadaNaoAtendidaLead(linha.id, { motivo: motivoChamada.trim() });
       onLinhaAtualizada(resultado.linha);
       setFormChamadaAberto(false);
       setMotivoChamada('');

@@ -2897,10 +2897,7 @@ async function reverterClienteRecusouLead(linhaId, usuarioId, opcoes = {}) {
 async function marcarChamadaNaoAtendidaLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const motivo = String(dados.motivo || dados.chamada_nao_atendida_motivo || '').trim();
   if (motivo.length > 1000) throw criarHttpError(400, 'O motivo deve ter no maximo 1000 caracteres.');
-  const retorno = parseDataHoraRetorno(dados.retorno);
-  if (!retorno) throw criarHttpError(400, 'Informe a nova data e hora de retorno.');
-
-  const linha = await LeadLinha.query().findById(Number(linhaId));
+const linha = await LeadLinha.query().findById(Number(linhaId));
   if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
   if (!opcoes.comoAdmin && Number(linha.atribuido_para_id) !== Number(usuarioId)) {
     throw criarHttpError(403, 'Lead nao encontrado ou atribuido a outro usuario.');
@@ -2914,8 +2911,6 @@ async function marcarChamadaNaoAtendidaLead(linhaId, usuarioId, dados = {}, opco
     chamada_nao_atendida_motivo: motivo || null,
     chamada_nao_atendida_em: formatarDateTimeSQL(),
     chamada_nao_atendida_por_id: usuarioId,
-    retorno_agendado_em: retorno,
-    retorno_agendado_por_id: Number(opcoes.comoAdmin ? (linha.atribuido_para_id || usuarioId) : usuarioId)
   });
 
   await desativarAlertasObrigatoriosDaLinha(linha.id);
