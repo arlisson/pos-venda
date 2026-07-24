@@ -1,6 +1,7 @@
 const app = require('./app');
 const vendaArquivoService = require('./services/venda-arquivo.service');
 const arquivoService = require('./services/arquivo.service');
+const resumoVendasTelegramService = require('./services/resumo-vendas-telegram.service');
 
 const PORT = process.env.APP_PORT || 3000;
 
@@ -29,3 +30,4 @@ function limparArquivosVencidos() {
 
 setTimeout(limparArquivosVencidos, 60 * 1000);
 setInterval(limparArquivosVencidos, 24 * 60 * 60 * 1000);
+resumoVendasTelegramService.iniciarAgendamentoResumoVendas();

@@ -70,4 +70,11 @@ async function enviarFuturoCliente(linha) {
   return { enviado: true, message_id: resultado?.message_id || null };
 }
 
-module.exports = { enviarFuturoCliente, chamarApi, _internals: { formatarDataHora, formatarMoeda, montarMensagemFuturoCliente } };
+async function enviarResumoVendas(texto) {
+  const chatId = String(process.env.TELEGRAM_FUTUROS_CLIENTES_CHAT_ID || '').trim();
+  if (!tokenConfigurado() || !chatId) return { enviado: false, motivo: 'telegram_nao_configurado' };
+  const resultado = await chamarApi('sendMessage', { chat_id: chatId, text: String(texto || ''), disable_web_page_preview: true });
+  return { enviado: true, message_id: resultado?.message_id || null };
+}
+
+module.exports = { enviarFuturoCliente, enviarResumoVendas, chamarApi, _internals: { formatarDataHora, formatarMoeda, montarMensagemFuturoCliente } };
