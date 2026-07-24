@@ -416,27 +416,16 @@ function LayoutPrivado({ children }) {
       .catch(() => {});
   }
 
-  /** Retorna se o alerta so pode ser encerrado por uma acao no registro. */
-  function alertaExigeAcao(notificacao) {
-    return [
-      'lead_retorno_pre',
-      'lead_retorno_due',
-      'futuro_cliente_retorno_pre',
-      'futuro_cliente_retorno_due',
-      'futuro_cliente_distribuido'
-    ].includes(notificacao?.tipo);
-  }
   /**
    * Fecha alerta urgente e limpa o estado relacionado.
    */
   function fecharAlertaUrgente(notificacao) {
     ocultarAlertaUrgente(notificacao);
 
-    // Alertas operacionais voltam no proximo ciclo de atualizacao enquanto a
-    // condicao existir; somente uma acao valida no registro os encerra.
-    if (!alertaExigeAcao(notificacao)) {
-      confirmarPopupNotificacao(notificacao);
-    }
+    // Marca o popup como visto no servidor para o alerta nao voltar no proximo
+    // ciclo de atualizacao. Uma nova condicao no registro (ex.: retorno que passa
+    // de "em breve" para "vencido") gera outra notificacao e reaparece normalmente.
+    confirmarPopupNotificacao(notificacao);
   }
 
   /**
