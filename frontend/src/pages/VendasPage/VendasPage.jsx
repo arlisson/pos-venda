@@ -3682,6 +3682,25 @@ function VendasPage() {
                                 Cliente excluído
                               </span>
                             )}
+                            {(venda.possui_doc_na_casa === true || Number(venda.possui_doc_na_casa) === 1) && (
+                              <span className="vendas-doc-casa-badge" title="Venda possui documento físico na casa">
+                                <I.Folder size={11} />
+                                Possui doc na casa
+                              </span>
+                            )}
+                            {Number(venda.total_arquivos) > 0 && (
+                              <span className="vendas-doc-sistema-badge" title="Venda possui documentos anexados no sistema">
+                                <I.Check size={11} />
+                                Possui doc no sistema
+                              </span>
+                            )}
+                            {!(venda.possui_doc_na_casa === true || Number(venda.possui_doc_na_casa) === 1)
+                              && !(Number(venda.total_arquivos) > 0) && (
+                              <span className="vendas-doc-sem-badge" title="Venda sem documento na casa nem anexado no sistema">
+                                <I.AlertTriangle size={11} />
+                                Venda sem doc
+                              </span>
+                            )}
                           </div>
                           <span>
                             {venda.cliente_excluido_permanentemente_nome

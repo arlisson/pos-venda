@@ -39,6 +39,7 @@ const CAMPOS = [
   'gb',
   'valores_unitarios_chips',
   'cliente_da_base',
+  'possui_doc_na_casa',
   'cliente_solicitou_servicos',
   'cliente_solicitou_bloqueio_qtd',
   'cliente_solicitou_cancelamento_qtd',
@@ -903,6 +904,10 @@ function montarPayload(dados) {
 
   if (payload.cliente_da_base !== undefined && payload.cliente_da_base !== null) {
     payload.cliente_da_base = payload.cliente_da_base === true || Number(payload.cliente_da_base) === 1;
+  }
+
+  if (payload.possui_doc_na_casa !== undefined && payload.possui_doc_na_casa !== null) {
+    payload.possui_doc_na_casa = payload.possui_doc_na_casa === true || Number(payload.possui_doc_na_casa) === 1;
   }
 
   if (payload.promessa_cumprida !== undefined && payload.promessa_cumprida !== null) {
@@ -1898,6 +1903,10 @@ async function usuarioPodeEditarVenda(id, usuarioId, opcoes = {}) {
 async function listarVendas(filtros = {}, usuarioId) {
   const escopo = await buscarEscopoVendas(usuarioId);
   const query = Venda.query()
+    .select('vendas.*')
+    .select(Venda.knex().raw(
+      '(SELECT COUNT(*) FROM venda_arquivos va WHERE va.venda_id = vendas.id AND va.excluido_em IS NULL) as total_arquivos'
+    ))
     .withGraphFetched('[cliente.[operadoraAtual, operadorasAtuais.operadora], vendedora, vendedoras, origemSondador, operadora, tipoVenda, servico, criador, historico, aprovacaoSolicitacoes]')
     .modifyGraph('vendedora', builder => builder.select('id', 'nome', 'email', 'foto_perfil'))
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))

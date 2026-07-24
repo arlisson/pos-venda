@@ -517,6 +517,48 @@
   line-height: 1.2;
   white-space: nowrap;
 }
+.vendas-doc-casa-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.vendas-doc-sistema-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.vendas-doc-sem-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid #fca5a5;
+  border-radius: 999px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
 .vendas-cliente-excluido-badge {
   display: inline-flex;
   align-items: center;
@@ -1130,6 +1172,32 @@ input.is-invalid {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface-2);
+}
+
+.venda-doc-casa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.venda-doc-casa__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.venda-doc-casa__check input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .venda-arquivos-heading {
@@ -3595,7 +3663,10 @@ input.is-invalid {
   .vendas-page .list-table .vendas-retorno-badge,
   .vendas-page .list-table .vendas-etapa-funil-badge,
   .vendas-page .list-table .vendas-primeira-ligacao-badge,
-  .vendas-page .list-table .vendas-cliente-excluido-badge {
+  .vendas-page .list-table .vendas-cliente-excluido-badge,
+  .vendas-page .list-table .vendas-doc-casa-badge,
+  .vendas-page .list-table .vendas-doc-sistema-badge,
+  .vendas-page .list-table .vendas-doc-sem-badge {
     font-size: 10px;
     padding: 1px 6px;
   }

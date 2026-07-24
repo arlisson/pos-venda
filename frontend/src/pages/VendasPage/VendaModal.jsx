@@ -9,7 +9,6 @@ import VendaProblemaPanel from './VendaProblemaPanel';
 import { useFormDraft } from '../../utils/useFormDraft';
 import {
   atualizarEtapa0800,
-  atualizarVenda,
   baixarArquivoVenda,
   baixarPacoteArquivosVenda,
   baixarXlsxClaro,
@@ -76,6 +75,7 @@ const VENDA_VAZIA = {
   valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' }],
   tipos_servico: ['novo'],
   cliente_da_base: false,
+  possui_doc_na_casa: false,
   valor_total: '',
   cliente_solicitou_servicos: [],
   cliente_solicitou_bloqueio_qtd: '',
@@ -1205,6 +1205,7 @@ function normalizarVenda(venda) {
     cliente_da_base: venda.cliente_da_base === null || venda.cliente_da_base === undefined
       ? null
       : (venda.cliente_da_base === true || Number(venda.cliente_da_base) === 1),
+    possui_doc_na_casa: venda.possui_doc_na_casa === true || Number(venda.possui_doc_na_casa) === 1,
     numeros_portados: parseNumerosPortados(venda.numeros_portados),
     numeros_ativados: parseNumerosAtivados(venda.numeros_ativados),
     cliente_solicitou_servicos: parseClienteSolicitouServicos(venda.cliente_solicitou_servicos),
@@ -2924,7 +2925,9 @@ export function ArquivosVendaTab({
   podeAdicionar,
   pendingArquivos = [],
   onPendingArquivosChange = () => {},
-  onEtapasAtualizadas = () => {}
+  onEtapasAtualizadas = () => {},
+  possuiDocNaCasa = false,
+  onPossuiDocNaCasaChange = () => {}
 }) {
   const inputRef = useRef(null);
   const [arquivos, setArquivos] = useState([]);
@@ -3255,6 +3258,18 @@ export function ArquivosVendaTab({
             </>
           )}
         </div>
+      </div>
+
+      <div className="venda-doc-casa">
+        <label className="venda-doc-casa__check">
+          <input
+            type="checkbox"
+            checked={Boolean(possuiDocNaCasa)}
+            disabled={!podeEditar}
+            onChange={event => onPossuiDocNaCasaChange(event.target.checked)}
+          />
+          <span>Venda possui doc na casa</span>
+        </label>
       </div>
 
       {progresso && (
@@ -4815,6 +4830,8 @@ function VendaModal({
               pendingArquivos={pendingArquivos}
               onPendingArquivosChange={setPendingArquivos}
               onEtapasAtualizadas={onEtapasAtualizadas}
+              possuiDocNaCasa={form.possui_doc_na_casa}
+              onPossuiDocNaCasaChange={valor => setForm(f => ({ ...f, possui_doc_na_casa: valor }))}
             />
           ) : abaAtiva === 'cancelamento' && vendaCancelada ? (
             <VendaCancelamentoTab venda={venda || form} />
@@ -5232,7 +5249,7 @@ function VendaModal({
         )}
 
         <div className="modal-footer">
-          {abaAtiva === 'notas' || abaAtiva === 'arquivos' || abaAtiva === 'problema' || abaAtiva === 'cancelamento' ? (
+          {abaAtiva === 'problema' || abaAtiva === 'cancelamento' ? (
             <button type="button" className="btn" onClick={handleClose}>Fechar</button>
           ) : (somenteVisualizacao || vendaBloqueadaParaUsuario) ? (
             <>
