@@ -148,7 +148,7 @@ function formatarDataHoraBR(valor) {
     year: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'UTC'
+    timeZone: 'America/Sao_Paulo'
   });
 }
 
@@ -528,6 +528,26 @@ async function criarNotificacaoFuturoClienteDistribuido(dados, trx = null) {
   return notificacao;
 }
 
+/**
+ * Encerra os alertas operacionais que exigem uma acao da consultora para uma linha.
+ * A baixa e baseada na alteracao efetiva do lead, e nao na simples abertura do popup.
+ */
+async function desativarAlertasObrigatoriosDaLinha(linhaId, trx = null) {
+  const id = Number(linhaId);
+  if (!id) return 0;
+
+  return Notificacao.query(trx)
+    .where('entidade', 'lead_linhas')
+    .where('entidade_id', id)
+    .whereIn('tipo', [
+      TIPO_FUTURO_CLIENTE_DISTRIBUIDO,
+      ...TIPOS_FUTURO_RETORNO,
+      ...TIPOS_LEAD_RETORNO
+    ])
+    .where('ativa', true)
+    .patch({ ativa: false, updated_at: new Date() });
+}
+
 async function sincronizarRetornosFuturosClientes() {
   const agora = new Date();
   const linhas = await db('lead_sondagens as ls')
@@ -555,7 +575,7 @@ async function sincronizarRetornosFuturosClientes() {
     .leftJoin('lead_sondagens as ls', 'ls.lead_linha_id', 'n.entidade_id')
     .leftJoin('lead_linhas as ll', 'll.id', 'n.entidade_id')
     .whereIn('n.tipo', TIPOS_FUTURO_RETORNO)
-    .where(builder => builder.whereNull('ls.retorno_em').orWhereNull('ll.id').orWhere('ll.futuro_cliente', false).orWhereNotNull('ll.futuro_cliente_excluido_em'))
+    .where(builder => builder.whereNull('ls.retorno_em').orWhereNull('ll.id').orWhere('ll.futuro_cliente', false).orWhereNotNull('ll.futuro_cliente_excluido_em').orWhereIn('ll.status_operacional', ['vendido', 'perdido']).orWhereNotNull('ll.venda_id').orWhereNotNull('ll.venda_recusada_em'))
     .distinct('n.id');
 
   const notificacoesObsoletasIds = notificacoesObsoletas.map(notificacao => notificacao.id);
@@ -834,11 +854,33 @@ async function listarNotificacoes(usuarioId, filtros = {}) {
 /**
  * Lista urgentes conforme os filtros e parametros informados.
  */
+/** Desativa distribuicoes que ja receberam uma resolucao no registro do futuro cliente. */
+async function sincronizarDistribuicoesResolvidas() {
+  const agora = new Date();
+  const notificacoes = await db('notificacoes as n')
+    .leftJoin('lead_linhas as ll', 'll.id', 'n.entidade_id')
+    .leftJoin('lead_sondagens as ls', 'ls.lead_linha_id', 'll.id')
+    .where('n.tipo', TIPO_FUTURO_CLIENTE_DISTRIBUIDO)
+    .where('n.ativa', true)
+    .where(builder => builder
+      .whereNull('ll.id')
+      .orWhereNot('ll.status_operacional', 'distribuido_venda')
+      .orWhereNotNull('ll.venda_id')
+      .orWhereNotNull('ll.venda_recusada_em')
+      .orWhereNotNull('ls.retorno_em'))
+    .distinct('n.id');
+
+  if (notificacoes.length) {
+    await db('notificacoes').whereIn('id', notificacoes.map(item => item.id))
+      .update({ ativa: false, updated_at: agora });
+  }
+}
 async function listarUrgentes(usuarioId) {
   await sincronizarNotificacoesFidelidade();
   await sincronizarRetornosNotas(usuarioId);
   await sincronizarRetornosFuturosClientes();
   await sincronizarRetornosLeads();
+  await sincronizarDistribuicoesResolvidas();
   await vendaNotificacaoParadaService.sincronizarVendasParadas();
   await limparNotificacoesSemObjetoReferente();
 
@@ -854,7 +896,10 @@ async function listarUrgentes(usuarioId) {
   const query = aplicarJoinDestinatarioUsuario(Notificacao.query().alias('n'), usuarioId)
     .where('n.ativa', true)
     .whereNull('nd.popup_visto_em')
-    .orderBy('n.updated_at', 'asc')
+    // A sincronizacao atualiza updated_at a cada consulta. A fila usa a criacao
+    // para manter os alertas estaveis ate que uma acao os resolva.
+    .orderBy('n.created_at', 'asc')
+    .orderBy('n.id', 'asc')
     .limit(5)
     .select(
       'nd.id as destinatario_id',
@@ -1033,6 +1078,7 @@ module.exports = {
   sincronizarRetornosNotas,
   sincronizarRetornosFuturosClientes,
   criarNotificacaoFuturoClienteDistribuido,
+  desativarAlertasObrigatoriosDaLinha,
   sincronizarRetornosLeads,
   limparNotificacoesSemObjetoReferente
 };

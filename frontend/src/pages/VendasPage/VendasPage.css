@@ -1,4 +1,4 @@
-.vendas-page {
+﻿.vendas-page {
   padding: 24px;
   overflow-y: auto;
 }
@@ -259,7 +259,7 @@
 }
 
 /* Layout de altura fixa: tabela rola por dentro e paginação fica sempre visível.
-   Aplicado só acima do breakpoint de cards (≤640px continua rolando a página). */
+   Aplicado só acima do breakpoint de cards (�0�640px continua rolando a página). */
 @media (min-width: 641px) {
   .vendas-page {
     flex: 1;
@@ -403,6 +403,120 @@
   flex: 0 0 15px;
 }
 
+.vendas-etapa-funil-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid #7dd3fc;
+  border-radius: 999px;
+  background: #f0f9ff;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: help;
+  outline: none;
+}
+
+.vendas-etapa-funil-badge:focus-visible {
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.24);
+}
+
+.vendas-etapa-funil-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.vendas-etapa-funil-tooltip {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  display: none;
+  min-width: 190px;
+  max-width: 280px;
+  padding: 9px 11px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.22);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.vendas-etapa-funil-tooltip::before {
+  position: absolute;
+  top: -5px;
+  left: 14px;
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid #bae6fd;
+  border-left: 1px solid #bae6fd;
+  background: #0f172a;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.vendas-etapa-funil-tooltip strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #bae6fd;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.vendas-etapa-funil-tooltip ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vendas-etapa-funil-tooltip li::before {
+  display: inline-block;
+  width: 12px;
+  color: #7dd3fc;
+  content: 'o';
+}
+
+.vendas-etapa-funil-tooltip li.is-current {
+  color: #fef08a;
+  font-weight: 700;
+}
+
+.vendas-etapa-funil-tooltip li.is-current::before {
+  color: #fef08a;
+  content: '>';
+}
+
+.vendas-etapa-funil-badge:hover .vendas-etapa-funil-tooltip,
+.vendas-etapa-funil-badge:focus .vendas-etapa-funil-tooltip {
+  display: block;
+}
+.vendas-primeira-ligacao-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid #c4b5fd;
+  border-radius: 999px;
+  background: #f5f3ff;
+  color: #6d28d9;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
 .vendas-cliente-excluido-badge {
   display: inline-flex;
   align-items: center;
@@ -1493,7 +1607,7 @@ input.is-invalid {
 
 /* Marcador desenhado no lugar do radio do navegador: vazio quando pendente, "certinho" quando escolhido. */
 .venda-etapa-opcao::before {
-  content: '✓';
+  content: '�S';
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3415,7 +3529,7 @@ input.is-invalid {
   }
 }
 
-/* ===== Mobile (<= 640px) — refatoração ===== */
+/* ===== Mobile (<= 640px) � refatoração ===== */
 @media (max-width: 640px) {
   .vendas-page {
     padding: 14px 12px;
@@ -3457,12 +3571,14 @@ input.is-invalid {
   .vendas-page .list-table .vendas-cliente-concluidas-badge,
   .vendas-page .list-table .vendas-cancelada-badge,
   .vendas-page .list-table .vendas-retorno-badge,
+  .vendas-page .list-table .vendas-etapa-funil-badge,
+  .vendas-page .list-table .vendas-primeira-ligacao-badge,
   .vendas-page .list-table .vendas-cliente-excluido-badge {
     font-size: 10px;
     padding: 1px 6px;
   }
 
-  /* Modal de filtros vira bottom sheet (já herda do global) — ajustes específicos */
+  /* Modal de filtros vira bottom sheet (já herda do global) � ajustes específicos */
   .filtros-popup {
     max-width: none;
   }
@@ -4104,7 +4220,7 @@ input.is-invalid {
     outline: none;
   }
 
-  /* SelectFiltro — toolbar approval status */
+  /* SelectFiltro � toolbar approval status */
   .vendas-toolbar--approval-status .vendas-toolbar-status .sf {
     width: 100%;
   }
@@ -4119,7 +4235,7 @@ input.is-invalid {
 }
 
 /* ===================================================
-   SelectFiltro — equivalentes às regras de <select>
+   SelectFiltro � equivalentes às regras de <select>
    =================================================== */
 
 /* Transição igual aos inputs/selects do modal */
@@ -4173,7 +4289,7 @@ input.is-invalid {
   padding-right: 8px;
 }
 
-/* Aceite bloco — intervalo */
+/* Aceite bloco � intervalo */
 .aceite-bloco__inputs .sf {
   flex: 1;
   width: auto;
@@ -4185,7 +4301,7 @@ input.is-invalid {
   background: var(--surface);
 }
 
-/* Aceite bloco — fixo */
+/* Aceite bloco � fixo */
 .aceite-bloco__fixo .sf {
   flex: 1.5;
   width: auto;
@@ -4202,14 +4318,14 @@ input.is-invalid {
   min-height: 36px;
 }
 
-/* Arquivo actions — tablet */
+/* Arquivo actions � tablet */
 @media (max-width: 720px) {
   .venda-arquivos-actions .sf {
     flex: 1 1 150px;
   }
 }
 
-/* Arquivo actions — mobile */
+/* Arquivo actions � mobile */
 @media (max-width: 520px) {
   .venda-arquivos-actions .sf {
     width: 100%;
@@ -4217,7 +4333,7 @@ input.is-invalid {
   }
 }
 
-/* Mobile bottom-sheet — SelectFiltro dentro do modal */
+/* Mobile bottom-sheet � SelectFiltro dentro do modal */
 @media (max-width: 640px) {
   /* Borderless dentro do card grid */
   .venda-modal .vendas-form-grid .form-field .sf__trigger {
@@ -4301,3 +4417,8 @@ input.is-invalid {
   color: #7c3aed;
   border-color: rgba(124, 58, 237, 0.25);
 }
+
+.cliente-base-opcao { position: relative; }
+.cliente-base-ajuda { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: 1px solid var(--text-3); border-radius: 50%; color: var(--text-2); font-size: 11px; font-weight: 700; line-height: 1; cursor: help; }
+.cliente-base-ajuda__tooltip { position: absolute; z-index: 30; top: calc(100% + 8px); left: -8px; display: none; width: min(310px, calc(100vw - 80px)); padding: 9px 11px; border-radius: 7px; background: #1f2937; color: #fff; font-size: 12px; font-weight: 400; line-height: 1.4; white-space: normal; }
+.cliente-base-ajuda:hover .cliente-base-ajuda__tooltip, .cliente-base-ajuda:focus .cliente-base-ajuda__tooltip { display: block; }

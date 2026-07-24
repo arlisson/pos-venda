@@ -1,4 +1,4 @@
-const { Model } = require('objection');
+﻿const { Model } = require('objection');
 
 /**
  * Modelo Objection para vendas registradas.
@@ -36,6 +36,7 @@ class Venda extends Model {
         numeros_ativados: { type: ['string', 'null'] },
         gb: { type: ['string', 'null'], maxLength: 40 },
         valores_unitarios_chips: { type: ['string', 'null'] },
+        cliente_da_base: { type: ['boolean', 'integer', 'null'] },
         cliente_solicitou_servicos: { type: ['string', 'null'] },
         cliente_solicitou_bloqueio_qtd: { type: ['integer', 'null'] },
         cliente_solicitou_cancelamento_qtd: { type: ['integer', 'null'] },
@@ -213,6 +214,14 @@ class Venda extends Model {
         modelClass: Usuario,
         join: {
           from: 'vendas.vendedora_id',
+          to: 'usuarios.id'
+        }
+      },
+      origemSondador: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Usuario,
+        join: {
+          from: 'vendas.origem_sondador_id',
           to: 'usuarios.id'
         }
       },

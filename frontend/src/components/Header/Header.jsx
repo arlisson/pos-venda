@@ -172,7 +172,8 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
             id: link.chave || link.id,
             name: link.nome,
             url: link.url,
-            dot: link.dot
+            dot: link.dot,
+            cor: link.cor
           })));
         } else {
           setLinksExternos([
@@ -341,12 +342,13 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`external-link external-link--${link.dot || 'gov'}`}
+                    className={`external-link external-link--${link.dot || 'gov'}${link.cor ? ' external-link--custom-color' : ''}`}
+                    style={link.cor ? { '--link-color': link.cor } : undefined}
                     title={`Abrir ${link.name}`}
                     role="menuitem"
                     onClick={() => setLinksOpen(false)}
                   >
-                    <span className={`dot ${link.dot || 'gov'}`}></span>
+                    <span className={`dot ${link.dot || 'gov'}`} style={link.cor ? { backgroundColor: link.cor } : undefined}></span>
                     <span>{link.name}</span>
                     <I.External size={11} style={{ opacity: 0.5 }} />
                   </a>

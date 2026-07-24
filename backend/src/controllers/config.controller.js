@@ -43,6 +43,14 @@ async function linksExternos(req, res) {
 /**
  * Retorna tipos produto no formato esperado pelo fluxo.
  */
+async function aparenciasNotificacao(req, res) {
+  try { return res.json(await configService.listarAparenciasNotificacao()); } catch (error) { console.error(error); return res.status(500).json({ message: 'Erro ao listar aparencias das notificacoes.' }); }
+}
+
+async function atualizarAparenciaNotificacao(req, res) {
+  try { const aparencia = await configService.atualizarAparenciaNotificacao(req.params.id, req.body); if (!aparencia) return res.status(404).json({ message: 'Tipo de notificacao nao encontrado.' }); return res.json(aparencia); } catch (error) { console.error(error); return res.status(400).json({ message: error.message || 'Erro ao atualizar aparencia da notificacao.' }); }
+}
+
 async function tiposProduto(req, res) {
   try {
     const dados = await configService.listarTiposProdutoAtivos();
@@ -559,6 +567,10 @@ async function excluirLinkExterno(req, res) {
 module.exports = {
   operadoras,
   linksExternos,
+  aparenciasNotificacao,
+  atualizarAparenciaNotificacao,
+  aparenciasNotificacao,
+  atualizarAparenciaNotificacao,
   tiposProduto,
   tiposVenda,
   servicos,

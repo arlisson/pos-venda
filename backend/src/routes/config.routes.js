@@ -14,6 +14,7 @@ router.get('/tipos-venda', configController.tiposVenda);
 router.get('/servicos', configController.servicos);
 router.get('/funil-etapas', configController.funilEtapas);
 router.get('/regras-comissao', configController.regrasComissao);
+router.get('/notificacao-aparencias', configController.aparenciasNotificacao);
 
 router.get('/admin/operadoras', exigirPermissao('crud_operadoras'), configController.adminOperadoras);
 router.post('/admin/operadoras', exigirPermissao('crud_operadoras'), configController.criarOperadora);
@@ -50,5 +51,8 @@ router.get('/admin/links-externos', exigirPermissao('crud_links'), configControl
 router.post('/admin/links-externos', exigirPermissao('crud_links'), configController.criarLinkExterno);
 router.put('/admin/links-externos/:id', exigirPermissao('crud_links'), configController.atualizarLinkExterno);
 router.delete('/admin/links-externos/:id', exigirPermissao('crud_links'), configController.excluirLinkExterno);
+
+router.get('/admin/notificacao-aparencias', exigirPermissao('configurar_notificacoes'), configController.aparenciasNotificacao);
+router.put('/admin/notificacao-aparencias/:id', exigirPermissao('configurar_notificacoes'), configController.atualizarAparenciaNotificacao);
 
 module.exports = router;

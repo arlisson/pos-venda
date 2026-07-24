@@ -116,7 +116,23 @@
 }
 
 .config-form-grid--links {
-  grid-template-columns: minmax(160px, 0.9fr) minmax(180px, 1fr) minmax(280px, 1.6fr) minmax(140px, 0.8fr) 120px;
+  grid-template-columns: minmax(160px, 0.9fr) minmax(180px, 1fr) minmax(240px, 1.4fr) minmax(140px, 0.8fr) 100px 120px;
+}
+
+.config-form-grid--links input[type="color"] {
+  height: 38px;
+  padding: 3px;
+  cursor: pointer;
+}
+
+.config-link-color {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--text-3);
+  vertical-align: middle;
 }
 
 .config-form-grid--commission {

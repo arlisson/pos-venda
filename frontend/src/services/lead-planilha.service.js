@@ -299,8 +299,8 @@ export function reverterClienteRecusouLead(linhaId) {
 /**
  * Registra que a ligacao nao foi atendida (motivo opcional).
  */
-export function marcarChamadaNaoAtendidaLead(linhaId, motivo) {
-  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/chamada-nao-atendida`, { motivo });
+export function marcarChamadaNaoAtendidaLead(linhaId, dados = {}) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/chamada-nao-atendida`, dados);
 }
 
 /**

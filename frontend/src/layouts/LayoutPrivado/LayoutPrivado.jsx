@@ -1,5 +1,5 @@
 import { matchPath, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import Header from '../../components/Header/Header';
 import * as I from '../../components/Icons';
@@ -7,7 +7,7 @@ import { buscarPerfil, getUsuarioLocal, logout, temPermissao } from '../../servi
 import VendaModal from '../../pages/VendasPage/VendaModal';
 import ClienteModal from '../../pages/Clientes/ClienteModal';
 import { listarClientesSelect } from '../../services/cliente.service';
-import { listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
+import { listarAparenciasNotificacao, listarOperadoras, listarServicos, listarTiposVenda } from '../../services/config.service';
 import { criarVenda, listarAprovacoesVenda, listarVendedoras, obterReferenciasClientesVendas, uploadArquivoVenda } from '../../services/venda.service';
 import { criarNotaEntidade } from '../../services/nota.service';
 import {
@@ -295,6 +295,8 @@ function LayoutPrivado({ children }) {
   }
 
   const [alertasUrgentes, setAlertasUrgentes] = useState([]);
+  const [aparenciasNotificacao, setAparenciasNotificacao] = useState([]);
+  const carregandoAlertasUrgentesRef = useRef(false);
   const [aprovacoesPendentes, setAprovacoesPendentes] = useState(0);
   const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
   const podeVerAprovacoes = usuario && temPermissao(usuario, 'vendas_aprovacoes_visualizar');
@@ -364,12 +366,25 @@ function LayoutPrivado({ children }) {
   /**
    * Carrega alertas urgentes e atualiza o estado relacionado.
    */
+  async function carregarAparenciasNotificacao() { try { setAparenciasNotificacao(await listarAparenciasNotificacao()); } catch { setAparenciasNotificacao([]); } }
+  useEffect(() => { carregarAparenciasNotificacao(); window.addEventListener('pos-venda:notificacao-aparencias-atualizar', carregarAparenciasNotificacao); return () => window.removeEventListener('pos-venda:notificacao-aparencias-atualizar', carregarAparenciasNotificacao); }, []);
+  function estiloAlerta(n) { const cor = aparenciasNotificacao.find(item => item.tipo === n.tipo)?.cor; return cor ? { '--tone-color': cor } : undefined; }
+
   async function carregarAlertasUrgentes() {
+    // Em producao a sincronizacao no servidor pode levar mais que o intervalo
+    // de consulta. Evita requisicoes concorrentes que atrasam a fila de popups.
+    if (carregandoAlertasUrgentesRef.current) return;
+
+    carregandoAlertasUrgentesRef.current = true;
     try {
       const dados = await listarNotificacoesUrgentes();
       setAlertasUrgentes(dados.notificacoes || []);
-    } catch {
-      setAlertasUrgentes([]);
+    } catch (error) {
+      // Conserva o ultimo resultado valido; apagar a pilha em uma falha temporaria
+      // torna o problema invisivel e faz parecer que a notificacao nao chegou.
+      console.error('Erro ao carregar alertas urgentes:', error);
+    } finally {
+      carregandoAlertasUrgentesRef.current = false;
     }
   }
 
@@ -401,12 +416,27 @@ function LayoutPrivado({ children }) {
       .catch(() => {});
   }
 
+  /** Retorna se o alerta so pode ser encerrado por uma acao no registro. */
+  function alertaExigeAcao(notificacao) {
+    return [
+      'lead_retorno_pre',
+      'lead_retorno_due',
+      'futuro_cliente_retorno_pre',
+      'futuro_cliente_retorno_due',
+      'futuro_cliente_distribuido'
+    ].includes(notificacao?.tipo);
+  }
   /**
    * Fecha alerta urgente e limpa o estado relacionado.
    */
   function fecharAlertaUrgente(notificacao) {
     ocultarAlertaUrgente(notificacao);
-    confirmarPopupNotificacao(notificacao);
+
+    // Alertas operacionais voltam no proximo ciclo de atualizacao enquanto a
+    // condicao existir; somente uma acao valida no registro os encerra.
+    if (!alertaExigeAcao(notificacao)) {
+      confirmarPopupNotificacao(notificacao);
+    }
   }
 
   /**
@@ -510,7 +540,6 @@ function LayoutPrivado({ children }) {
     const rota = montarRotaAlerta(notificacao);
     ocultarAlertaUrgente(notificacao);
     navigate(rota);
-    confirmarPopupNotificacao(notificacao);
   }
 
   return (
@@ -597,7 +626,7 @@ function LayoutPrivado({ children }) {
       {alertasUrgentes.length > 0 && (
         <div className="urgent-alert-stack" aria-live="assertive">
           {alertasUrgentes.map(alerta => (
-            <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card urgent-alert-card--${tomAlerta(alerta)}`}>
+            <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card urgent-alert-card--${tomAlerta(alerta)}`} style={estiloAlerta(alerta)}>
               <div className="urgent-alert-card__icon">
                 <I.AlertTriangle size={18} />
               </div>
@@ -607,7 +636,7 @@ function LayoutPrivado({ children }) {
               </div>
               <div className="urgent-alert-card__actions">
                 <button type="button" className="btn btn-sm" onClick={() => abrirVendaAlerta(alerta)}>
-                  {alerta.entidade === 'clientes' ? 'Abrir cliente' : 'Abrir'}
+                  {['lead_retorno_pre', 'lead_retorno_due', 'futuro_cliente_retorno_pre', 'futuro_cliente_retorno_due', 'futuro_cliente_distribuido'].includes(alerta.tipo) ? 'Atender agora' : (alerta.entidade === 'clientes' ? 'Abrir cliente' : 'Abrir')}
                 </button>
                 <button
                   type="button"

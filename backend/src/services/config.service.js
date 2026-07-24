@@ -1,4 +1,5 @@
 const LinkExterno = require('../models/LinkExterno');
+const NotificacaoAparencia = require('../models/NotificacaoAparencia');
 /**
  * Servico de configuracoes, cadastros auxiliares, funil e regras de comissao.
  */
@@ -37,8 +38,28 @@ function ocultarOrdem(registro) {
 }
 
 /**
+ * Normaliza a cor opcional de um marcador de link externo.
+ */
+function normalizarCorLink(cor) {
+  const valor = String(cor || '').trim();
+  if (!valor) return null;
+  if (!/^#[0-9a-f]{6}$/i.test(valor)) {
+    throw new Error('A cor do marcador deve estar no formato hexadecimal #RRGGBB.');
+  }
+  return valor.toLowerCase();
+}
+
+/**
  * Lista operadoras conforme os filtros e parametros informados.
  */
+async function listarAparenciasNotificacao() {
+  return NotificacaoAparencia.query().select('id', 'tipo', 'nome', 'cor', 'created_at', 'updated_at').orderBy('nome', 'asc');
+}
+
+async function atualizarAparenciaNotificacao(id, dados) {
+  const cor = normalizarCorLink(dados.cor);
+  return NotificacaoAparencia.query().patchAndFetchById(id, { cor });
+}
 async function listarOperadoras() {
   return orderConfig(selectConfig(Operadora.query()));
 }
@@ -48,7 +69,7 @@ async function listarOperadoras() {
  */
 async function listarLinksExternos() {
   return LinkExterno.query()
-    .select('id', 'chave', 'nome', 'url', 'dot', 'ativo', 'created_at', 'updated_at')
+    .select('id', 'chave', 'nome', 'url', 'dot', 'cor', 'ativo', 'created_at', 'updated_at')
     .orderBy('nome', 'asc')
     .orderBy('id', 'asc');
 }
@@ -155,7 +176,7 @@ async function listarFunilEtapasAtivas() {
 async function listarLinksExternosAtivos() {
   return LinkExterno.query()
     .where('ativo', true)
-    .select('id', 'chave', 'nome', 'url', 'dot', 'ativo', 'created_at', 'updated_at')
+    .select('id', 'chave', 'nome', 'url', 'dot', 'cor', 'ativo', 'created_at', 'updated_at')
     .orderBy('nome', 'asc')
     .orderBy('id', 'asc');
 }
@@ -597,6 +618,7 @@ async function criarLinkExterno(dados) {
     nome: dados.nome,
     url: dados.url,
     dot: dados.dot || null,
+    cor: normalizarCorLink(dados.cor),
     ativo: dados.ativo ?? true
   });
 
@@ -613,6 +635,7 @@ async function atualizarLinkExterno(id, dados) {
   if (dados.nome !== undefined) atualizacao.nome = dados.nome;
   if (dados.url !== undefined) atualizacao.url = dados.url;
   if (dados.dot !== undefined) atualizacao.dot = dados.dot || null;
+  if (dados.cor !== undefined) atualizacao.cor = normalizarCorLink(dados.cor);
   if (dados.ativo !== undefined) atualizacao.ativo = dados.ativo;
 
   const link = await LinkExterno.query().patchAndFetchById(id, atualizacao);
@@ -662,5 +685,7 @@ module.exports = {
   listarLinksExternosAtivos,
   criarLinkExterno,
   atualizarLinkExterno,
-  excluirLinkExterno
+  excluirLinkExterno,
+  listarAparenciasNotificacao,
+  atualizarAparenciaNotificacao
 };

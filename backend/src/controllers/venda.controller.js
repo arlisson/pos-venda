@@ -256,7 +256,7 @@ async function updateStatus(req, res) {
  */
 async function enviarPosVenda(req, res) {
   try {
-    const resultado = await vendaService.enviarVendaParaPosVenda(req.params.id, req.usuario.id);
+    const resultado = await vendaService.enviarVendaParaPosVenda(req.params.id, req.usuario.id, req.body);
 
     if (resultado.status === 'not_found') {
       return res.status(404).json({

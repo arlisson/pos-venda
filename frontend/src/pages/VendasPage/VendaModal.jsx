@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+﻿import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
@@ -75,6 +75,7 @@ const VENDA_VAZIA = {
   gb: '',
   valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' }],
   tipos_servico: ['novo'],
+  cliente_da_base: false,
   valor_total: '',
   cliente_solicitou_servicos: [],
   cliente_solicitou_bloqueio_qtd: '',
@@ -297,6 +298,7 @@ const CAMPOS = [
   { name: 'ddd', label: 'Qual DDD' },
   { name: 'dia_vencimento', label: 'Dia de vencimento', type: 'number', min: 1, max: 31 },
   { name: 'tipos_servico', label: 'Serviço', type: 'serviceType', span: true },
+  { name: 'cliente_da_base', label: 'Classificação do cliente', type: 'clientBase', span: true },
   { name: 'cliente_solicitou_servicos', label: 'Cliente solicitou', type: 'clientRequested', span: true, required: true },
   { name: 'valores_unitarios_chips', label: 'Chips, gigas e valores unitários', type: 'chips', span: true },
   { name: 'numeros_ativados', label: 'Números ativados', type: 'activatedNumbers', span: true },
@@ -1200,6 +1202,9 @@ function normalizarVenda(venda) {
     tipos_servico: Array.isArray(venda.tipos_servico) && venda.tipos_servico.length > 0
       ? venda.tipos_servico
       : inferirTiposServicoDeChips(parseItensChips(venda.valores_unitarios_chips, venda.gb, tipoLinhaPadrao)),
+    cliente_da_base: venda.cliente_da_base === null || venda.cliente_da_base === undefined
+      ? null
+      : (venda.cliente_da_base === true || Number(venda.cliente_da_base) === 1),
     numeros_portados: parseNumerosPortados(venda.numeros_portados),
     numeros_ativados: parseNumerosAtivados(venda.numeros_ativados),
     cliente_solicitou_servicos: parseClienteSolicitouServicos(venda.cliente_solicitou_servicos),
@@ -1354,6 +1359,25 @@ function TiposServicoInput({ value, onChange }) {
 }
 
 /**
+ * Renderiza a classificação do cliente em relação à base da operadora.
+ */
+function ClienteDaBaseInput({ value, onChange, disabled }) {
+  const clienteDaBase = value === true || Number(value) === 1;
+
+  return (
+    <label className={`tipos-servico-opcao cliente-base-opcao${clienteDaBase ? ' tipos-servico-opcao--ativo' : ''}`}>
+      <input type="checkbox" checked={clienteDaBase} disabled={disabled} onChange={event => onChange(event.target.checked)} />
+      <span>Cliente da base</span>
+      <span className="cliente-base-ajuda" tabIndex={0} aria-label="Entenda a classificação do cliente">
+        ?
+        <span className="cliente-base-ajuda__tooltip" role="tooltip">
+          Cliente da base: já possui o mesmo produto na operadora, seja por portabilidade ou novo. Cliente de fora da base: não possui o mesmo produto.
+        </span>
+      </span>
+    </label>
+  );
+}
+/**
  * Renderiza itens chips input.
  */
 function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 0, tiposServico = ['novo'] }) {
@@ -1489,7 +1513,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
                   value={item.vendedora_id || ''}
                   onChange={val => atualizarItem(index, 'vendedora_id', val)}
                   options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
-                  placeholder="—"
+                  placeholder="�"
                 />
               </label>
             )}
@@ -3422,6 +3446,7 @@ function VendaModal({
   onSave,
   onSendToPosVenda,
   sendToPosVendaLabel = 'Enviar para o pós-venda',
+  motivoLiberacaoAprovacao = '',
   onCreateClient,
   onResolveClient,
   clientePreenchido = null,
@@ -3477,6 +3502,8 @@ function VendaModal({
   // Usar hook para persistência de rascunhos
   const { clearDraft } = useFormDraft(editando ? null : draftKey, form, editando);
   const [salvando, setSalvando] = useState(false);
+  const [liberacaoAberta, setLiberacaoAberta] = useState(false);
+  const [motivoLiberacao, setMotivoLiberacao] = useState('');
   const [erro, setErro] = useState('');
   const [cepStatus, setCepStatus] = useState('');
   const [cepRealStatus, setCepRealStatus] = useState('');
@@ -3485,6 +3512,12 @@ function VendaModal({
   const [cnpjDados, setCnpjDados] = useState(null);
   const [cnpjSugestoes, setCnpjSugestoes] = useState({});
   const [tipoBusca, setTipoBusca] = useState(() => sanitizarCnpj(form.cnpj).length === 11 ? 'cpf' : 'cnpj');
+  const [documentosPorTipo, setDocumentosPorTipo] = useState(() => {
+    const documento = form.cnpj || '';
+    return sanitizarCnpj(documento).length === 11
+      ? { cnpj: '', cpf: documento }
+      : { cnpj: documento, cpf: '' };
+  });
   const [aceiteMode, setAceiteMode] = useState(() => (form.dia_aceite_fixo || form.horario_aceite_fixo) ? 'fixo' : 'janela');
   const [clienteSolicitouQuantidadeAberta, setClienteSolicitouQuantidadeAberta] = useState(false);
   const [clienteSolicitouNumerosAberto, setClienteSolicitouNumerosAberto] = useState(false);
@@ -3562,6 +3595,17 @@ function VendaModal({
   }, [abaAtiva]);
   const somenteVisualizacao = Boolean(venda) && !modoEdicao;
   const enviadaPosVenda = Boolean(venda?.enviada_pos_venda_em || form.enviada_pos_venda_em);
+  const vendedorasDaVenda = Array.isArray(venda?.vendedoras) && venda.vendedoras.length > 0
+    ? venda.vendedoras
+    : (venda?.vendedora ? [venda.vendedora] : []);
+  const registroVenda = venda?.criado_em || venda?.created_at;
+  const dataRegistroVenda = registroVenda ? new Date(registroVenda) : null;
+  const limiteLiberacao = new Date();
+  limiteLiberacao.setMonth(limiteLiberacao.getMonth() - 24);
+  const requerLiberacao = vendedorasDaVenda.length > 1
+    && dataRegistroVenda
+    && !Number.isNaN(dataRegistroVenda.getTime())
+    && dataRegistroVenda > limiteLiberacao;
   const usuarioPosVenda = temPermissao(usuarioLogado, 'pos_venda');
   const usuarioAdmin = usuarioLogado?.role?.nome === 'admin';
   const usuarioEhResponsavelVenda = Boolean(venda && usuarioLogado?.id && (
@@ -3737,6 +3781,7 @@ function VendaModal({
     setCnpjDados(null);
     setCnpjSugestoes({});
     setTipoBusca('cnpj');
+    setDocumentosPorTipo({ cnpj: '', cpf: '' });
     setAceiteMode('janela');
     setClienteSolicitouQuantidadeAberta(false);
     setClienteSolicitouNumerosAberto(false);
@@ -3755,6 +3800,10 @@ function VendaModal({
     if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
 
     const valorFormatado = formatarCampoVenda(campo, valor);
+
+    if (campo === 'cnpj') {
+      setDocumentosPorTipo(prev => ({ ...prev, [tipoBusca]: valorFormatado }));
+    }
 
     setForm(prev => {
       const proximo = {
@@ -3862,6 +3911,9 @@ function VendaModal({
     });
 
     setTipoBusca(documentoDigitos.length === 11 ? 'cpf' : 'cnpj');
+    setDocumentosPorTipo(documentoDigitos.length === 11
+      ? { cnpj: '', cpf: dadosCliente.cnpj || '' }
+      : { cnpj: dadosCliente.cnpj || '', cpf: '' });
     setCnpjStatus({ tipo: '', mensagem: '' });
     setCnpjDados(null);
     setCnpjSugestoes({});
@@ -4126,8 +4178,14 @@ function VendaModal({
    * Executa a acao de alterar tipo busca mantendo o estado da tela consistente.
    */
   function alterarTipoBusca(tipo) {
+    if (tipo === tipoBusca) return;
+
+    const documentoAtual = form.cnpj || '';
+    const documentoDestino = documentosPorTipo[tipo] || '';
+
     setTipoBusca(tipo);
-    setForm(prev => ({ ...prev, cnpj: '' }));
+    setDocumentosPorTipo(prev => ({ ...prev, [tipoBusca]: documentoAtual }));
+    setForm(prev => ({ ...prev, cnpj: documentoDestino }));
     setCnpjStatus({ tipo: '', mensagem: '' });
     setCnpjDados(null);
     setCnpjSugestoes({});
@@ -4594,18 +4652,32 @@ function VendaModal({
   /**
    * Trata o evento de enviar pos venda.
    */
-  async function handleEnviarPosVenda() {
-    if (!venda?.id || salvando || enviadaPosVenda) return;
-
+  async function enviarParaPosVenda(dadosLiberacao = {}) {
     setErro('');
     setSalvando(true);
-
     try {
-      await onSendToPosVenda(venda);
+      await onSendToPosVenda(venda, dadosLiberacao);
     } catch (error) {
       setErro(error.message || 'Erro ao enviar venda para o pós-venda.');
       setSalvando(false);
     }
+  }
+
+  async function handleEnviarPosVenda() {
+    if (!venda?.id || salvando || enviadaPosVenda) return;
+    if (requerLiberacao) {
+      const nomes = vendedorasDaVenda.map(item => item.nome).filter(Boolean);
+      setMotivoLiberacao(nomes.length > 0 ? 'Venda compartilhada entre ' + nomes.join(' e ') + '.' : 'Venda compartilhada.');
+      setLiberacaoAberta(true);
+      return;
+    }
+    await enviarParaPosVenda();
+  }
+
+  async function confirmarLiberacao() {
+    if (!motivoLiberacao.trim() || salvando) return;
+    setLiberacaoAberta(false);
+    await enviarParaPosVenda({ motivo_descricao: motivoLiberacao });
   }
 
   return (
@@ -4679,6 +4751,14 @@ function VendaModal({
             <I.AlertTriangle size={14} /> Problema
           </button>
         </div>
+
+
+        {motivoLiberacaoAprovacao && (
+          <div className="venda-pos-venda-banner" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+            <I.Note size={14} />
+            <span><strong>Motivo da liberação:</strong> {motivoLiberacaoAprovacao}</span>
+          </div>
+        )}
 
         {erro && (abaAtiva === 'venda' || abaAtiva === 'solicitacao') && (
           <div className="venda-modal-alert" role="alert" aria-live="assertive">
@@ -4832,7 +4912,12 @@ function VendaModal({
                             inputMode="numeric"
                             maxLength={14}
                             value={form[campo.name] ?? ''}
-                            onChange={e => { if (!somenteVisualizacao && !vendaBloqueadaParaUsuario) setForm(prev => ({ ...prev, cnpj: formatarCpf(e.target.value) })); }}
+                            onChange={e => {
+                              if (somenteVisualizacao || vendaBloqueadaParaUsuario) return;
+                              const cpfFormatado = formatarCpf(e.target.value);
+                              setDocumentosPorTipo(prev => ({ ...prev, cpf: cpfFormatado }));
+                              setForm(prev => ({ ...prev, cnpj: cpfFormatado }));
+                            }}
                             placeholder="000.000.000-00"
                           />
                           {(() => {
@@ -4937,6 +5022,12 @@ function VendaModal({
                       vendedoras={vendedorasOpcoesModal.filter(v => (form.vendedoras || []).includes(String(v.id)))}
                       limiteQuantidade={form.quantidade_linhas}
                       tiposServico={form.tipos_servico}
+                    />
+                  ) : campo.type === 'clientBase' ? (
+                    <ClienteDaBaseInput
+                      value={form[campo.name]}
+                      onChange={valor => atualizarCampo(campo.name, valor)}
+                      disabled={somenteVisualizacao || vendaBloqueadaParaUsuario}
                     />
                   ) : campo.type === 'clientRequested' ? (
                     <ClienteSolicitouInput
@@ -5161,6 +5252,15 @@ function VendaModal({
           )}
         </div>
       </form>
+      {liberacaoAberta && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: 560 }}>
+            <div className="modal-header"><div className="modal-header-row"><div><div className="modal-client">Solicitar liberação</div><div className="modal-sub">Uma liberação ADM será solicitada para esta venda compartilhada.</div></div><button type="button" className="btn btn-icon btn-ghost" title="Fechar" onClick={() => setLiberacaoAberta(false)}><I.Close size={14} /></button></div></div>
+            <div className="modal-body"><div className="form-field"><label>Motivo da liberação</label><textarea value={motivoLiberacao} onChange={event => setMotivoLiberacao(event.target.value)} rows={5} maxLength={5000} placeholder="Descreva o motivo da liberação" /></div></div>
+            <div className="modal-footer"><button type="button" className="btn" onClick={() => setLiberacaoAberta(false)}>Cancelar</button><button type="button" className="btn btn-primary" disabled={!motivoLiberacao.trim()} onClick={confirmarLiberacao}>Solicitar liberação</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
