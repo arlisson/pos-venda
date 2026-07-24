@@ -2927,7 +2927,8 @@ export function ArquivosVendaTab({
   onPendingArquivosChange = () => {},
   onEtapasAtualizadas = () => {},
   possuiDocNaCasa = false,
-  onPossuiDocNaCasaChange = () => {}
+  onPossuiDocNaCasaChange = () => {},
+  onArquivosAlterados = () => {}
 }) {
   const inputRef = useRef(null);
   const [arquivos, setArquivos] = useState([]);
@@ -3008,6 +3009,7 @@ export function ArquivosVendaTab({
       }
 
       setProgresso(null);
+      onArquivosAlterados();
       if (podeVisualizar) {
         await carregar();
       } else {
@@ -3035,6 +3037,7 @@ export function ArquivosVendaTab({
 
     try {
       await excluirArquivoVenda(venda.id, arquivo.id);
+      onArquivosAlterados();
       await carregar();
     } catch (error) {
       setErro(error.message || 'Erro ao excluir arquivo.');
@@ -3528,6 +3531,7 @@ function VendaModal({
   // Usar hook para persistência de rascunhos
   const { clearDraft } = useFormDraft(editando ? null : draftKey, form, editando);
   const [salvando, setSalvando] = useState(false);
+  const [docsAlterados, setDocsAlterados] = useState(false);
   const [liberacaoAberta, setLiberacaoAberta] = useState(false);
   const [motivoLiberacao, setMotivoLiberacao] = useState('');
   const [erro, setErro] = useState('');
@@ -4420,6 +4424,21 @@ function VendaModal({
   /**
    * Trata o evento de submit.
    */
+  /**
+   * Salva apenas alterações da aba Documentos (flag "doc na casa") sem entrar em edição completa.
+   */
+  async function handleSalvarDocumentos() {
+    setErro('');
+    setSalvando(true);
+    try {
+      await onSave({ possui_doc_na_casa: form.possui_doc_na_casa });
+      // onSave (salvarVenda) fecha o modal e recarrega a lista
+    } catch (error) {
+      setErro(error.message || 'Erro ao salvar.');
+      setSalvando(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -4831,7 +4850,11 @@ function VendaModal({
               onPendingArquivosChange={setPendingArquivos}
               onEtapasAtualizadas={onEtapasAtualizadas}
               possuiDocNaCasa={form.possui_doc_na_casa}
-              onPossuiDocNaCasaChange={valor => setForm(f => ({ ...f, possui_doc_na_casa: valor }))}
+              onPossuiDocNaCasaChange={valor => {
+                setForm(f => ({ ...f, possui_doc_na_casa: valor }));
+                setDocsAlterados(true);
+              }}
+              onArquivosAlterados={() => setDocsAlterados(true)}
             />
           ) : abaAtiva === 'cancelamento' && vendaCancelada ? (
             <VendaCancelamentoTab venda={venda || form} />
@@ -5260,9 +5283,15 @@ function VendaModal({
                 </button>
               )}
               {podeEditarVendaEfetivo && !vendaBloqueadaParaUsuario && (
-                <button type="button" className="btn btn-primary" onClick={handleStartEdit}>
-                  <I.Edit size={14} /> Editar venda
-                </button>
+                docsAlterados ? (
+                  <button type="button" className="btn btn-primary" disabled={salvando} onClick={handleSalvarDocumentos}>
+                    {salvando ? 'Salvando...' : 'Salvar venda'}
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-primary" onClick={handleStartEdit}>
+                    <I.Edit size={14} /> Editar venda
+                  </button>
+                )
               )}
             </>
           ) : (
