@@ -103,12 +103,16 @@ function detectarColunaValor(nomes = []) {
 /**
  * Detecta automaticamente as colunas de valor de uma planilha de operadora, cuja soma e o
  * total pago na linha (ex.: Claro "Receita Nova/Incrementada/Renovada"; Vivo "VALOR").
+ *
+ * "Valor da Venda" NAO entra: e o padrao da aba de pessoa fisica da Vivo, onde o numero nao e
+ * comparavel ao valor por chip da principal — essas linhas casam por CPF, sem conferir valor.
+ * (Na PRINCIPAL "Valor da Venda" continua valendo; ver detectarColunaValor.)
  */
 function detectarColunasValor(nomes = []) {
   return nomes.filter(nome => {
     if (String(nome).startsWith('__')) return false;
     const norm = normalizarTexto(nome);
-    return norm === 'valor' || /receita (nova|incrementada|renovada)/.test(norm) || norm.includes('valor da venda');
+    return norm === 'valor' || /receita (nova|incrementada|renovada)/.test(norm);
   });
 }
 
@@ -214,6 +218,22 @@ function valorConfirmacao(dados, mapeamento, colunasAuto = []) {
   const preenchida = colunas.some(nome => String(dados[nome] ?? '').trim() !== '');
   if (!preenchida) return null;
   return colunas.reduce((total, nome) => total + paraNumero(dados[nome]), 0);
+}
+
+/**
+ * Uma linha de confirmacao e um ESTORNO (reembolso) quando o texto da coluna de valor traz
+ * "ESTORNO" no lugar do valor (padrao da VIVO). Verifica as mesmas colunas de valor usadas em
+ * `valorConfirmacao`: as mapeadas (`valorColunas`) ou, na falta, as detectadas pelo nome.
+ */
+function textoIndicaEstorno(valor) {
+  return normalizarTexto(valor).includes('estorno');
+}
+
+function linhaEstornada(dados, mapeamento, colunasAuto = []) {
+  const colunas = Array.isArray(mapeamento.valorColunas) && mapeamento.valorColunas.length > 0
+    ? mapeamento.valorColunas
+    : colunasAuto;
+  return colunas.some(nome => textoIndicaEstorno(dados[nome]));
 }
 
 function encontrarColunaPorTermos(dados, ...termos) {
@@ -361,7 +381,7 @@ function lerMultipart(req) {
  * @param {Buffer} buffer - Conteudo do arquivo .xlsx.
  * @returns {Promise.<{ colunas: {nome: string, index: number}[], linhas: Object[], abas: number }>}
  */
-async function carregarPlanilha(buffer, abasSelecionadas = null) {
+async function carregarPlanilha(buffer, abasSelecionadas = null, mesesPorAba = null) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   if (workbook.worksheets.length === 0) {
@@ -383,7 +403,13 @@ async function carregarPlanilha(buffer, abasSelecionadas = null) {
       }
     });
     const linhasAba = lerLinhas(worksheet, colunasAba);
-    linhasAba.forEach(linha => { linha.__abaOrigem = worksheet.name; });
+    // Rotulo de mes escolhido pelo usuario para esta aba (arquivos de mes unico, cujo nome de
+    // aba nao carrega o mes). Vazio = usa o nome da aba (formato multi-mes antigo).
+    const mesEscolhido = (mesesPorAba && mesesPorAba[worksheet.name]) || '';
+    linhasAba.forEach(linha => {
+      linha.__abaOrigem = worksheet.name;
+      linha.__mesRotulo = mesEscolhido;
+    });
     linhas.push(...linhasAba);
   }
 
@@ -769,14 +795,17 @@ const CORES = {
   cabecalhoMes: 'FF305496', // azul escuro
   cabecalhoNaoConcluidas: 'FFC0504D', // vermelho escuro
   cabecalhoCanceladas: 'FF808080', // cinza
+  cabecalhoEstornos: 'FF7030A0', // roxo
   fonteCabecalho: 'FFFFFFFF',
   linhaRevisao: 'FFFFF2CC', // amarelo: linha inteira quando precisa de revisao
   linhaCancelada: 'FFEDEDED', // cinza claro
+  linhaEstorno: 'FFEDE3F5', // roxo claro
   zebra: 'FFF2F2F2',
   borda: 'FFD9D9D9',
   fontePago: 'FF2E7D32', // verde
   fonteRevisao: 'FFB45309', // ambar
-  fonteNaoEncontrado: 'FFC0392B' // vermelho
+  fonteNaoEncontrado: 'FFC0392B', // vermelho
+  fonteEstorno: 'FF7030A0' // roxo
 };
 
 const STATUS_REVISAO = new Set(['PAGO_VALOR_DIVERGENTE', 'VALIDAR_MANUALMENTE']);
@@ -792,6 +821,7 @@ function corFonteStatus(status) {
   if (status === 'PAGO') return CORES.fontePago;
   if (STATUS_REVISAO.has(status)) return CORES.fonteRevisao;
   if (status === 'NAO_ENCONTRADO') return CORES.fonteNaoEncontrado;
+  if (status === 'ESTORNADA') return CORES.fonteEstorno;
   return '';
 }
 
@@ -882,6 +912,14 @@ function nomeAbaValido(nome, usados) {
 }
 
 /**
+ * Rotulo de mes de uma linha ja carregada: prefere o mes escolhido pelo usuario (__mesRotulo,
+ * para arquivos de mes unico) e cai para o nome da aba (__abaOrigem, formato multi-mes antigo).
+ */
+function rotuloMes(dados) {
+  return dados?.__mesRotulo || dados?.__abaOrigem || '';
+}
+
+/**
  * Agrupa as linhas concluidas por mes (__mes) e devolve os grupos em ordem cronologica,
  * seguindo a organizacao por mes das planilhas das operadoras.
  */
@@ -928,7 +966,8 @@ function escreverResumo(workbook, resultado) {
     ['PAGO_VALOR_DIVERGENTE', 'Pago, mas o valor não fecha com a operadora — revisar (linha amarela).', contagens.PAGO_VALOR_DIVERGENTE, { fundo: CORES.linhaRevisao, fonte: CORES.fonteRevisao }],
     ['VALIDAR_MANUALMENTE', 'Tipo da confirmação suspeito — revisar (linha amarela).', contagens.VALIDAR_MANUALMENTE, { fundo: CORES.linhaRevisao, fonte: CORES.fonteRevisao }],
     ['NAO_ENCONTRADO', 'Sem confirmação da operadora (aba "Vendas Nao Concluidas").', contagens.NAO_ENCONTRADO, { fonte: CORES.fonteNaoEncontrado }],
-    ['CANCELADA', 'Cancelada na origem, fora do cruzamento (aba "Vendas Canceladas", linhas cinza).', resultado.canceladas?.length || 0, { fundo: CORES.linhaCancelada }]
+    ['CANCELADA', 'Cancelada na origem, fora do cruzamento (aba "Vendas Canceladas", linhas cinza).', resultado.canceladas?.length || 0, { fundo: CORES.linhaCancelada }],
+    ['ESTORNADA', 'Estornada pela operadora, fora dos pagos (aba "Estornos", linhas roxas).', resultado.estornadas?.length || 0, { fundo: CORES.linhaEstorno, fonte: CORES.fonteEstorno }]
   ];
   for (const [status, descricao, total, cores] of legenda) {
     const linha = worksheet.addRow([status, descricao, total]);
@@ -988,6 +1027,17 @@ async function gerarWorkbook(resultado, colunasResultado) {
     });
   }
 
+  // Estornos: vendas revertidas pela operadora (ESTORNO na confirmacao), fora dos pagos.
+  // Mostra os dados da principal (como as demais abas), com o mes de origem. Sempre criada
+  // (mesmo vazia) para o Resumo nunca citar uma aba inexistente.
+  const cabecalhoEstornos = ['Mês', ...cabecalho];
+  const linhasEstornos = (resultado.estornadas || []).map(linha => ({ 'Mês': linha.__mes || '', ...linha }));
+  escreverAba(workbook, nomeAbaValido('Estornos', usados), cabecalhoEstornos, linhasEstornos, {
+    corCabecalho: CORES.cabecalhoEstornos,
+    corLinha: CORES.linhaEstorno,
+    colunaDivisao: colunaDivisao + 1
+  });
+
   return workbook.xlsx.writeBuffer();
 }
 
@@ -1006,17 +1056,40 @@ function indexarConfirmacao(linhas, mapeamento, arquivo) {
   // Detecta os padroes da operadora uma vez (ex.: colunas "Ctns ..." e "Receita ..." da Claro).
   const colunasChipsAuto = detectarColunasChips(linhas.length ? Object.keys(linhas[0]) : []);
   const colunasValorAuto = detectarColunasValor(linhas.length ? Object.keys(linhas[0]) : []);
+  // Coluna de status do fechamento (ex.: Claro "Status"): usada para detectar cancelamento.
+  const colunaStatusAuto = detectarColunaStatus(linhas.length ? Object.keys(linhas[0]) : []);
 
   for (const dados of linhas) {
     const mapaLinha = mapeamentoDaLinha(mapeamento, dados);
     const chaveRazao = normalizarChave(valorMapeado(dados, mapaLinha, 'razaoSocial'));
     const documento = documentoDaLinha(dados, mapaLinha);
+    // Estorno (VIVO): "ESTORNO" na coluna de valor. Ainda casa com a venda da principal (para
+    // saber QUAL venda foi estornada), mas nao conta como pagamento: valorTotal fica null.
+    const estorno = linhaEstornada(dados, mapaLinha, colunasValorAuto);
+    // Cancelamento pela operadora: "Cancelado" na coluna Status do fechamento (so o Status,
+    // por decisao do usuario). Como o estorno, casa com a venda e nao conta como pagamento.
+    const statusFechamento = colunaStatusAuto ? dados[colunaStatusAuto] : '';
+    const cancelada = !estorno && Boolean(colunaStatusAuto) && vendaCancelada(statusFechamento);
+    // Colunas de contas efetivas (mesma regra de quantidadeConfirmacao). Vazio = a operadora
+    // reporta 1 chip por linha (ex.: Vivo); preenchido = a linha pode agregar chips (ex.: Claro).
+    const colunasChips = Array.isArray(mapaLinha.quantidadeColunas) && mapaLinha.quantidadeColunas.length > 0
+      ? mapaLinha.quantidadeColunas
+      : colunasChipsAuto;
     const registro = {
       tipo: aplicarTipoMap(mapaLinha.tipoMap || mapeamento.tipoMap, valorMapeado(dados, mapaLinha, 'tipo')),
       chips: quantidadeConfirmacao(dados, mapaLinha, colunasChipsAuto),
+      // Confirmacao por linha (1 chip, sem colunas de contas: Vivo). Sem ambiguidade de "qual
+      // chip", o pareamento por identidade ja e certo — por isso nao vira amarelo por valor.
+      porLinha: colunasChips.length === 0,
+      estorno,
+      cancelada,
+      motivoCancelamento: cancelada ? (String(statusFechamento).trim() || 'Cancelado') : '',
       // Valor total pago na linha (bundle): a Claro pode juntar chips de valores diferentes
-      // numa linha so; null = sem coluna de valor (pareamento por contagem, como antes).
-      valorTotal: valorConfirmacao(dados, mapaLinha, colunasValorAuto),
+      // numa linha so; null = sem coluna de valor (pareamento por contagem), estorno ou cancelamento.
+      valorTotal: (estorno || cancelada) ? null : valorConfirmacao(dados, mapaLinha, colunasValorAuto),
+      // Razao Social ja resolvida com o mapeamento deste arquivo: apos a mescla de operadoras
+      // (varios arquivos com layouts diferentes num indice so) nao da para re-derivar via config.
+      razaoSocial: valorMapeado(dados, mapaLinha, 'razaoSocial'),
       dados,
       arquivo,
       tipoDocumento: documento.tipo,
@@ -1030,6 +1103,29 @@ function indexarConfirmacao(linhas, mapeamento, arquivo) {
   indice.has = chave => indice.porRazaoSocial.has(chave);
   indice.get = chave => indice.porRazaoSocial.get(chave)?.[0] || null;
   return indice;
+}
+
+/**
+ * Mescla varios indices de confirmacao (um por arquivo) num unico indice, concatenando os
+ * registros de cada chave. Usado para juntar varios arquivos da MESMA operadora (ex.: Claro
+ * de Junho + Claro de Julho) para que os chips casem com todas as confirmacoes, nao so a 1a.
+ */
+function mesclarIndices(indices) {
+  if (indices.length === 1) return indices[0];
+  const merged = { porDocumento: new Map(), porRazaoSocial: new Map() };
+  const concatenar = (destino, origem) => {
+    for (const [chave, registros] of origem) {
+      if (!destino.has(chave)) destino.set(chave, []);
+      destino.get(chave).push(...registros);
+    }
+  };
+  for (const indice of indices) {
+    concatenar(merged.porDocumento, indice.porDocumento);
+    concatenar(merged.porRazaoSocial, indice.porRazaoSocial);
+  }
+  merged.has = chave => merged.porRazaoSocial.has(chave);
+  merged.get = chave => merged.porRazaoSocial.get(chave)?.[0] || null;
+  return merged;
 }
 
 /**
@@ -1150,7 +1246,36 @@ function parearChips(chips, indicesOperadoras) {
     grupos.get(grupoChave).push(chip);
   }
 
-  for (const grupo of grupos.values()) {
+  // Capacidade de cada linha de confirmacao, COMPARTILHADA entre os grupos: uma linha que
+  // confirma N chips paga no maximo N chips no total. A mesma empresa pode cair em mais de um
+  // grupo de identidade (parte das vendas com documento, parte so com Razao Social) e ambos
+  // enxergam as mesmas confirmacoes — sem este saldo, cada grupo gastava as mesmas linhas de novo
+  // (5 chips confirmados chegavam a pagar 9). Map local: nao suja os registros entre chamadas.
+  const saldos = new Map(); // confirmacao -> chips ainda nao pagos
+  const saldoDe = confirmacao => {
+    if (!saldos.has(confirmacao)) {
+      saldos.set(confirmacao, Number.isFinite(confirmacao.chips) ? confirmacao.chips : 1);
+    }
+    return saldos.get(confirmacao);
+  };
+  const consumir = (confirmacao, quantidade) => saldos.set(confirmacao, saldoDe(confirmacao) - quantidade);
+
+  // Um chip so pode ser dado como pago por uma linha cujo valor bate com o dele. Numa confirmacao
+  // POR LINHA (1 chip por linha com valor unitario, ex.: Vivo) o valor da linha E o do chip, entao
+  // a exigencia e direta: sem linha de valor equivalente, o chip nao e pareado (fica nao concluido).
+  // Excecoes, onde a comparacao chip a chip nao se aplica:
+  // - confirmacao AGREGAVEL (Claro): o valor e a soma de varios chips; quem confere e a 1a fase
+  //   (subconjunto) e a falha dela ja sai sinalizada como divergencia;
+  // - algum dos lados sem valor (ex.: aba PF, que casa por CPF): nao ha o que comparar.
+  const compativel = (chip, confirmacao) => {
+    if (!confirmacao.porLinha) return true;
+    if (chip.valor == null || (confirmacao.valorTotal ?? null) === null) return true;
+    return Math.abs(chip.valor - confirmacao.valorTotal) <= TOLERANCIA_VALOR;
+  };
+
+  // Contexto de cada grupo: os bundles (linhas de confirmacao da empresa) e o casamento por
+  // contagem daquele grupo. Montado antes das passadas para que as fases rodem GLOBALMENTE.
+  const contextos = [...grupos.values()].map(grupo => {
     const base = grupo[0];
     const indiceOp = base.operadora >= 0 ? indicesOperadoras[base.operadora] : null;
     const confirmacoes = listarConfirmacoes(indiceOp, base.documento?.chave, base.chave);
@@ -1161,14 +1286,69 @@ function parearChips(chips, indicesOperadoras) {
         confirmacao,
         qtd: Number.isFinite(confirmacao.chips) ? confirmacao.chips : 1,
         valorTotal: confirmacao.valorTotal ?? null,
-        mes: confirmacao.dados?.__abaOrigem || base.mesPrincipal || ''
+        mes: rotuloMes(confirmacao.dados) || base.mesPrincipal || ''
       }))
       .filter(bundle => bundle.qtd > 0)
       .sort((a, b) => chaveOrdenacaoMes(a.mes) - chaveOrdenacaoMes(b.mes));
 
-    // 1a fase: casamento por valor. So participam bundles com valor e chips com valor unitario.
+    // Casa uma lista de bundles por contagem: 1 slot por chip, preferindo o mes do chip e
+    // depois qualquer mes em ordem cronologica. Reutilizado pela fase de estorno e pela 2a fase.
+    const casarPorContagem = listaBundles => {
+      const porMes = new Map(); // mes -> [confirmacao, ...]
+      for (const bundle of listaBundles) {
+        if (bundle.consumido) continue;
+        bundle.consumido = true;
+        // Nunca oferecer mais slots do que a linha ainda pode pagar.
+        const vagas = Math.min(bundle.qtd, saldoDe(bundle.confirmacao));
+        if (vagas <= 0) continue;
+        if (!porMes.has(bundle.mes)) porMes.set(bundle.mes, []);
+        for (let i = 0; i < vagas; i += 1) porMes.get(bundle.mes).push(bundle.confirmacao);
+      }
+      const meses = [...porMes.keys()].sort((a, b) => chaveOrdenacaoMes(a) - chaveOrdenacaoMes(b));
+      // Retira do pool uma confirmacao COMPATIVEL com o chip (varre uma a uma). Nao havendo
+      // nenhuma, o chip fica sem par: melhor nao concluido do que dado como pago por uma linha
+      // de outro valor.
+      const retirar = (pool, chip) => {
+        if (!pool || pool.length === 0) return false;
+        const indice = pool.findIndex(confirmacao => compativel(chip, confirmacao));
+        if (indice === -1) return false;
+        const [confirmacao] = pool.splice(indice, 1);
+        if (saldoDe(confirmacao) <= 0) return false;
+        chip.confirmacao = confirmacao;
+        consumir(confirmacao, 1);
+        return true;
+      };
+      for (const chip of grupo) {
+        if (chip.confirmacao) continue;
+        retirar(porMes.get(chip.mesPrincipal), chip);
+      }
+      for (const chip of grupo) {
+        if (chip.confirmacao) continue;
+        for (const mes of meses) {
+          if (retirar(porMes.get(mes), chip)) break;
+        }
+      }
+    };
+
+    return { grupo, bundles, casarPorContagem };
+  });
+
+  // Passada 0 (reversoes): estorno e cancelamento reivindicam o chip da venda ANTES do pagamento.
+  // Sem isso, uma linha paga da mesma empresa consumiria o chip primeiro e a venda apareceria
+  // como paga, escondendo o estorno/cancelamento.
+  for (const { bundles, casarPorContagem } of contextos) {
+    casarPorContagem(bundles.filter(bundle => bundle.confirmacao.estorno || bundle.confirmacao.cancelada));
+  }
+
+  // Passada 1 (valor): casamento por valor em TODOS os grupos antes de qualquer pareamento por
+  // contagem. Sem essa prioridade global, um grupo processado antes podia levar por contagem as
+  // linhas que fechavam exatamente com os chips de outro grupo da mesma empresa (era assim que
+  // chips de 39,99 acabavam pagos por linhas de 69,99).
+  for (const { grupo, bundles } of contextos) {
     for (const bundle of bundles) {
       if (bundle.valorTotal === null) continue;
+      // A linha precisa ter saldo para todos os chips que ela declara pagar.
+      if (saldoDe(bundle.confirmacao) < bundle.qtd) continue;
       const livres = grupo.filter(chip => !chip.confirmacao && chip.valor != null);
       const doMes = livres.filter(chip => chip.mesPrincipal === bundle.mes);
       const tolerancia = TOLERANCIA_VALOR * bundle.qtd;
@@ -1179,39 +1359,27 @@ function parearChips(chips, indicesOperadoras) {
         chip.confirmacao = bundle.confirmacao;
         chip.valorOk = true;
       }
+      consumir(bundle.confirmacao, bundle.qtd);
       bundle.consumido = true;
     }
+  }
 
-    // 2a fase: fallback por contagem com os bundles e chips restantes (comportamento original).
-    const opPorMes = new Map(); // mes -> [confirmacao, ...] (1 slot por chip do bundle)
-    for (const bundle of bundles) {
-      if (bundle.consumido) continue;
-      if (!opPorMes.has(bundle.mes)) opPorMes.set(bundle.mes, []);
-      for (let i = 0; i < bundle.qtd; i += 1) opPorMes.get(bundle.mes).push(bundle.confirmacao);
-    }
-    const mesesCronologicos = [...opPorMes.keys()].sort((a, b) => chaveOrdenacaoMes(a) - chaveOrdenacaoMes(b));
+  // Passada 2: fallback por contagem com os bundles e chips restantes.
+  for (const { bundles, casarPorContagem } of contextos) {
+    casarPorContagem(bundles);
+  }
 
-    // Casa cada chip no seu proprio mes (data da venda); depois, qualquer mes em ordem cronologica.
-    for (const chip of grupo) {
-      if (chip.confirmacao) continue;
-      const pool = opPorMes.get(chip.mesPrincipal);
-      if (pool && pool.length) chip.confirmacao = pool.shift();
-    }
-    for (const chip of grupo) {
-      if (chip.confirmacao) continue;
-      for (const mes of mesesCronologicos) {
-        const pool = opPorMes.get(mes);
-        if (pool && pool.length) { chip.confirmacao = pool.shift(); break; }
-      }
-    }
-
-    // Define o status final de cada chip.
+  // Define o status final de cada chip.
+  for (const { grupo } of contextos) {
     for (const chip of grupo) {
       const confirmacao = chip.confirmacao || null;
       chip.confirmacao = confirmacao;
       chip.concluida = Boolean(confirmacao);
+      // Venda estornada/cancelada: casou com uma linha de reversao da operadora (fora dos pagos).
+      chip.estornada = Boolean(confirmacao && confirmacao.estorno);
+      chip.cancelada = Boolean(confirmacao && confirmacao.cancelada);
       chip.tipo = confirmacao ? (confirmacao.tipo ?? '') : '';
-      chip.mes = confirmacao ? (confirmacao.dados?.__abaOrigem || chip.mesPrincipal) : chip.mesPrincipal;
+      chip.mes = confirmacao ? (rotuloMes(confirmacao.dados) || chip.mesPrincipal) : chip.mesPrincipal;
       // Divergencia: pareado por contagem quando ambos os lados tinham valor e nada fechou.
       if (confirmacao && chip.valorOk !== true && chip.valor != null && (confirmacao.valorTotal ?? null) !== null) {
         chip.valorOk = false;
@@ -1257,8 +1425,10 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
     const documento = documentoDaLinha(dados, mapaPrincipal);
     const textoOperadora = normalizarTexto(valorMapeado(dados, mapaPrincipal, 'operadora'));
     const operadora = operadoras.findIndex(op => operadoraCombina(textoOperadora, op));
-    // Mes da principal (fallback): aba de origem quando multi-aba, senao a Data da venda.
-    const mesPrincipal = usarAbaComoMes ? (dados.__abaOrigem || '') : mesDaData(valorMapeado(dados, mapaPrincipal, 'data'));
+    // Mes da principal: mes escolhido pelo usuario (arquivo de mes unico) tem prioridade;
+    // senao aba de origem quando multi-aba; senao a Data da venda.
+    const mesPrincipal = dados.__mesRotulo
+      || (usarAbaComoMes ? (dados.__abaOrigem || '') : mesDaData(valorMapeado(dados, mapaPrincipal, 'data')));
     // Vendas canceladas (STATUS ou comunicado em OBS) saem do cruzamento: nao entram no pareamento
     // nem sao explodidas em chips (1 linha = 1 venda cancelada).
     const motivo = motivoCancelamento(dados, colunaStatus, colunasEstruturais);
@@ -1280,6 +1450,7 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
   const formatarValor = valor => Number(valor).toFixed(2).replace('.', ',');
 
   const statusConciliacao = chip => {
+    if (chip.estornada) return 'ESTORNADA';
     if (chip.tipo === 'UNKNOWN') return 'VALIDAR_MANUALMENTE';
     if (!chip.concluida) return 'NAO_ENCONTRADO';
     // Pareado por contagem com valores conhecidos dos dois lados que nao fecharam: validar.
@@ -1287,6 +1458,7 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
   };
 
   const observacaoAutomatica = chip => {
+    if (chip.estornada) return 'Estornada pela operadora (ESTORNO na planilha de confirmação).';
     if (chip.tipo === 'UNKNOWN') return 'Tipo da confirmação parece numérico ou inválido; validar o mapeamento da aba.';
     if (!chip.concluida) return 'Não encontrado na planilha de confirmação.';
     if (chip.valorOk === false) {
@@ -1311,21 +1483,23 @@ function cruzarMultiplasPlanilhas(linhasPrincipal, indicesOperadoras, config) {
       Arquivo_Confirmacao: chip.confirmacao?.arquivo || '',
       Aba_Confirmacao: chip.confirmacao?.dados?.__abaOrigem || '',
       Linha_Confirmacao: chip.confirmacao?.dados?.__linhaOrigem || '',
-      Razao_Social_Confirmacao: chip.confirmacao
-        ? valorMapeado(
-            chip.confirmacao.dados,
-            mapeamentoDaLinha(operadoras[chip.operadora], chip.confirmacao.dados),
-            'razaoSocial'
-          ) || ''
-        : '',
+      Razao_Social_Confirmacao: chip.confirmacao?.razaoSocial || '',
       Observacao_Automatica: observacaoAutomatica(chip)
     });
   };
 
+  // Chips cancelados pela confirmacao (Status "Cancelado" no fechamento): vao para a mesma aba
+  // "Vendas Canceladas" da principal, no mesmo formato { dados, mes, status }.
+  const canceladasConfirmacao = chips
+    .filter(chip => chip.cancelada)
+    .map(chip => ({ dados: chip.dados, mes: chip.mes, status: chip.confirmacao?.motivoCancelamento || 'Cancelado' }));
+
   return {
-    concluidas: chips.filter(chip => chip.concluida).map(montarLinha),
+    // Estornadas/canceladas casaram com uma confirmacao, mas nao contam como pagas.
+    concluidas: chips.filter(chip => chip.concluida && !chip.estornada && !chip.cancelada).map(montarLinha),
+    estornadas: chips.filter(chip => chip.estornada && !chip.cancelada).map(montarLinha),
     naoConcluidas: chips.filter(chip => !chip.concluida).map(montarLinha),
-    canceladas
+    canceladas: [...canceladas, ...canceladasConfirmacao]
   };
 }
 
@@ -1341,17 +1515,38 @@ async function processarCruzamento(req) {
   let selecoesAbas = [];
   try { selecoesAbas = JSON.parse(campos.config || '{}').selecoesAbas || []; } catch (_) { /* parseConfig informa o erro */ }
   const planilhas = await Promise.all(arquivos.map((arquivo, arquivoIndex) => {
-    const abas = selecoesAbas.filter(item => item.usar !== false && item.arquivoIndex === arquivoIndex).map(item => item.aba);
+    const selecoesArquivo = selecoesAbas.filter(item => item.usar !== false && item.arquivoIndex === arquivoIndex);
+    const abas = selecoesArquivo.map(item => item.aba);
     if (selecoesAbas.length && abas.length === 0) {
       throw criarHttpError(400, `Selecione ao menos uma aba do arquivo "${arquivo.filename}".`);
     }
-    return carregarPlanilha(arquivo.buffer, selecoesAbas.length ? abas : null);
+    // Rotulo de mes escolhido na tela por aba (arquivos de mes unico): { nomeAba -> 'JUNHO26' }.
+    const mesesPorAba = Object.fromEntries(selecoesArquivo.filter(item => item.mes).map(item => [item.aba, item.mes]));
+    return carregarPlanilha(arquivo.buffer, selecoesAbas.length ? abas : null, mesesPorAba);
   }));
   const config = parseConfig(campos.config, planilhas.map(planilha => planilha.colunas));
-  const indicesOperadoras = planilhas.slice(1).map((planilha, index) => (
+
+  // Indice de confirmacao por arquivo (cada um com seu proprio mapeamento).
+  const indicesPorArquivo = planilhas.slice(1).map((planilha, index) => (
     indexarConfirmacao(planilha.linhas, config.operadoras[index], arquivos[index + 1].filename)
   ));
-  const resultado = cruzarMultiplasPlanilhas(planilhas[0].linhas, indicesOperadoras, config);
+  // Agrupa os arquivos pela operadora (valorOperadora) para que varios meses da mesma operadora
+  // sejam consultados juntos no pareamento. A ordem segue a primeira aparicao de cada operadora.
+  const ordemOperadoras = [];
+  const arquivosPorOperadora = new Map();
+  config.operadoras.forEach((operadora, index) => {
+    const chave = operadora.valorOperadora || `__arquivo_${index}`;
+    if (!arquivosPorOperadora.has(chave)) { arquivosPorOperadora.set(chave, []); ordemOperadoras.push(chave); }
+    arquivosPorOperadora.get(chave).push(index);
+  });
+  const operadorasDistintas = ordemOperadoras.map(chave => ({ valorOperadora: chave.startsWith('__arquivo_') ? '' : chave }));
+  const indicesMesclados = ordemOperadoras.map(chave => mesclarIndices(arquivosPorOperadora.get(chave).map(index => indicesPorArquivo[index])));
+
+  const resultado = cruzarMultiplasPlanilhas(
+    planilhas[0].linhas,
+    indicesMesclados,
+    { ...config, operadoras: operadorasDistintas }
+  );
 
   return gerarWorkbook(resultado, config.principal.colunasResultado);
 }
@@ -1362,6 +1557,7 @@ module.exports = {
   // exportados para teste unitario do nucleo
   cruzarMultiplasPlanilhas,
   indexarConfirmacao,
+  mesclarIndices,
   aplicarTipoMap,
   normalizarChave,
   classificarDocumento,

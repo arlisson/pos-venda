@@ -67,6 +67,45 @@ function normalizarTexto(valor) {
     .trim();
 }
 
+const MESES_PT = ['Janeiro', 'Fevereiro', 'Mar\u00e7o', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+/**
+ * Formata um r\u00f3tulo de m\u00eas no padr\u00e3o das abas das operadoras (ex.: 6 + '26' \u2192 "JUNHO26"):
+ * nome do m\u00eas em mai\u00fasculas + ano com 2 d\u00edgitos, sem separador. '' se o m\u00eas for inv\u00e1lido.
+ */
+function formatarMesRotulo(mesNum, ano) {
+  const mes = Number(mesNum);
+  if (!mes || mes < 1 || mes > 12) return '';
+  const ano2 = String(ano || new Date().getFullYear()).replace(/\D/g, '').slice(-2).padStart(2, '0');
+  return `${MESES_PT[mes - 1].toUpperCase()}${ano2}`;
+}
+
+/**
+ * Interpreta um r\u00f3tulo de m\u00eas (ex.: "JUNHO26", "MAR\u00c7O26 PF") em { mes, ano }; campos vazios
+ * quando n\u00e3o reconhece. Usado para popular os controles de m\u00eas a partir do valor salvo.
+ */
+function parseMesRotulo(rotulo) {
+  const texto = normalizarTexto(rotulo);
+  const indice = MESES_PT.findIndex(nome => texto.startsWith(normalizarTexto(nome)));
+  if (indice === -1) return { mes: '', ano: '' };
+  const anoMatch = texto.match(/(\d{2,4})/);
+  return { mes: indice + 1, ano: anoMatch ? anoMatch[1].slice(-2) : '' };
+}
+
+/**
+ * Sugere o r\u00f3tulo de m\u00eas de uma aba. Se o pr\u00f3prio nome da aba j\u00e1 parece um m\u00eas (formato
+ * multi-m\u00eas antigo), retorna '' para usar o nome da aba. Sen\u00e3o tenta extrair m\u00eas + ano do
+ * nome do arquivo (ex.: "ATIVOS CLARO JUNHO26.xlsx" \u2192 "JUNHO26"). '' quando n\u00e3o encontra.
+ */
+function sugerirMesDaAba(nomeArquivo, nomeAba) {
+  if (parseMesRotulo(nomeAba).mes) return '';
+  const texto = normalizarTexto(nomeArquivo);
+  const indice = MESES_PT.findIndex(nome => texto.includes(normalizarTexto(nome)));
+  if (indice === -1) return '';
+  const anoMatch = texto.match(/(\d{2,4})/);
+  return formatarMesRotulo(indice + 1, anoMatch ? anoMatch[1] : '');
+}
+
 function indiceColuna(colunas = [], nomeColuna) {
   return colunas.find(coluna => coluna.nome === nomeColuna)?.index || '';
 }
@@ -118,12 +157,16 @@ function colunaValor(colunas = []) {
 /**
  * Sugere as colunas de valor a somar numa planilha de operadora, cujo total e o valor pago
  * na linha (ex.: Claro "Receita Nova/Incrementada/Renovada"; Vivo "VALOR").
+ *
+ * "Valor da Venda" fica de fora: e o padrao da aba de pessoa fisica da Vivo, onde o numero nao
+ * e comparavel ao valor por chip da principal (essas linhas casam por CPF). Continua possivel
+ * escolher a coluna a mao.
  */
 function colunasDeValor(colunas = []) {
   return colunas
     .filter(coluna => {
       const nome = normalizarTexto(coluna.nome);
-      return nome === 'valor' || /receita (nova|incrementada|renovada)/.test(nome) || nome.includes('valor da venda');
+      return nome === 'valor' || /receita (nova|incrementada|renovada)/.test(nome);
     })
     .map(coluna => coluna.nome);
 }
@@ -445,7 +488,9 @@ function CruzarVendasPage() {
         arquivoIndex: item.arquivoIndex,
         aba: aba.nome,
         usar: aba.total_linhas > 0,
-        tipo: aba.total_linhas > 0 ? sugerirTipoAba(aba.nome, item.arquivoIndex, item.arquivo) : 'IGNORE'
+        tipo: aba.total_linhas > 0 ? sugerirTipoAba(aba.nome, item.arquivoIndex, item.arquivo) : 'IGNORE',
+        // Rótulo de mês (só confirmações): sugerido pelo nome do arquivo; '' = usar o nome da aba.
+        mes: item.arquivoIndex > 0 ? sugerirMesDaAba(item.arquivo, aba.nome) : ''
       })));
       setSelecoesAbas(proximasSelecoes);
       const primeiraAbaUsada = proximasSelecoes.find(selecao => selecao.usar);
@@ -763,7 +808,7 @@ function CruzarVendasPage() {
               <span className="cruzar-step-badge">2</span>
               <div>
                 <h2 className="cruzar-section__title">Selecione e classifique as abas</h2>
-                <p className="cruzar-section__sub">Somente as abas marcadas entram no cruzamento. Abas vazias já começam ignoradas.</p>
+                <p className="cruzar-section__sub">Somente as abas marcadas entram no cruzamento. Abas vazias já começam ignoradas. Informe o <strong>mês</strong> de cada planilha de confirmação — deixe em branco para usar o nome da aba (planilhas com um mês por aba).</p>
               </div>
             </div>
             <div className="cruzar-sheet-list">
@@ -772,12 +817,34 @@ function CruzarVendasPage() {
                 const selecao = selecoesAbas[indice];
                 if (!selecao) return null;
                 const atualizar = alteracao => setSelecoesAbas(prev => prev.map((valor, index) => index === indice ? { ...valor, ...alteracao } : valor));
+                const mesSelecionado = parseMesRotulo(selecao.mes);
                 return <div className="cruzar-sheet-row" key={`${item.arquivoIndex}-${aba.nome}`}>
                   <label><input type="checkbox" checked={selecao.usar} onChange={event => atualizar({ usar: event.target.checked })} /> {item.arquivo} — {aba.nome}</label>
                   <span>{aba.total_linhas} linhas</span>
                   <select value={selecao.tipo} onChange={event => atualizar({ tipo: event.target.value })} disabled={!selecao.usar}>
                     {TIPOS_ABA_VISIVEIS.map(tipo => <option key={tipo.valor} value={tipo.valor}>{tipo.rotulo}</option>)}
                   </select>
+                  {item.arquivoIndex > 0 && (
+                    <span className="cruzar-sheet-mes">
+                      <select
+                        value={mesSelecionado.mes}
+                        onChange={event => atualizar({ mes: formatarMesRotulo(event.target.value, mesSelecionado.ano) })}
+                        disabled={!selecao.usar}
+                        title="Mês desta planilha (em branco = usar o nome da aba)"
+                      >
+                        <option value="">Mês (nome da aba)</option>
+                        {MESES_PT.map((nome, index) => <option key={nome} value={index + 1}>{nome}</option>)}
+                      </select>
+                      <input
+                        type="number"
+                        className="cruzar-sheet-mes__ano"
+                        placeholder="Ano"
+                        value={mesSelecionado.ano}
+                        onChange={event => atualizar({ mes: formatarMesRotulo(mesSelecionado.mes, event.target.value) })}
+                        disabled={!selecao.usar || !mesSelecionado.mes}
+                      />
+                    </span>
+                  )}
                 </div>;
               }))}
             </div>
