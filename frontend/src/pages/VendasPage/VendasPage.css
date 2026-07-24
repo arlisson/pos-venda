@@ -1386,6 +1386,28 @@ input.is-invalid {
   gap: 8px;
 }
 
+.venda-etapas-header--toggle {
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.venda-etapas-chevron {
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.venda-etapas-header--toggle[aria-expanded="true"] .venda-etapas-chevron {
+  transform: rotate(180deg);
+}
+
 .venda-etapas-title {
   font-size: 14px;
   font-weight: 700;
