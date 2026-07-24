@@ -3262,7 +3262,7 @@ function VendasPage() {
     setBusca(formatarBuscaPorCampo(buscaCampo, valor));
   }
 
-  const totalColunasVendas = 12 + (podeOperarPosVenda ? 2 : 0) + (podeExcluirVenda ? 1 : 0);
+  const totalColunasVendas = 13 + (podeOperarPosVenda ? 2 : 0) + (podeExcluirVenda ? 1 : 0);
   const larguraColunaContato = 104;
 
   return (
@@ -3551,6 +3551,7 @@ function VendasPage() {
                   <th>Venc.</th>
                   <th>Venda</th>
                   <th>Ativação</th>
+                  <th>Base</th>
                   <th>Vendedor(a)</th>
                   <th>Criado em</th>
                   {podeOperarPosVenda && (
@@ -3730,6 +3731,8 @@ function VendasPage() {
                               <dd>{formatarData(venda.data_venda)}</dd>
                               <dt>Ativacao</dt>
                               <dd>{formatarData(venda.data_ativacao)}</dd>
+                              <dt>Base</dt>
+                              <dd>{venda.cliente_da_base === true || Number(venda.cliente_da_base) === 1 ? 'Sim' : 'Não'}</dd>
                               <dt>Vendedor(a)</dt>
                               <dd>{obterVendedorasMensagem(venda)}</dd>
                               <dt>Criado em</dt>
@@ -3752,6 +3755,7 @@ function VendasPage() {
                       <td data-label="Venc." data-mobile-hidden="true">{venda.dia_vencimento || '-'}</td>
                       <td data-label="Venda" data-mobile-hidden="true">{formatarData(venda.data_venda)}</td>
                       <td data-label="Ativacao" data-mobile-hidden="true">{formatarData(venda.data_ativacao)}</td>
+                      <td data-label="Base" data-mobile-hidden="true">{venda.cliente_da_base === true || Number(venda.cliente_da_base) === 1 ? 'Sim' : 'Não'}</td>
                       <td data-label="Vendedor(a)" data-mobile-hidden="true"><span className="tag">{obterVendedorasMensagem(venda)}</span></td>
                       <td data-label="Criado em" data-mobile-hidden="true">
                         <div className="vendas-registro">
