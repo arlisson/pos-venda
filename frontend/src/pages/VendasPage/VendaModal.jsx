@@ -2655,6 +2655,7 @@ function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [],
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState('');
   const [erro, setErro] = useState('');
+  const [recolhido, setRecolhido] = useState(true); // começa sempre recolhida para evitar poluição visual
   const inputsRef = useRef({});
 
   /**
@@ -2759,14 +2760,20 @@ function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [],
 
   return (
     <div className="venda-etapas">
-      <div className="venda-etapas-header">
+      <button
+        type="button"
+        className="venda-etapas-header venda-etapas-header--toggle"
+        aria-expanded={!recolhido}
+        onClick={() => setRecolhido(prev => !prev)}
+      >
         <div className="venda-etapas-title">Etapas de conferência</div>
         <div className={`venda-etapas-resumo ${atual ? '' : 'venda-etapas-resumo--ok'}`}>
           {atual
             ? `Etapa ${visiveis.indexOf(atual) + 1} de ${visiveis.length} · ${atual.titulo}`
             : 'Todas as etapas concluídas'}
         </div>
-      </div>
+        <I.ChevronDown size={16} className="venda-etapas-chevron" />
+      </button>
 
       <div className="venda-etapas-stepper">
         {visiveis.map((etapa, idx) => {
@@ -2786,6 +2793,8 @@ function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [],
         })}
       </div>
 
+      {!recolhido && (
+        <>
       {erro && <div className="alert-error">{erro}</div>}
 
       <div className="venda-etapas-cards">
@@ -2898,6 +2907,8 @@ function EtapasVendaTab({ venda, podeEditar, podeAdicionar, etapasArquivos = [],
       <div className="venda-etapas-progresso">
         {concluidas} de {visiveis.length} etapas concluídas
       </div>
+        </>
+      )}
     </div>
   );
 }

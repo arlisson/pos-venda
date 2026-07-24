@@ -311,7 +311,7 @@
 
 .cruzar-sheet-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 220px;
+  grid-template-columns: minmax(0, 1fr) auto 200px 210px;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -344,6 +344,27 @@
   background: var(--surface);
   color: var(--text);
 }
+
+.cruzar-sheet-mes {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.cruzar-sheet-mes select { flex: 1; min-width: 0; }
+
+.cruzar-sheet-mes__ano {
+  width: 64px;
+  flex: none;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.cruzar-sheet-mes__ano:disabled { opacity: 0.5; }
 
 @media (max-width: 640px) {
   .cruzar-sheet-row { grid-template-columns: 1fr; }

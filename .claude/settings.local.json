@@ -172,7 +172,15 @@
       "Bash(node -e \"const c=require\\('./src/controllers/lead-planilha.controller'\\); const s=require\\('./src/services/lead-planilha.service'\\); const need=['adminAtualizarCampoLead','adminMarcarVendaRecusada','adminReverterVendaRecusada','adminMarcarClienteRecusou','adminReverterClienteRecusou','adminMarcarChamadaNaoAtendida','adminReverterChamadaNaoAtendida','adminMarcarRetorno','adminMarcarFuturoCliente']; const miss=need.filter\\(n=>typeof c[n]!=='function'\\); console.log\\('controller missing:', miss\\); console.log\\('service reverterVendaRecusadaLead:', typeof s.reverterVendaRecusadaLead\\); require\\('./src/routes/lead-planilha.routes'\\); console.log\\('routes loaded OK'\\);\")",
       "Bash(timeout 12 node src/server.js)",
       "Bash(echo \"exit=$?\")",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(node -e 'console.log\\(\"form-data:\", !!require.resolve\\(\"form-data\"\\)\\); ')",
+      "Bash(grep -iE \"^\\(form-data|busboy\\)$\")",
+      "Bash(rm -f /tmp/inspect-vivo.js)",
+      "Bash(node --test test/venda-cruzamento.integration.test.js)",
+      "Bash(node --test)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

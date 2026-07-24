@@ -106,7 +106,8 @@ test('concluida vai para a aba do mes em que a operadora confirmou', async () =>
   await workbook.xlsx.load(buffer);
   const nomes = workbook.worksheets.map(ws => ws.name);
   // A Claro confirmou na aba JANEIRO26: a concluida segue essa organizacao de mes.
-  assert.deepEqual(nomes, ['Resumo', 'JANEIRO26', 'Vendas Nao Concluidas']);
+  // "Estornos" e sempre criada (vazia aqui, sem estornos) para o Resumo nao citar aba inexistente.
+  assert.deepEqual(nomes, ['Resumo', 'JANEIRO26', 'Vendas Nao Concluidas', 'Estornos']);
 
   const concluidas = workbook.getWorksheet('JANEIRO26');
   // linha 1 = cabecalho; linha 2 = a venda conciliada
@@ -164,7 +165,7 @@ test('agrupa concluidas pelo mes da confirmacao em ordem cronologica e nao concl
   await workbook.xlsx.load(buffer);
 
   // Resumo + abas-mes das confirmacoes em ordem cronologica + a aba unica de nao concluidas.
-  assert.deepEqual(workbook.worksheets.map(ws => ws.name), ['Resumo', 'JANEIRO26', 'FEVEREIRO26', 'Vendas Nao Concluidas']);
+  assert.deepEqual(workbook.worksheets.map(ws => ws.name), ['Resumo', 'JANEIRO26', 'FEVEREIRO26', 'Vendas Nao Concluidas', 'Estornos']);
 
   const clienteDaAba = nome => {
     const ws = workbook.getWorksheet(nome);
@@ -201,10 +202,10 @@ test('estilo: linha divergente sai amarela e o Resumo traz as contagens por stat
     filename: 'claro.xlsx',
     abas: {
       JANEIRO26: {
-        header: ['Razao Social', 'CNPJ', 'Tipo', 'Receita'],
+        header: ['Razao Social', 'CNPJ', 'Tipo', 'Ctns', 'Receita'],
         rows: [
-          ['Empresa A', '11.111.111/0001-11', 'NOVO', '69,99'],
-          ['Empresa B', '22.222.222/0001-22', 'NOVO', '54,99']
+          ['Empresa A', '11.111.111/0001-11', 'NOVO', 1, '69,99'],
+          ['Empresa B', '22.222.222/0001-22', 'NOVO', 1, '54,99']
         ]
       }
     }
@@ -212,7 +213,8 @@ test('estilo: linha divergente sai amarela e o Resumo traz as contagens por stat
   const config = {
     ...CONFIG_VALIDA,
     principal: { ...CONFIG_VALIDA.principal, valor: 'Valor' },
-    operadoras: [{ ...CONFIG_VALIDA.operadoras[0], valorColunas: ['Receita'] }]
+    // Claro agregavel (com Ctns): a divergencia de valor vira amarelo.
+    operadoras: [{ ...CONFIG_VALIDA.operadoras[0], quantidadeColunas: ['Ctns'], valorColunas: ['Receita'] }]
   };
   const arquivos = [
     { filename: principal.filename, buffer: await xlsxBuffer(principal.abas) },
