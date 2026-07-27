@@ -1916,7 +1916,7 @@ async function listarVendas(filtros = {}, usuarioId) {
     .modifyGraph('vendedoras', builder => builder.select('usuarios.id', 'usuarios.nome', 'usuarios.email', 'usuarios.foto_perfil').orderBy('venda_vendedoras.ordem', 'asc'))
     .modifyGraph('origemSondador', builder => builder.select('id', 'nome'))
     .modifyGraph('historico', builder => builder.select('id', 'venda_id', 'status_novo', 'created_at').whereNotNull('status_novo').orderBy('created_at', 'asc').orderBy('id', 'asc'))
-    .modifyGraph('aprovacaoSolicitacoes', builder => builder.select('id', 'venda_id', 'status', 'motivos', 'created_at').whereNot('status', 'obsoleta').orderBy('id', 'desc'))
+    .modifyGraph('aprovacaoSolicitacoes', builder => builder.select('id', 'venda_id', 'status', 'motivos', 'observacao_decisao', 'created_at').whereNot('status', 'obsoleta').orderBy('id', 'desc'))
     .whereNull('excluido_em')
     .orderBy('data_venda', 'desc')
     .orderBy('id', 'desc');

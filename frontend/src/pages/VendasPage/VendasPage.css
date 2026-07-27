@@ -323,6 +323,64 @@
   white-space: nowrap;
 }
 
+.vendas-aprovacao-recusada-badge {
+  position: relative;
+  cursor: help;
+}
+
+.vendas-aprovacao-recusada-badge:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.2);
+}
+
+.vendas-aprovacao-recusada-tooltip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: 0;
+  display: none;
+  width: max-content;
+  min-width: 190px;
+  max-width: min(320px, calc(100vw - 48px));
+  padding: 9px 11px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.22);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.vendas-aprovacao-recusada-tooltip::before {
+  position: absolute;
+  top: -5px;
+  left: 14px;
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid #bfdbfe;
+  border-left: 1px solid #bfdbfe;
+  background: #0f172a;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.vendas-aprovacao-recusada-tooltip strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #bfdbfe;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.vendas-aprovacao-recusada-badge:hover .vendas-aprovacao-recusada-tooltip,
+.vendas-aprovacao-recusada-badge:focus .vendas-aprovacao-recusada-tooltip {
+  display: block;
+}
+
 .vendas-cliente-concluidas-badge {
   display: inline-flex;
   align-items: center;

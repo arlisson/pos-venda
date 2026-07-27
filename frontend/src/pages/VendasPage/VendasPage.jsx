@@ -3585,6 +3585,8 @@ function VendasPage() {
                 ) : (
                   vendas.map(venda => {
                     const solicitacaoAprovacao = obterSolicitacaoAprovacaoAtual(venda);
+                    const motivoRecusa = String(solicitacaoAprovacao?.observacao_decisao || '').trim()
+                      || 'Motivo não informado pelo ADM.';
                     const vendaCancelada = Boolean(venda.cancelada_em);
                     const resumoFunil = obterResumoFunilVenda(venda, etapasFunil);
 
@@ -3619,9 +3621,17 @@ function VendasPage() {
                               </span>
                             )}
                             {!venda.enviada_pos_venda_em && solicitacaoAprovacao?.status === 'recusada' && (
-                              <span className="vendas-cliente-repeat-badge">
+                              <span
+                                className="vendas-cliente-repeat-badge vendas-aprovacao-recusada-badge"
+                                tabIndex={0}
+                                aria-label={`Recusada pelo ADM. Motivo: ${motivoRecusa}`}
+                              >
                                 <I.AlertTriangle size={11} />
                                 Recusada pelo ADM
+                                <span className="vendas-aprovacao-recusada-tooltip" role="tooltip">
+                                  <strong>Motivo da recusa</strong>
+                                  <span>{motivoRecusa}</span>
+                                </span>
                               </span>
                             )}
                             {resumoFunil && (
