@@ -123,6 +123,10 @@ function parseItensChips(valor, gbPadrao = '') {
         quantidade: Number(item.quantidade || 0),
         gb: texto(item.gb || gbPadrao),
         tipoLinha: normalizarTipoLinhaChip(item.tipo_linha || item.tipo || item.categoria),
+        ...(item.operadora_atual_id ? { operadoraAtualId: Number(item.operadora_atual_id) } : {}),
+        ...(item.operadora_atual_nome ? { operadoraAtualNome: texto(item.operadora_atual_nome) } : {}),
+        ...(item.operadora_id ? { operadoraId: Number(item.operadora_id) } : {}),
+        ...(item.operadora_nome ? { operadoraNome: texto(item.operadora_nome) } : {}),
         valorUnitario: parseNumero(item.valor_unitario)
       }))
       .filter(item => item.quantidade > 0);

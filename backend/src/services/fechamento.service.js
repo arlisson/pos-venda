@@ -115,6 +115,10 @@ function parseChips(rawChips) {
         ? tipoVendaNormalizado(item.tipo_linha || item.tipo || item.categoria) || 'novo'
         : null,
       valor_unitario: Number(item.valor_unitario || 0),
+      ...(item.operadora_atual_id ? { operadora_atual_id: Number(item.operadora_atual_id) } : {}),
+      ...(item.operadora_atual_nome ? { operadora_atual_nome: String(item.operadora_atual_nome).trim() } : {}),
+      ...(item.operadora_id ? { operadora_id: Number(item.operadora_id) } : {}),
+      ...(item.operadora_nome ? { operadora_nome: String(item.operadora_nome).trim() } : {}),
       vendedora_id: item.vendedora_id ? Number(item.vendedora_id) : null
     }))
     .filter(item => item.quantidade > 0);
@@ -802,6 +806,47 @@ function somarRetornoHistoricoLinha(linha, venda, chips) {
 }
 
 /**
+ * Agrupa os chips da venda pela operadora de destino.
+ */
+function agruparChipsPorOperadora(venda) {
+  const chips = parseChips(venda.valores_unitarios_chips);
+
+  if (chips.length === 0) {
+    return [{
+      operadora_id: venda.operadora_id ? Number(venda.operadora_id) : null,
+      operadora_nome: venda.operadora_nome || null,
+      quantidade: quantidadeChipsVenda(venda),
+      novo: quantidadeChipsPorTipo(venda, 'novo'),
+      portabilidade: quantidadeChipsPorTipo(venda, 'portabilidade'),
+      valor_total: Number(venda.valor_total || 0)
+    }];
+  }
+
+  const grupos = new Map();
+
+  chips.forEach(chip => {
+    const operadoraId = chip.operadora_id ? Number(chip.operadora_id) : (venda.operadora_id ? Number(venda.operadora_id) : null);
+    const chave = operadoraId ?? 'sem_operadora';
+    const atual = grupos.get(chave) || {
+      operadora_id: operadoraId,
+      operadora_nome: chip.operadora_nome || (Number(venda.operadora_id) === operadoraId ? venda.operadora_nome : null),
+      quantidade: 0,
+      novo: 0,
+      portabilidade: 0,
+      valor_total: 0
+    };
+
+    atual.quantidade += Number(chip.quantidade || 0);
+    atual.valor_total += Number(chip.quantidade || 0) * Number(chip.valor_unitario || 0);
+    if (chip.tipo_linha === 'portabilidade') atual.portabilidade += Number(chip.quantidade || 0);
+    else atual.novo += Number(chip.quantidade || 0);
+    grupos.set(chave, atual);
+  });
+
+  return Array.from(grupos.values());
+}
+
+/**
  * Agrega por operadora para compor os totais.
  */
 function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapasBase = []) {
@@ -810,56 +855,43 @@ function agregarPorOperadora(vendas, statusFinal = STATUS_FINAL_FALLBACK, etapas
   const ativas = new Map();
 
   vendas.forEach(venda => {
-    const chave = venda.operadora_id ?? 'sem_operadora';
-    /**
-     * Processa inicializa conforme as regras do dominio.
-     */
-    const inicializa = (mapa) => {
-      if (!mapa.has(chave)) {
-        mapa.set(chave, novaLinhaOperadora(venda.operadora_id || null, venda.operadora_nome, etapasBase, statusFinal));
-      }
-      return mapa.get(chave);
-    };
+    agruparChipsPorOperadora(venda).forEach(grupo => {
+      const chave = grupo.operadora_id ?? 'sem_operadora';
+      const inicializa = (mapa) => {
+        if (!mapa.has(chave)) {
+          mapa.set(chave, novaLinhaOperadora(grupo.operadora_id, grupo.operadora_nome, etapasBase, statusFinal));
+        }
+        return mapa.get(chave);
+      };
 
-    const categoria = categoriaServico(venda.servico_nome);
-    const chipsNovos = quantidadeChipsPorTipo(venda, 'novo');
-    const chipsPortabilidade = quantidadeChipsPorTipo(venda, 'portabilidade');
-    const valor = Number(venda.valor_total || 0);
-    const chips = quantidadeChipsVenda(venda);
-    const ehContrato = venda.status_funil === statusFinal;
+      const categoria = categoriaServico(venda.servico_nome);
+      const chips = Number(grupo.quantidade || 0);
+      const ehContrato = venda.status_funil === statusFinal;
 
-    /**
-     * Aplica  sobre a consulta ou conjunto informado.
-     */
-    const aplicar = (linha) => {
-      linha.total_vendas += 1;
-      if (ehContrato) {
-        linha.contratos += 1;
-        linha.ugrs += chips;
-      }
-      if (categoria === 'movel') linha.movel += 1;
-      if (categoria === 'fixo') linha.fixo += 1;
-      if (categoria === 'internet') linha.internet += 1;
-      linha.novo += chipsNovos;
-      linha.portabilidade += chipsPortabilidade;
-      linha.receita += valor;
-      somarEtapaLinha(linha, venda, chips, etapasBase, statusFinal);
-      somarRetornoHistoricoLinha(linha, venda, chips);
-    };
+      const aplicar = (linha) => {
+        linha.total_vendas += 1;
+        if (ehContrato) {
+          linha.contratos += 1;
+          linha.ugrs += chips;
+        }
+        if (categoria === 'movel') linha.movel += 1;
+        if (categoria === 'fixo') linha.fixo += 1;
+        if (categoria === 'internet') linha.internet += 1;
+        linha.novo += Number(grupo.novo || 0);
+        linha.portabilidade += Number(grupo.portabilidade || 0);
+        linha.receita += Number(grupo.valor_total || 0);
+        somarEtapaLinha(linha, venda, chips, etapasBase, statusFinal);
+        somarRetornoHistoricoLinha(linha, venda, chips);
+      };
 
-    aplicar(inicializa(total));
+      aplicar(inicializa(total));
 
-    const secao = classificarSecao(venda.status_funil, statusFinal);
-    if (secao === 'tratando') {
-      aplicar(inicializa(tratando));
-    } else if (secao === 'ativas') {
-      aplicar(inicializa(ativas));
-    }
+      const secao = classificarSecao(venda.status_funil, statusFinal);
+      if (secao === 'tratando') aplicar(inicializa(tratando));
+      else if (secao === 'ativas') aplicar(inicializa(ativas));
+    });
   });
 
-  /**
-   * Processa finalizar conforme as regras do dominio.
-   */
   const finalizar = (mapa) => Array.from(mapa.values())
     .map(linha => ({
       ...linha,
@@ -1131,11 +1163,12 @@ async function obterDetalhesChips(filtros = {}) {
   });
   const regrasComissao = await carregarRegrasComissaoAtivas();
   const vendasSecao = filtrarPorSecao(todasVendas, filtros.secao, statusFinal);
+  const linhas = montarLinhasChips(vendasSecao, regrasComissao);
   const filtradas = filtros.operadora_id
-    ? vendasSecao.filter(v => Number(v.operadora_id) === Number(filtros.operadora_id))
-    : vendasSecao;
+    ? linhas.filter(linha => Number(linha.operadora?.id) === Number(filtros.operadora_id))
+    : linhas;
 
-  return montarRespostaLinhasChips(montarLinhasChips(filtradas, regrasComissao));
+  return montarRespostaLinhasChips(filtradas);
 }
 
 /**
@@ -1234,6 +1267,10 @@ function montarLinhasChips(vendas, regrasComissao = []) {
           gb: gigas[i] || '',
           tipo_linha: item.tipo_linha,
           valor_unitario: item.valor_unitario,
+          operadora_atual_id: item.operadora_atual_id,
+          operadora_atual_nome: item.operadora_atual_nome,
+          operadora_id: item.operadora_id,
+          operadora_nome: item.operadora_nome,
           vendedora_id: item.vendedora_id
         }));
         chipNumero += 1;
@@ -1302,8 +1339,11 @@ function montarRespostaLinhasChips(linhasOrdenadas) {
  * Monta linha chip a partir dos dados informados.
  */
 function montarLinhaChip(venda, chip) {
-  const operadoraVendaId = venda.operadora_id ? Number(venda.operadora_id) : null;
-  const operadoraAtualClienteId = venda.cliente_operadora_atual_id ? Number(venda.cliente_operadora_atual_id) : null;
+  const operadoraVendaId = chip.operadora_id ? Number(chip.operadora_id) : (venda.operadora_id ? Number(venda.operadora_id) : null);
+  const operadoraVendaNome = chip.operadora_nome || (Number(venda.operadora_id) === operadoraVendaId ? venda.operadora_nome : null);
+  const operadoraAtualClienteId = chip.operadora_atual_id
+    ? Number(chip.operadora_atual_id)
+    : (venda.cliente_operadora_atual_id ? Number(venda.cliente_operadora_atual_id) : null);
   const operadorasClienteIds = String(venda.cliente_operadoras_ids || '')
     .split(',')
     .map(id => Number(id))
@@ -1312,8 +1352,11 @@ function montarLinhaChip(venda, chip) {
     operadorasClienteIds.includes(operadoraVendaId)
     || (operadoraAtualClienteId && operadoraVendaId === operadoraAtualClienteId)
   ));
-  const operadoraAtualExibicaoId = clienteBaseOperadora ? operadoraVendaId : operadoraAtualClienteId;
-  const operadoraAtualExibicaoNome = clienteBaseOperadora ? venda.operadora_nome : venda.cliente_operadora_atual_nome;
+  const operadoraAtualExibicaoId = chip.operadora_atual_id
+    ? operadoraAtualClienteId
+    : (clienteBaseOperadora ? operadoraVendaId : operadoraAtualClienteId);
+  const operadoraAtualExibicaoNome = chip.operadora_atual_nome
+    || (clienteBaseOperadora ? operadoraVendaNome : venda.cliente_operadora_atual_nome);
   const clienteBasePropria = Boolean(venda.cliente_base_anterior_sistema);
   const vendedoras = normalizarVendedorasVenda(venda);
   const vendedoraChip = chip.vendedora_id
@@ -1397,7 +1440,7 @@ function montarLinhaChip(venda, chip) {
     status_anterior_retorno: venda.status_anterior_retorno || null,
     retornou_em: venda.retornou_em || null,
     corrigido_em: venda.corrigido_em || null,
-    operadora: venda.operadora_id ? { id: venda.operadora_id, nome: venda.operadora_nome } : null,
+    operadora: operadoraVendaId ? { id: operadoraVendaId, nome: operadoraVendaNome } : null,
     vendedora: vendedoraChip || (vendedoras.length === 1 ? vendedoras[0] : null),
     vendedoras,
     cliente: venda.cliente_id ? {
@@ -1493,7 +1536,7 @@ function montarLinhaExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FIN
     novo: chipsNovos,
     portabilidade: chipsPortabilidade,
     vendedora: vendedoraGrupo?.nome || vendedoras.map(item => item.nome).join(' / ') || valorTexto(venda.vendedora_nome),
-    operadora: valorTexto(venda.operadora_nome),
+    operadora: valorTexto(grupo?.operadora_nome || venda.operadora_nome),
     data_venda: dataParaExcel(venda.data_venda || venda.created_at),
     data_input: dataParaExcel(venda.criado_em || venda.created_at),
     data_ativacao: dataParaExcel(venda.data_ativacao),
@@ -1520,17 +1563,20 @@ function montarLinhaExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FIN
  */
 function montarLinhasExportacaoVenda(venda, etapas = [], statusFinal = STATUS_FINAL_FALLBACK) {
   const chips = parseChips(venda.valores_unitarios_chips);
-  const vendedoras = normalizarVendedorasVenda(venda);
 
-  if (chips.length === 0 || vendedoras.length <= 1) {
+  if (chips.length === 0) {
     return [montarLinhaExportacaoVenda(venda, etapas, statusFinal)];
   }
 
   const grupos = new Map();
   chips.forEach(chip => {
-    const chave = chip.vendedora_id ? String(chip.vendedora_id) : 'sem_vendedora';
+    const operadoraId = chip.operadora_id ? Number(chip.operadora_id) : (venda.operadora_id ? Number(venda.operadora_id) : null);
+    const chaveVendedora = chip.vendedora_id ? String(chip.vendedora_id) : 'sem_vendedora';
+    const chave = `${chaveVendedora}:${operadoraId ?? 'sem_operadora'}`;
     const atual = grupos.get(chave) || {
       vendedora_id: chip.vendedora_id || null,
+      operadora_id: operadoraId,
+      operadora_nome: chip.operadora_nome || (Number(venda.operadora_id) === operadoraId ? venda.operadora_nome : null),
       quantidade: 0,
       valor_total: 0,
       novo: 0,

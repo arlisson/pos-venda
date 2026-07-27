@@ -38,10 +38,10 @@ test('converte valores monetarios brasileiros e numericos', () => {
 
 test('normaliza chips de array, JSON e texto legado', () => {
   assert.deepEqual(normalizarItensChips([
-    { quantidade: '2', gb: '25GB', tipo_linha: 'Portabilidade', valor_unitario: '59,90', vendedora_id: '7' },
+    { quantidade: '2', gb: '25GB', tipo_linha: 'Portabilidade', valor_unitario: '59,90', operadora_atual_id: '3', operadora_atual_nome: 'TIM', operadora_id: '5', operadora_nome: 'Claro', vendedora_id: '7' },
     { quantidade: 0, gb: '10', valor_unitario: 20 }
   ]), [
-    { quantidade: 2, gb: '25', tipo_linha: 'portabilidade', valor_unitario: 59.9, vendedora_id: 7 }
+    { quantidade: 2, gb: '25', tipo_linha: 'portabilidade', valor_unitario: 59.9, operadora_atual_id: 3, operadora_atual_nome: 'TIM', operadora_id: 5, operadora_nome: 'Claro', vendedora_id: 7 }
   ]);
 
   assert.deepEqual(normalizarItensChips(JSON.stringify([
@@ -71,8 +71,8 @@ test('monta payload calculando totais, gb, datas e prioridade', () => {
     data_ativacao: '',
     numeros_ativados: '11999990000',
     valores_unitarios_chips: [
-      { quantidade: 2, gb: '25GB', tipo_linha: 'Novo', valor_unitario: '59,90' },
-      { quantidade: 1, gb: '50', tipo_linha: 'Portabilidade', valor_unitario: '79,90' }
+      { quantidade: 2, gb: '25GB', tipo_linha: 'Novo', valor_unitario: '59,90', operadora_atual_id: 2, operadora_id: 5, operadora_nome: 'Claro' },
+      { quantidade: 1, gb: '50', tipo_linha: 'Portabilidade', valor_unitario: '79,90', operadora_atual_id: 3, operadora_id: 6, operadora_nome: 'TIM' }
     ],
     cliente_solicitou_servicos: ['bloqueio'],
     cliente_solicitou_bloqueio_qtd: '1',
@@ -90,6 +90,14 @@ test('monta payload calculando totais, gb, datas e prioridade', () => {
   assert.equal(payload.numeros_ativados, null);
   assert.equal(payload.valor_total, 199.7);
   assert.equal(payload.gb, '25, 50');
+  assert.deepEqual(
+    JSON.parse(payload.valores_unitarios_chips).map(item => item.operadora_atual_id),
+    [2, 3]
+  );
+  assert.deepEqual(
+    JSON.parse(payload.valores_unitarios_chips).map(item => item.operadora_id),
+    [5, 6]
+  );
   assert.equal(payload.cliente_solicitou_bloqueio_qtd, 1);
   assert.deepEqual(JSON.parse(payload.cliente_solicitou_numeros), {
     bloqueio: ['11999990000'],

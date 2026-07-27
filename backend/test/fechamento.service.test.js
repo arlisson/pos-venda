@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fechamentoService = require('../src/services/fechamento.service');
 
 const {
+  agregarPorOperadora,
   categoriaServico,
   classificarSecao,
   encontrarRegraComissao,
@@ -83,8 +84,8 @@ test('monta linhas de chips com regras, bases e vendedoras', () => {
     data_ativacao: '2026-05-12',
     valor_total: 119.8,
     valores_unitarios_chips: JSON.stringify([
-      { quantidade: 1, gb: '25', tipo_linha: 'novo', valor_unitario: 59.9, vendedora_id: 1 },
-      { quantidade: 1, gb: '25', tipo_linha: 'portabilidade', valor_unitario: 59.9, vendedora_id: 2 }
+      { quantidade: 1, gb: '25', tipo_linha: 'novo', valor_unitario: 59.9, operadora_atual_id: 6, operadora_atual_nome: 'Vivo', vendedora_id: 1 },
+      { quantidade: 1, gb: '25', tipo_linha: 'portabilidade', valor_unitario: 59.9, operadora_atual_id: 5, operadora_atual_nome: 'Claro', operadora_id: 6, operadora_nome: 'Vivo', vendedora_id: 2 }
     ]),
     numeros_ativados: '11999990000\n11888880000',
     numeros_portados: '11777770000',
@@ -111,6 +112,16 @@ test('monta linhas de chips com regras, bases e vendedoras', () => {
     valor_comissao_base: 20,
     valor_comissao_base_propria: 15,
     prioridade_base_dupla: 'base_operadora'
+  }, {
+    id: 8,
+    operadora_id: 6,
+    operadora_nome: 'Vivo',
+    valor_min: 0,
+    valor_max: 100,
+    valor_comissao: 40,
+    valor_comissao_base: 25,
+    valor_comissao_base_propria: 18,
+    prioridade_base_dupla: 'base_operadora'
   }];
 
   const linhas = montarLinhasChips(vendas, regras);
@@ -119,10 +130,38 @@ test('monta linhas de chips com regras, bases e vendedoras', () => {
   assert.equal(linhas[0].comissao, 20);
   assert.equal(linhas[0].tipo_comissao, 'base_operadora');
   assert.equal(linhas[0].tipo_repasse, 'base_propria_operadora');
-  assert.equal(linhas[0].cliente.operadora_atual.id, 5);
+  assert.equal(linhas[0].cliente.operadora_atual.id, 6);
+  assert.equal(linhas[0].cliente.operadora_atual.nome, 'Vivo');
   assert.equal(linhas[0].vendedora.nome, 'Ana');
+  assert.equal(linhas[1].cliente.operadora_atual.id, 5);
+  assert.equal(linhas[1].operadora.id, 6);
+  assert.equal(linhas[1].operadora.nome, 'Vivo');
+  assert.equal(linhas[1].comissao, 25);
   assert.equal(linhas[1].vendedora.nome, 'Bia');
   assert.equal(linhas[1].numero_ativado, '11888880000');
+});
+
+test('divide totais da mesma venda entre operadoras de destino', () => {
+  const venda = {
+    status_funil: 'concluido',
+    servico_nome: 'Telefonia Movel',
+    operadora_id: 5,
+    operadora_nome: 'Claro',
+    valores_unitarios_chips: JSON.stringify([
+      { quantidade: 1, tipo_linha: 'novo', valor_unitario: 59.9 },
+      { quantidade: 1, tipo_linha: 'portabilidade', valor_unitario: 59.9, operadora_id: 6, operadora_nome: 'Vivo' }
+    ])
+  };
+  const resumo = agregarPorOperadora([venda]);
+
+  assert.equal(resumo.total.length, 2);
+  assert.deepEqual(
+    resumo.total.map(item => ({ id: item.operadora_id, chips: item.novo + item.portabilidade, receita: item.receita })),
+    [
+      { id: 5, chips: 1, receita: 59.9 },
+      { id: 6, chips: 1, receita: 59.9 }
+    ]
+  );
 });
 
 test('monta totais de chips por vendedora e total geral', () => {

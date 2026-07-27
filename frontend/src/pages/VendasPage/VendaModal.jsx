@@ -1,4 +1,4 @@
-﻿import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AutoResizeTextarea from '../../components/AutoResizeTextarea';
 import SelectFiltro from '../../components/SelectFiltro/SelectFiltro';
@@ -72,7 +72,7 @@ const VENDA_VAZIA = {
   ddd: '',
   numeros_ativados: [],
   gb: '',
-  valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' }],
+  valores_unitarios_chips: [{ quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', operadora_atual_id: '', vendedora_id: '' }],
   tipos_servico: ['novo'],
   cliente_da_base: false,
   possui_doc_na_casa: false,
@@ -166,7 +166,15 @@ const CAMPOS_ENDERECO_REAL_VENDA = [
   { name: 'uf_real', label: 'UF', maxLength: 2 }
 ];
 
-const ITEM_CHIP_VAZIO = { quantidade: '', gb: '', valor_unitario: '', tipo_linha: 'novo', vendedora_id: '' };
+const ITEM_CHIP_VAZIO = {
+  quantidade: '',
+  gb: '',
+  valor_unitario: '',
+  tipo_linha: 'novo',
+  operadora_atual_id: '',
+  operadora_id: '',
+  vendedora_id: ''
+};
 const NUMERO_PORTADO_VAZIO = '';
 
 /**
@@ -291,8 +299,8 @@ const CAMPOS = [
   { name: 'qc_feito_por', label: 'QC feito por' },
 
   { section: 'Produto e valores' },
-  { name: 'operadora_atual_id', label: 'Operadora atual', type: 'operator' },
-  { name: 'operadora_id', label: 'Vai para operadora:', type: 'operator', required: true },
+  { name: 'operadora_atual_id', label: 'Operadora atual (padrão)', type: 'operator' },
+  { name: 'operadora_id', label: 'Vai para operadora (padrão):', type: 'operator', required: true },
   { name: 'servico_id', label: 'Produto', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
@@ -930,6 +938,8 @@ function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
       gb: formatarCampoVenda('gb', item.gb || gbPadrao || ''),
       valor_unitario: item.valor_unitario ? String(item.valor_unitario).replace('.', ',') : '',
       tipo_linha: normalizarTipoLinhaChip(item.tipo_linha || item.tipo || item.categoria, tipoLinhaPadrao),
+      operadora_atual_id: item.operadora_atual_id ? String(item.operadora_atual_id) : '',
+      operadora_id: item.operadora_id ? String(item.operadora_id) : '',
       vendedora_id: item.vendedora_id ? String(item.vendedora_id) : ''
     }));
 
@@ -1381,7 +1391,16 @@ function ClienteDaBaseInput({ value, onChange, disabled }) {
 /**
  * Renderiza itens chips input.
  */
-function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 0, tiposServico = ['novo'] }) {
+function ItensChipsInput({
+  value,
+  onChange,
+  operadoras = [],
+  operadoraAtualPadrao = '',
+  operadoraDestinoPadrao = '',
+  vendedoras = [],
+  limiteQuantidade = 0,
+  tiposServico = ['novo']
+}) {
   const itens = Array.isArray(value) && value.length > 0 ? value : [{ ...ITEM_CHIP_VAZIO }];
   const total = calcularTotalItensChips(itens);
   const mostrarVendedora = vendedoras.length > 1;
@@ -1426,7 +1445,15 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   function adicionarItem() {
     if (limiteAtingido) return;
     const tipo_linha = mostrarTipoLinha ? 'novo' : (tiposServico[0] || 'novo');
-    onChange([...itens, { ...ITEM_CHIP_VAZIO, tipo_linha }]);
+    onChange([
+      ...itens,
+      {
+        ...ITEM_CHIP_VAZIO,
+        tipo_linha,
+        operadora_atual_id: operadoraAtualPadrao ? String(operadoraAtualPadrao) : '',
+        operadora_id: operadoraDestinoPadrao ? String(operadoraDestinoPadrao) : ''
+      }
+    ]);
   }
 
   /**
@@ -1443,11 +1470,13 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
   }
 
   return (
-    <div className={`chip-items${mostrarVendedora ? ' chip-items--com-vendedora' : ''}${!mostrarTipoLinha ? ' chip-items--sem-tipo' : ''}`}>
+    <div className={`chip-items chip-items--com-operadora${mostrarVendedora ? ' chip-items--com-vendedora' : ''}${!mostrarTipoLinha ? ' chip-items--sem-tipo' : ''}`}>
       <div className="chip-items__head">
         <span>Qtd.</span>
         <span>GB</span>
         {mostrarTipoLinha && <span>Tipo</span>}
+        <span>Operadora atual</span>
+        <span>Vai para</span>
         <span>Valor unit.</span>
         <span>Subtotal</span>
         {mostrarVendedora && <span>Vendedora</span>}
@@ -1496,6 +1525,24 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
                 />
               </label>
             )}
+            <label className="chip-item-field chip-item-field--operadora">
+              <span className="chip-item-field__label">Operadora atual</span>
+              <SelectFiltro
+                value={item.operadora_atual_id || operadoraAtualPadrao || ''}
+                onChange={val => atualizarItem(index, 'operadora_atual_id', val)}
+                options={operadoras.map(operadora => ({ value: String(operadora.id), label: operadora.nome }))}
+                placeholder="Selecione"
+              />
+            </label>
+            <label className="chip-item-field chip-item-field--operadora-destino">
+              <span className="chip-item-field__label">Vai para operadora</span>
+              <SelectFiltro
+                value={item.operadora_id || operadoraDestinoPadrao || ''}
+                onChange={val => atualizarItem(index, 'operadora_id', val)}
+                options={operadoras.map(operadora => ({ value: String(operadora.id), label: operadora.nome }))}
+                placeholder="Selecione"
+              />
+            </label>
             <label className="chip-item-field chip-item-field--valor">
               <span className="chip-item-field__label">Valor unit.</span>
               <input
@@ -3866,6 +3913,24 @@ function VendaModal({
         }
       }
 
+      if (campo === 'operadora_atual_id') {
+        proximo.valores_unitarios_chips = (prev.valores_unitarios_chips || []).map(chip => ({
+          ...chip,
+          operadora_atual_id: !chip.operadora_atual_id || String(chip.operadora_atual_id) === String(prev.operadora_atual_id || '')
+            ? String(valorFormatado || '')
+            : chip.operadora_atual_id
+        }));
+      }
+
+      if (campo === 'operadora_id') {
+        proximo.valores_unitarios_chips = (prev.valores_unitarios_chips || []).map(chip => ({
+          ...chip,
+          operadora_id: !chip.operadora_id || String(chip.operadora_id) === String(prev.operadora_id || '')
+            ? String(valorFormatado || '')
+            : chip.operadora_id
+        }));
+      }
+
       if (campo === 'operadora_id' && prev.cliente_id) {
         const cliente = clientesDisponiveis.find(item => String(item.id) === String(prev.cliente_id));
         const anteriorAuto = resolverOperadoraAtualCliente(cliente, prev.operadora_id);
@@ -4642,6 +4707,18 @@ function VendaModal({
           gb: String(item.gb || '').trim(),
           tipo_linha: normalizarTipoLinhaChip(item.tipo_linha),
           valor_unitario: parseValorInput(item.valor_unitario),
+          ...(item.operadora_atual_id || form.operadora_atual_id
+            ? {
+              operadora_atual_id: Number(item.operadora_atual_id || form.operadora_atual_id),
+              operadora_atual_nome: operadoras.find(operadora => Number(operadora.id) === Number(item.operadora_atual_id || form.operadora_atual_id))?.nome || ''
+            }
+            : {}),
+          ...(item.operadora_id || form.operadora_id
+            ? {
+              operadora_id: Number(item.operadora_id || form.operadora_id),
+              operadora_nome: operadoras.find(operadora => Number(operadora.id) === Number(item.operadora_id || form.operadora_id))?.nome || ''
+            }
+            : {}),
           ...(item.vendedora_id ? { vendedora_id: Number(item.vendedora_id) } : {})
         }))
         .filter(item => item.quantidade > 0 && item.valor_unitario > 0);
@@ -5071,6 +5148,9 @@ function VendaModal({
                     <ItensChipsInput
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
+                      operadoras={operadoras}
+                      operadoraAtualPadrao={form.operadora_atual_id}
+                      operadoraDestinoPadrao={form.operadora_id}
                       vendedoras={vendedorasOpcoesModal.filter(v => (form.vendedoras || []).includes(String(v.id)))}
                       limiteQuantidade={form.quantidade_linhas}
                       tiposServico={form.tipos_servico}
