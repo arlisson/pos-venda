@@ -239,6 +239,14 @@ const FECHOU_VENDA_OPCOES = [
 ];
 
 const CAMPOS_CPF_VENDA = ['cpf_representante_legal', 'cpf_administrador'];
+const CAMPOS_RG_VENDA = [
+  'rg_representante_legal',
+  'rg_administrador',
+  'rg_responsavel_recebimento',
+  'rg_responsavel_recebimento_2',
+  'rg_responsavel_recebimento_3'
+];
+const LIMITE_CARACTERES_RG = 14;
 
 const DDDS_VALIDOS = new Set([
   11, 12, 13, 14, 15, 16, 17, 18, 19,
@@ -667,17 +675,20 @@ function formatarDiaVencimento(valor) {
  * Formata rg para exibicao ou envio.
  */
 function formatarRg(valor) {
-  let limpo = String(valor || '').toUpperCase().replace(/[^\dX]/g, '');
-  const terminaEmX = limpo.endsWith('X');
-  limpo = limpo.replace(/X/g, '');
-  if (terminaEmX) limpo += 'X';
-  limpo = limpo.slice(0, 9);
+  const limpo = String(valor || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9./\s-]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .slice(0, LIMITE_CARACTERES_RG);
 
-  const len = limpo.length;
-  if (len <= 2) return limpo;
-  if (len <= 5) return `${limpo.slice(0, 2)}.${limpo.slice(2)}`;
-  if (len <= 8) return `${limpo.slice(0, 2)}.${limpo.slice(2, 5)}.${limpo.slice(5)}`;
-  return `${limpo.slice(0, 2)}.${limpo.slice(2, 5)}.${limpo.slice(5, 8)}-${limpo.slice(8)}`;
+  const semPontuacao = limpo.replace(/[./\s-]/g, '');
+  if (!/^\d{1,8}X?$/.test(semPontuacao)) return limpo;
+
+  const len = semPontuacao.length;
+  if (len <= 2) return semPontuacao;
+  if (len <= 5) return `${semPontuacao.slice(0, 2)}.${semPontuacao.slice(2)}`;
+  if (len <= 8) return `${semPontuacao.slice(0, 2)}.${semPontuacao.slice(2, 5)}.${semPontuacao.slice(5)}`;
+  return `${semPontuacao.slice(0, 2)}.${semPontuacao.slice(2, 5)}.${semPontuacao.slice(5, 8)}-${semPontuacao.slice(8)}`;
 }
 
 /**
@@ -687,7 +698,7 @@ function formatarCampoVenda(campo, valor) {
   if (campo === 'telefone' || campo === 'telefone_representante_legal' || campo === 'telefone_administrador') return formatarTelefoneComDdd(valor, true);
   if (campo === 'fixo_ddd') return formatarTelefoneComDdd(valor, false);
   if (campo === 'cpf_representante_legal' || campo === 'cpf_administrador') return formatarCpf(valor);
-  if (campo === 'rg_representante_legal' || campo === 'rg_administrador') return formatarRg(valor);
+  if (CAMPOS_RG_VENDA.includes(campo)) return formatarRg(valor);
   if (campo === 'cnpj') return formatarCnpj(valor);
   if (campo === 'cep' || campo === 'cep_real') return formatarCep(valor);
   if (campo === 'uf' || campo === 'uf_real') return String(valor || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
@@ -723,8 +734,11 @@ function getMaxLengthCampo(campo, maxLength) {
     telefone_administrador: 15,
     cpf_representante_legal: 14,
     cpf_administrador: 14,
-    rg_representante_legal: 12,
-    rg_administrador: 12,
+    rg_representante_legal: LIMITE_CARACTERES_RG,
+    rg_administrador: LIMITE_CARACTERES_RG,
+    rg_responsavel_recebimento: LIMITE_CARACTERES_RG,
+    rg_responsavel_recebimento_2: LIMITE_CARACTERES_RG,
+    rg_responsavel_recebimento_3: LIMITE_CARACTERES_RG,
     cnpj: 18,
     cep: 9,
     cep_real: 9,
@@ -2334,6 +2348,7 @@ function ResponsaveisRecebimentoInput({ form, onChange }) {
             <input
               type="text"
               placeholder="RG"
+              maxLength={LIMITE_CARACTERES_RG}
               value={form[slot.rgKey] || ''}
               onChange={event => onChange(slot.rgKey, event.target.value)}
               readOnly={['rl', 'adm'].includes(obterTipoResponsavel(slot))}
