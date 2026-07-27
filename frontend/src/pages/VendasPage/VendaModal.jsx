@@ -1514,7 +1514,7 @@ function ItensChipsInput({ value, onChange, vendedoras = [], limiteQuantidade = 
                   value={item.vendedora_id || ''}
                   onChange={val => atualizarItem(index, 'vendedora_id', val)}
                   options={vendedoras.map(v => ({ value: String(v.id), label: v.nome }))}
-                  placeholder="�"
+                  placeholder="—"
                 />
               </label>
             )}
@@ -3475,6 +3475,7 @@ function VendaModal({
   onSave,
   onSendToPosVenda,
   sendToPosVendaLabel = 'Enviar para o pós-venda',
+  ignorarSolicitacaoLiberacao = false,
   motivoLiberacaoAprovacao = '',
   onCreateClient,
   onResolveClient,
@@ -4710,7 +4711,7 @@ function VendaModal({
 
   async function handleEnviarPosVenda() {
     if (!venda?.id || salvando || enviadaPosVenda) return;
-    if (requerLiberacao) {
+    if (requerLiberacao && !ignorarSolicitacaoLiberacao) {
       const nomes = vendedorasDaVenda.map(item => item.nome).filter(Boolean);
       setMotivoLiberacao(nomes.length > 0 ? 'Venda compartilhada entre ' + nomes.join(' e ') + '.' : 'Venda compartilhada.');
       setLiberacaoAberta(true);

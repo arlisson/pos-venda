@@ -487,6 +487,7 @@ function VendasAprovacoesPage() {
           onSave={salvarVendaModal}
           onSendToPosVenda={podeDecidir && solicitacaoModal?.status === 'pendente' ? aprovarEEnviarPosVendaModal : enviarPosVendaModal}
           sendToPosVendaLabel={podeDecidir && solicitacaoModal?.status === 'pendente' ? 'Aprovar' : 'Enviar para o pós-venda'}
+          ignorarSolicitacaoLiberacao={podeDecidir && solicitacaoModal?.status === 'pendente'}
           onCreateClient={() => {}}
         />
       )}
