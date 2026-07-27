@@ -295,6 +295,7 @@ function LayoutPrivado({ children }) {
   }
 
   const [alertasUrgentes, setAlertasUrgentes] = useState([]);
+  const [alertasMinimizados, setAlertasMinimizados] = useState(false);
   const [aparenciasNotificacao, setAparenciasNotificacao] = useState([]);
   const carregandoAlertasUrgentesRef = useRef(false);
   const [aprovacoesPendentes, setAprovacoesPendentes] = useState(0);
@@ -624,7 +625,27 @@ function LayoutPrivado({ children }) {
       )}
 
       {alertasUrgentes.length > 0 && (
-        <div className="urgent-alert-stack" aria-live="assertive">
+        <aside className={`urgent-alert-panel${alertasMinimizados ? ' urgent-alert-panel--minimized' : ''}`} aria-label="Avisos pendentes">
+          <div className="urgent-alert-panel__header">
+            <div className="urgent-alert-panel__title">
+              <span className="urgent-alert-panel__status" aria-hidden="true"><I.Bell size={16} /></span>
+              <div>
+                <strong>Avisos pendentes</strong>
+                <span>{alertasUrgentes.length} {alertasUrgentes.length === 1 ? 'notificação' : 'notificações'}</span>
+              </div>
+            </div>
+            <button type="button" className="urgent-alert-panel__minimize" onClick={() => setAlertasMinimizados(true)} aria-expanded={!alertasMinimizados} aria-controls="urgent-alert-list" title="Minimizar avisos" aria-label="Minimizar avisos">
+              <I.ChevronDown size={18} />
+            </button>
+          </div>
+          <button type="button" className="urgent-alert-panel__minimized-bar" onClick={() => setAlertasMinimizados(false)} aria-expanded={!alertasMinimizados} aria-controls="urgent-alert-list">
+            <span className="urgent-alert-panel__pulse" aria-hidden="true" />
+            <I.Bell size={17} />
+            <strong>{alertasUrgentes.length} {alertasUrgentes.length === 1 ? 'aviso pendente' : 'avisos pendentes'}</strong>
+            <span className="urgent-alert-panel__show-label">Exibir</span>
+            <I.ChevronDown size={16} />
+          </button>
+          <div id="urgent-alert-list" className="urgent-alert-stack" aria-live="assertive">
           {alertasUrgentes.map(alerta => (
             <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card urgent-alert-card--${tomAlerta(alerta)}`} style={estiloAlerta(alerta)}>
               <div className="urgent-alert-card__icon">
@@ -650,7 +671,8 @@ function LayoutPrivado({ children }) {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </aside>
       )}
     </div>
   );

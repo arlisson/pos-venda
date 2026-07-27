@@ -438,18 +438,159 @@ input, select, textarea { font-family: inherit; }
   font-style: normal;
 }
 
-.urgent-alert-stack {
+.urgent-alert-panel {
   position: fixed;
   right: 18px;
   bottom: 18px;
   z-index: 260;
   width: min(440px, calc(100vw - 32px));
   max-height: min(70vh, calc(100vh - 96px));
-  overflow-y: auto;
-  padding-right: 6px;
-  display: grid;
-  gap: 10px;
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.2);
+}
+
+.urgent-alert-panel--minimized {
+  width: min(340px, calc(100vw - 32px));
+  border-color: #f59e0b;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+  animation: urgentAlertPending 1.8s ease-in-out infinite;
+}
+
+.urgent-alert-panel__header {
+  flex: 0 0 auto;
+  min-height: 58px;
+  padding: 10px 12px 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.urgent-alert-panel__title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.urgent-alert-panel__title > div {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.urgent-alert-panel__title strong {
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.2;
+}
+
+.urgent-alert-panel__title > div > span {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.urgent-alert-panel__status {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #b45309;
+  background: #fef3c7;
+}
+
+.urgent-alert-panel__minimize {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  color: var(--text-2);
+  background: transparent;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.urgent-alert-panel__minimize:hover,
+.urgent-alert-panel__minimize:focus-visible {
+  color: var(--text);
+  background: var(--bg, #f8fafc);
+}
+
+.urgent-alert-panel__minimized-bar {
+  width: 100%;
+  min-height: 46px;
+  padding: 9px 12px;
+  display: none;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  color: var(--text);
+  background: var(--surface, #fff);
+  cursor: pointer;
+  text-align: left;
+}
+
+.urgent-alert-panel--minimized .urgent-alert-panel__header,
+.urgent-alert-panel--minimized .urgent-alert-stack {
+  display: none;
+}
+
+.urgent-alert-panel--minimized .urgent-alert-panel__minimized-bar {
+  display: flex;
+}
+
+.urgent-alert-panel__minimized-bar > svg {
+  flex: 0 0 auto;
+  color: #b45309;
+}
+
+.urgent-alert-panel__minimized-bar > svg:last-child {
+  transform: rotate(180deg);
+}
+
+.urgent-alert-panel__minimized-bar strong {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.urgent-alert-panel__show-label {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.urgent-alert-panel__pulse {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #f59e0b;
+  box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45);
+  animation: urgentAlertDot 1.4s ease-out infinite;
+}
+
+.urgent-alert-stack {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong, #cbd5e1) transparent;
@@ -485,9 +626,9 @@ input, select, textarea { font-family: inherit; }
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-top: 3px solid var(--tone-color);
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--surface, #fff);
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
   overflow: hidden;
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
   animation: urgentAlertIn 220ms ease-out;
@@ -511,7 +652,7 @@ input, select, textarea { font-family: inherit; }
 .urgent-alert-card:hover {
   transform: translateY(-2px);
   border-color: var(--tone-color);
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
 }
 
 .urgent-alert-card--danger {
@@ -606,6 +747,32 @@ input, select, textarea { font-family: inherit; }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes urgentAlertPending {
+  0%, 100% {
+    border-color: #f59e0b;
+  }
+  50% {
+    border-color: #fde68a;
+    box-shadow: 0 10px 32px rgba(245, 158, 11, 0.24);
+  }
+}
+
+@keyframes urgentAlertDot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+  }
+  70%, 100% {
+    box-shadow: 0 0 0 7px rgba(245, 158, 11, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urgent-alert-panel--minimized,
+  .urgent-alert-panel__pulse {
+    animation: none;
   }
 }
 
@@ -2506,14 +2673,31 @@ input, select, textarea { font-family: inherit; }
     white-space: nowrap;
   }
 
-  .urgent-alert-stack {
+  .urgent-alert-panel {
     left: 12px;
     right: 84px;
     bottom: 76px;
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
     width: auto;
     max-height: min(42vh, calc(100dvh - 116px));
-    padding-right: 0;
+  }
+
+  .urgent-alert-panel--minimized {
+    right: 12px;
+  }
+
+  .urgent-alert-panel__header {
+    min-height: 50px;
+    padding: 7px 8px 7px 10px;
+  }
+
+  .urgent-alert-panel__status {
+    width: 28px;
+    height: 28px;
+  }
+
+  .urgent-alert-stack {
+    padding: 6px;
     gap: 6px;
   }
 
@@ -3368,4 +3552,3 @@ input, select, textarea { font-family: inherit; }
 
   /* Login mantém estilo existente do bloco 680px */
 }
-
