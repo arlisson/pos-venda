@@ -740,8 +740,10 @@ function getMaxLengthCampo(campo, maxLength) {
     rg_responsavel_recebimento_2: LIMITE_CARACTERES_RG,
     rg_responsavel_recebimento_3: LIMITE_CARACTERES_RG,
     cnpj: 18,
-    cep: 9,
-    cep_real: 9,
+    // A Receita exibe CEP como "34.007-792" (10 caracteres). A mascara remove
+    // o ponto e mantem o valor final no padrao "34007-792" (9 caracteres).
+    cep: 10,
+    cep_real: 10,
     ddd: 2,
     gb: 4,
     uf: 2,
