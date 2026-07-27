@@ -1,6 +1,6 @@
 ﻿const test = require('node:test');
 const assert = require('node:assert/strict');
-const { _internals } = require('../src/services/resumo-vendas-telegram.service');
+const { enviarResumoDoDia, _internals } = require('../src/services/resumo-vendas-telegram.service');
 
 const aceita = { consultores: 'Árlisson, Nathalia', data_venda: '2026-02-27', data_ativacao: '2026-02-28', consultor: 'Nayara', razao_social: 'Empresa A', cnpj: '12.345.678/0001-90', quantidade_linhas: 2, valor_total: 199.8, operadora: 'Vivo', tipo_venda: 'Portabilidade', numeros_portados: '11999990000', possui_doc_na_casa: true, status_funil: 'ativacao' };
 const pendente = { ...aceita, razao_social: 'Empresa B', quantidade_linhas: 1, valor_total: 49.9, tipo_venda: 'Novo', numeros_portados: null, possui_doc_na_casa: false, status_funil: 'aprovacao', data_ativacao: null };
@@ -26,6 +26,16 @@ test('fechamento semanal inicia na segunda-feira', () => {
   const mensagens = _internals.montarMensagensSemanais([aceita, pendente], '2026-02-23', '2026-02-27');
   assert.match(mensagens[0], /Fechamento da semana \[23\/02\/2026 até 27\/02\/2026\]: Vendas com aceite/);
   assert.match(mensagens.join('\n'), /Vendas sem aceite/);
+});
+test('agenda o próximo resumo somente em dia útil', () => {
+  assert.equal(_internals.proximaExecucao(new Date('2026-02-27T17:00:00-03:00')).toISOString(), '2026-02-27T21:00:00.000Z');
+  assert.equal(_internals.proximaExecucao(new Date('2026-02-27T18:01:00-03:00')).toISOString(), '2026-03-02T21:00:00.000Z');
+  assert.equal(_internals.proximaExecucao(new Date('2026-02-28T10:00:00-03:00')).toISOString(), '2026-03-02T21:00:00.000Z');
+  assert.equal(_internals.proximaExecucao(new Date('2026-03-01T10:00:00-03:00')).toISOString(), '2026-03-02T21:00:00.000Z');
+});
+test('ignora o envio quando a data é sábado ou domingo', async () => {
+  assert.deepEqual(await enviarResumoDoDia('2026-02-28'), { data: '2026-02-28', mensagens: 0, ignorado: 'fim_de_semana' });
+  assert.deepEqual(await enviarResumoDoDia('2026-03-01'), { data: '2026-03-01', mensagens: 0, ignorado: 'fim_de_semana' });
 });
 test('envia os detalhes de cada consultor em uma única mensagem', () => {
   const vendaNathalia = { ...pendente, consultor: 'Nathalia', razao_social: 'Empresa C' };
