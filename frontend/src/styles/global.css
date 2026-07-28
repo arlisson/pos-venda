@@ -1290,6 +1290,9 @@ input, select, textarea { font-family: inherit; }
 .lead-status-pill.refused { color: #991b1b; background: #fee2e2; border-color: #fecaca; }
 .lead-status-pill.sold { color: #1d4ed8; background: #dbeafe; border-color: #93c5fd; }
 .lead-status-pill.muted { color: var(--text-2); background: var(--surface-2); border-color: var(--border); }
+.lead-status-pill.quality-good { color: #166534; background: #dcfce7; border-color: #86efac; }
+.lead-status-pill.quality-medium { color: #854d0e; background: #fef9c3; border-color: #fde047; }
+.lead-status-pill.quality-bad { color: #991b1b; background: #fee2e2; border-color: #fca5a5; }
 
 /* Progresso dos cards de planilha (leads e futuros clientes) */
 .doc-progresso { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3px 6px; width: 100%; }

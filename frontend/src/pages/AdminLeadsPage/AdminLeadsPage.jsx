@@ -168,6 +168,12 @@ function isLeadNaLixeira(linha) {
   return Boolean(linha?.futuro_cliente && linha?.futuro_cliente_excluido_em);
 }
 
+const AVALIACOES_PRIMEIRA_LIGACAO = {
+  bom: { label: 'Bom', classe: 'quality-good' },
+  mais_ou_menos: { label: 'Mais ou menos', classe: 'quality-medium' },
+  ruim: { label: 'Ruim', classe: 'quality-bad' }
+};
+
 /**
  * Chips do estado atual de um lead. Usado na listagem e no modal de detalhe.
  * Compartilha rotulos, cores e formato (.pill) com a aba "Mailing recebido" da
@@ -175,6 +181,7 @@ function isLeadNaLixeira(linha) {
  */
 export function LeadStatusChips({ linha }) {
   const distribuicao = getStatusDistribuicao(linha);
+  const avaliacao = AVALIACOES_PRIMEIRA_LIGACAO[linha?.primeira_ligacao_avaliacao];
 
   return (
     <div className="lead-status-stack">
@@ -188,6 +195,14 @@ export function LeadStatusChips({ linha }) {
       )}
       {isLeadQualificado(linha) && (
         <span className="pill success lead-status-pill" title="Futuro cliente"><span className="pill-dot"></span>Futuro cliente</span>
+      )}
+      {avaliacao && (
+        <span
+          className={`pill lead-status-pill ${avaliacao.classe}`}
+          title={`Qualidade da primeira liga\u00e7\u00e3o: ${avaliacao.label}`}
+        >
+          <span className="pill-dot"></span>1&ordf; liga&ccedil;&atilde;o: {avaliacao.label}
+        </span>
       )}
       {isLeadVendaRegistrada(linha) && (
         <span className="pill lead-status-pill sold" title="Este futuro cliente possui uma venda vinculada"><span className="pill-dot"></span>Venda registrada</span>

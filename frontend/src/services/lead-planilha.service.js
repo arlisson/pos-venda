@@ -274,6 +274,13 @@ export function marcarFuturoClienteLead(linhaId, dados) {
   return apiPost(`/lead-planilhas/me/linhas/${linhaId}/futuro-cliente`, dados);
 }
 
+/**
+ * Avalia a assertividade da primeira ligacao.
+ */
+export function avaliarPrimeiraLigacaoLead(linhaId, avaliacao) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/avaliacao-primeira-ligacao`, { avaliacao });
+}
+
 export function vincularVendaLead(linhaId, vendaId) {
   return apiPost(`/lead-planilhas/me/linhas/${linhaId}/venda`, { venda_id: vendaId });
 }

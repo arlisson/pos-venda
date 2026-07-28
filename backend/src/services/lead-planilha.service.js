@@ -1084,6 +1084,47 @@ async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}, opcoe
 }
 
 /**
+ * Registra a avaliacao da primeira ligacao feita pela consultora que recebeu
+ * o futuro cliente na etapa de venda.
+ */
+async function avaliarPrimeiraLigacao(linhaId, usuarioId, dados = {}) {
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!linha.futuro_cliente || linha.futuro_cliente_excluido_em) {
+    throw criarHttpError(409, 'Somente futuros clientes ativos podem ser avaliados.');
+  }
+  if (Number(linha.atribuido_para_id) !== Number(usuarioId) || linha.etapa_atual !== 'venda') {
+    throw criarHttpError(403, 'Somente a consultora que recebeu este futuro cliente pode avaliar a primeira ligacao.');
+  }
+  if (Number(linha.futuro_cliente_marcado_por_id) === Number(usuarioId)) {
+    throw criarHttpError(409, 'A consultora da primeira ligacao nao pode avaliar o proprio atendimento.');
+  }
+  if (linha.primeira_ligacao_avaliada_por_id
+    && Number(linha.primeira_ligacao_avaliada_por_id) !== Number(usuarioId)) {
+    throw criarHttpError(409, 'A primeira ligacao ja foi avaliada pela consultora que recebeu este cliente.');
+  }
+
+  const avaliacao = String(dados.avaliacao || '').trim().toLowerCase();
+  if (!['bom', 'mais_ou_menos', 'ruim'].includes(avaliacao)) {
+    throw criarHttpError(400, 'Selecione uma avaliacao: Bom, Mais ou menos ou Ruim.');
+  }
+
+  await LeadLinha.query().patchAndFetchById(linha.id, {
+    primeira_ligacao_avaliacao: avaliacao,
+    primeira_ligacao_avaliada_por_id: Number(usuarioId),
+    primeira_ligacao_avaliada_em: formatarDateTimeSQL(),
+    updated_at: new Date()
+  });
+
+  const atualizada = await LeadLinha.query()
+    .findById(linha.id)
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, operadoraInteresse, usuario]]')
+    .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
+
+  return { linha: formatarLinha(atualizada) };
+}
+
+/**
  * Lista envios do usuario conforme os filtros e parametros informados.
  */
 async function listarEnviosDoUsuario(usuarioId) {
@@ -3146,6 +3187,7 @@ module.exports = {
   excluirPlanilha,
   listarLinhas,
   atualizarCampoLinhaRecebida,
+  avaliarPrimeiraLigacao,
   listarEnviosDoUsuario,
   listarTodosEnvios,
   atualizarNomeEnvio,
