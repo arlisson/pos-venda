@@ -185,20 +185,6 @@ function mensagemErro(error) {
   return `${String(detalhe || 'Falha desconhecida ao enviar venda ao dashboard.')}${campos}`.slice(0, 4000);
 }
 
-async function expandirPendenciaLegada(venda, pendencia) {
-  if (pendencia.item_key !== 'principal') return false;
-  const itens = itensSincronizacao(venda);
-  if (itens.length === 1 && itens[0] === 'principal') return false;
-  const knex = Venda.knex();
-  await knex.transaction(async trx => {
-    const atual = await trx(NOME_TABELA).where({ id: pendencia.id, status: 'pendente', item_key: 'principal' }).first();
-    if (!atual) return;
-    await trx(NOME_TABELA).where({ id: atual.id }).delete();
-    for (const itemKey of itens) await trx(NOME_TABELA).insert({ venda_id: Number(venda.id), item_key: itemKey, status: 'pendente' });
-  });
-  return true;
-}
-
 async function enviarVendaPendente(vendaId, itemKey = 'principal') {
   if (!estaConfigurada()) return { ignorada: true };
   const knex = Venda.knex();
@@ -207,7 +193,6 @@ async function enviarVendaPendente(vendaId, itemKey = 'principal') {
   try {
     const venda = await obterVendaParaEnvio(vendaId);
     if (!venda) throw new Error('Venda nao encontrada para sincronizacao.');
-    if (await expandirPendenciaLegada(venda, pendencia)) return { reagrupada: true };
     const referencias = await obterReferencias();
     const payload = montarPayloadVenda(venda, referencias, itemKey);
     const { baseUrl, apiKey } = configuracao();
@@ -231,14 +216,4 @@ function agendarEnvioVenda(vendaId) {
   filaEnvios = filaEnvios.catch(() => undefined).then(() => enviarPendentesDaVenda(vendaId)).catch(error => console.error(`Erro ao sincronizar venda ${vendaId} com o dashboard:`, mensagemErro(error)));
 }
 
-async function sincronizarPendentes({ limite = 120 } = {}) {
-  if (!estaConfigurada()) return { ignoradas: true, total: 0 };
-  const pendentes = await Venda.knex()(NOME_TABELA).where('status', 'pendente').orderBy('id', 'asc').limit(Math.min(Math.max(Number(limite) || 1, 1), 120)).select('venda_id', 'item_key');
-  for (const pendencia of pendentes) {
-    try { await enviarVendaPendente(pendencia.venda_id, pendencia.item_key); }
-    catch (error) { console.error(`Erro ao reenviar venda ${pendencia.venda_id} (${pendencia.item_key}) ao dashboard:`, mensagemErro(error)); }
-  }
-  return { total: pendentes.length };
-}
-
-module.exports = { agendarEnvioVenda, enviarVendaPendente, estaConfigurada, montarPayloadVenda, registrarVendaPendente, resolverIdReferencia, sincronizarPendentes, _internals: { chipDaVenda, formatarDataHoraVenda, itensSincronizacao, mensagemErro, normalizarChips, normalizarTexto, somenteDigitos, resolverTipoVendaDoChip } };
+module.exports = { agendarEnvioVenda, estaConfigurada, montarPayloadVenda, registrarVendaPendente, resolverIdReferencia, _internals: { chipDaVenda, formatarDataHoraVenda, itensSincronizacao, mensagemErro, normalizarChips, normalizarTexto, somenteDigitos, resolverTipoVendaDoChip } };
