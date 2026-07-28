@@ -3537,6 +3537,7 @@ function VendaModal({
   onStartEdit,
   onClose,
   onSave,
+  onRetryDashboard,
   onSendToPosVenda,
   sendToPosVendaLabel = 'Enviar para o pós-venda',
   ignorarSolicitacaoLiberacao = false,
@@ -3600,6 +3601,7 @@ function VendaModal({
   const [liberacaoAberta, setLiberacaoAberta] = useState(false);
   const [motivoLiberacao, setMotivoLiberacao] = useState('');
   const [erro, setErro] = useState('');
+  const [reenviandoDashboard, setReenviandoDashboard] = useState(false);
   const [cepStatus, setCepStatus] = useState('');
   const [cepRealStatus, setCepRealStatus] = useState('');
   const [consultandoCnpj, setConsultandoCnpj] = useState(false);
@@ -4820,6 +4822,22 @@ function VendaModal({
     await enviarParaPosVenda({ motivo_descricao: motivoLiberacao });
   }
 
+  async function handleReenviarDashboard() {
+    if (!venda?.id || !onRetryDashboard || reenviandoDashboard) return;
+    setReenviandoDashboard(true);
+    setErro('');
+    try {
+      const resultado = await onRetryDashboard(venda);
+      if (resultado?.status === 'erro') {
+        setErro(resultado.mensagem || 'Não foi possível enviar a venda ao dashboard.');
+      }
+    } catch (error) {
+      setErro(error.message || 'Não foi possível reenviar a venda ao dashboard.');
+    } finally {
+      setReenviandoDashboard(false);
+    }
+  }
+
   return (
     <div className="modal-overlay">
       <form className="modal venda-modal" onSubmit={handleSubmit}>
@@ -4840,6 +4858,20 @@ function VendaModal({
             </button>
           </div>
         </div>
+
+        {venda?.integracao_dashboard && (
+          <div className={venda.integracao_dashboard.status === 'enviada' ? 'alert-success' : 'alert-error'} style={{ margin: '12px 16px 0' }}>
+            <strong>Dashboard: {venda.integracao_dashboard.status === 'enviada' ? 'venda enviada.' : 'envio não concluído.'}</strong>
+            {venda.integracao_dashboard.status !== 'enviada' && venda.integracao_dashboard.mensagem && (
+              <span> {venda.integracao_dashboard.mensagem}</span>
+            )}
+            {venda.integracao_dashboard.pode_reenviar_manualmente && podeEditarVendaEfetivo && (
+              <button type="button" className="btn btn-sm" style={{ marginLeft: 12 }} onClick={handleReenviarDashboard} disabled={reenviandoDashboard}>
+                {reenviandoDashboard ? 'Enviando...' : 'Enviar ao dashboard'}
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="modal-tabs">
           <button

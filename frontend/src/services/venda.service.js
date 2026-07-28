@@ -300,6 +300,13 @@ export async function enviarVendaParaPosVenda(id, dados = {}) {
 }
 
 /**
+ * Reenvia manualmente uma venda elegível para a integração do dashboard.
+ */
+export async function reenviarVendaParaDashboard(id) {
+  return apiPost(`/vendas/${id}/enviar-dashboard`, {});
+}
+
+/**
  * Lista aprovacoes venda conforme os filtros e parametros informados.
  */
 export async function listarAprovacoesVenda(filtros) {

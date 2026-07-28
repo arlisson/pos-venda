@@ -115,6 +115,20 @@ router.post(
   }),
   vendaController.enviarPosVenda
 );
+router.post(
+  '/:id/enviar-dashboard',
+  exigirUmaPermissao(['vendas_editar', 'editar_vendas_compartilhadas']),
+  auditar({
+    acao: 'venda.dashboard_reenviada',
+    entidade: 'vendas',
+    entidade_id: req => req.params.id,
+    dados: (req, integracao) => ({
+      id: req.params.id,
+      status: integracao?.status || null
+    })
+  }),
+  vendaController.reenviarDashboard
+);
 router.get(
   '/:id/xlsx-claro',
   exigirUmaPermissao(['vendas_ver_proprias', 'ver_vendas_compartilhadas', 'vendas_ver_todas']),

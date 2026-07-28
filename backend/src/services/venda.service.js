@@ -2734,7 +2734,17 @@ async function buscarVendaPorId(id, usuarioId) {
     aplicarEscopoVendas(query, usuarioId, escopo);
   }
 
-  return query;
+  const venda = await query;
+  if (!venda) return null;
+
+  try {
+    venda.integracao_dashboard = await dashboardIntegracaoService.obterResumoSincronizacao(venda.id);
+  } catch (error) {
+    console.error(`Erro ao obter status da integracao do dashboard para venda ${venda.id}:`, error.message);
+    venda.integracao_dashboard = null;
+  }
+
+  return venda;
 }
 
 /**
@@ -2881,8 +2891,21 @@ async function criarVenda(dados, usuarioId) {
     return venda;
   });
 
-  dashboardIntegracaoService.agendarEnvioVenda(venda.id);
+  venda.integracao_dashboard = await dashboardIntegracaoService.enviarVendaCriada(venda.id);
   return venda;
+}
+
+/**
+ * Reenvia manualmente ao dashboard uma venda nova que tenha falhado na primeira tentativa.
+ */
+async function reenviarVendaParaDashboard(id, usuarioId) {
+  const permitido = await usuarioPodeEditarVenda(id, usuarioId);
+  if (!permitido) return { status: 'not_found' };
+
+  const resultado = await dashboardIntegracaoService.reenviarVendaManualmente(id);
+  if (resultado?.status === 'nao_elegivel') return { status: 'not_eligible' };
+
+  return { status: 'ok', integracao_dashboard: resultado };
 }
 
 /**
@@ -3761,6 +3784,7 @@ module.exports = {
   buscarVendaPorId,
   gerarEmailTemplateVenda,
   criarVenda,
+  reenviarVendaParaDashboard,
   atualizarVenda,
   atualizarStatusVenda,
   cancelarVenda,

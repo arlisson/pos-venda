@@ -160,6 +160,28 @@ async function store(req, res) {
 }
 
 /**
+ * Reenvia manualmente uma venda elegivel para a integracao do dashboard.
+ */
+async function reenviarDashboard(req, res) {
+  try {
+    const resultado = await vendaService.reenviarVendaParaDashboard(req.params.id, req.usuario.id);
+
+    if (resultado.status === 'not_found') {
+      return res.status(404).json({ message: 'Venda não encontrada.' });
+    }
+
+    if (resultado.status === 'not_eligible') {
+      return res.status(409).json({ message: 'Esta venda não está elegível para reenvio manual ao dashboard.' });
+    }
+
+    return res.json(resultado.integracao_dashboard);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Erro ao reenviar venda ao dashboard.' });
+  }
+}
+
+/**
  * Processa preview importacao empresas conforme as regras do dominio.
  */
 async function previewImportacaoEmpresas(req, res) {
@@ -493,6 +515,7 @@ module.exports = {
   previewImportacaoEmpresas,
   importarEmpresas,
   store,
+  reenviarDashboard,
   update,
   updateStatus,
   cancelar,

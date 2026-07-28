@@ -119,3 +119,38 @@ test('envia observação vazia quando a venda não possui observações', () => 
   }, referencias);
   assert.equal(payload.notes, '');
 });
+
+test('resume falha por chip e libera reenvio manual apenas quando elegível', () => {
+  const resumo = _internals.montarResumo([
+    { item_key: 'chip-1', status: 'enviada', ultimo_erro: null, pode_reenviar_manualmente: true },
+    { item_key: 'chip-2', status: 'erro', ultimo_erro: 'Operadora não encontrada.', pode_reenviar_manualmente: true }
+  ]);
+
+  assert.deepEqual(resumo, {
+    status: 'erro',
+    mensagem: 'Operadora não encontrada.',
+    pode_reenviar_manualmente: true,
+    itens: [
+      { item_key: 'chip-1', status: 'enviada', mensagem: null },
+      { item_key: 'chip-2', status: 'erro', mensagem: 'Operadora não encontrada.' }
+    ]
+  });
+});
+
+test('não expõe rotina de reenvio automático', () => {
+  const integracao = require('../src/services/dashboard-integracao.service');
+  assert.equal(integracao.sincronizarPendentes, undefined);
+  assert.equal(integracao.agendarEnvioVenda, undefined);
+});
+
+test('libera explicitamente uma venda antiga somente pela configuração de exceção', () => {
+  process.env.DASHBOARD_INTEGRATION_MANUAL_RETRY_SALE_IDS = '91, 92';
+  try {
+    const resumo = _internals.montarResumo([
+      { item_key: 'principal', status: 'erro', ultimo_erro: 'Falha.', pode_reenviar_manualmente: false }
+    ], 92);
+    assert.equal(resumo.pode_reenviar_manualmente, true);
+  } finally {
+    delete process.env.DASHBOARD_INTEGRATION_MANUAL_RETRY_SALE_IDS;
+  }
+});

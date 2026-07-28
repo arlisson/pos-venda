@@ -11,7 +11,6 @@ const NOME_TABELA = 'dashboard_integracao_vendas';
 const CACHE_REFERENCIAS_MS = 5 * 60 * 1000;
 const LIMITE_REQUISICOES_POR_MINUTO = 120;
 let cacheReferencias = null;
-let filaEnvios = Promise.resolve();
 let inicioJanelaRequisicoes = Date.now();
 let requisicoesNaJanela = 0;
 
@@ -32,6 +31,12 @@ function configuracao() {
 }
 
 function estaConfigurada() { const { baseUrl, apiKey } = configuracao(); return Boolean(baseUrl && apiKey); }
+function idsLiberadosExcepcionalmente() {
+  return new Set(String(process.env.DASHBOARD_INTEGRATION_MANUAL_RETRY_SALE_IDS || '')
+    .split(',')
+    .map(valor => Number(valor.trim()))
+    .filter(Number.isInteger));
+}
 function normalizarTexto(valor) { return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
 function somenteDigitos(valor) { return String(valor || '').replace(/\D/g, ''); }
 function valorBooleano(valor) { return valor === true || valor === 1 || valor === '1'; }
@@ -148,12 +153,18 @@ async function obterReferencias({ atualizar = false } = {}) {
 }
 
 async function registrarVendaPendente(venda, trx) {
-  if (!estaConfigurada()) return;
   const vendaId = Number(typeof venda === 'object' ? venda.id : venda);
   const itens = typeof venda === 'object' ? itensSincronizacao(venda) : ['principal'];
   for (const itemKey of itens) {
     const existe = await trx(NOME_TABELA).where({ venda_id: vendaId, item_key: itemKey }).first();
-    if (!existe) await trx(NOME_TABELA).insert({ venda_id: vendaId, item_key: itemKey, status: 'pendente' });
+    if (!existe) {
+      await trx(NOME_TABELA).insert({
+        venda_id: vendaId,
+        item_key: itemKey,
+        status: 'pendente',
+        pode_reenviar_manualmente: true
+      });
+    }
   }
 }
 
@@ -185,12 +196,24 @@ function mensagemErro(error) {
   return `${String(detalhe || 'Falha desconhecida ao enviar venda ao dashboard.')}${campos}`.slice(0, 4000);
 }
 
+async function atualizarFalha(knex, pendencia, error) {
+  await knex(NOME_TABELA)
+    .where({ id: pendencia.id })
+    .update({
+      status: 'erro',
+      tentativas: Number(pendencia.tentativas || 0) + 1,
+      ultimo_erro: mensagemErro(error),
+      ultima_tentativa_em: knex.fn.now(),
+      updated_at: knex.fn.now()
+    });
+}
+
 async function enviarVendaPendente(vendaId, itemKey = 'principal') {
-  if (!estaConfigurada()) return { ignorada: true };
   const knex = Venda.knex();
   const pendencia = await knex(NOME_TABELA).where({ venda_id: Number(vendaId), item_key: itemKey }).first();
   if (!pendencia || pendencia.status === 'enviada') return { ignorada: true };
   try {
+    if (!estaConfigurada()) throw new Error('A integracao com o dashboard nao esta configurada.');
     const venda = await obterVendaParaEnvio(vendaId);
     if (!venda) throw new Error('Venda nao encontrada para sincronizacao.');
     const referencias = await obterReferencias();
@@ -201,19 +224,84 @@ async function enviarVendaPendente(vendaId, itemKey = 'principal') {
     await knex(NOME_TABELA).where({ venda_id: Number(vendaId), item_key: itemKey }).update({ status: 'enviada', tentativas: Number(pendencia.tentativas || 0) + 1, ultimo_erro: null, dashboard_sale_id: resposta.data?.data?.id || null, enviada_em: knex.fn.now(), ultima_tentativa_em: knex.fn.now(), updated_at: knex.fn.now() });
     return { enviada: true, idempotente: resposta.data?.idempotent === true };
   } catch (error) {
-    await knex(NOME_TABELA).where({ venda_id: Number(vendaId), item_key: itemKey }).update({ status: 'pendente', tentativas: Number(pendencia.tentativas || 0) + 1, ultimo_erro: mensagemErro(error), ultima_tentativa_em: knex.fn.now(), updated_at: knex.fn.now() });
+    await atualizarFalha(knex, pendencia, error);
     throw error;
   }
 }
 
-async function enviarPendentesDaVenda(vendaId) {
-  const pendencias = await Venda.knex()(NOME_TABELA).where({ venda_id: Number(vendaId), status: 'pendente' }).orderBy('id').select('item_key');
-  for (const pendencia of pendencias) await enviarVendaPendente(vendaId, pendencia.item_key);
+function montarResumo(items = [], vendaId = null) {
+  if (items.length === 0) return null;
+  const todosEnviados = items.every(item => item.status === 'enviada');
+  const comErro = items.some(item => item.status === 'erro');
+  const vendaLiberada = idsLiberadosExcepcionalmente().has(Number(vendaId));
+  const podeReenviar = items.some(item => item.status === 'erro' && (Boolean(item.pode_reenviar_manualmente) || vendaLiberada));
+  const primeiroErro = items.find(item => item.status === 'erro' && item.ultimo_erro);
+
+  return {
+    status: todosEnviados ? 'enviada' : (comErro ? 'erro' : 'pendente'),
+    mensagem: primeiroErro?.ultimo_erro || null,
+    pode_reenviar_manualmente: podeReenviar,
+    itens: items.map(item => ({
+      item_key: item.item_key,
+      status: item.status,
+      mensagem: item.ultimo_erro || null
+    }))
+  };
 }
 
-function agendarEnvioVenda(vendaId) {
-  if (!estaConfigurada()) return;
-  filaEnvios = filaEnvios.catch(() => undefined).then(() => enviarPendentesDaVenda(vendaId)).catch(error => console.error(`Erro ao sincronizar venda ${vendaId} com o dashboard:`, mensagemErro(error)));
+async function obterResumoSincronizacao(vendaId) {
+  const items = await Venda.knex()(NOME_TABELA)
+    .where({ venda_id: Number(vendaId) })
+    .orderBy('id')
+    .select('item_key', 'status', 'ultimo_erro', 'pode_reenviar_manualmente');
+  return montarResumo(items, vendaId);
 }
 
-module.exports = { agendarEnvioVenda, estaConfigurada, montarPayloadVenda, registrarVendaPendente, resolverIdReferencia, _internals: { chipDaVenda, formatarDataHoraVenda, itensSincronizacao, mensagemErro, normalizarChips, normalizarTexto, somenteDigitos, resolverTipoVendaDoChip } };
+async function enviarVendaCriada(vendaId) {
+  const pendencias = await Venda.knex()(NOME_TABELA)
+    .where({ venda_id: Number(vendaId), status: 'pendente' })
+    .orderBy('id')
+    .select('item_key');
+
+  for (const pendencia of pendencias) {
+    try {
+      await enviarVendaPendente(vendaId, pendencia.item_key);
+    } catch {
+      // A falha ja foi persistida e sera apresentada na resposta do cadastro.
+    }
+  }
+
+  return obterResumoSincronizacao(vendaId);
+}
+
+async function reenviarVendaManualmente(vendaId) {
+  const pendencias = await Venda.knex()(NOME_TABELA)
+    .where({ venda_id: Number(vendaId), status: 'erro' })
+    .orderBy('id')
+    .select('item_key', 'pode_reenviar_manualmente');
+
+  const vendaLiberada = idsLiberadosExcepcionalmente().has(Number(vendaId));
+  const elegiveis = pendencias.filter(item => Boolean(item.pode_reenviar_manualmente) || vendaLiberada);
+  if (elegiveis.length === 0) return { status: 'nao_elegivel' };
+
+  for (const pendencia of elegiveis) {
+    try {
+      await enviarVendaPendente(vendaId, pendencia.item_key);
+    } catch {
+      // A falha ja foi persistida e sera retornada no resumo atualizado.
+    }
+  }
+
+  return obterResumoSincronizacao(vendaId);
+}
+
+module.exports = {
+  enviarVendaCriada,
+  estaConfigurada,
+  montarPayloadVenda,
+  obterResumoSincronizacao,
+  reenviarVendaManualmente,
+  registrarVendaPendente,
+  resolverIdReferencia,
+  _internals: { chipDaVenda, formatarDataHoraVenda, idsLiberadosExcepcionalmente, itensSincronizacao, mensagemErro, montarResumo, normalizarChips, normalizarTexto, somenteDigitos, resolverTipoVendaDoChip }
+};

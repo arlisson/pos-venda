@@ -28,6 +28,7 @@ import {
   listarVendas,
   listarVendedoras,
   marcarProblemaVenda,
+  reenviarVendaParaDashboard,
   uploadArquivoVenda,
   visualizarArquivoVenda
 } from '../../services/venda.service';
@@ -3048,8 +3049,32 @@ function VendasPage() {
     }
     await carregarVendas(filtros, paginaAtual);
     obterReferenciasClientesVendas().then(data => setReferenciasClientes(data || [])).catch(() => {});
-    setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
+    const integracaoDashboard = vendaSalva?.integracao_dashboard;
+    if (!editando && integracaoDashboard?.status === 'erro') {
+      setErro(`Venda cadastrada, mas não foi enviada ao dashboard: ${integracaoDashboard.mensagem || 'revise os dados e tente novamente.'}`);
+    } else {
+      setSucesso(editando ? 'Venda atualizada com sucesso.' : 'Venda cadastrada com sucesso.');
+    }
     return vendaSalva;
+  }
+
+  async function reenviarDashboard(venda) {
+    setErro('');
+    setSucesso('');
+    const integracaoDashboard = await reenviarVendaParaDashboard(venda.id);
+
+    setModalVenda(atual => atual && Number(atual.id) === Number(venda.id)
+      ? { ...atual, integracao_dashboard: integracaoDashboard }
+      : atual);
+    await carregarVendas(filtros, paginaAtual);
+
+    if (integracaoDashboard?.status === 'enviada') {
+      setSucesso('Venda enviada ao dashboard com sucesso.');
+    } else {
+      setErro(`A venda continua sem envio ao dashboard: ${integracaoDashboard?.mensagem || 'revise os dados e tente novamente.'}`);
+    }
+
+    return integracaoDashboard;
   }
 
   /**
@@ -3306,6 +3331,7 @@ function VendasPage() {
             setVendaInicial(null);
           }}
           onSave={salvarVenda}
+          onRetryDashboard={reenviarDashboard}
           onDraftChange={setVendaCadastroDraft}
           onSendToPosVenda={enviarPosVenda}
           onCreateClient={abrirClienteRapido}
