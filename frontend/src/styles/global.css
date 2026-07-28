@@ -443,7 +443,7 @@ input, select, textarea { font-family: inherit; }
   right: 18px;
   bottom: 18px;
   z-index: 260;
-  width: min(440px, calc(100vw - 32px));
+  width: min(520px, calc(100vw - 32px));
   max-height: min(70vh, calc(100vh - 96px));
   pointer-events: auto;
   display: flex;
@@ -586,10 +586,14 @@ input, select, textarea { font-family: inherit; }
 }
 
 .urgent-alert-stack {
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px;
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 8px;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -617,12 +621,16 @@ input, select, textarea { font-family: inherit; }
 .urgent-alert-card {
   --tone-color: var(--danger);
   --tone-soft: var(--danger-bg, #fef2f2);
+  flex: 0 0 auto;
   pointer-events: auto;
   position: relative;
   display: grid;
   grid-template-columns: auto 1fr auto;
+  grid-template-areas: "icon body actions";
   align-items: center;
   gap: 12px;
+  min-height: 86px;
+  height: auto;
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-top: 3px solid var(--tone-color);
@@ -676,6 +684,7 @@ input, select, textarea { font-family: inherit; }
 }
 
 .urgent-alert-card__icon {
+  grid-area: icon;
   width: 34px;
   height: 34px;
   border-radius: 999px;
@@ -691,6 +700,7 @@ input, select, textarea { font-family: inherit; }
 }
 
 .urgent-alert-card__body {
+  grid-area: body;
   min-width: 0;
   display: grid;
   gap: 4px;
@@ -701,6 +711,7 @@ input, select, textarea { font-family: inherit; }
   font-weight: 700;
   color: var(--text);
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .urgent-alert-card__body span {
@@ -711,6 +722,7 @@ input, select, textarea { font-family: inherit; }
 }
 
 .urgent-alert-card__actions {
+  grid-area: actions;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -721,6 +733,7 @@ input, select, textarea { font-family: inherit; }
   color: #fff;
   border: 1px solid var(--tone-color);
   font-weight: 600;
+  white-space: nowrap;
   transition: filter 140ms ease, transform 140ms ease;
 }
 
@@ -2675,11 +2688,11 @@ input, select, textarea { font-family: inherit; }
 
   .urgent-alert-panel {
     left: 12px;
-    right: 84px;
+    right: 12px;
     bottom: 76px;
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
     width: auto;
-    max-height: min(42vh, calc(100dvh - 116px));
+    max-height: min(56vh, calc(100dvh - 104px));
   }
 
   .urgent-alert-panel--minimized {
@@ -2702,11 +2715,14 @@ input, select, textarea { font-family: inherit; }
   }
 
   .urgent-alert-card {
-    grid-template-columns: 26px minmax(0, 1fr) auto;
-    align-items: center;
+    grid-template-columns: 26px minmax(0, 1fr);
+    grid-template-areas:
+      "icon body"
+      "icon actions";
+    align-items: start;
     gap: 8px;
-    min-height: 52px;
-    padding: 8px 8px 8px 10px;
+    min-height: 92px;
+    padding: 10px 10px 10px 12px;
     border-top-width: 1px;
     border-left: 3px solid var(--tone-color);
     border-radius: 12px;
@@ -2723,31 +2739,34 @@ input, select, textarea { font-family: inherit; }
   }
 
   .urgent-alert-card__icon {
+    grid-area: icon;
     width: 26px;
     height: 26px;
+    margin-top: 2px;
   }
 
   .urgent-alert-card__body strong {
-    overflow: hidden;
     font-size: 12.5px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.25;
+    white-space: normal;
   }
 
   .urgent-alert-card__body span {
-    overflow: hidden;
     font-size: 11.5px;
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.35;
+    display: block;
+    overflow: visible;
+    white-space: normal;
   }
 
   .urgent-alert-card__actions {
-    grid-column: 3;
+    grid-area: actions;
     gap: 6px;
-    justify-content: flex-end;
+    justify-content: flex-start;
     width: auto;
     flex-shrink: 0;
+    align-self: end;
+    margin-top: 2px;
   }
 
   .urgent-alert-card__actions .btn-sm {
@@ -2804,9 +2823,9 @@ input, select, textarea { font-family: inherit; }
 
   @media (max-width: 420px) {
     .urgent-alert-card {
-      min-height: 46px;
-      grid-template-columns: 24px minmax(0, 1fr) auto;
+      grid-template-columns: 24px minmax(0, 1fr);
       gap: 6px;
+      min-height: 96px;
     }
 
     .urgent-alert-card__actions {
@@ -2824,11 +2843,11 @@ input, select, textarea { font-family: inherit; }
     }
 
     .urgent-alert-card__body {
-      gap: 0;
+      gap: 3px;
     }
 
     .urgent-alert-card__body span {
-      display: none;
+      display: block;
     }
   }
 
