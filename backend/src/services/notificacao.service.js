@@ -455,6 +455,12 @@ async function sincronizarRetornosNotas(usuarioId = null) {
   }
 }
 
+/** Indica se o retorno do card deve seguir a fila de mailing da consultora atual. */
+function isRetornoLeadAgendadoElegivel(linha) {
+  if (!linha || !linha.retorno_agendado_em || linha.cliente_recusou) return false;
+  return !linha.futuro_cliente || linha.status_operacional === 'distribuido_venda';
+}
+
 function tituloFuturoCliente(dadosJson, linhaId) {
   const dados = parseDados(dadosJson);
   const entrada = Object.entries(dados).find(([chave, valor]) => {
@@ -554,6 +560,7 @@ async function sincronizarRetornosFuturosClientes() {
     .join('lead_linhas as ll', 'll.id', 'ls.lead_linha_id')
     .where('ll.futuro_cliente', true)
     .whereNull('ll.futuro_cliente_excluido_em')
+    .whereNull('ll.retorno_agendado_em')
     .whereNotNull('ls.retorno_em')
     .select('ls.lead_linha_id', 'ls.usuario_id', 'ls.retorno_em', 'll.dados_json');
 
@@ -575,7 +582,7 @@ async function sincronizarRetornosFuturosClientes() {
     .leftJoin('lead_sondagens as ls', 'ls.lead_linha_id', 'n.entidade_id')
     .leftJoin('lead_linhas as ll', 'll.id', 'n.entidade_id')
     .whereIn('n.tipo', TIPOS_FUTURO_RETORNO)
-    .where(builder => builder.whereNull('ls.retorno_em').orWhereNull('ll.id').orWhere('ll.futuro_cliente', false).orWhereNotNull('ll.futuro_cliente_excluido_em').orWhereIn('ll.status_operacional', ['vendido', 'perdido']).orWhereNotNull('ll.venda_id').orWhereNotNull('ll.venda_recusada_em'))
+    .where(builder => builder.whereNull('ls.retorno_em').orWhereNull('ll.id').orWhere('ll.futuro_cliente', false).orWhereNotNull('ll.futuro_cliente_excluido_em').orWhereNotNull('ll.retorno_agendado_em').orWhereIn('ll.status_operacional', ['vendido', 'perdido']).orWhereNotNull('ll.venda_id').orWhereNotNull('ll.venda_recusada_em'))
     .distinct('n.id');
 
   const notificacoesObsoletasIds = notificacoesObsoletas.map(notificacao => notificacao.id);
@@ -625,15 +632,21 @@ async function salvarNotificacaoRetornoLead(linha, etapa, agora) {
 }
 
 /**
- * Sincroniza os retornos marcados direto no card de lead recebido (antes de virar futuro cliente).
+ * Sincroniza os retornos marcados direto no card de lead recebido.
+ * Futuros clientes encaminhados para venda continuam usando esse fluxo, pois o
+ * retorno pertence a consultora que recebeu o encaminhamento.
  */
 async function sincronizarRetornosLeads() {
   const agora = new Date();
   const linhas = await db('lead_linhas')
     .whereNotNull('retorno_agendado_em')
     .where('cliente_recusou', false)
-    .where('futuro_cliente', false)
-    .select('id', 'atribuido_para_id', 'retorno_agendado_em', 'dados_json');
+    .where(builder => builder
+      .where('futuro_cliente', false)
+      .orWhere(subquery => subquery
+        .where('futuro_cliente', true)
+        .where('status_operacional', 'distribuido_venda')))
+    .select('id', 'atribuido_para_id', 'retorno_agendado_em', 'dados_json', 'futuro_cliente', 'status_operacional');
 
   for (const linha of linhas) {
     const retorno = parseDataHora(linha.retorno_agendado_em);
@@ -657,7 +670,11 @@ async function sincronizarRetornosLeads() {
       .whereNull('ll.id')
       .orWhereNull('ll.retorno_agendado_em')
       .orWhere('ll.cliente_recusou', true)
-      .orWhere('ll.futuro_cliente', true))
+      .orWhere(subquery => subquery
+        .where('ll.futuro_cliente', true)
+        .where(inner => inner
+          .whereNull('ll.status_operacional')
+          .orWhereNot('ll.status_operacional', 'distribuido_venda'))))
     .distinct('n.id');
 
   const notificacoesObsoletasIds = notificacoesObsoletas.map(notificacao => notificacao.id);
@@ -715,10 +732,10 @@ async function sincronizarRetornoLead(linhaId) {
   const agora = new Date();
   const linha = await db('lead_linhas')
     .where('id', id)
-    .select('id', 'atribuido_para_id', 'retorno_agendado_em', 'cliente_recusou', 'futuro_cliente', 'dados_json')
+    .select('id', 'atribuido_para_id', 'retorno_agendado_em', 'cliente_recusou', 'futuro_cliente', 'status_operacional', 'dados_json')
     .first();
 
-  if (!linha || !linha.retorno_agendado_em || linha.cliente_recusou || linha.futuro_cliente) {
+  if (!isRetornoLeadAgendadoElegivel(linha)) {
     await Notificacao.query()
       .whereIn('tipo', TIPOS_LEAD_RETORNO)
       .where('entidade', 'lead_linhas')
@@ -935,6 +952,7 @@ async function sincronizarDistribuicoesResolvidas() {
       .orWhereNot('ll.status_operacional', 'distribuido_venda')
       .orWhereNotNull('ll.venda_id')
       .orWhereNotNull('ll.venda_recusada_em')
+      .orWhereNotNull('ll.retorno_agendado_em')
       .orWhereNotNull('ls.retorno_em'))
     .distinct('n.id');
 
@@ -1157,5 +1175,6 @@ module.exports = {
   sincronizarRetornoLead,
   sincronizarRetornosLeads,
   sincronizarNotificacoesPendentes,
-  limparNotificacoesSemObjetoReferente
+  limparNotificacoesSemObjetoReferente,
+  _internals: { isRetornoLeadAgendadoElegivel }
 };

@@ -1453,7 +1453,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                 )
               )}
 
-              {!linha.futuro_cliente && (
+              {!vendaRegistrada && !vendaRecusada && (
                 <div className="lead-retorno">
                   <div className="lead-retorno__head">
                     <span className="lead-retorno__icone"><I.Bell size={15} /></span>
