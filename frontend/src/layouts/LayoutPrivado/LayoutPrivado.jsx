@@ -60,6 +60,18 @@ function getRouteConfig(pathname) {
   );
 }
 
+function chaveAlertasUrgentesMinimizados(usuarioId) {
+  return `pos-venda:alertas-urgentes-minimizados:${usuarioId || 'anonimo'}`;
+}
+
+function lerAlertasUrgentesMinimizados(usuarioId) {
+  try {
+    return localStorage.getItem(chaveAlertasUrgentesMinimizados(usuarioId)) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Monta mapa referencias a partir dos dados informados.
  */
@@ -295,7 +307,7 @@ function LayoutPrivado({ children }) {
   }
 
   const [alertasUrgentes, setAlertasUrgentes] = useState([]);
-  const [alertasMinimizados, setAlertasMinimizados] = useState(false);
+  const [alertasMinimizados, setAlertasMinimizados] = useState(() => lerAlertasUrgentesMinimizados(usuario?.id));
   const [aparenciasNotificacao, setAparenciasNotificacao] = useState([]);
   const carregandoAlertasUrgentesRef = useRef(false);
   const atualizacaoAlertasUrgentesPendenteRef = useRef(false);
@@ -410,6 +422,11 @@ function LayoutPrivado({ children }) {
       window.removeEventListener('pos-venda:notificacoes-atualizar', carregarAlertasUrgentes);
     };
   }, [usuario?.id]);
+
+  function atualizarAlertasMinimizados(minimizados) {
+    setAlertasMinimizados(minimizados);
+    localStorage.setItem(chaveAlertasUrgentesMinimizados(usuario?.id), String(minimizados));
+  }
 
   /**
    * Executa a acao de ocultar alerta urgente mantendo o estado da tela consistente.
@@ -647,11 +664,11 @@ function LayoutPrivado({ children }) {
                 <span>{alertasUrgentes.length} {alertasUrgentes.length === 1 ? 'notificação' : 'notificações'}</span>
               </div>
             </div>
-            <button type="button" className="urgent-alert-panel__minimize" onClick={() => setAlertasMinimizados(true)} aria-expanded={!alertasMinimizados} aria-controls="urgent-alert-list" title="Minimizar avisos" aria-label="Minimizar avisos">
+            <button type="button" className="urgent-alert-panel__minimize" onClick={() => atualizarAlertasMinimizados(true)} aria-expanded={!alertasMinimizados} aria-controls="urgent-alert-list" title="Minimizar avisos" aria-label="Minimizar avisos">
               <I.ChevronDown size={18} />
             </button>
           </div>
-          <button type="button" className="urgent-alert-panel__minimized-bar" onClick={() => setAlertasMinimizados(false)} aria-expanded={!alertasMinimizados} aria-controls="urgent-alert-list">
+          <button type="button" className="urgent-alert-panel__minimized-bar" onClick={() => atualizarAlertasMinimizados(false)} aria-expanded={!alertasMinimizados} aria-controls="urgent-alert-list">
             <span className="urgent-alert-panel__pulse" aria-hidden="true" />
             <I.Bell size={17} />
             <strong>{alertasUrgentes.length} {alertasUrgentes.length === 1 ? 'aviso pendente' : 'avisos pendentes'}</strong>
