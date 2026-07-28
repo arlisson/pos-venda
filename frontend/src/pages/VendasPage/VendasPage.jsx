@@ -131,6 +131,12 @@ const VENDA_VAZIA = {
   vendedoras: []
 };
 
+const AVALIACOES_PRIMEIRA_LIGACAO = {
+  bom: { label: 'Bom', classe: 'is-bom' },
+  mais_ou_menos: { label: 'Mais ou menos', classe: 'is-mais-ou-menos' },
+  ruim: { label: 'Ruim', classe: 'is-ruim' }
+};
+
 /**
  * Obtem operadoras cliente a partir dos dados informados.
  */
@@ -3589,6 +3595,9 @@ function VendasPage() {
                       || 'Motivo não informado pelo ADM.';
                     const vendaCancelada = Boolean(venda.cancelada_em);
                     const resumoFunil = obterResumoFunilVenda(venda, etapasFunil);
+                    const avaliacaoPrimeiraLigacao = AVALIACOES_PRIMEIRA_LIGACAO[
+                      venda.origemLead?.primeira_ligacao_avaliacao
+                    ];
 
                     return (
                     <tr
@@ -3682,6 +3691,15 @@ function VendasPage() {
                               >
                                 <I.User size={11} />
                                 1&ordf; liga&ccedil;&atilde;o{venda.origemSondador?.nome ? `: ${venda.origemSondador.nome}` : ''}
+                              </span>
+                            )}
+                            {avaliacaoPrimeiraLigacao && (
+                              <span
+                                className={`vendas-primeira-ligacao-badge vendas-primeira-ligacao-qualidade-badge ${avaliacaoPrimeiraLigacao.classe}`}
+                                title={`Qualidade da primeira liga\u00e7\u00e3o: ${avaliacaoPrimeiraLigacao.label}`}
+                              >
+                                <I.Check size={11} />
+                                1&ordf; liga&ccedil;&atilde;o: {avaliacaoPrimeiraLigacao.label}
                               </span>
                             )}
                             {venda.cliente_excluido_permanentemente_em && (

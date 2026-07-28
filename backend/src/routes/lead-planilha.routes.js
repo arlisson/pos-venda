@@ -62,6 +62,21 @@ router.post(
   }),
   leadPlanilhaController.marcarFuturoCliente
 );
+router.post(
+  '/me/linhas/:id/avaliacao-primeira-ligacao',
+  exigirUmaPermissao(['futuros_clientes_ver', 'vendas_criar']),
+  auditar({
+    acao: 'lead_linha.primeira_ligacao_avaliada',
+    entidade: 'lead_linhas',
+    entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
+    dados: req => ({
+      linha_id: req.params.id,
+      avaliacao: req.body?.avaliacao,
+      usuario_id: req.usuario?.id
+    })
+  }),
+  leadPlanilhaController.avaliarPrimeiraLigacao
+);
 router.put(
   '/me/linhas/:id/campo-atualizado',
   auditar({
@@ -139,7 +154,7 @@ router.post(
     acao: 'lead_linha.retorno_marcado',
     entidade: 'lead_linhas',
     entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
-    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, usuario_id: req.usuario?.id })
+    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, observacao: req.body?.observacao, usuario_id: req.usuario?.id })
   }),
   leadPlanilhaController.marcarRetorno
 );
@@ -273,7 +288,7 @@ router.post(
     acao: 'lead_linha.retorno_marcado_admin',
     entidade: 'lead_linhas',
     entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
-    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, usuario_id: req.usuario?.id })
+    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, observacao: req.body?.observacao, usuario_id: req.usuario?.id })
   }),
   leadPlanilhaController.adminMarcarRetorno
 );

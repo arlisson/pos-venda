@@ -159,6 +159,7 @@ class Venda extends Model {
     const Servico = require('./Servico');
     const VendaHistorico = require('./VendaHistorico');
     const VendaAprovacaoSolicitacao = require('./VendaAprovacaoSolicitacao');
+    const LeadLinha = require('./LeadLinha');
 
     return {
       operadora: {
@@ -224,6 +225,14 @@ class Venda extends Model {
         join: {
           from: 'vendas.origem_sondador_id',
           to: 'usuarios.id'
+        }
+      },
+      origemLead: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: LeadLinha,
+        join: {
+          from: 'vendas.origem_lead_linha_id',
+          to: 'lead_linhas.id'
         }
       },
       historico: {

@@ -168,6 +168,12 @@ function isLeadNaLixeira(linha) {
   return Boolean(linha?.futuro_cliente && linha?.futuro_cliente_excluido_em);
 }
 
+const AVALIACOES_PRIMEIRA_LIGACAO = {
+  bom: { label: 'Bom', classe: 'quality-good' },
+  mais_ou_menos: { label: 'Mais ou menos', classe: 'quality-medium' },
+  ruim: { label: 'Ruim', classe: 'quality-bad' }
+};
+
 /**
  * Chips do estado atual de um lead. Usado na listagem e no modal de detalhe.
  * Compartilha rotulos, cores e formato (.pill) com a aba "Mailing recebido" da
@@ -175,6 +181,7 @@ function isLeadNaLixeira(linha) {
  */
 export function LeadStatusChips({ linha }) {
   const distribuicao = getStatusDistribuicao(linha);
+  const avaliacao = AVALIACOES_PRIMEIRA_LIGACAO[linha?.primeira_ligacao_avaliacao];
 
   return (
     <div className="lead-status-stack">
@@ -188,6 +195,14 @@ export function LeadStatusChips({ linha }) {
       )}
       {isLeadQualificado(linha) && (
         <span className="pill success lead-status-pill" title="Futuro cliente"><span className="pill-dot"></span>Futuro cliente</span>
+      )}
+      {avaliacao && (
+        <span
+          className={`pill lead-status-pill ${avaliacao.classe}`}
+          title={`Qualidade da primeira liga\u00e7\u00e3o: ${avaliacao.label}`}
+        >
+          <span className="pill-dot"></span>1&ordf; liga&ccedil;&atilde;o: {avaliacao.label}
+        </span>
       )}
       {isLeadVendaRegistrada(linha) && (
         <span className="pill lead-status-pill sold" title="Este futuro cliente possui uma venda vinculada"><span className="pill-dot"></span>Venda registrada</span>
@@ -811,7 +826,8 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
     vendaRecusada: isLeadVendaRecusada(linha),
     clienteRecusou: Boolean(linha.cliente_recusou),
     chamadaNaoAtendida: Boolean(linha.chamada_nao_atendida),
-    retorno: toLocalDateTimeInputFromUtc(linha.retorno_agendado_em)
+    retorno: toLocalDateTimeInputFromUtc(linha.retorno_agendado_em),
+    retornoObservacao: linha.retorno_agendado_observacao || ''
   }), [linha]);
 
   const [rascunho, setRascunho] = useState(original);
@@ -878,8 +894,12 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
         ? () => adminMarcarChamadaNaoAtendidaLead(linha.id, motivosNovos.chamadaNaoAtendida.trim())
         : () => adminReverterChamadaNaoAtendidaLead(linha.id));
     }
-    if (rascunho.retorno !== original.retorno) {
-      lista.push(() => adminMarcarRetornoLead(linha.id, rascunho.retorno ? localDateTimeInputToUtc(rascunho.retorno) : null));
+    if (rascunho.retorno !== original.retorno || rascunho.retornoObservacao !== original.retornoObservacao) {
+      lista.push(() => adminMarcarRetornoLead(
+        linha.id,
+        rascunho.retorno ? localDateTimeInputToUtc(rascunho.retorno) : null,
+        rascunho.retornoObservacao
+      ));
     }
 
     return lista;
@@ -1042,12 +1062,22 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
                   type="button"
                   className="btn btn-ghost btn-sm"
                   disabled={salvando}
-                  onClick={() => setRascunho(prev => ({ ...prev, retorno: '' }))}
+                  onClick={() => setRascunho(prev => ({ ...prev, retorno: '', retornoObservacao: '' }))}
                 >
                   Limpar
                 </button>
               )}
             </div>
+            <label htmlFor="lead-detalhe-retorno-observacao">Observação para o retorno</label>
+            <textarea
+              id="lead-detalhe-retorno-observacao"
+              value={rascunho.retornoObservacao}
+              maxLength={2000}
+              rows={3}
+              placeholder="Contexto para a próxima ligação"
+              disabled={salvando || !rascunho.retorno}
+              onChange={event => setRascunho(prev => ({ ...prev, retornoObservacao: event.target.value }))}
+            />
           </div>
 
           <div className="lead-detalhe-campos">

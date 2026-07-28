@@ -304,6 +304,24 @@ async function marcarFuturoCliente(req, res) {
 }
 
 /**
+ * Registra a avaliacao da primeira ligacao pela consultora receptora.
+ */
+async function avaliarPrimeiraLigacao(req, res) {
+  try {
+    return res.json(await leadPlanilhaService.avaliarPrimeiraLigacao(
+      req.params.id,
+      req.usuario.id,
+      req.body || {}
+    ));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({
+      message: error.message || 'Erro ao avaliar a primeira ligacao.'
+    });
+  }
+}
+
+/**
  * Lista futuros clientes conforme os filtros e parametros informados.
  */
 async function listarFuturosClientes(req, res) {
@@ -590,6 +608,7 @@ module.exports = {
   atualizarMeuCampo,
   exportarMinhas,
   marcarFuturoCliente,
+  avaliarPrimeiraLigacao,
   listarFuturosClientes,
   listarTodosFuturosClientes,
   metricasFuturosClientes,

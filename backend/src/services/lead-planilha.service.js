@@ -797,7 +797,11 @@ function montarLimpezaStatusReenvio(statusReenvio) {
   const limpeza = {};
   if (statusReenvio.includes('cliente_recusou')) Object.assign(limpeza, { cliente_recusou: false, cliente_recusou_motivo: null, cliente_recusou_em: null, cliente_recusou_por_id: null });
   if (statusReenvio.includes('chamada_nao_atendida')) Object.assign(limpeza, { chamada_nao_atendida: false, chamada_nao_atendida_motivo: null, chamada_nao_atendida_em: null, chamada_nao_atendida_por_id: null });
-  if (statusReenvio.includes('retorno_agendado')) Object.assign(limpeza, { retorno_agendado_em: null, retorno_agendado_por_id: null });
+  if (statusReenvio.includes('retorno_agendado')) Object.assign(limpeza, {
+    retorno_agendado_em: null,
+    retorno_agendado_observacao: null,
+    retorno_agendado_por_id: null
+  });
   return limpeza;
 }
 
@@ -1077,6 +1081,47 @@ async function atualizarCampoLinhaRecebida(linhaId, usuarioId, dados = {}, opcoe
     coluna_atualizada: colunaAtualizada,
     valor
   };
+}
+
+/**
+ * Registra a avaliacao da primeira ligacao feita pela consultora que recebeu
+ * o futuro cliente na etapa de venda.
+ */
+async function avaliarPrimeiraLigacao(linhaId, usuarioId, dados = {}) {
+  const linha = await LeadLinha.query().findById(Number(linhaId));
+  if (!linha) throw criarHttpError(404, 'Lead nao encontrado.');
+  if (!linha.futuro_cliente || linha.futuro_cliente_excluido_em) {
+    throw criarHttpError(409, 'Somente futuros clientes ativos podem ser avaliados.');
+  }
+  if (Number(linha.atribuido_para_id) !== Number(usuarioId) || linha.etapa_atual !== 'venda') {
+    throw criarHttpError(403, 'Somente a consultora que recebeu este futuro cliente pode avaliar a primeira ligacao.');
+  }
+  if (Number(linha.futuro_cliente_marcado_por_id) === Number(usuarioId)) {
+    throw criarHttpError(409, 'A consultora da primeira ligacao nao pode avaliar o proprio atendimento.');
+  }
+  if (linha.primeira_ligacao_avaliada_por_id
+    && Number(linha.primeira_ligacao_avaliada_por_id) !== Number(usuarioId)) {
+    throw criarHttpError(409, 'A primeira ligacao ja foi avaliada pela consultora que recebeu este cliente.');
+  }
+
+  const avaliacao = String(dados.avaliacao || '').trim().toLowerCase();
+  if (!['bom', 'mais_ou_menos', 'ruim'].includes(avaliacao)) {
+    throw criarHttpError(400, 'Selecione uma avaliacao: Bom, Mais ou menos ou Ruim.');
+  }
+
+  await LeadLinha.query().patchAndFetchById(linha.id, {
+    primeira_ligacao_avaliacao: avaliacao,
+    primeira_ligacao_avaliada_por_id: Number(usuarioId),
+    primeira_ligacao_avaliada_em: formatarDateTimeSQL(),
+    updated_at: new Date()
+  });
+
+  const atualizada = await LeadLinha.query()
+    .findById(linha.id)
+    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, operadoraInteresse, usuario]]')
+    .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
+
+  return { linha: formatarLinha(atualizada) };
 }
 
 /**
@@ -2313,7 +2358,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
     await trx('lead_linhas').where('id', Number(linhaId)).update({
       futuro_cliente: true, futuro_cliente_notas: notas, futuro_cliente_retorno: retorno,
       futuro_cliente_marcado_em: formatarDateTimeSQL(), futuro_cliente_marcado_por_id: donoId,
-      retorno_agendado_em: null, retorno_agendado_por_id: null,
+      retorno_agendado_em: null, retorno_agendado_observacao: null, retorno_agendado_por_id: null,
       etapa_atual: 'sondagem', status_operacional: 'qualificado', updated_at: new Date()
     });
   });
@@ -2826,6 +2871,7 @@ async function marcarClienteRecusouLead(linhaId, usuarioId, dados = {}, opcoes =
       cliente_recusou_em: recusadoEm,
       cliente_recusou_por_id: usuarioId,
       retorno_agendado_em: null,
+      retorno_agendado_observacao: null,
       retorno_agendado_por_id: null,
       status_operacional: 'perdido'
     });
@@ -2957,11 +3003,16 @@ async function marcarRetornoLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
   const retorno = parseDataHoraRetorno(dados.retorno);
+  const observacaoInformada = String(dados.observacao || '').trim();
+  if (observacaoInformada.length > 2000) {
+    throw criarHttpError(400, 'A observacao do retorno deve ter no maximo 2000 caracteres.');
+  }
 
   await desativarAlertasObrigatoriosDaLinha(linha.id);
 
   await LeadLinha.query().patchAndFetchById(linha.id, {
     retorno_agendado_em: retorno,
+    retorno_agendado_observacao: retorno ? (observacaoInformada || null) : null,
     retorno_agendado_por_id: retorno ? donoId : null
   });
 
@@ -3136,6 +3187,7 @@ module.exports = {
   excluirPlanilha,
   listarLinhas,
   atualizarCampoLinhaRecebida,
+  avaliarPrimeiraLigacao,
   listarEnviosDoUsuario,
   listarTodosEnvios,
   atualizarNomeEnvio,

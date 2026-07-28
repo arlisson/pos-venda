@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('node:path');
 
 const pool = {
   min: 0,
@@ -8,6 +9,8 @@ const pool = {
 };
 
 const usarLoadInfile = process.env.LEAD_IMPORT_USE_LOAD_INFILE === 'true';
+const migrationsDirectory = path.join(__dirname, 'src', 'database', 'migrations');
+const seedsDirectory = path.join(__dirname, 'src', 'database', 'seeds');
 
 module.exports = {
   development: {
@@ -26,11 +29,11 @@ module.exports = {
     },
     pool,
     migrations: {
-      directory: './src/database/migrations',
+      directory: migrationsDirectory,
       disableTransactions: true
     },
     seeds: {
-      directory: './src/database/seeds'
+      directory: seedsDirectory
     }
   },
 
@@ -50,11 +53,11 @@ module.exports = {
     },
     pool,
     migrations: {
-      directory: './src/database/migrations',
+      directory: migrationsDirectory,
       disableTransactions: true
     },
     seeds: {
-      directory: './src/database/seeds'
+      directory: seedsDirectory
     }
   }
 };

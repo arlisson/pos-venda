@@ -123,4 +123,17 @@ describe('LeadStatusChips', () => {
     expect(chip).toBeVisible();
     expect(chip.getAttribute('title')).toMatch(/^Retorno: /);
   });
+
+  it.each([
+    ['bom', 'Bom', 'quality-good'],
+    ['mais_ou_menos', 'Mais ou menos', 'quality-medium'],
+    ['ruim', 'Ruim', 'quality-bad']
+  ])('mostra a qualidade %s da primeira ligacao', (valor, label, classe) => {
+    renderChips({ primeira_ligacao_avaliacao: valor });
+
+    const chip = screen.getByText(`1\u00aa liga\u00e7\u00e3o: ${label}`);
+    expect(chip).toBeVisible();
+    expect(chip).toHaveClass(classe);
+    expect(chip).toHaveAttribute('title', `Qualidade da primeira liga\u00e7\u00e3o: ${label}`);
+  });
 });

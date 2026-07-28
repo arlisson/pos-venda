@@ -274,6 +274,13 @@ export function marcarFuturoClienteLead(linhaId, dados) {
   return apiPost(`/lead-planilhas/me/linhas/${linhaId}/futuro-cliente`, dados);
 }
 
+/**
+ * Avalia a assertividade da primeira ligacao.
+ */
+export function avaliarPrimeiraLigacaoLead(linhaId, avaliacao) {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/avaliacao-primeira-ligacao`, { avaliacao });
+}
+
 export function vincularVendaLead(linhaId, vendaId) {
   return apiPost(`/lead-planilhas/me/linhas/${linhaId}/venda`, { venda_id: vendaId });
 }
@@ -313,8 +320,8 @@ export function reverterChamadaNaoAtendidaLead(linhaId) {
 /**
  * Agenda (ou limpa, com retorno nulo) a data e hora de retorno do lead.
  */
-export function marcarRetornoLead(linhaId, retorno) {
-  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/retorno`, { retorno });
+export function marcarRetornoLead(linhaId, retorno, observacao = '') {
+  return apiPost(`/lead-planilhas/me/linhas/${linhaId}/retorno`, { retorno, observacao });
 }
 
 // ─── Ações administrativas por linha (Planilha de Mailing / gerenciar_leads) ──
@@ -352,8 +359,8 @@ export function adminReverterChamadaNaoAtendidaLead(linhaId) {
   return apiPost(`/lead-planilhas/linhas/${linhaId}/chamada-nao-atendida/reverter`, {});
 }
 
-export function adminMarcarRetornoLead(linhaId, retorno) {
-  return apiPost(`/lead-planilhas/linhas/${linhaId}/retorno`, { retorno });
+export function adminMarcarRetornoLead(linhaId, retorno, observacao = '') {
+  return apiPost(`/lead-planilhas/linhas/${linhaId}/retorno`, { retorno, observacao });
 }
 
 export function listarQuadroFuturosClientes(filtros = {}) {

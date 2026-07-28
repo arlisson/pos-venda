@@ -710,6 +710,69 @@
 .futuro-cliente-resumo__full {
   grid-column: 1 / -1;
 }
+.primeira-ligacao-avaliacao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.primeira-ligacao-avaliacao > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.primeira-ligacao-avaliacao > div:first-child > span {
+  color: var(--text-2);
+  font-size: 12px;
+}
+.primeira-ligacao-avaliacao__opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.primeira-ligacao-avaliacao__opcao {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.primeira-ligacao-avaliacao__opcao:has(input:checked).is-bom {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+.primeira-ligacao-avaliacao__opcao:has(input:checked).is-mais_ou_menos {
+  border-color: #fde047;
+  background: #fefce8;
+  color: #854d0e;
+}
+.primeira-ligacao-avaliacao__opcao:has(input:checked).is-ruim {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
+}
+.primeira-ligacao-avaliacao__opcao input {
+  margin: 0;
+}
+.primeira-ligacao-avaliacao .btn {
+  align-self: flex-start;
+}
+.primeira-ligacao-avaliacao--somente-leitura > strong {
+  font-size: 14px;
+}
+.primeira-ligacao-avaliacao--somente-leitura > small {
+  color: var(--text-2);
+}
 .futuro-cliente-recusa {
   display: flex;
   flex-direction: column;
@@ -810,6 +873,36 @@
   font-size: 12px;
   line-height: 1.3;
   color: var(--text-muted, #6b7280);
+}
+
+.lead-retorno__observacao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-muted, #6b7280);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lead-retorno__observacao textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text, #171717);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.lead-retorno__observacao textarea:focus {
+  border-color: var(--accent, #171717);
+  box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.08);
+  outline: none;
 }
 
 .lead-retorno__linha {

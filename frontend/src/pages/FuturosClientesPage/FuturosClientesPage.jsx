@@ -7,6 +7,7 @@ import { getUsuarioLocal, temPermissao } from '../../services/auth.service';
 import {
   adminMarcarFuturoClienteLead,
   adminMarcarVendaRecusadaLead,
+  avaliarPrimeiraLigacaoLead,
   atualizarCampoLeadRecebido,
   excluirFuturoCliente,
   excluirFuturoClienteDefinitivo,
@@ -575,6 +576,12 @@ function renderFuturoClienteSituacao(linha) {
  * Renderiza lead status no fluxo da tela.
  */
 function renderLeadStatus(linha, agora = Date.now()) {
+  const avaliacaoPrimeiraLigacao = ({
+    bom: { label: 'Bom', classe: 'quality-good' },
+    mais_ou_menos: { label: 'Mais ou menos', classe: 'quality-medium' },
+    ruim: { label: 'Ruim', classe: 'quality-bad' }
+  })[linha?.primeira_ligacao_avaliacao];
+
   if (isFuturoClienteNaLixeira(linha)) {
     return (
       <span className="lead-status-cell">
@@ -644,6 +651,15 @@ function renderLeadStatus(linha, agora = Date.now()) {
           <span className="pill-dot"></span>
           Futuro cliente
         </span>
+        {avaliacaoPrimeiraLigacao && (
+          <span
+            className={`pill lead-status-pill ${avaliacaoPrimeiraLigacao.classe}`}
+            title={`Qualidade da primeira liga\u00e7\u00e3o: ${avaliacaoPrimeiraLigacao.label}`}
+          >
+            <span className="pill-dot"></span>
+            1&ordf; liga&ccedil;&atilde;o: {avaliacaoPrimeiraLigacao.label}
+          </span>
+        )}
         {linha.futuro_cliente_retorno && (
           <span className={`lead-status-return ${isRetornoFuturoClienteVencido(linha.futuro_cliente_retorno, agora) ? 'is-overdue' : ''}`}>
             Retorno: {formatarDataHora(linha.futuro_cliente_retorno)}
@@ -1014,13 +1030,20 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [formChamadaAberto, setFormChamadaAberto] = useState(false);
   const [motivoChamada, setMotivoChamada] = useState('');
   const [retornoAgendado, setRetornoAgendado] = useState(() => formatarParaDatetimeLocal(linha.retorno_agendado_em) || '');
+  const [observacaoRetorno, setObservacaoRetorno] = useState(() => linha.retorno_agendado_observacao || '');
   const [salvandoRetorno, setSalvandoRetorno] = useState(false);
   const [sucessoRetorno, setSucessoRetorno] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [avaliacaoPrimeiraLigacao, setAvaliacaoPrimeiraLigacao] = useState(linha.primeira_ligacao_avaliacao || '');
+  const [salvandoAvaliacao, setSalvandoAvaliacao] = useState(false);
+  const [sucessoAvaliacao, setSucessoAvaliacao] = useState('');
   const [erro, setErro] = useState('');
   const [buscaGoogleAberta, setBuscaGoogleAberta] = useState(false);
   const [operadoras, setOperadoras] = useState([]);
   const podeBuscarGoogle = temPermissao(usuario, 'futuros_clientes_buscar_telefone_google');
+  const podeAvaliarPrimeiraLigacao = linha.etapa_atual === 'venda'
+    && Number(linha.atribuido_para_id) === Number(usuario?.id)
+    && Number(linha.futuro_cliente_marcado_por_id) !== Number(usuario?.id);
   const dadosEmpresaInicial = useMemo(() => getDadosEmpresaFuturoCliente(linha), [linha]);
   const [razaoSocial, setRazaoSocial] = useState(() => dadosEmpresaInicial.razao_social);
   const [cnpj, setCnpj] = useState(() => dadosEmpresaInicial.cnpj);
@@ -1063,6 +1086,29 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   }
 
   /**
+   * Salva a avaliacao exclusiva da primeira ligacao sem fechar o cliente.
+   */
+  async function salvarAvaliacaoPrimeiraLigacao() {
+    if (!avaliacaoPrimeiraLigacao) {
+      setErro('Selecione Bom, Mais ou menos ou Ruim.');
+      return;
+    }
+
+    setSalvandoAvaliacao(true);
+    setErro('');
+    setSucessoAvaliacao('');
+    try {
+      const resultado = await avaliarPrimeiraLigacaoLead(linha.id, avaliacaoPrimeiraLigacao);
+      onLinhaAtualizada(resultado.linha);
+      setSucessoAvaliacao('Avaliacao da primeira ligacao salva.');
+    } catch (error) {
+      setErro(error.message || 'Erro ao avaliar a primeira ligacao.');
+    } finally {
+      setSalvandoAvaliacao(false);
+    }
+  }
+
+  /**
    * Registra que o cliente recusou o contato (motivo opcional).
    */
   async function salvarClienteRecusou() {
@@ -1091,6 +1137,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
       setFormRecusaAberto(false);
       setMotivoClienteRecusou('');
       setRetornoAgendado(formatarParaDatetimeLocal(resultado.linha.retorno_agendado_em) || '');
+      setObservacaoRetorno(resultado.linha.retorno_agendado_observacao || '');
     } catch (error) {
       setErro(error.message || 'Erro ao reverter a recusa do cliente.');
     } finally {
@@ -1146,9 +1193,10 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
         return;
       }
 
-      const resultado = await marcarRetornoLead(linha.id, retornoIso);
+      const resultado = await marcarRetornoLead(linha.id, retornoIso, observacaoRetorno);
       onLinhaAtualizada(resultado.linha);
       setRetornoAgendado(formatarParaDatetimeLocal(resultado.linha.retorno_agendado_em) || '');
+      setObservacaoRetorno(resultado.linha.retorno_agendado_observacao || '');
       setSucessoRetorno(retornoIso ? 'Retorno marcado. Ele aparece em Ligações marcadas.' : 'Retorno removido.');
     } catch (error) {
       setErro(error.message || 'Erro ao marcar o retorno.');
@@ -1285,6 +1333,30 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                       </div>
                     </div>
                   )}
+                  {podeAvaliarPrimeiraLigacao && <div className="primeira-ligacao-avaliacao">
+                    <div>
+                      <strong>A primeira ligacao foi assertiva?</strong>
+                      <span>Avalie o atendimento que originou este futuro cliente.</span>
+                    </div>
+                    <div className="primeira-ligacao-avaliacao__opcoes" role="group" aria-label="Avaliacao da primeira ligacao">
+                      <label className="primeira-ligacao-avaliacao__opcao is-bom">
+                        <input type="checkbox" checked={avaliacaoPrimeiraLigacao === 'bom'} onChange={() => setAvaliacaoPrimeiraLigacao(atual => atual === 'bom' ? '' : 'bom')} disabled={salvandoAvaliacao} />
+                        <span>Bom</span>
+                      </label>
+                      <label className="primeira-ligacao-avaliacao__opcao is-mais_ou_menos">
+                        <input type="checkbox" checked={avaliacaoPrimeiraLigacao === 'mais_ou_menos'} onChange={() => setAvaliacaoPrimeiraLigacao(atual => atual === 'mais_ou_menos' ? '' : 'mais_ou_menos')} disabled={salvandoAvaliacao} />
+                        <span>Mais ou menos</span>
+                      </label>
+                      <label className="primeira-ligacao-avaliacao__opcao is-ruim">
+                        <input type="checkbox" checked={avaliacaoPrimeiraLigacao === 'ruim'} onChange={() => setAvaliacaoPrimeiraLigacao(atual => atual === 'ruim' ? '' : 'ruim')} disabled={salvandoAvaliacao} />
+                        <span>Ruim</span>
+                      </label>
+                    </div>
+                    <button type="button" className="btn" onClick={salvarAvaliacaoPrimeiraLigacao} disabled={salvandoAvaliacao || !avaliacaoPrimeiraLigacao}>
+                      {salvandoAvaliacao ? 'Salvando...' : linha.primeira_ligacao_avaliacao ? 'Atualizar avaliacao' : 'Salvar avaliacao'}
+                    </button>
+                    {sucessoAvaliacao && <div className="alert-success">{sucessoAvaliacao}</div>}
+                  </div>}
                   {vendaRecusada ? (
                     <div className="futuro-cliente-recusa is-saved">
                       <strong>Venda recusada</strong>
@@ -1390,6 +1462,19 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                       <span>Agende quando falar com este lead novamente</span>
                     </div>
                   </div>
+
+                  <label className="lead-retorno__observacao" htmlFor={`observacao-retorno-lead-${linha.id}`}>
+                    <span>Observação para o retorno</span>
+                    <textarea
+                      id={`observacao-retorno-lead-${linha.id}`}
+                      value={observacaoRetorno}
+                      onChange={event => { setObservacaoRetorno(event.target.value); setSucessoRetorno(''); }}
+                      placeholder="Ex.: ligar após as 14h e falar com o responsável financeiro"
+                      maxLength={2000}
+                      rows={3}
+                      disabled={salvando || salvandoRetorno}
+                    />
+                  </label>
 
                   <div className="lead-retorno__linha">
                     <label className="lead-retorno__campo" htmlFor={`retorno-lead-${linha.id}`}>
@@ -2139,6 +2224,21 @@ function FuturoClienteDetalheModal({ linha, onClose, onAtualizado, onRegistrarVe
               <div className="adicionar-lead-campo"><span className="adicionar-lead-campo__label">Observações</span><span className="adicionar-lead-campo__valor">{linha.sondagem.observacoes || linha.futuro_cliente_notas || '-'}</span></div>
             </div>
           )}
+
+          <div className="primeira-ligacao-avaliacao primeira-ligacao-avaliacao--somente-leitura">
+            <div>
+              <strong>Avaliacao da primeira ligacao</strong>
+              <span>Resultado informado pela consultora que recebeu o futuro cliente.</span>
+            </div>
+            <strong>{({
+              bom: 'Bom',
+              mais_ou_menos: 'Mais ou menos',
+              ruim: 'Ruim'
+            })[linha.primeira_ligacao_avaliacao] || 'Ainda nao avaliada'}</strong>
+            {linha.primeira_ligacao_avaliada_em && (
+              <small>Registrada em {formatarDataHora(linha.primeira_ligacao_avaliada_em)}</small>
+            )}
+          </div>
 
           <div className="futuro-cliente-form">
             <div className="futuro-cliente-form__grid">
