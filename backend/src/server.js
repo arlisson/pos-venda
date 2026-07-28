@@ -1,17 +1,12 @@
 const app = require('./app');
+const db = require('./config/database');
+const { iniciarAplicacao } = require('./startup');
 const vendaArquivoService = require('./services/venda-arquivo.service');
 const arquivoService = require('./services/arquivo.service');
 const resumoVendasTelegramService = require('./services/resumo-vendas-telegram.service');
 const notificacaoService = require('./services/notificacao.service');
 
 const PORT = process.env.APP_PORT || 3000;
-
-const server = app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
-});
-
-server.requestTimeout = 30 * 60 * 1000;
-server.headersTimeout = 31 * 60 * 1000;
 
 /**
  * Limpa arquivos vencidos e restaura o estado inicial.
@@ -28,10 +23,6 @@ function limparArquivosVencidos() {
       console.error('Erro ao limpar arquivos orfaos:', error);
     });
 }
-
-setTimeout(limparArquivosVencidos, 60 * 1000);
-setInterval(limparArquivosVencidos, 24 * 60 * 60 * 1000);
-resumoVendasTelegramService.iniciarAgendamentoResumoVendas();
 
 /**
  * Mantem alertas baseados em prazo atualizados sem bloquear as consultas da interface.
@@ -51,5 +42,28 @@ function sincronizarNotificacoesPendentes() {
     });
 }
 
-setTimeout(sincronizarNotificacoesPendentes, 5000);
-setInterval(sincronizarNotificacoesPendentes, 30 * 1000);
+function iniciarAgendamentos() {
+  setTimeout(limparArquivosVencidos, 60 * 1000);
+  setInterval(limparArquivosVencidos, 24 * 60 * 60 * 1000);
+  resumoVendasTelegramService.iniciarAgendamentoResumoVendas();
+
+  setTimeout(sincronizarNotificacoesPendentes, 5000);
+  setInterval(sincronizarNotificacoesPendentes, 30 * 1000);
+}
+
+iniciarAplicacao({
+  app,
+  db,
+  port: PORT,
+  iniciarAgendamentos
+}).catch(async error => {
+  console.error('Falha ao iniciar o servidor:', error);
+
+  try {
+    await db.destroy();
+  } catch (destroyError) {
+    console.error('Falha ao encerrar a conexao com o banco:', destroyError);
+  }
+
+  process.exitCode = 1;
+});

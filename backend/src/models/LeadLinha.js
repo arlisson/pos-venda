@@ -40,6 +40,7 @@ class LeadLinha extends Model {
         chamada_nao_atendida_em: { type: ['string', 'object', 'null'] },
         chamada_nao_atendida_por_id: { type: ['integer', 'null'] },
         retorno_agendado_em: { type: ['string', 'object', 'null'] },
+        retorno_agendado_observacao: { type: ['string', 'null'] },
         retorno_agendado_por_id: { type: ['integer', 'null'] },
         futuro_cliente_excluido_em: { type: ['string', 'object', 'null'] },
         futuro_cliente_excluir_definitivo_em: { type: ['string', 'object', 'null'] },

@@ -797,7 +797,11 @@ function montarLimpezaStatusReenvio(statusReenvio) {
   const limpeza = {};
   if (statusReenvio.includes('cliente_recusou')) Object.assign(limpeza, { cliente_recusou: false, cliente_recusou_motivo: null, cliente_recusou_em: null, cliente_recusou_por_id: null });
   if (statusReenvio.includes('chamada_nao_atendida')) Object.assign(limpeza, { chamada_nao_atendida: false, chamada_nao_atendida_motivo: null, chamada_nao_atendida_em: null, chamada_nao_atendida_por_id: null });
-  if (statusReenvio.includes('retorno_agendado')) Object.assign(limpeza, { retorno_agendado_em: null, retorno_agendado_por_id: null });
+  if (statusReenvio.includes('retorno_agendado')) Object.assign(limpeza, {
+    retorno_agendado_em: null,
+    retorno_agendado_observacao: null,
+    retorno_agendado_por_id: null
+  });
   return limpeza;
 }
 
@@ -2313,7 +2317,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
     await trx('lead_linhas').where('id', Number(linhaId)).update({
       futuro_cliente: true, futuro_cliente_notas: notas, futuro_cliente_retorno: retorno,
       futuro_cliente_marcado_em: formatarDateTimeSQL(), futuro_cliente_marcado_por_id: donoId,
-      retorno_agendado_em: null, retorno_agendado_por_id: null,
+      retorno_agendado_em: null, retorno_agendado_observacao: null, retorno_agendado_por_id: null,
       etapa_atual: 'sondagem', status_operacional: 'qualificado', updated_at: new Date()
     });
   });
@@ -2826,6 +2830,7 @@ async function marcarClienteRecusouLead(linhaId, usuarioId, dados = {}, opcoes =
       cliente_recusou_em: recusadoEm,
       cliente_recusou_por_id: usuarioId,
       retorno_agendado_em: null,
+      retorno_agendado_observacao: null,
       retorno_agendado_por_id: null,
       status_operacional: 'perdido'
     });
@@ -2957,11 +2962,16 @@ async function marcarRetornoLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
   const retorno = parseDataHoraRetorno(dados.retorno);
+  const observacaoInformada = String(dados.observacao || '').trim();
+  if (observacaoInformada.length > 2000) {
+    throw criarHttpError(400, 'A observacao do retorno deve ter no maximo 2000 caracteres.');
+  }
 
   await desativarAlertasObrigatoriosDaLinha(linha.id);
 
   await LeadLinha.query().patchAndFetchById(linha.id, {
     retorno_agendado_em: retorno,
+    retorno_agendado_observacao: retorno ? (observacaoInformada || null) : null,
     retorno_agendado_por_id: retorno ? donoId : null
   });
 

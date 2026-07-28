@@ -811,7 +811,8 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
     vendaRecusada: isLeadVendaRecusada(linha),
     clienteRecusou: Boolean(linha.cliente_recusou),
     chamadaNaoAtendida: Boolean(linha.chamada_nao_atendida),
-    retorno: toLocalDateTimeInputFromUtc(linha.retorno_agendado_em)
+    retorno: toLocalDateTimeInputFromUtc(linha.retorno_agendado_em),
+    retornoObservacao: linha.retorno_agendado_observacao || ''
   }), [linha]);
 
   const [rascunho, setRascunho] = useState(original);
@@ -878,8 +879,12 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
         ? () => adminMarcarChamadaNaoAtendidaLead(linha.id, motivosNovos.chamadaNaoAtendida.trim())
         : () => adminReverterChamadaNaoAtendidaLead(linha.id));
     }
-    if (rascunho.retorno !== original.retorno) {
-      lista.push(() => adminMarcarRetornoLead(linha.id, rascunho.retorno ? localDateTimeInputToUtc(rascunho.retorno) : null));
+    if (rascunho.retorno !== original.retorno || rascunho.retornoObservacao !== original.retornoObservacao) {
+      lista.push(() => adminMarcarRetornoLead(
+        linha.id,
+        rascunho.retorno ? localDateTimeInputToUtc(rascunho.retorno) : null,
+        rascunho.retornoObservacao
+      ));
     }
 
     return lista;
@@ -1042,12 +1047,22 @@ export function LeadDetalheAdminModal({ linha, onClose, onAtualizado }) {
                   type="button"
                   className="btn btn-ghost btn-sm"
                   disabled={salvando}
-                  onClick={() => setRascunho(prev => ({ ...prev, retorno: '' }))}
+                  onClick={() => setRascunho(prev => ({ ...prev, retorno: '', retornoObservacao: '' }))}
                 >
                   Limpar
                 </button>
               )}
             </div>
+            <label htmlFor="lead-detalhe-retorno-observacao">Observação para o retorno</label>
+            <textarea
+              id="lead-detalhe-retorno-observacao"
+              value={rascunho.retornoObservacao}
+              maxLength={2000}
+              rows={3}
+              placeholder="Contexto para a próxima ligação"
+              disabled={salvando || !rascunho.retorno}
+              onChange={event => setRascunho(prev => ({ ...prev, retornoObservacao: event.target.value }))}
+            />
           </div>
 
           <div className="lead-detalhe-campos">

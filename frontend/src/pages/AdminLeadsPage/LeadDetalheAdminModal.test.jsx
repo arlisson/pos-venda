@@ -150,7 +150,7 @@ describe('LeadDetalheAdminModal - dados da planilha sao somente leitura', () => 
 
     await userEvent.click(valor);
 
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('AUTO PECAS COLODETTI LTDA EPP')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument();
   });
 
@@ -230,6 +230,20 @@ describe('LeadDetalheAdminModal - estados so gravam no "Salvar alteracoes"', () 
     await userEvent.click(botaoSalvar());
 
     expect(ordem).toEqual(['cliente-recusou', 'retorno']);
+  });
+
+  it('salva a observacao junto com a data de retorno', async () => {
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText('Retorno agendado'), { target: { value: '2026-07-20T10:00' } });
+    fireEvent.change(screen.getByLabelText('Observação para o retorno'), { target: { value: 'Falar com o financeiro' } });
+    await userEvent.click(botaoSalvar());
+
+    expect(service.adminMarcarRetornoLead).toHaveBeenCalledWith(
+      LINHA_BASE.id,
+      expect.any(String),
+      'Falar com o financeiro'
+    );
   });
 
   it('propaga apenas a ultima linha, uma vez, apos gravar o lote', async () => {

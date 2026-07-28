@@ -139,7 +139,7 @@ router.post(
     acao: 'lead_linha.retorno_marcado',
     entidade: 'lead_linhas',
     entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
-    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, usuario_id: req.usuario?.id })
+    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, observacao: req.body?.observacao, usuario_id: req.usuario?.id })
   }),
   leadPlanilhaController.marcarRetorno
 );
@@ -273,7 +273,7 @@ router.post(
     acao: 'lead_linha.retorno_marcado_admin',
     entidade: 'lead_linhas',
     entidade_id: (req, resultado) => resultado?.linha?.id || req.params.id,
-    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, usuario_id: req.usuario?.id })
+    dados: req => ({ linha_id: req.params.id, retorno: req.body?.retorno, observacao: req.body?.observacao, usuario_id: req.usuario?.id })
   }),
   leadPlanilhaController.adminMarcarRetorno
 );

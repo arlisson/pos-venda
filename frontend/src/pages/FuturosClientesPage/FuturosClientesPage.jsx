@@ -1014,6 +1014,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
   const [formChamadaAberto, setFormChamadaAberto] = useState(false);
   const [motivoChamada, setMotivoChamada] = useState('');
   const [retornoAgendado, setRetornoAgendado] = useState(() => formatarParaDatetimeLocal(linha.retorno_agendado_em) || '');
+  const [observacaoRetorno, setObservacaoRetorno] = useState(() => linha.retorno_agendado_observacao || '');
   const [salvandoRetorno, setSalvandoRetorno] = useState(false);
   const [sucessoRetorno, setSucessoRetorno] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -1091,6 +1092,7 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
       setFormRecusaAberto(false);
       setMotivoClienteRecusou('');
       setRetornoAgendado(formatarParaDatetimeLocal(resultado.linha.retorno_agendado_em) || '');
+      setObservacaoRetorno(resultado.linha.retorno_agendado_observacao || '');
     } catch (error) {
       setErro(error.message || 'Erro ao reverter a recusa do cliente.');
     } finally {
@@ -1146,9 +1148,10 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
         return;
       }
 
-      const resultado = await marcarRetornoLead(linha.id, retornoIso);
+      const resultado = await marcarRetornoLead(linha.id, retornoIso, observacaoRetorno);
       onLinhaAtualizada(resultado.linha);
       setRetornoAgendado(formatarParaDatetimeLocal(resultado.linha.retorno_agendado_em) || '');
+      setObservacaoRetorno(resultado.linha.retorno_agendado_observacao || '');
       setSucessoRetorno(retornoIso ? 'Retorno marcado. Ele aparece em Ligações marcadas.' : 'Retorno removido.');
     } catch (error) {
       setErro(error.message || 'Erro ao marcar o retorno.');
@@ -1390,6 +1393,19 @@ function AdicionarLeadModal({ linha, colunas, usuario, onClose, onRegistrarVenda
                       <span>Agende quando falar com este lead novamente</span>
                     </div>
                   </div>
+
+                  <label className="lead-retorno__observacao" htmlFor={`observacao-retorno-lead-${linha.id}`}>
+                    <span>Observação para o retorno</span>
+                    <textarea
+                      id={`observacao-retorno-lead-${linha.id}`}
+                      value={observacaoRetorno}
+                      onChange={event => { setObservacaoRetorno(event.target.value); setSucessoRetorno(''); }}
+                      placeholder="Ex.: ligar após as 14h e falar com o responsável financeiro"
+                      maxLength={2000}
+                      rows={3}
+                      disabled={salvando || salvandoRetorno}
+                    />
+                  </label>
 
                   <div className="lead-retorno__linha">
                     <label className="lead-retorno__campo" htmlFor={`retorno-lead-${linha.id}`}>

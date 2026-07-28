@@ -1556,7 +1556,8 @@
   color: var(--text-3);
 }
 
-.lead-detalhe-motivo textarea {
+.lead-detalhe-motivo textarea,
+.lead-detalhe-retorno textarea {
   width: 100%;
   min-height: 64px;
   resize: vertical;
