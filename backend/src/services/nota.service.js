@@ -156,7 +156,12 @@ async function criarNota(tipo, entidadeId, usuarioId, dados) {
     updated_at: agora
   });
 
-  return formatarNota(await db('entidade_notas').where({ id }).first());
+  const nota = formatarNota(await db('entidade_notas').where({ id }).first());
+  if (nota?.retorno_agendado_para) {
+    await notificacaoService.sincronizarRetornoNota(nota.id);
+  }
+
+  return nota;
 }
 
 /**
@@ -181,7 +186,7 @@ async function atualizarNota(notaId, usuarioId, dados) {
     });
 
   if (retornoAlterado) {
-    await notificacaoService.desativarNotificacoesRetornoNota(notaId);
+    await notificacaoService.sincronizarRetornoNota(notaId);
   }
 
   return formatarNota(await db('entidade_notas').where({ id: Number(notaId) }).first());

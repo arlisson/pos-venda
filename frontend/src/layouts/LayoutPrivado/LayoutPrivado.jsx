@@ -298,6 +298,7 @@ function LayoutPrivado({ children }) {
   const [alertasMinimizados, setAlertasMinimizados] = useState(false);
   const [aparenciasNotificacao, setAparenciasNotificacao] = useState([]);
   const carregandoAlertasUrgentesRef = useRef(false);
+  const atualizacaoAlertasUrgentesPendenteRef = useRef(false);
   const [aprovacoesPendentes, setAprovacoesPendentes] = useState(0);
   const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
   const podeVerAprovacoes = usuario && temPermissao(usuario, 'vendas_aprovacoes_visualizar');
@@ -373,8 +374,12 @@ function LayoutPrivado({ children }) {
 
   async function carregarAlertasUrgentes() {
     // Em producao a sincronizacao no servidor pode levar mais que o intervalo
-    // de consulta. Evita requisicoes concorrentes que atrasam a fila de popups.
-    if (carregandoAlertasUrgentesRef.current) return;
+    // de consulta. Evita requisicoes concorrentes, sem perder uma atualizacao
+    // solicitada por uma alteracao feita pelo usuario.
+    if (carregandoAlertasUrgentesRef.current) {
+      atualizacaoAlertasUrgentesPendenteRef.current = true;
+      return;
+    }
 
     carregandoAlertasUrgentesRef.current = true;
     try {
@@ -386,6 +391,10 @@ function LayoutPrivado({ children }) {
       console.error('Erro ao carregar alertas urgentes:', error);
     } finally {
       carregandoAlertasUrgentesRef.current = false;
+      if (atualizacaoAlertasUrgentesPendenteRef.current) {
+        atualizacaoAlertasUrgentesPendenteRef.current = false;
+        carregarAlertasUrgentes();
+      }
     }
   }
 
@@ -394,8 +403,12 @@ function LayoutPrivado({ children }) {
 
     carregarAlertasUrgentes();
     const timer = setInterval(carregarAlertasUrgentes, 5000);
+    window.addEventListener('pos-venda:notificacoes-atualizar', carregarAlertasUrgentes);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('pos-venda:notificacoes-atualizar', carregarAlertasUrgentes);
+    };
   }, [usuario?.id]);
 
   /**

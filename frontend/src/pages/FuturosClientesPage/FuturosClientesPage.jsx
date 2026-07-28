@@ -1553,6 +1553,7 @@ function LeadsRecebidosView({ agora }) {
     fecharModalAdicionar();
     setSucesso(mensagem);
     recarregarEnvios();
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
   }
 
   /**
@@ -1561,6 +1562,7 @@ function LeadsRecebidosView({ agora }) {
   function handleLinhaAtualizada(linhaAtualizada) {
     setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
     setModalAdicionar(atual => (atual && atual.id === linhaAtualizada.id ? linhaAtualizada : atual));
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
   }
 
   return (

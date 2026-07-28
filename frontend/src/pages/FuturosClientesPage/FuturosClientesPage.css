@@ -379,8 +379,21 @@
 .clientes-leads-table tbody td:not(.m-primary):not(.m-meta):not(.m-actions) {
   max-width: 260px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
+}
+
+/* Reticências ("...") ficam só em RAZÃO SOCIAL e CONSULTOR; nas demais colunas o texto
+   é apenas cortado, sem os 3 pontinhos. Cobre o texto da célula e o botão interno. */
+.clientes-leads-table tbody td[data-label="RAZÃO SOCIAL"],
+.clientes-leads-table tbody td[data-label="CONSULTOR"],
+.clientes-leads-table tbody td[data-label="RAZÃO SOCIAL"] .lead-cell-button,
+.clientes-leads-table tbody td[data-label="CONSULTOR"] .lead-cell-button {
+  text-overflow: ellipsis;
+}
+
+.clientes-leads-table tbody td:not([data-label="RAZÃO SOCIAL"]):not([data-label="CONSULTOR"]) .lead-cell-button {
+  text-overflow: clip;
 }
 
 /* Envio, Status e Adicionar seguem visiveis durante o scroll horizontal.

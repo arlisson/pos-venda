@@ -669,6 +669,81 @@ async function sincronizarRetornosLeads() {
 }
 
 /**
+ * Sincroniza somente o retorno da nota alterada recentemente.
+ */
+async function sincronizarRetornoNota(notaId) {
+  const id = Number(notaId);
+  if (!id) return null;
+
+  const agora = new Date();
+  const nota = await db('entidade_notas')
+    .where('id', id)
+    .select('id', 'entidade_tipo', 'entidade_id', 'usuario_id', 'titulo', 'retorno_agendado_para')
+    .first();
+
+  if (!nota || !nota.retorno_agendado_para) {
+    await desativarNotificacoesRetornoNota(id);
+    return null;
+  }
+
+  const retorno = parseDataHora(nota.retorno_agendado_para);
+  if (!retorno) {
+    await desativarNotificacoesRetornoNota(id);
+    return null;
+  }
+
+  if (retorno <= agora) {
+    await Notificacao.query()
+      .where('source_key', `${TIPO_NOTA_RETORNO_PRE}:${id}`)
+      .patch({ ativa: false, updated_at: agora });
+    return salvarNotificacaoRetornoNota(nota, TIPO_NOTA_RETORNO_DUE, agora);
+  }
+
+  await Notificacao.query()
+    .where('source_key', `${TIPO_NOTA_RETORNO_DUE}:${id}`)
+    .patch({ ativa: false, updated_at: agora });
+  return salvarNotificacaoRetornoNota(nota, TIPO_NOTA_RETORNO_PRE, agora);
+}
+
+/**
+ * Sincroniza somente o retorno de um lead alterado recentemente.
+ */
+async function sincronizarRetornoLead(linhaId) {
+  const id = Number(linhaId);
+  if (!id) return null;
+
+  const agora = new Date();
+  const linha = await db('lead_linhas')
+    .where('id', id)
+    .select('id', 'atribuido_para_id', 'retorno_agendado_em', 'cliente_recusou', 'futuro_cliente', 'dados_json')
+    .first();
+
+  if (!linha || !linha.retorno_agendado_em || linha.cliente_recusou || linha.futuro_cliente) {
+    await Notificacao.query()
+      .whereIn('tipo', TIPOS_LEAD_RETORNO)
+      .where('entidade', 'lead_linhas')
+      .where('entidade_id', id)
+      .patch({ ativa: false, updated_at: agora });
+    return null;
+  }
+
+  const retorno = parseDataHora(linha.retorno_agendado_em);
+  if (!retorno) return null;
+
+  if (retorno <= agora) {
+    await Notificacao.query()
+      .where('source_key', `${TIPO_LEAD_RETORNO_PRE}:${id}`)
+      .patch({ ativa: false, updated_at: agora });
+    return salvarNotificacaoRetornoLead(linha, TIPO_LEAD_RETORNO_DUE, agora);
+  }
+
+  await Notificacao.query()
+    .where('source_key', `${TIPO_LEAD_RETORNO_DUE}:${id}`)
+    .patch({ ativa: false, updated_at: agora });
+  return salvarNotificacaoRetornoLead(linha, TIPO_LEAD_RETORNO_PRE, agora);
+}
+
+/**
  * Converte dados para o formato interno esperado.
  */
 function parseDados(dados) {
@@ -788,13 +863,6 @@ async function limparNotificacoesSemObjetoReferente() {
  * Lista notificacoes conforme os filtros e parametros informados.
  */
 async function listarNotificacoes(usuarioId, filtros = {}) {
-  await sincronizarNotificacoesFidelidade();
-  await sincronizarRetornosNotas(usuarioId);
-  await sincronizarRetornosFuturosClientes();
-  await sincronizarRetornosLeads();
-  await vendaNotificacaoParadaService.sincronizarVendasParadas();
-  await limparNotificacoesSemObjetoReferente();
-
   const usuario = await Usuario.query()
     .findById(usuarioId)
     .withGraphFetched('role');
@@ -875,15 +943,21 @@ async function sincronizarDistribuicoesResolvidas() {
       .update({ ativa: false, updated_at: agora });
   }
 }
-async function listarUrgentes(usuarioId) {
+
+/**
+ * Atualiza os alertas baseados em prazo fora do caminho de resposta da interface.
+ */
+async function sincronizarNotificacoesPendentes() {
   await sincronizarNotificacoesFidelidade();
-  await sincronizarRetornosNotas(usuarioId);
+  await sincronizarRetornosNotas();
   await sincronizarRetornosFuturosClientes();
   await sincronizarRetornosLeads();
   await sincronizarDistribuicoesResolvidas();
   await vendaNotificacaoParadaService.sincronizarVendasParadas();
   await limparNotificacoesSemObjetoReferente();
+}
 
+async function listarUrgentes(usuarioId) {
   const usuario = await Usuario.query()
     .findById(usuarioId)
     .withGraphFetched('role');
@@ -1076,9 +1150,12 @@ module.exports = {
   sincronizarNotificacoesFidelidade,
   desativarNotificacoesRetornoNota,
   sincronizarRetornosNotas,
+  sincronizarRetornoNota,
   sincronizarRetornosFuturosClientes,
   criarNotificacaoFuturoClienteDistribuido,
   desativarAlertasObrigatoriosDaLinha,
+  sincronizarRetornoLead,
   sincronizarRetornosLeads,
+  sincronizarNotificacoesPendentes,
   limparNotificacoesSemObjetoReferente
 };

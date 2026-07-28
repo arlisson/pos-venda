@@ -2965,7 +2965,7 @@ async function marcarRetornoLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
     retorno_agendado_por_id: retorno ? donoId : null
   });
 
-  await sincronizarNotificacoesRetornoLeads();
+  await sincronizarNotificacaoRetornoLead(linha.id);
 
   return buscarLinhaFormatada(linha.id);
 }
@@ -2978,6 +2978,17 @@ async function sincronizarNotificacoesRetornoLeads() {
     await require('./notificacao.service').sincronizarRetornosLeads();
   } catch (error) {
     console.error('Erro ao sincronizar notificacoes de retorno de leads:', error);
+  }
+}
+
+/**
+ * Atualiza apenas o retorno do lead alterado, sem percorrer todo o mailing.
+ */
+async function sincronizarNotificacaoRetornoLead(linhaId) {
+  try {
+    await require('./notificacao.service').sincronizarRetornoLead(linhaId);
+  } catch (error) {
+    console.error('Erro ao sincronizar notificacao de retorno do lead:', error);
   }
 }
 /** Encerra alertas obrigatorios somente depois de uma alteracao real da linha. */

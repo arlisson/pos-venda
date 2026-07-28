@@ -2,6 +2,7 @@ const app = require('./app');
 const vendaArquivoService = require('./services/venda-arquivo.service');
 const arquivoService = require('./services/arquivo.service');
 const resumoVendasTelegramService = require('./services/resumo-vendas-telegram.service');
+const notificacaoService = require('./services/notificacao.service');
 
 const PORT = process.env.APP_PORT || 3000;
 
@@ -31,3 +32,24 @@ function limparArquivosVencidos() {
 setTimeout(limparArquivosVencidos, 60 * 1000);
 setInterval(limparArquivosVencidos, 24 * 60 * 60 * 1000);
 resumoVendasTelegramService.iniciarAgendamentoResumoVendas();
+
+/**
+ * Mantem alertas baseados em prazo atualizados sem bloquear as consultas da interface.
+ */
+let sincronizandoNotificacoes = false;
+
+function sincronizarNotificacoesPendentes() {
+  if (sincronizandoNotificacoes) return;
+
+  sincronizandoNotificacoes = true;
+  notificacaoService.sincronizarNotificacoesPendentes()
+    .catch(error => {
+      console.error('Erro ao sincronizar notificacoes pendentes:', error);
+    })
+    .finally(() => {
+      sincronizandoNotificacoes = false;
+    });
+}
+
+setTimeout(sincronizarNotificacoesPendentes, 5000);
+setInterval(sincronizarNotificacoesPendentes, 30 * 1000);
