@@ -45,6 +45,75 @@ function normalizarTextoLead(valor) {
     .trim();
 }
 
+const COLUMN_STOP_WORDS_LEAD = new Set(['a', 'as', 'o', 'os', 'de', 'da', 'das', 'do', 'dos', 'e', 'em', 'no', 'na', 'nos', 'nas', 'para']);
+
+const COLUMN_ALIAS_GROUPS_LEAD = [
+  { key: 'cnpj', label: 'CNPJ', aliases: ['cnpj', 'cpf cnpj', 'cpf/cnpj', 'documento', 'doc', 'cpf'] },
+  { key: 'razao_social', label: 'Razao social', aliases: ['razao social', 'razão social', 'razao', 'nome empresarial', 'empresa'] },
+  { key: 'telefone', label: 'Telefone', aliases: ['telefone', 'tel', 'fone', 'celular', 'whatsapp', 'numero telefone', 'numero celular'] },
+  { key: 'telefone_fixo', label: 'Telefone fixo', aliases: ['telefone fixo', 'fone fixo', 'fixo'] },
+  { key: 'email', label: 'E-mail', aliases: ['email', 'e-mail', 'correio eletronico', 'correio eletrônico'] },
+  { key: 'responsavel', label: 'Responsavel', aliases: ['responsavel', 'responsável', 'contato', 'nome responsavel', 'nome do responsavel'] },
+  { key: 'operadora', label: 'Operadora', aliases: ['operadora', 'operadora atual', 'operadora origem'] },
+  { key: 'terminal', label: 'Terminal', aliases: ['terminal', 'linha', 'numero linha', 'numero da linha'] },
+  { key: 'data_ativacao', label: 'Data de ativacao', aliases: ['data ativacao', 'data de ativacao', 'ativacao'] },
+  { key: 'quantidade_chips', label: 'Quantidade de chips', aliases: ['quantidade chips', 'quantidade de chips', 'qtd chips', 'qtd', 'chips', 'ctns'] },
+  { key: 'valor_mensal', label: 'Valor mensal', aliases: ['valor mensal', 'valor pago', 'mensalidade', 'preco', 'preço'] }
+].map(grupo => ({
+  ...grupo,
+  aliases: grupo.aliases.map(normalizarNomeColunaLead)
+}));
+
+/**
+ * Normaliza nome de coluna lead para comparacao entre planilhas.
+ */
+function normalizarNomeColunaLead(valor) {
+  return normalizarTextoLead(valor)
+    .replace(/[_./\\|()[\]{}:+-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Retorna chave de mapeamento para colunas equivalentes.
+ */
+function getChaveMapeamentoColunaLead(valor) {
+  const nome = normalizarNomeColunaLead(valor);
+  if (!nome) return '';
+
+  const grupo = COLUMN_ALIAS_GROUPS_LEAD.find(item => item.aliases.includes(nome));
+  if (grupo) return `alias::${grupo.key}`;
+
+  const tokens = nome
+    .split(' ')
+    .filter(token => token && !COLUMN_STOP_WORDS_LEAD.has(token));
+
+  return `nome::${tokens.join(' ') || nome}`;
+}
+
+/**
+ * Retorna label padrao para uma chave mapeada quando ela tem alias conhecido.
+ */
+function getLabelMapeamentoColunaLead(chave, fallback) {
+  const alias = String(chave || '').startsWith('alias::') ? String(chave).slice(7) : '';
+  const grupo = alias ? COLUMN_ALIAS_GROUPS_LEAD.find(item => item.key === alias) : null;
+  return grupo?.label || fallback;
+}
+
+/**
+ * Encontra a fonte correta de uma coluna mapeada para a linha informada.
+ */
+function encontrarSourceColunaLeadRecebido(linha, coluna) {
+  if (!Array.isArray(coluna?.sources) || coluna.sources.length === 0) return null;
+  const planilhaId = Number(linha?.planilha_id || 0);
+  const envioId = Number(linha?.envio_id || 0);
+
+  return coluna.sources.find(source => Number(source.planilhaId || 0) > 0 && Number(source.planilhaId) === planilhaId)
+    || coluna.sources.find(source => Number(source.envioId || 0) > 0 && Number(source.envioId) === envioId)
+    || coluna.sources.find(source => Object.prototype.hasOwnProperty.call(linha?.dados_json || {}, source.nome))
+    || null;
+}
+
 /**
  * Retorna valor lead recebido a partir dos dados informados.
  */
@@ -55,9 +124,12 @@ function getValorLeadRecebido(linha, coluna) {
     return colunaBase ? linha.dados_json?.[`${colunaBase} (atualizado)`] ?? '' : '';
   }
   if (typeof coluna === 'string') return linha.dados_json?.[coluna] ?? '';
+  if (Array.isArray(coluna.sources) && coluna.sources.length > 0) {
+    const source = encontrarSourceColunaLeadRecebido(linha, coluna);
+    return source ? linha.dados_json?.[source.nome] ?? '' : '';
+  }
   if (coluna.planilhaId && Number(linha.planilha_id) !== Number(coluna.planilhaId)) return '';
-  const source = coluna.sources?.find(item => Number(item.planilhaId) === Number(linha.planilha_id));
-  return linha.dados_json?.[source?.nome || coluna.nome] ?? '';
+  return linha.dados_json?.[coluna.nome] ?? '';
 }
 
 /**
@@ -66,9 +138,11 @@ function getValorLeadRecebido(linha, coluna) {
 function getNomeColunaLeadRecebido(linha, coluna) {
   if (!coluna) return '';
   if (typeof coluna === 'string') return coluna;
+  if (Array.isArray(coluna.sources) && coluna.sources.length > 0) {
+    return encontrarSourceColunaLeadRecebido(linha, coluna)?.nome || '';
+  }
   if (coluna.planilhaId && Number(linha.planilha_id) !== Number(coluna.planilhaId)) return '';
-  const source = coluna.sources?.find(item => Number(item.planilhaId) === Number(linha.planilha_id));
-  return source?.nome || coluna.nome || coluna.label || '';
+  return coluna.nome || coluna.label || '';
 }
 
 /**
@@ -115,6 +189,145 @@ function linhaTemColunaAtualizada(linhas, coluna) {
   return linhas.some(linha => {
     const nome = getNomeColunaLeadRecebido(linha, coluna);
     return nome && Object.prototype.hasOwnProperty.call(linha.dados_json || {}, `${nome} (atualizado)`);
+  });
+}
+
+/**
+ * Cria fontes derivadas das linhas carregadas para colunas sem metadados de origem.
+ */
+function getSourcesDerivadasColunaLead(linhas, envio, nomeColuna) {
+  const envioId = Number(envio?.id || 0);
+  const mapa = new Map();
+
+  linhas.forEach(linha => {
+    if (envioId > 0 && Number(linha.envio_id || 0) !== envioId) return;
+    if (!Object.prototype.hasOwnProperty.call(linha.dados_json || {}, nomeColuna)) return;
+
+    const planilhaId = Number(linha.planilha_id || 0);
+    const chave = `${planilhaId || 'sem-planilha'}::${envioId || 'sem-envio'}::${nomeColuna}`;
+    if (mapa.has(chave)) return;
+    mapa.set(chave, {
+      planilhaId: planilhaId || null,
+      planilhaNome: linha.planilha?.nome || '',
+      envioId: envioId || Number(linha.envio_id || 0) || null,
+      envioNome: envio?.nome || linha.envio?.nome || '',
+      nome: nomeColuna
+    });
+  });
+
+  if (mapa.size === 0) {
+    mapa.set(`envio::${envioId || 'sem-envio'}::${nomeColuna}`, {
+      planilhaId: null,
+      planilhaNome: '',
+      envioId: envioId || null,
+      envioNome: envio?.nome || '',
+      nome: nomeColuna
+    });
+  }
+
+  return Array.from(mapa.values());
+}
+
+/**
+ * Acrescenta uma coluna ao mapa de colunas equivalentes.
+ */
+function adicionarColunaMapeadaLead(mapa, coluna, contexto = {}) {
+  const nome = typeof coluna === 'string' ? coluna : (coluna?.nome || coluna?.label || '');
+  const label = getLabelColunaLeadRecebido(coluna) || nome;
+  const chave = getChaveMapeamentoColunaLead(nome || label);
+  if (!chave) return;
+
+  if (!mapa.has(chave)) {
+    mapa.set(chave, {
+      id: `map::${chave}`,
+      nome,
+      label: getLabelMapeamentoColunaLead(chave, label || nome),
+      planilhaId: null,
+      sources: [],
+      _sourceKeys: new Set()
+    });
+  }
+
+  const grupo = mapa.get(chave);
+  const sourcesOriginais = Array.isArray(coluna?.sources) && coluna.sources.length > 0
+    ? coluna.sources
+    : getSourcesDerivadasColunaLead(contexto.linhas || [], contexto.envio, nome);
+
+  sourcesOriginais.forEach(source => {
+    const sourceNome = source?.nome || nome;
+    if (!sourceNome) return;
+    const planilhaId = Number(source?.planilhaId || coluna?.planilhaId || 0) || null;
+    const envioId = Number(source?.envioId || contexto.envio?.id || 0) || null;
+    const sourceKey = `${planilhaId || 'sem-planilha'}::${envioId || 'sem-envio'}::${sourceNome}`;
+    if (grupo._sourceKeys.has(sourceKey)) return;
+    grupo._sourceKeys.add(sourceKey);
+    grupo.sources.push({
+      ...source,
+      planilhaId,
+      planilhaNome: source?.planilhaNome || '',
+      envioId,
+      envioNome: source?.envioNome || contexto.envio?.nome || '',
+      nome: sourceNome
+    });
+  });
+}
+
+/**
+ * Retorna chave de origem para detectar colunas parecidas mas distintas na mesma planilha/envio.
+ */
+function getOrigemSourceColunaLead(source) {
+  if (Number(source?.planilhaId || 0) > 0) return `planilha::${Number(source.planilhaId)}`;
+  if (Number(source?.envioId || 0) > 0) return `envio::${Number(source.envioId)}`;
+  return 'origem::desconhecida';
+}
+
+/**
+ * Verifica se um grupo mapeado tem mais de uma coluna parecida na mesma origem.
+ */
+function grupoTemConflitoOrigemColunaLead(coluna) {
+  const nomesPorOrigem = new Map();
+
+  coluna.sources.forEach(source => {
+    const origem = getOrigemSourceColunaLead(source);
+    const nome = normalizarNomeColunaLead(source.nome);
+    if (!nomesPorOrigem.has(origem)) nomesPorOrigem.set(origem, new Set());
+    nomesPorOrigem.get(origem).add(nome);
+  });
+
+  return Array.from(nomesPorOrigem.values()).some(nomes => nomes.size > 1);
+}
+
+/**
+ * Finaliza colunas mapeadas removendo metadados internos.
+ */
+function finalizarColunasMapeadasLead(mapa) {
+  return Array.from(mapa.values()).flatMap(coluna => {
+    const limpa = { ...coluna };
+    delete limpa._sourceKeys;
+
+    if (grupoTemConflitoOrigemColunaLead(limpa)) {
+      const subgrupos = new Map();
+      limpa.sources.forEach(source => {
+        const chave = normalizarNomeColunaLead(source.nome);
+        if (!subgrupos.has(chave)) subgrupos.set(chave, []);
+        subgrupos.get(chave).push(source);
+      });
+
+      return Array.from(subgrupos.entries()).map(([chave, sources]) => ({
+        ...limpa,
+        id: `${limpa.id}::${chave}`,
+        label: sources[0]?.nome || limpa.label,
+        nome: sources[0]?.nome || limpa.nome,
+        planilhaId: sources.length === 1 ? sources[0].planilhaId : null,
+        sources
+      }));
+    }
+
+    return [{
+      ...limpa,
+      planilhaId: limpa.sources.length === 1 ? limpa.sources[0].planilhaId : null,
+      nome: limpa.sources[0]?.nome || limpa.nome
+    }];
   });
 }
 
@@ -1428,8 +1641,7 @@ function LeadsRecebidosView({ agora }) {
     enviosSelecionados.forEach(envio => {
       (envio.colunas_visiveis || []).forEach(coluna => {
         if (getLabelColunaLeadRecebido(coluna).endsWith(' (atualizado)')) return;
-        const key = getColunaKeyLeadRecebido(coluna);
-        mapa.set(key, coluna);
+        adicionarColunaMapeadaLead(mapa, coluna, { envio, linhas });
       });
     });
 
@@ -1437,11 +1649,11 @@ function LeadsRecebidosView({ agora }) {
       linhas.forEach(linha => {
         Object.keys(linha.dados_json || {})
           .filter(coluna => !coluna.endsWith(' (atualizado)'))
-          .forEach(coluna => mapa.set(coluna, coluna));
+          .forEach(coluna => adicionarColunaMapeadaLead(mapa, coluna, { linhas: [linha], envio: linha.envio }));
       });
     }
 
-    return Array.from(mapa.values()).flatMap(coluna => (
+    return finalizarColunasMapeadasLead(mapa).flatMap(coluna => (
       linhaTemColunaAtualizada(linhas, coluna)
         ? [coluna, criarColunaAtualizadaLeadRecebido(coluna)]
         : [coluna]
