@@ -3,6 +3,7 @@ const vendaArquivoService = require('./services/venda-arquivo.service');
 const arquivoService = require('./services/arquivo.service');
 const resumoVendasTelegramService = require('./services/resumo-vendas-telegram.service');
 const notificacaoService = require('./services/notificacao.service');
+const dashboardIntegracaoService = require('./services/dashboard-integracao.service');
 
 const PORT = process.env.APP_PORT || 3000;
 
@@ -32,6 +33,20 @@ function limparArquivosVencidos() {
 setTimeout(limparArquivosVencidos, 60 * 1000);
 setInterval(limparArquivosVencidos, 24 * 60 * 60 * 1000);
 resumoVendasTelegramService.iniciarAgendamentoResumoVendas();
+
+// Reenvia vendas que ficaram pendentes por indisponibilidade temporaria do dashboard.
+// O limite respeita as 120 requisicoes por minuto permitidas pela integracao.
+let sincronizandoDashboard = false;
+function sincronizarVendasDashboard() {
+  if (sincronizandoDashboard) return;
+  sincronizandoDashboard = true;
+  dashboardIntegracaoService.sincronizarPendentes()
+    .catch(error => console.error('Erro ao sincronizar vendas pendentes com o dashboard:', error))
+    .finally(() => { sincronizandoDashboard = false; });
+}
+
+setTimeout(sincronizarVendasDashboard, 10 * 1000);
+setInterval(sincronizarVendasDashboard, 60 * 1000);
 
 /**
  * Mantem alertas baseados em prazo atualizados sem bloquear as consultas da interface.

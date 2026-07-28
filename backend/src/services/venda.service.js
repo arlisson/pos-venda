@@ -15,6 +15,7 @@ const vendaNotificacaoCancelamentoService = require('./venda-notificacao-cancela
 const vendaAprovacaoService = require('./venda-aprovacao.service');
 const notificacaoService = require('./notificacao.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
+const dashboardIntegracaoService = require('./dashboard-integracao.service');
 const { parseUtcDateTime } = require('../utils/datetime');
 const { listarPermissoesEfetivas, usuarioTemPermissaoLocal } = require('../utils/permissoes');
 const ExcelJS = require('exceljs');
@@ -2789,7 +2790,7 @@ async function criarVenda(dados, usuarioId) {
 
   await validarProtocoloCliente(payload, usuarioId);
 
-  return Venda.transaction(async trx => {
+  const venda = await Venda.transaction(async trx => {
     let leadOrigem = null;
     if (origemLeadLinhaId) {
       leadOrigem = await trx('lead_linhas')
@@ -2869,12 +2870,17 @@ async function criarVenda(dados, usuarioId) {
         .update({ status: 'vendido', finalizado_em: agora, updated_at: new Date() });
     }
 
+    await dashboardIntegracaoService.registrarVendaPendente(venda, trx);
+
     if (deveEnviarAutomaticamente) {
       return enviarVendaCriadaAutomaticamenteParaPosVenda(venda, usuarioId, agora, trx);
     }
 
     return venda;
   });
+
+  dashboardIntegracaoService.agendarEnvioVenda(venda.id);
+  return venda;
 }
 
 /**
