@@ -2250,6 +2250,16 @@ async function gerarPlanilhaXlsx(planilhaId) {
 /**
  * Marca como futuro cliente conforme a acao solicitada.
  */
+function deveNotificarNovoFuturoCliente(linha) {
+  const jaEraFuturoCliente = linha?.futuro_cliente === true
+    || linha?.futuro_cliente === 1
+    || linha?.futuro_cliente === '1';
+
+  // A data de marcacao tambem identifica qualificacoes antigas e protege contra
+  // reenvio caso o booleano esteja inconsistente em algum registro legado.
+  return !jaEraFuturoCliente && !linha?.futuro_cliente_marcado_em;
+}
+
 async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
   if (!linha) throw criarHttpError(404, 'Lead nÃ£o encontrado.');
@@ -2262,7 +2272,8 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
   }
   const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
 
-  const eraFuturoCliente = Boolean(linha.futuro_cliente);
+  const deveNotificarTelegram = deveNotificarNovoFuturoCliente(linha);
+  const marcadoEm = linha.futuro_cliente_marcado_em || formatarDateTimeSQL();
 
   const razaoSocial = String(dados.razao_social || '').trim().slice(0, 240) || null;
   const cnpj = String(dados.cnpj || '').trim().slice(0, 20) || null;
@@ -2357,7 +2368,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
 
     await trx('lead_linhas').where('id', Number(linhaId)).update({
       futuro_cliente: true, futuro_cliente_notas: notas, futuro_cliente_retorno: retorno,
-      futuro_cliente_marcado_em: formatarDateTimeSQL(), futuro_cliente_marcado_por_id: donoId,
+      futuro_cliente_marcado_em: marcadoEm, futuro_cliente_marcado_por_id: donoId,
       retorno_agendado_em: null, retorno_agendado_observacao: null, retorno_agendado_por_id: null,
       etapa_atual: 'sondagem', status_operacional: 'qualificado', updated_at: new Date()
     });
@@ -2371,7 +2382,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
     .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'));
 
   const linhaFormatada = formatarLinha(atualizada);
-  if (!eraFuturoCliente) {
+  if (deveNotificarTelegram) {
     try {
       await telegramService.enviarFuturoCliente(linhaFormatada);
     } catch (error) {
@@ -3215,6 +3226,7 @@ module.exports = {
   _internals: {
     montarColecoesExcel,
     montarColecaoCsv,
-    extrairCnpjsLinha
+    extrairCnpjsLinha,
+    deveNotificarNovoFuturoCliente
   }
 };
