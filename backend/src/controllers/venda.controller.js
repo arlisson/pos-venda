@@ -331,8 +331,8 @@ async function destroy(req, res) {
   } catch (error) {
     console.error(error);
 
-    return res.status(500).json({
-      message: 'Erro ao excluir venda.'
+    return res.status(error.statusCode || 500).json({
+      message: error.message || 'Erro ao excluir venda.'
     });
   }
 }

@@ -3467,6 +3467,10 @@ async function excluirVenda(id, usuarioId) {
     return 0;
   }
 
+  // A exclusao local so acontece depois que os lancamentos externos forem removidos.
+  // Assim, uma indisponibilidade do dashboard nao deixa uma venda visivel apenas la.
+  await dashboardIntegracaoService.excluirVendaNoDashboard(id);
+
   const agora = new Date();
 
   return Venda.transaction(async trx => {
@@ -3566,6 +3570,8 @@ async function restaurarVenda(id, usuarioId) {
   if (!permitido) {
     return null;
   }
+
+  await dashboardIntegracaoService.restaurarVendaNoDashboard(id);
 
   const atualizados = await Venda.knex()('vendas')
     .where('id', id)

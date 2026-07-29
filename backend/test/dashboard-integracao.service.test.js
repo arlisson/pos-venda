@@ -59,6 +59,11 @@ test('usa o ID equivalente quando uma referencia possui o mesmo ID local', () =>
   }), 5);
 });
 
+test('gera o mesmo identificador externo para criar e excluir cada lancamento', () => {
+  assert.equal(_internals.idExternoVenda(42), 'crm-venda-42');
+  assert.equal(_internals.idExternoVenda(42, 'chip-2'), 'crm-venda-42-chip-2');
+});
+
 test('usa o mapa configurado para vendedora mesmo com nomes diferentes', () => {
   process.env.DASHBOARD_INTEGRATION_SELLER_MAP = '{"1":11}';
   try {
@@ -110,6 +115,11 @@ test('separa chips de tipos, vendedoras e operadoras diferentes em lançamentos 
 test('mantém detalhes de validação retornados pelo dashboard no erro de sincronização', () => {
   const mensagem = _internals.mensagemErro({ response: { data: { error: { message: 'Revise os campos informados.', fieldErrors: { notes: 'Campo inválido.' } } } } });
   assert.equal(mensagem, 'Revise os campos informados. (notes: Campo inválido.)');
+});
+
+test('mantém a mensagem de autenticação retornada pelo dashboard', () => {
+  const mensagem = _internals.mensagemErro({ response: { data: { error: { code: 'AUTH_REQUIRED', message: 'Faça login para continuar.' } } } });
+  assert.equal(mensagem, 'Faça login para continuar.');
 });
 
 test('envia observação vazia quando a venda não possui observações', () => {

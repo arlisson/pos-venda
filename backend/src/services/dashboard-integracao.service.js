@@ -82,6 +82,12 @@ function itensSincronizacao(venda) {
   return chips.length ? chips.map((_chip, index) => `chip-${index + 1}`) : ['principal'];
 }
 
+function idExternoVenda(vendaId, itemKey = 'principal') {
+  return itemKey === 'principal'
+    ? `crm-venda-${Number(vendaId)}`
+    : `crm-venda-${Number(vendaId)}-${itemKey}`;
+}
+
 function chipDaVenda(venda, itemKey) {
   const match = /^chip-(\d+)$/.exec(String(itemKey || ''));
   if (!match) return null;
@@ -122,7 +128,7 @@ function montarPayloadVenda(venda, referencias, itemKey = 'principal') {
   const operadora = referenciaDoChip(venda, chip, 'operadora');
 
   return {
-    external_sale_id: itemKey === 'principal' ? `crm-venda-${venda.id}` : `crm-venda-${venda.id}-${itemKey}`,
+    external_sale_id: idExternoVenda(venda.id, itemKey),
     seller_id: resolverIdReferencia({ referencias, colecao: 'sellers', chaveMapa: 'seller', referenciaLocal: vendedora }),
     service_id: resolverIdReferencia({ referencias, colecao: 'services', chaveMapa: 'service', referenciaLocal: venda.servico }),
     operator_id: resolverIdReferencia({ referencias, colecao: 'operators', chaveMapa: 'operator', referenciaLocal: operadora }),
@@ -229,6 +235,76 @@ async function enviarVendaPendente(vendaId, itemKey = 'principal') {
   }
 }
 
+/**
+ * Remove do dashboard todos os lancamentos que pertencem a uma venda do CRM.
+ * A API externa trata uma venda ausente como exclusao idempotente.
+ */
+async function excluirVendaNoDashboard(vendaId) {
+  const knex = Venda.knex();
+  const itens = await knex(NOME_TABELA)
+    .where({ venda_id: Number(vendaId) })
+    .whereNot('status', 'excluida')
+    .orderBy('id')
+    .select('id', 'item_key', 'status', 'dashboard_sale_id', 'tentativas');
+
+  if (itens.length === 0) return { excluidos: 0 };
+
+  const existeVendaConfirmadaNoDashboard = itens.some(item => item.status === 'enviada' || item.dashboard_sale_id);
+  if (!estaConfigurada()) {
+    if (existeVendaConfirmadaNoDashboard) throw new Error('A integracao com o dashboard nao esta configurada para excluir esta venda.');
+    await knex(NOME_TABELA)
+      .whereIn('id', itens.map(item => item.id))
+      .update({ status: 'excluida', updated_at: knex.fn.now() });
+    return { excluidos: 0 };
+  }
+
+  const { baseUrl, apiKey } = configuracao();
+  for (const item of itens) {
+    try {
+      await reservarRequisicao();
+      await axios.delete(`${baseUrl}/api/v1/integration/sales/${encodeURIComponent(idExternoVenda(vendaId, item.item_key))}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        timeout: 10000
+      });
+      await knex(NOME_TABELA).where({ id: item.id }).update({
+        status: 'excluida',
+        dashboard_sale_id: null,
+        ultimo_erro: null,
+        ultima_tentativa_em: knex.fn.now(),
+        updated_at: knex.fn.now()
+      });
+    } catch (error) {
+      await atualizarFalha(knex, item, error);
+      const erroIntegracao = new Error(`O dashboard recusou a exclusão: ${mensagemErro(error)}`);
+      erroIntegracao.statusCode = 502;
+      throw erroIntegracao;
+    }
+  }
+
+  return { excluidos: itens.length };
+}
+
+/**
+ * Recria no dashboard os lancamentos removidos ao restaurar uma venda da lixeira.
+ */
+async function restaurarVendaNoDashboard(vendaId) {
+  const knex = Venda.knex();
+  const itens = await knex(NOME_TABELA)
+    .where({ venda_id: Number(vendaId), status: 'excluida' })
+    .orderBy('id')
+    .select('id', 'item_key');
+
+  if (itens.length === 0) return obterResumoSincronizacao(vendaId);
+  if (!estaConfigurada()) throw new Error('A integracao com o dashboard nao esta configurada para restaurar esta venda.');
+
+  await knex(NOME_TABELA).whereIn('id', itens.map(item => item.id)).update({
+    status: 'pendente',
+    ultimo_erro: null,
+    updated_at: knex.fn.now()
+  });
+  return enviarVendaCriada(vendaId);
+}
+
 function montarResumo(items = [], vendaId = null) {
   if (items.length === 0) return null;
   const todosEnviados = items.every(item => item.status === 'enviada');
@@ -296,12 +372,14 @@ async function reenviarVendaManualmente(vendaId) {
 }
 
 module.exports = {
+  excluirVendaNoDashboard,
   enviarVendaCriada,
   estaConfigurada,
   montarPayloadVenda,
   obterResumoSincronizacao,
   reenviarVendaManualmente,
   registrarVendaPendente,
+  restaurarVendaNoDashboard,
   resolverIdReferencia,
-  _internals: { chipDaVenda, formatarDataHoraVenda, idsLiberadosExcepcionalmente, itensSincronizacao, mensagemErro, montarResumo, normalizarChips, normalizarTexto, somenteDigitos, resolverTipoVendaDoChip }
+  _internals: { chipDaVenda, formatarDataHoraVenda, idExternoVenda, idsLiberadosExcepcionalmente, itensSincronizacao, mensagemErro, montarResumo, normalizarChips, normalizarTexto, somenteDigitos, resolverTipoVendaDoChip }
 };
