@@ -43,6 +43,11 @@ test('monta notificacao de venda destacando origem na sondagem da primeira ligac
     tipoVenda: { nome: 'Portabilidade' },
     servico: { nome: 'Plano empresarial' },
     quantidade_linhas: 2,
+    cliente_da_base: true,
+    possui_doc_na_casa: false,
+    endereco: 'Rua de Teste',
+    login: 'portal-teste',
+    senha: 'senha-teste',
     valores_unitarios_chips: JSON.stringify([
       { quantidade: 2, gb: '30', tipo_linha: 'portabilidade', valor_unitario: 59.9 }
     ]),
@@ -52,11 +57,17 @@ test('monta notificacao de venda destacando origem na sondagem da primeira ligac
     observacoes: 'Venda confirmada'
   });
 
-  assert.match(texto, /ORIGEM: SONDAGEM DA PRIMEIRA LIGAÇÃO/);
+  assert.match(texto, /Origem: Sondagem da primeira ligação/);
   assert.match(texto, /Primeira ligação realizada por: Ana Sondadora/);
   assert.match(texto, /Vendedora\(s\): Beatriz Vendedora/);
-  assert.match(texto, /2x · 30 GB · portabilidade · R\$\s?59,90/);
+  assert.match(texto, /Quantidade: 2/);
+  assert.match(texto, /Franquia: 30 GB/);
   assert.match(texto, /Valor total: R\$\s?119,80/);
+  assert.match(texto, /Classificação do cliente: Cliente da base/);
+  assert.match(texto, /Possui documentação na casa: Não/);
+  assert.match(texto, /Endereço: Rua de Teste/);
+  assert.match(texto, /Login do portal: portal-teste/);
+  assert.match(texto, /Senha do portal: senha-teste/);
 });
 
 test('usa chats distintos para resumo e novas vendas', () => {
@@ -82,5 +93,17 @@ test('identifica claramente uma mensagem de teste de venda', () => {
     nome: 'Empresa fictícia'
   });
 
-  assert.match(texto, /^🧪 TESTE — NOVA VENDA \(DADOS FICTÍCIOS\)/);
+  assert.match(texto, /^🧪 TESTE — VENDA LOCAL/);
+});
+
+test('divide venda completa em mensagens dentro do limite do Telegram sem perder dados', () => {
+  const mensagens = _internals.montarMensagensVenda({
+    id: 55,
+    nome: 'Empresa extensa',
+    observacoes: 'X'.repeat(8500)
+  });
+
+  assert.ok(mensagens.length >= 3);
+  assert.ok(mensagens.every(mensagem => mensagem.length <= 4096));
+  assert.equal(mensagens.join('').match(/X/g).length, 8500);
 });

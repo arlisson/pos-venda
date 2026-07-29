@@ -2895,7 +2895,7 @@ async function criarVenda(dados, usuarioId) {
   try {
     const vendaParaTelegram = await Venda.query()
       .findById(venda.id)
-      .withGraphFetched('[vendedora, vendedoras, origemSondador, operadora, tipoProduto, tipoVenda, servico, criador]');
+      .withGraphFetched('[cliente, vendedora, vendedoras, origemSondador, operadora, operadoraAtual, tipoProduto, tipoVenda, servico, criador]');
     await telegramService.enviarVenda(vendaParaTelegram || venda);
   } catch (error) {
     // A indisponibilidade do Telegram nao pode desfazer o cadastro da venda.

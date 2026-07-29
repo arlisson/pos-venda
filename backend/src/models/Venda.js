@@ -170,6 +170,14 @@ class Venda extends Model {
           to: 'operadoras.id'
         }
       },
+      operadoraAtual: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Operadora,
+        join: {
+          from: 'vendas.operadora_atual_id',
+          to: 'operadoras.id'
+        }
+      },
       cliente: {
         relation: Model.BelongsToOneRelation,
         modelClass: Cliente,
