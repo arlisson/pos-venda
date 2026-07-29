@@ -1,164 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as I from '../Icons';
 import { listarLinksExternos } from '../../services/config.service';
-import {
-  listarNotificacoes,
-  marcarNotificacaoLida,
-  marcarTodasNotificacoesLidas
-} from '../../services/notificacao.service';
-import { temPermissao } from '../../services/auth.service';
-import { formatUtcDateTime } from '../../utils/datetime';
-
-const TIPOS_RETORNO_NOTA = [
-  'nota_retorno_pre',
-  'nota_retorno_due',
-  'futuro_cliente_retorno_pre',
-  'futuro_cliente_retorno_due',
-  'lead_retorno_pre',
-  'lead_retorno_due'
-];
-const TIPOS_RETORNO_PAGINA_LEADS = [
-  'futuro_cliente_retorno_pre',
-  'futuro_cliente_retorno_due',
-  'lead_retorno_pre',
-  'lead_retorno_due'
-];
-const TIPOS_RETORNO_MAILING = ['lead_retorno_pre', 'lead_retorno_due'];
-const TIPOS_PROBLEMA_VENDA = ['venda_problema_aberto', 'venda_problema_resolvido', 'venda_problema_correcao'];
-const TIPOS_APROVACAO_VENDA = ['venda_aprovacao_pendente'];
-const TIPOS_RETORNO_VENDA = ['venda_retorno_registrado'];
-const TIPO_FUTURO_CLIENTE_DISTRIBUIDO = 'futuro_cliente_distribuido';
-
-/**
- * Formata date para exibicao.
- */
-function formatNotificationDateTime(value) {
-  return formatUtcDateTime(value, {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-/**
- * Retorna tom notificacao no formato esperado pelo fluxo.
- */
-function tomNotificacao(notification) {
-  switch (notification.tipo) {
-    case 'venda_problema_aberto':
-    case 'venda_problema_resolvido':
-    case 'venda_problema_correcao':
-      return 'info';
-    case 'venda_retorno_registrado':
-      return 'danger';
-    case 'venda_aprovacao_pendente':
-    case 'venda_parada_funil':
-    case 'cliente_fidelidade':
-      return 'warn';
-    case 'nota_retorno_pre':
-    case 'nota_retorno_due':
-    case 'futuro_cliente_retorno_pre':
-    case 'futuro_cliente_retorno_due':
-    case 'lead_retorno_pre':
-    case 'lead_retorno_due':
-      return 'contact';
-    default:
-      return notification.nivel === 'warn' ? 'warn' : 'danger';
-  }
-}
-
-/**
- * Retorna notification target a partir dos dados informados.
- */
-function getNotificationTarget(notification) {
-  if (notification.tipo === TIPO_FUTURO_CLIENTE_DISTRIBUIDO) {
-    const linhaId = Number(notification.entidade_id || notification.dados?.lead_linha_id || 0);
-    return linhaId > 0 ? '/futuros-clientes?linha_id=' + linhaId : '/futuros-clientes';
-  }
-
-  if (TIPOS_RETORNO_PAGINA_LEADS.includes(notification.tipo)) {
-    const linhaId = Number(notification.entidade_id || notification.dados?.lead_linha_id || 0);
-    if (TIPOS_RETORNO_MAILING.includes(notification.tipo)) {
-      return linhaId > 0 ? `/futuros-clientes?aba=leads&linha_id=${linhaId}` : '/futuros-clientes?aba=leads';
-    }
-    return linhaId > 0 ? `/futuros-clientes?linha_id=${linhaId}` : '/futuros-clientes';
-  }
-
-  if (notification.tipo === 'cliente_fidelidade') {
-    return Number(notification.dados?.dias_restantes ?? 1) < 0
-      ? '/clientes?fidelidade=vencida'
-      : '/clientes?fidelidade=alerta';
-  }
-
-  if (notification.entidade === 'clientes') {
-    const clienteId = notification.entidade_id || notification.dados?.entidade_id;
-    return clienteId ? `/clientes?cliente_id=${clienteId}&highlight=${clienteId}` : '/clientes';
-  }
-
-  if (notification.entidade === 'clientes-secretos') {
-    return '/clientes-secretos';
-  }
-  if (notification.entidade === 'vendas') {
-    const vendaId = notification.entidade_id || notification.dados?.venda_id;
-    if (!vendaId) return '/vendas';
-
-    if (TIPOS_APROVACAO_VENDA.includes(notification.tipo)) {
-      const solicitacaoId = notification.dados?.solicitacao_id;
-      return solicitacaoId ? `/vendas/aprovacoes?solicitacao_id=${solicitacaoId}` : '/vendas/aprovacoes';
-    }
-
-    if (TIPOS_PROBLEMA_VENDA.includes(notification.tipo)) {
-      const problemaId = notification.dados?.problema_id;
-      return `/vendas?venda_id=${vendaId}&aba=problema${problemaId ? `&problema_id=${problemaId}` : ''}`;
-    }
-
-    if (TIPOS_RETORNO_NOTA.includes(notification.tipo)) {
-      return `/vendas?venda_id=${vendaId}&aba=notas`;
-    }
-
-    if (TIPOS_RETORNO_VENDA.includes(notification.tipo)) {
-      return `/retornos?venda_id=${vendaId}`;
-    }
-
-    return `/vendas?venda_id=${vendaId}`;
-  }
-
-  return null;
-}
-
-/**
- * Retorna notification tooltip a partir dos dados informados.
- */
-function getNotificationTooltip(notification) {
-  const titulo = String(notification?.titulo || '').trim();
-  const descricao = TIPOS_PROBLEMA_VENDA.includes(notification?.tipo)
-    ? notification?.dados?.mensagem || notification?.mensagem
-    : notification?.mensagem;
-
-  return [titulo, descricao]
-    .map(valor => String(valor || '').trim())
-    .filter(Boolean)
-    .filter((valor, indice, lista) => lista.indexOf(valor) === indice)
-    .join('\n');
-}
 
 /**
  * Renderiza header.
  */
-function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen = false }) {
-  const navigate = useNavigate();
+function Header({ title, subtitle, onNew, onMenuClick, mobileMenuOpen = false, alertasUrgentes = [], estiloAlerta, tomAlerta, onAbrirAlerta, onFecharAlerta }) {
   const [linksExternos, setLinksExternos] = useState([]);
   const [linksOpen, setLinksOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notificationOrder, setNotificationOrder] = useState('data_hora_desc');
   const linksMenuRef = useRef(null);
   const notificationsMenuRef = useRef(null);
-  const podeVerNotificacoes = Boolean(usuario) || temPermissao(usuario, 'notificacoes_visualizar');
 
   useEffect(() => {
     /**
@@ -209,94 +61,6 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  /**
-   * Carrega notificacoes e atualiza o estado relacionado.
-   */
-  async function carregarNotificacoes(ordem = notificationOrder) {
-    try {
-      const dados = await listarNotificacoes({ limit: 50, ordem });
-      setNotifications(dados.notificacoes || []);
-      setUnreadCount(Number(dados.unread_count || 0));
-    } catch {
-      setNotifications([]);
-      setUnreadCount(0);
-    }
-  }
-
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (!podeVerNotificacoes) {
-      setNotifications([]);
-      setUnreadCount(0);
-      return;
-    }
-
-    carregarNotificacoes();
-  }, [podeVerNotificacoes]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  useEffect(() => {
-    if (!podeVerNotificacoes) return undefined;
-
-    /**
-     * Trata o evento de refresh notifications.
-     */
-    function handleRefreshNotifications() {
-      carregarNotificacoes();
-    }
-
-    window.addEventListener('pos-venda:notificacoes-atualizar', handleRefreshNotifications);
-    return () => window.removeEventListener('pos-venda:notificacoes-atualizar', handleRefreshNotifications);
-  }, [podeVerNotificacoes]);
-
-  /**
-   * Trata o evento de open notifications.
-   */
-  async function handleOpenNotifications() {
-    setNotificationsOpen(open => !open);
-
-    if (!notificationsOpen) {
-      await carregarNotificacoes();
-    }
-  }
-
-  /**
-   * Trata o evento de mark read.
-   */
-  async function handleMarkRead(notification) {
-    const target = getNotificationTarget(notification);
-
-    if (target) {
-      setNotificationsOpen(false);
-      navigate(target);
-    }
-
-    if (!notification.lida) {
-      try {
-        await marcarNotificacaoLida(notification.id);
-        await carregarNotificacoes();
-        window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
-      } catch {}
-    }
-  }
-
-  /**
-   * Trata o evento de mark all read.
-   */
-  async function handleMarkAllRead() {
-    await marcarTodasNotificacoesLidas();
-    await carregarNotificacoes();
-    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
-  }
-
-  /**
-   * Atualiza a ordem de exibicao das notificacoes pela data e hora.
-   */
-  function handleNotificationOrderChange(event) {
-    const ordem = event.target.value;
-    setNotificationOrder(ordem);
-    carregarNotificacoes(ordem);
-  }
   return (
     <header className="header">
       {onMenuClick && (
@@ -358,71 +122,60 @@ function Header({ title, subtitle, onNew, usuario, onMenuClick, mobileMenuOpen =
           </div>
         )}
 
-        {podeVerNotificacoes && (
         <div className="notification-menu" ref={notificationsMenuRef}>
           <button
             type="button"
-            className="btn btn-icon btn-ghost btn-notification"
-            title="Notificações"
-            onClick={handleOpenNotifications}
+            className="btn btn-ghost btn-notification btn-notification--urgent"
+            title="Exibir avisos pendentes"
+            onClick={() => setNotificationsOpen(open => !open)}
             aria-expanded={notificationsOpen}
             aria-haspopup="menu"
           >
-            <span className="notification-bell">
+            <span className={`notification-bell${alertasUrgentes.length > 0 ? ' notification-bell--urgent' : ''}`}>
+              {alertasUrgentes.length > 0 && <span className="urgent-alert-panel__pulse" aria-hidden="true" />}
               <I.Bell size={16} />
-              {unreadCount > 0 && (
-                <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
-              )}
             </span>
+            <strong>{alertasUrgentes.length} {alertasUrgentes.length === 1 ? 'aviso pendente' : 'avisos pendentes'}</strong>
+            <span className="btn-notification__show-label">Exibir</span>
             <I.ChevronDown size={10} className={`chevron ${notificationsOpen ? 'is-open' : ''}`} />
           </button>
 
           {notificationsOpen && (
-            <div className="notification-popover" role="menu">
+            <div className={`notification-popover notification-popover--urgent${alertasUrgentes.length > 0 ? ' notification-popover--attention' : ''}`} role="menu">
               <div className="notification-popover__header">
-                <strong>Notificações</strong>
-                <div className="notification-popover__actions">
-                  <label className="notification-order">
-                    <select value={notificationOrder} onChange={handleNotificationOrderChange} aria-label="Ordenar notificacoes por data e hora">
-                      <option value="data_hora_desc">Mais recentes</option>
-                      <option value="data_hora_asc">Mais antigas</option>
-                    </select>
-                  </label>
-                  {unreadCount > 0 && (
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={handleMarkAllRead}>
-                      Marcar lidas
-                    </button>
-                  )}
-                </div>
+                <strong className="notification-popover__urgent-title">
+                  {alertasUrgentes.length > 0 && <span className="urgent-alert-panel__pulse" aria-hidden="true" />}
+                  Avisos pendentes
+                </strong>
+                <span className="notification-popover__count">{alertasUrgentes.length} {alertasUrgentes.length === 1 ? 'aviso' : 'avisos'}</span>
               </div>
 
-              {notifications.length === 0 ? (
+              {alertasUrgentes.length === 0 ? (
                 <div className="notification-empty">Nenhuma notificação ativa.</div>
               ) : (
-                <div className="notification-popover__list">
-                  {notifications.map(notification => (
-                    <button
-                      type="button"
-                      key={notification.destinatario_id || notification.id}
-                      className={`notification-item notification-item--${tomNotificacao(notification)} ${notification.lida ? '' : 'is-unread'}`}
-                      onClick={() => handleMarkRead(notification)}
-                      role="menuitem"
-                      title={getNotificationTooltip(notification) || undefined}
-                    >
-                      <span className="notification-dot"></span>
-                      <span className="notification-item__body">
-                        <strong>{notification.titulo}</strong>
-                        <span>{notification.mensagem}</span>
-                        <em>{formatNotificationDateTime(notification.updated_at)}</em>
-                      </span>
-                    </button>
+                <div className="urgent-alert-stack header-urgent-alert-stack" aria-live="polite">
+                  {alertasUrgentes.map(alerta => (
+                    <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card urgent-alert-card--${tomAlerta?.(alerta) || 'danger'}`} style={estiloAlerta?.(alerta)}>
+                      <div className="urgent-alert-card__icon"><I.AlertTriangle size={18} /></div>
+                      <div className="urgent-alert-card__body">
+                        <strong>{alerta.titulo}</strong>
+                        <span>{alerta.mensagem}</span>
+                      </div>
+                      <div className="urgent-alert-card__actions">
+                        <button type="button" className="btn btn-sm" onClick={() => { setNotificationsOpen(false); onAbrirAlerta?.(alerta); }}>
+                          {['lead_retorno_pre', 'lead_retorno_due', 'futuro_cliente_retorno_pre', 'futuro_cliente_retorno_due', 'futuro_cliente_distribuido'].includes(alerta.tipo) ? 'Atender agora' : (alerta.entidade === 'clientes' ? 'Abrir cliente' : 'Abrir')}
+                        </button>
+                        <button type="button" className="btn btn-icon btn-ghost urgent-alert-card__close" onClick={() => onFecharAlerta?.(alerta)} title="Fechar aviso" aria-label="Fechar aviso">
+                          <span className="urgent-alert-card__close-mark" aria-hidden="true">X</span>
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
           )}
         </div>
-        )}
 
         {onNew && (
           <button type="button" className="btn btn-primary btn-new-sale" onClick={onNew}>

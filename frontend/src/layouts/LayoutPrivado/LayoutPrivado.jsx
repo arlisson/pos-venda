@@ -2,6 +2,7 @@ import { matchPath, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from '../../components/Sidebar/Sidebar';
 import Header from '../../components/Header/Header';
+import ChatFlutuante from '../../components/ChatFlutuante/ChatFlutuante';
 import * as I from '../../components/Icons';
 import { buscarPerfil, getUsuarioLocal, logout, temPermissao } from '../../services/auth.service';
 import VendaModal from '../../pages/VendasPage/VendaModal';
@@ -58,18 +59,6 @@ function getRouteConfig(pathname) {
       matchPath({ path: config.path, end: config.end ?? true }, pathname)
     ) || { title: 'Sistema', sub: '', id: '' }
   );
-}
-
-function chaveAlertasUrgentesMinimizados(usuarioId) {
-  return `pos-venda:alertas-urgentes-minimizados:${usuarioId || 'anonimo'}`;
-}
-
-function lerAlertasUrgentesMinimizados(usuarioId) {
-  try {
-    return localStorage.getItem(chaveAlertasUrgentesMinimizados(usuarioId)) === 'true';
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -307,7 +296,6 @@ function LayoutPrivado({ children }) {
   }
 
   const [alertasUrgentes, setAlertasUrgentes] = useState([]);
-  const [alertasMinimizados, setAlertasMinimizados] = useState(() => lerAlertasUrgentesMinimizados(usuario?.id));
   const [aparenciasNotificacao, setAparenciasNotificacao] = useState([]);
   const carregandoAlertasUrgentesRef = useRef(false);
   const atualizacaoAlertasUrgentesPendenteRef = useRef(false);
@@ -422,11 +410,6 @@ function LayoutPrivado({ children }) {
       window.removeEventListener('pos-venda:notificacoes-atualizar', carregarAlertasUrgentes);
     };
   }, [usuario?.id]);
-
-  function atualizarAlertasMinimizados(minimizados) {
-    setAlertasMinimizados(minimizados);
-    localStorage.setItem(chaveAlertasUrgentesMinimizados(usuario?.id), String(minimizados));
-  }
 
   /**
    * Executa a acao de ocultar alerta urgente mantendo o estado da tela consistente.
@@ -577,8 +560,6 @@ function LayoutPrivado({ children }) {
   const appClasses = [
     'app',
     mobileMenuOpen ? 'is-mobile-menu-open' : '',
-    alertasUrgentes.length > 0 ? 'has-urgent-alerts' : '',
-    alertasUrgentes.length > 0 && alertasMinimizados ? 'has-urgent-alerts-minimized' : '',
     mostrarMobileFabNovaVenda ? 'has-mobile-fab' : ''
   ].filter(Boolean).join(' ');
 
@@ -608,9 +589,13 @@ function LayoutPrivado({ children }) {
           title={currentConfig.title}
           subtitle={currentConfig.sub}
           onNew={podeCriarVenda ? handleNewSale : null}
-          usuario={usuario}
           onMenuClick={() => setMobileMenuOpen(open => !open)}
           mobileMenuOpen={mobileMenuOpen}
+          alertasUrgentes={alertasUrgentes}
+          estiloAlerta={estiloAlerta}
+          tomAlerta={tomAlerta}
+          onAbrirAlerta={abrirVendaAlerta}
+          onFecharAlerta={fecharAlertaUrgente}
         />
         <div className="content">
           {sucessoNovaVenda && <div className="alert-success alert-timed alert-timed--success" style={{ marginBottom: 16 }}>{sucessoNovaVenda}</div>}
@@ -663,61 +648,7 @@ function LayoutPrivado({ children }) {
         />
       )}
 
-      {alertasUrgentes.length > 0 && (
-        <aside className={`urgent-alert-panel${alertasMinimizados ? ' urgent-alert-panel--minimized' : ''}`} aria-label="Avisos pendentes">
-          <button
-            type="button"
-            className="urgent-alert-panel__header"
-            onClick={() => atualizarAlertasMinimizados(true)}
-            aria-expanded={!alertasMinimizados}
-            aria-controls="urgent-alert-list"
-            title="Minimizar avisos"
-          >
-            <div className="urgent-alert-panel__title">
-              <span className="urgent-alert-panel__status" aria-hidden="true"><I.Bell size={16} /></span>
-              <div>
-                <strong>Avisos pendentes</strong>
-                <span>{alertasUrgentes.length} {alertasUrgentes.length === 1 ? 'notificação' : 'notificações'}</span>
-              </div>
-            </div>
-            <I.ChevronDown size={18} aria-hidden="true" />
-          </button>
-          <button type="button" className="urgent-alert-panel__minimized-bar" onClick={() => atualizarAlertasMinimizados(false)} aria-expanded={!alertasMinimizados} aria-controls="urgent-alert-list">
-            <span className="urgent-alert-panel__pulse" aria-hidden="true" />
-            <I.Bell size={17} />
-            <strong>{alertasUrgentes.length} {alertasUrgentes.length === 1 ? 'aviso pendente' : 'avisos pendentes'}</strong>
-            <span className="urgent-alert-panel__show-label">Exibir</span>
-            <I.ChevronDown size={16} />
-          </button>
-          <div id="urgent-alert-list" className="urgent-alert-stack" aria-live="assertive">
-          {alertasUrgentes.map(alerta => (
-            <div key={alerta.destinatario_id || alerta.id} className={`urgent-alert-card urgent-alert-card--${tomAlerta(alerta)}`} style={estiloAlerta(alerta)}>
-              <div className="urgent-alert-card__icon">
-                <I.AlertTriangle size={18} />
-              </div>
-              <div className="urgent-alert-card__body">
-                <strong>{alerta.titulo}</strong>
-                <span>{alerta.mensagem}</span>
-              </div>
-              <div className="urgent-alert-card__actions">
-                <button type="button" className="btn btn-sm" onClick={() => abrirVendaAlerta(alerta)}>
-                  {['lead_retorno_pre', 'lead_retorno_due', 'futuro_cliente_retorno_pre', 'futuro_cliente_retorno_due', 'futuro_cliente_distribuido'].includes(alerta.tipo) ? 'Atender agora' : (alerta.entidade === 'clientes' ? 'Abrir cliente' : 'Abrir')}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-icon btn-ghost urgent-alert-card__close"
-                  onClick={() => fecharAlertaUrgente(alerta)}
-                  title="Fechar aviso"
-                  aria-label="Fechar aviso"
-                >
-                  <span className="urgent-alert-card__close-mark" aria-hidden="true">X</span>
-                </button>
-              </div>
-            </div>
-          ))}
-          </div>
-        </aside>
-      )}
+      {podeUsarChat && <ChatFlutuante usuario={usuario} naoLidas={mensagensNaoLidas} />}
     </div>
   );
 }
