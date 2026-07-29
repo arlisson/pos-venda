@@ -16,6 +16,7 @@ const vendaAprovacaoService = require('./venda-aprovacao.service');
 const notificacaoService = require('./notificacao.service');
 const { renderEmailVenda } = require('./venda-email-template.service');
 const dashboardIntegracaoService = require('./dashboard-integracao.service');
+const telegramService = require('./telegram.service');
 const { parseUtcDateTime } = require('../utils/datetime');
 const { listarPermissoesEfetivas, usuarioTemPermissaoLocal } = require('../utils/permissoes');
 const ExcelJS = require('exceljs');
@@ -2890,6 +2891,19 @@ async function criarVenda(dados, usuarioId) {
 
     return venda;
   });
+
+  try {
+    const vendaParaTelegram = await Venda.query()
+      .findById(venda.id)
+      .withGraphFetched('[vendedora, vendedoras, origemSondador, operadora, tipoProduto, tipoVenda, servico, criador]');
+    await telegramService.enviarVenda(vendaParaTelegram || venda);
+  } catch (error) {
+    // A indisponibilidade do Telegram nao pode desfazer o cadastro da venda.
+    console.error('Erro ao notificar nova venda no Telegram:', {
+      vendaId: venda.id,
+      message: error.message
+    });
+  }
 
   venda.integracao_dashboard = await dashboardIntegracaoService.enviarVendaCriada(venda.id);
   return venda;

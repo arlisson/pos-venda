@@ -9,7 +9,8 @@
     "test": "node --test \"test/*.test.js\"",
     "migrate": "knex migrate:latest",
     "rollback": "knex migrate:rollback",
-    "seed": "knex seed:run"
+    "seed": "knex seed:run",
+    "telegram:smoke": "node scripts/testar-telegram.js"
   },
   "keywords": [],
   "author": "",

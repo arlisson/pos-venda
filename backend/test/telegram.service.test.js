@@ -25,3 +25,62 @@ test('monta notificacao de futuro cliente com dados da sondagem e primeira ligac
   assert.match(texto, /Data do contato: 15\/07\/2026/);
   assert.match(texto, /Primeira liga\u00E7\u00E3o: Consultor Teste/);
 });
+
+test('monta notificacao de venda destacando origem na sondagem da primeira ligacao', () => {
+  const texto = _internals.montarMensagemVenda({
+    id: 42,
+    nome: 'Empresa Teste',
+    razao_social: 'Empresa Teste LTDA',
+    cnpj: '12.345.678/0001-90',
+    telefone: '11999998888',
+    email: 'contato@empresa.test',
+    origem_lead_linha_id: 15,
+    origemSondador: { nome: 'Ana Sondadora' },
+    vendedoras: [{ nome: 'Beatriz Vendedora' }],
+    criador: { nome: 'Carlos Operador' },
+    operadora: { nome: 'Claro' },
+    tipoProduto: { nome: 'Móvel' },
+    tipoVenda: { nome: 'Portabilidade' },
+    servico: { nome: 'Plano empresarial' },
+    quantidade_linhas: 2,
+    valores_unitarios_chips: JSON.stringify([
+      { quantidade: 2, gb: '30', tipo_linha: 'portabilidade', valor_unitario: 59.9 }
+    ]),
+    valor_total: 119.8,
+    data_venda: '2026-07-29',
+    protocolo: 'ABC123',
+    observacoes: 'Venda confirmada'
+  });
+
+  assert.match(texto, /ORIGEM: SONDAGEM DA PRIMEIRA LIGAÇÃO/);
+  assert.match(texto, /Primeira ligação realizada por: Ana Sondadora/);
+  assert.match(texto, /Vendedora\(s\): Beatriz Vendedora/);
+  assert.match(texto, /2x · 30 GB · portabilidade · R\$\s?59,90/);
+  assert.match(texto, /Valor total: R\$\s?119,80/);
+});
+
+test('usa chats distintos para resumo e novas vendas', () => {
+  const resumoAnterior = process.env.TELEGRAM_RESUMO_VENDAS_CHAT_ID;
+  const vendasAnterior = process.env.TELEGRAM_VENDAS_CHAT_ID;
+  process.env.TELEGRAM_RESUMO_VENDAS_CHAT_ID = '-1001';
+  process.env.TELEGRAM_VENDAS_CHAT_ID = '-1002';
+
+  try {
+    assert.equal(_internals.obterChatId('TELEGRAM_RESUMO_VENDAS_CHAT_ID'), '-1001');
+    assert.equal(_internals.obterChatId('TELEGRAM_VENDAS_CHAT_ID'), '-1002');
+  } finally {
+    if (resumoAnterior === undefined) delete process.env.TELEGRAM_RESUMO_VENDAS_CHAT_ID;
+    else process.env.TELEGRAM_RESUMO_VENDAS_CHAT_ID = resumoAnterior;
+    if (vendasAnterior === undefined) delete process.env.TELEGRAM_VENDAS_CHAT_ID;
+    else process.env.TELEGRAM_VENDAS_CHAT_ID = vendasAnterior;
+  }
+});
+
+test('identifica claramente uma mensagem de teste de venda', () => {
+  const texto = _internals.montarMensagemVenda({
+    mensagem_teste: true,
+    nome: 'Empresa fictícia'
+  });
+
+  assert.match(texto, /^🧪 TESTE — NOVA VENDA \(DADOS FICTÍCIOS\)/);
+});
