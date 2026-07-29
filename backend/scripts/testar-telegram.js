@@ -5,38 +5,15 @@ const telegramService = require('../src/services/telegram.service');
 
 const alvo = String(process.argv[2] || 'all').trim().toLowerCase();
 const somenteVisualizar = process.argv.includes('--preview');
+const vendaIdArg = process.argv.find(arg => arg.startsWith('--venda-id='));
+const vendaId = vendaIdArg ? Number(vendaIdArg.split('=')[1]) : null;
 const alvosValidos = ['all', 'vendas', 'futuros', 'resumo'];
+let conexaoBanco = null;
 
 if (!alvosValidos.includes(alvo)) {
-  console.error('Uso: npm run telegram:smoke -- [all|vendas|futuros|resumo] [--preview]');
+  console.error('Uso: npm run telegram:smoke -- [all|vendas|futuros|resumo] [--preview] [--venda-id=123]');
   process.exit(1);
 }
-
-const vendaFicticia = {
-  mensagem_teste: true,
-  id: 999999,
-  nome: 'Empresa Fictícia de Teste',
-  razao_social: 'EMPRESA FICTÍCIA DE TESTE LTDA',
-  cnpj: '00.000.000/0000-00',
-  telefone: '11999999999',
-  email: 'teste@exemplo.local',
-  origem_lead_linha_id: 999999,
-  origemSondador: { nome: 'Consultor da primeira ligação (teste)' },
-  vendedoras: [{ nome: 'Vendedora de teste' }],
-  criador: { nome: 'Usuário de teste' },
-  operadora: { nome: 'Operadora de teste' },
-  tipoProduto: { nome: 'Móvel' },
-  tipoVenda: { nome: 'Portabilidade' },
-  servico: { nome: 'Plano empresarial de teste' },
-  quantidade_linhas: 2,
-  valores_unitarios_chips: [
-    { quantidade: 2, gb: '30', tipo_linha: 'portabilidade', valor_unitario: 59.9 }
-  ],
-  valor_total: 119.8,
-  data_venda: new Date().toISOString(),
-  protocolo: 'TESTE-SEM-REGISTRO',
-  observacoes: 'Mensagem fictícia. Nenhuma venda foi cadastrada.'
-};
 
 const futuroClienteFicticio = {
   id: 999999,
@@ -78,12 +55,32 @@ function exigirConfiguracao(nomeChatId) {
   }
 }
 
+async function carregarVendaLocal() {
+  conexaoBanco = require('../src/database/connection');
+  const Venda = require('../src/models/Venda');
+  let query = Venda.query()
+    .whereNull('excluido_em')
+    .withGraphFetched('[cliente, vendedora, vendedoras, origemSondador, operadora, operadoraAtual, tipoProduto, tipoVenda, servico, criador]');
+  query = vendaId
+    ? query.findById(vendaId)
+    : query.orderBy('id', 'desc').first();
+  const venda = await query;
+  if (!venda) {
+    throw new Error(vendaId
+      ? `Venda local #${vendaId} não encontrada.`
+      : 'Nenhuma venda foi encontrada no banco local.');
+  }
+  venda.mensagem_teste = true;
+  return venda;
+}
+
 async function testarVendas() {
-  const texto = telegramService._internals.montarMensagemVenda(vendaFicticia);
-  if (somenteVisualizar) return texto;
+  const venda = await carregarVendaLocal();
+  const mensagens = telegramService._internals.montarMensagensVenda(venda);
+  if (somenteVisualizar) return mensagens.join('\n\n===== PRÓXIMA MENSAGEM =====\n\n');
   exigirConfiguracao('TELEGRAM_VENDAS_CHAT_ID');
-  const resultado = await telegramService.enviarVenda(vendaFicticia);
-  return `enviada (message_id: ${resultado.message_id || 'não retornado'})`;
+  const resultado = await telegramService.enviarVenda(venda);
+  return `venda local #${venda.id} enviada em ${resultado.message_ids?.length || 0} mensagem(ns)`;
 }
 
 async function testarFuturos() {
@@ -123,7 +120,11 @@ async function executar() {
   }
 }
 
-executar().catch(error => {
-  console.error(`Falha no teste do Telegram: ${error.message}`);
-  process.exitCode = 1;
-});
+executar()
+  .catch(error => {
+    console.error(`Falha no teste do Telegram: ${error.message}`);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    if (conexaoBanco) await conexaoBanco.destroy();
+  });
