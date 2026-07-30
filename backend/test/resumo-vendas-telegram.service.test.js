@@ -2,16 +2,39 @@
 const assert = require('node:assert/strict');
 const { enviarResumoDoDia, _internals } = require('../src/services/resumo-vendas-telegram.service');
 
-const aceita = { consultores: 'Árlisson, Nathalia', data_venda: '2026-02-27', data_ativacao: '2026-02-28', consultor: 'Nayara', razao_social: 'Empresa A', cnpj: '12.345.678/0001-90', quantidade_linhas: 2, valor_total: 199.8, operadora: 'Vivo', tipo_venda: 'Portabilidade', numeros_portados: '11999990000', possui_doc_na_casa: true, status_funil: 'ativacao' };
+const aceita = { consultores: 'Árlisson, Nathalia', data_registro: '2026-02-27', data_venda: '2026-02-26', data_ativacao: '2026-02-28', consultor: 'Nayara', razao_social: 'Empresa A', cnpj: '12.345.678/0001-90', quantidade_linhas: 2, valor_total: 199.8, operadora: 'Vivo', tipo_venda: 'Portabilidade', numeros_portados: '11999990000', possui_doc_na_casa: true, status_funil: 'ativacao' };
 const pendente = { ...aceita, razao_social: 'Empresa B', quantidade_linhas: 1, valor_total: 49.9, tipo_venda: 'Novo', numeros_portados: null, possui_doc_na_casa: false, status_funil: 'aprovacao', data_ativacao: null };
 
 test('monta blocos de venda com os campos solicitados', () => {
   const texto = _internals.montarBlocoVenda(aceita, { incluirAceite: true, incluirDocumentacao: true });
+  assert.match(texto, /Data de cadastro: 27\/02\/2026/);
+  assert.match(texto, /Data da venda: 26\/02\/2026/);
   assert.match(texto, /Data do aceite: 28\/02\/2026/);
   assert.match(texto, /Consultores: Árlisson, Nathalia/);
   assert.match(texto, /Números portados: 11999990000/);
   assert.match(texto, /Documentação: OK/);
   assert.match(texto, /Aceite: Sim/);
+});
+
+test('filtra o resumo pela data de cadastro e pela data da venda', () => {
+  assert.equal(_internals.dataRegistroSql('v'), 'DATE(COALESCE(v.criado_em, v.created_at, v.data_venda))');
+  const chamadas = [];
+  const query = {
+    whereRaw(sql, bindings) { chamadas.push(['whereRaw', sql, bindings]); return this; },
+    whereBetween(campo, intervalo) { chamadas.push(['whereBetween', campo, intervalo]); return this; }
+  };
+  assert.equal(_internals.aplicarFiltroPeriodoVendas(query, '2026-07-29', '2026-07-29'), query);
+  assert.deepEqual(chamadas, [
+    ['whereRaw', 'DATE(COALESCE(v.criado_em, v.created_at, v.data_venda)) BETWEEN ? AND ?', ['2026-07-29', '2026-07-29']],
+    ['whereBetween', 'v.data_venda', ['2026-07-29', '2026-07-29']]
+  ]);
+});
+
+test('ativa agendamento apenas no ambiente correto', () => {
+  assert.equal(_internals.agendamentoAtivo('', 'development'), false);
+  assert.equal(_internals.agendamentoAtivo('', 'production'), true);
+  assert.equal(_internals.agendamentoAtivo('true', 'development'), true);
+  assert.equal(_internals.agendamentoAtivo('false', 'production'), false);
 });
 
 test('separa totais diarios por etapa Ativação', () => {

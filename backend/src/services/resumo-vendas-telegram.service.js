@@ -3,6 +3,9 @@ const telegramService = require('./telegram.service');
 
 const TIME_ZONE = 'America/Sao_Paulo';
 const LIMITE_TEXTO_TELEGRAM = 4096;
+const TABELA_EXECUCOES = 'telegram_resumo_execucoes';
+const TIPO_EXECUCAO_DIARIA = 'diario';
+let agendamentoIniciado = false;
 
 function partesData(data = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', hourCycle: 'h23' })
@@ -15,9 +18,24 @@ function formatarMoeda(valor) { return Number(valor || 0).toLocaleString('pt-BR'
 function pluralUgr(quantidade) { return `${quantidade} UGR${quantidade === 1 ? '' : 's'}`; }
 function temDocumento(valor) { return valor === true || valor === 1 || valor === '1'; }
 function tipoVenda(venda) { return venda.tipo_venda || (venda.numeros_portados ? 'Portabilidade' : 'Novo'); }
+function dataRegistroSql(alias = 'v') { return `DATE(COALESCE(${alias}.criado_em, ${alias}.created_at, ${alias}.data_venda))`; }
+function aplicarFiltroPeriodoVendas(query, inicio, fim, alias = 'v') {
+  return query
+    .whereRaw(`${dataRegistroSql(alias)} BETWEEN ? AND ?`, [inicio, fim])
+    .whereBetween(`${alias}.data_venda`, [inicio, fim]);
+}
+function agendamentoAtivo(valor = process.env.TELEGRAM_RESUMO_VENDAS_AGENDAMENTO_ATIVO, ambiente = process.env.NODE_ENV) {
+  if (valor === undefined || valor === null || String(valor).trim() === '') {
+    return String(ambiente || '').trim().toLowerCase() === 'production';
+  }
+  return String(valor).trim().toLowerCase() === 'true';
+}
 
 function montarBlocoVenda(venda, { incluirAceite = false, incluirDocumentacao = false } = {}) {
-  const linhas = [`Data da venda: ${formatarData(venda.data_venda)}`];
+  const linhas = [
+    `Data de cadastro: ${formatarData(venda.data_registro)}`,
+    `Data da venda: ${formatarData(venda.data_venda)}`
+  ];
   if (incluirAceite) linhas.push(`Data do aceite: ${formatarData(venda.data_ativacao)}`);
   linhas.push(
     `Consultores: ${venda.consultores || venda.consultor || 'Não informado'}`,
@@ -79,17 +97,79 @@ function montarMensagensSemanais(vendas, inicio, fim) {
   });
 }
 async function buscarVendas(inicio, fim) {
-  return db('vendas as v').leftJoin('venda_vendedoras as vv', 'vv.venda_id', 'v.id').leftJoin('usuarios as u', function () { this.on('u.id', '=', db.raw('COALESCE(vv.usuario_id, v.vendedora_id)')); }).leftJoin('operadoras as o', 'o.id', 'v.operadora_id').leftJoin('tipos_venda as tv', 'tv.id', 'v.tipo_venda_id').select('v.*', 'u.nome as consultor', 'o.nome as operadora', 'tv.nome as tipo_venda', db.raw(`COALESCE((SELECT GROUP_CONCAT(u_lista.nome ORDER BY vv_lista.ordem SEPARATOR ', ') FROM venda_vendedoras AS vv_lista INNER JOIN usuarios AS u_lista ON u_lista.id = vv_lista.usuario_id WHERE vv_lista.venda_id = v.id), u.nome) AS consultores`)).whereBetween('v.data_venda', [inicio, fim]).whereNull('v.excluido_em').whereNull('v.cancelada_em').orderBy('v.data_venda').orderBy('v.id');
+  const query = db('vendas as v')
+    .leftJoin('venda_vendedoras as vv', 'vv.venda_id', 'v.id')
+    .leftJoin('usuarios as u', function () { this.on('u.id', '=', db.raw('COALESCE(vv.usuario_id, v.vendedora_id)')); })
+    .leftJoin('operadoras as o', 'o.id', 'v.operadora_id')
+    .leftJoin('tipos_venda as tv', 'tv.id', 'v.tipo_venda_id')
+    .select(
+      'v.*',
+      'u.nome as consultor',
+      'o.nome as operadora',
+      'tv.nome as tipo_venda',
+      db.raw(`${dataRegistroSql('v')} AS data_registro`),
+      db.raw(`COALESCE((SELECT GROUP_CONCAT(u_lista.nome ORDER BY vv_lista.ordem SEPARATOR ', ') FROM venda_vendedoras AS vv_lista INNER JOIN usuarios AS u_lista ON u_lista.id = vv_lista.usuario_id WHERE vv_lista.venda_id = v.id), u.nome) AS consultores`)
+    );
+  aplicarFiltroPeriodoVendas(query, inicio, fim);
+  return query
+    .whereNull('v.excluido_em')
+    .whereNull('v.cancelada_em')
+    .orderByRaw(`${dataRegistroSql('v')} ASC`)
+    .orderBy('v.id');
 }
-async function enviarResumoDoDia(data = new Date()) {
+
+async function reservarExecucaoAgendada(dataReferencia) {
+  const agora = new Date();
+  try {
+    await db(TABELA_EXECUCOES).insert({
+      data_referencia: dataReferencia,
+      tipo: TIPO_EXECUCAO_DIARIA,
+      status: 'em_andamento',
+      iniciado_em: agora,
+      created_at: agora,
+      updated_at: agora
+    });
+    return true;
+  } catch (error) {
+    if (!['ER_DUP_ENTRY', 1062].includes(error.code) && error.errno !== 1062) throw error;
+  }
+
+  const atualizados = await db(TABELA_EXECUCOES)
+    .where({ data_referencia: dataReferencia, tipo: TIPO_EXECUCAO_DIARIA })
+    .where(builder => builder
+      .where('status', 'falhou')
+      .orWhere(subquery => subquery
+        .where('status', 'em_andamento')
+        .where('iniciado_em', '<', db.raw('DATE_SUB(NOW(), INTERVAL 1 HOUR)'))))
+    .update({ status: 'em_andamento', iniciado_em: agora, concluido_em: null, erro: null, updated_at: agora });
+  return atualizados > 0;
+}
+
+async function concluirExecucaoAgendada(dataReferencia, dados) {
+  await db(TABELA_EXECUCOES)
+    .where({ data_referencia: dataReferencia, tipo: TIPO_EXECUCAO_DIARIA })
+    .update({ ...dados, concluido_em: new Date(), updated_at: new Date() });
+}
+
+async function enviarResumoDoDia(data = new Date(), opcoes = {}) {
   const fim = typeof data === 'string' ? data : dataSqlHoje(data);
   const dataReferencia = typeof data === 'string' ? new Date(`${data}T12:00:00-03:00`) : data;
   if (!ehDiaUtil(dataReferencia)) return { data: fim, mensagens: 0, ignorado: 'fim_de_semana' };
-  const vendasDia = await buscarVendas(fim, fim); const mensagens = [];
-  if (partesData(dataReferencia).weekday === 'Fri') { const inicio = inicioSemana(fim); mensagens.push(...montarMensagensSemanais(await buscarVendas(inicio, fim), inicio, fim)); }
-  mensagens.push(...montarMensagensDiarias(vendasDia, fim));
-  for (const mensagem of mensagens) await telegramService.enviarResumoVendas(mensagem);
-  return { data: fim, mensagens: mensagens.length };
+  if (opcoes.agendada && !(await reservarExecucaoAgendada(fim))) {
+    return { data: fim, mensagens: 0, ignorado: 'ja_enviado_ou_em_andamento' };
+  }
+
+  try {
+    const vendasDia = await buscarVendas(fim, fim); const mensagens = [];
+    if (partesData(dataReferencia).weekday === 'Fri') { const inicio = inicioSemana(fim); mensagens.push(...montarMensagensSemanais(await buscarVendas(inicio, fim), inicio, fim)); }
+    mensagens.push(...montarMensagensDiarias(vendasDia, fim));
+    for (const mensagem of mensagens) await telegramService.enviarResumoVendas(mensagem);
+    if (opcoes.agendada) await concluirExecucaoAgendada(fim, { status: 'enviado', mensagens: mensagens.length });
+    return { data: fim, mensagens: mensagens.length };
+  } catch (error) {
+    if (opcoes.agendada) await concluirExecucaoAgendada(fim, { status: 'falhou', erro: String(error.message || error).slice(0, 2000) });
+    throw error;
+  }
 }
 function proximaExecucao(data = new Date()) {
   const p = partesData(data);
@@ -99,7 +179,10 @@ function proximaExecucao(data = new Date()) {
   return alvo;
 }
 function iniciarAgendamentoResumoVendas() {
-  const agendar = () => { const espera = Math.max(0, proximaExecucao().getTime() - Date.now()); setTimeout(async () => { try { const resultado = await enviarResumoDoDia(); console.log(`Resumo de vendas enviado (${resultado.data}, ${resultado.mensagens} mensagens).`); } catch (error) { console.error('Erro ao enviar resumo diário de vendas no Telegram:', error); } agendar(); }, espera); };
+  if (!agendamentoAtivo() || agendamentoIniciado) return false;
+  agendamentoIniciado = true;
+  const agendar = () => { const espera = Math.max(0, proximaExecucao().getTime() - Date.now()); setTimeout(async () => { try { const resultado = await enviarResumoDoDia(new Date(), { agendada: true }); console.log(`Resumo de vendas processado (${resultado.data}, ${resultado.mensagens} mensagens${resultado.ignorado ? `, ${resultado.ignorado}` : ''}).`); } catch (error) { console.error('Erro ao enviar resumo diário de vendas no Telegram:', error); } agendar(); }, espera); };
   agendar();
+  return true;
 }
-module.exports = { enviarResumoDoDia, iniciarAgendamentoResumoVendas, _internals: { inicioSemana, montarBlocoVenda, tipoVenda, agruparPorConsultor, montarMensagensPorConsultor, montarMensagensDiarias, montarMensagensSemanais, proximaExecucao, ehDiaUtil, totais } };
+module.exports = { enviarResumoDoDia, iniciarAgendamentoResumoVendas, _internals: { inicioSemana, montarBlocoVenda, tipoVenda, agruparPorConsultor, montarMensagensPorConsultor, montarMensagensDiarias, montarMensagensSemanais, proximaExecucao, ehDiaUtil, totais, dataRegistroSql, aplicarFiltroPeriodoVendas, agendamentoAtivo } };
