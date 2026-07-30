@@ -5,6 +5,7 @@
  * clientes originados das linhas importadas.
  */
 const leadPlanilhaService = require('../services/lead-planilha.service');
+const leadDistribuicaoService = require('../services/lead-distribuicao.service');
 
 /**
  * Processa index conforme as regras do dominio.
@@ -333,6 +334,32 @@ async function listarFuturosClientes(req, res) {
   }
 }
 
+/** Aceita uma indicacao e inicia o prazo para registro de contato. */
+async function aceitarFuturoCliente(req, res) {
+  try {
+    const distribuicao = await leadDistribuicaoService.aceitar(req.params.id, req.usuario.id);
+    const resultado = await leadPlanilhaService.buscarLinhaFormatada(req.params.id);
+    return res.json({ ...resultado, distribuicao });
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao aceitar a indicacao.' });
+  }
+}
+
+/** Recusa uma indicacao e a devolve para novo encaminhamento. */
+async function recusarFuturoCliente(req, res) {
+  try {
+    return res.json(await leadDistribuicaoService.recusar(
+      req.params.id,
+      req.usuario.id,
+      req.body?.motivo
+    ));
+  } catch (error) {
+    console.error(error);
+    return res.status(error.statusCode || 400).json({ message: error.message || 'Erro ao recusar a indicacao.' });
+  }
+}
+
 async function listarTodosFuturosClientes(req, res) {
   try {
     return res.json(await leadPlanilhaService.listarFuturosClientes(req.query, null));
@@ -610,6 +637,8 @@ module.exports = {
   marcarFuturoCliente,
   avaliarPrimeiraLigacao,
   listarFuturosClientes,
+  aceitarFuturoCliente,
+  recusarFuturoCliente,
   listarTodosFuturosClientes,
   metricasFuturosClientes,
   exportarMetricasFuturosClientes,

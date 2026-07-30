@@ -2880,7 +2880,16 @@ async function criarVenda(dados, usuarioId) {
         .where({ lead_linha_id: leadOrigem.id, usuario_id: Number(usuarioId), etapa: 'venda' })
         .orderBy('id', 'desc')
         .limit(1)
-        .update({ status: 'vendido', finalizado_em: agora, updated_at: new Date() });
+        .update({
+          status: 'vendido',
+          finalizado_em: agora,
+          acao_registrada_em: agora,
+          acao_registrada_tipo: 'venda_registrada',
+          updated_at: new Date()
+        });
+      await trx('notificacoes')
+        .where('source_key', `futuro_cliente_distribuido:${leadOrigem.id}`)
+        .update({ ativa: false, updated_at: new Date() });
     }
 
     await dashboardIntegracaoService.registrarVendaPendente(venda, trx);

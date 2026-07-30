@@ -18,6 +18,7 @@ const { parseUtcDateTime } = require('../utils/datetime');
 const clienteAntigoService = require('./cliente-antigo.service');
 const { restaurarZerosCnpj } = require('./cnpj.service');
 const telegramService = require('./telegram.service');
+const leadDistribuicaoService = require('./lead-distribuicao.service');
 
 const IMPORT_DIR = process.env.LEAD_IMPORT_DIR
   ? path.resolve(process.env.LEAD_IMPORT_DIR)
@@ -987,32 +988,124 @@ function aplicarFiltrosQuery(query, filtros = {}, opcoes = {}) {
 /**
  * Lista linhas conforme os filtros e parametros informados.
  */
+function filtrosPermitemIndicacaoPendente(filtros = {}) {
+  const status = String(filtros.status || '').trim();
+  return !String(filtros.busca || '').trim()
+    && (!status || status === 'futuro_cliente');
+}
+
+function queryIndicacoesPendentes(filtros = {}, usuarioId) {
+  if (!usuarioId || !filtrosPermitemIndicacaoPendente(filtros)) return null;
+
+  const query = db('lead_atribuicoes as la')
+    .join('lead_linhas as ll', 'll.id', 'la.lead_linha_id')
+    .leftJoin('lead_envios as le', 'le.id', 'la.envio_id')
+    .where({
+      'la.usuario_id': Number(usuarioId),
+      'la.etapa': 'venda',
+      'la.aceite_status': leadDistribuicaoService.ACEITE_AGUARDANDO,
+      'll.futuro_cliente': true
+    })
+    .whereNull('ll.futuro_cliente_excluido_em');
+
+  const envioIds = idsFromQuery(filtros.envio_ids);
+  const planilhaIds = idsFromQuery(filtros.planilha_ids);
+  const linhaId = Number(filtros.linha_id || 0);
+  if (envioIds.length > 0) query.whereIn('la.envio_id', envioIds);
+  if (planilhaIds.length > 0) query.whereIn('ll.planilha_id', planilhaIds);
+  if (Number.isInteger(linhaId) && linhaId > 0) query.where('ll.id', linhaId);
+  if (filtros.etapa) query.where('ll.etapa_atual', String(filtros.etapa));
+
+  return query;
+}
+
+async function carregarIndicacoesPendentes(query, offset, limit) {
+  if (!query || limit <= 0) return [];
+
+  const atribuicoes = await query.clone()
+    .select(
+      'la.id',
+      'la.lead_linha_id',
+      'la.envio_id',
+      'la.aceite_status',
+      'la.aceite_em',
+      'la.prazo_acao_em',
+      'la.acao_registrada_em',
+      'la.acao_registrada_tipo',
+      'le.nome as envio_nome'
+    )
+    .orderBy('la.id', 'desc')
+    .offset(offset)
+    .limit(limit);
+  if (!atribuicoes.length) return [];
+
+  const linhas = await LeadLinha.query()
+    .findByIds(atribuicoes.map(item => Number(item.lead_linha_id)))
+    .withGraphFetched('planilha');
+  const linhasPorId = new Map(linhas.map(linha => [Number(linha.id), linha]));
+
+  return atribuicoes.flatMap(atribuicao => {
+    const linha = linhasPorId.get(Number(atribuicao.lead_linha_id));
+    if (!linha) return [];
+
+    const protegida = leadDistribuicaoService.ocultarDetalhesAntesDoAceite(
+      formatarLinha(linha),
+      atribuicao
+    );
+    return [{
+      ...protegida,
+      envio: {
+        id: Number(atribuicao.envio_id),
+        nome: atribuicao.envio_nome || 'Indicacao aguardando aceite'
+      }
+    }];
+  });
+}
+
 async function listarLinhas(filtros = {}, opcoes = {}) {
   const page = Math.max(1, Number(filtros.page || 1));
   const pageSize = Math.min(500, Math.max(1, Number(filtros.page_size || filtros.pageSize || 200)));
   const baseQuery = LeadLinha.query();
   aplicarFiltrosQuery(baseQuery, filtros, opcoes);
 
-  const total = await baseQuery.clone().resultSize();
-  const enviados = await baseQuery.clone()
+  const totalVinculadas = await baseQuery.clone().resultSize();
+  const enviadosVinculados = await baseQuery.clone()
     .where(builder => {
       builder.whereNotNull('envio_id').orWhereNotNull('atribuido_para_id');
     })
     .resultSize();
-  const qualificados = await baseQuery.clone()
+  const qualificadosVinculados = await baseQuery.clone()
     .where('futuro_cliente', true)
     .whereNull('futuro_cliente_excluido_em')
     .resultSize();
-  const linhas = await baseQuery
-    .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, operadoraInteresse, usuario]]')
-    .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'))
-    .orderBy('planilha_id', 'asc')
-    .orderBy('row_index', 'asc')
-    .offset((page - 1) * pageSize)
-    .limit(pageSize);
+  const pendentesQuery = queryIndicacoesPendentes(filtros, opcoes.usuarioId);
+  const totalPendentesResultado = pendentesQuery
+    ? await pendentesQuery.clone().countDistinct({ total: 'la.lead_linha_id' }).first()
+    : null;
+  const totalPendentes = Number(totalPendentesResultado?.total || 0);
+  const total = totalPendentes + totalVinculadas;
+  const offsetPagina = (page - 1) * pageSize;
+  const offsetPendentes = Math.min(offsetPagina, totalPendentes);
+  const limitePendentes = Math.max(0, Math.min(pageSize, totalPendentes - offsetPendentes));
+  const pendentes = await carregarIndicacoesPendentes(
+    pendentesQuery,
+    offsetPendentes,
+    limitePendentes
+  );
+  const limiteVinculadas = Math.max(0, pageSize - pendentes.length);
+  const offsetVinculadas = Math.max(0, offsetPagina - totalPendentes);
+  const linhasVinculadas = limiteVinculadas > 0
+    ? await baseQuery
+      .withGraphFetched('[planilha, envio, atribuidoPara, sondagem.[operadoraAtual, operadoraInteresse, usuario]]')
+      .modifyGraph('atribuidoPara', builder => builder.select('id', 'nome', 'email'))
+      .orderBy('planilha_id', 'asc')
+      .orderBy('row_index', 'asc')
+      .offset(offsetVinculadas)
+      .limit(limiteVinculadas)
+    : [];
 
   const cnpjsPagina = new Set();
-  linhas.forEach(linha => extrairCnpjsLinha(linha).forEach(cnpj => cnpjsPagina.add(cnpj)));
+  linhasVinculadas.forEach(linha => extrairCnpjsLinha(linha).forEach(cnpj => cnpjsPagina.add(cnpj)));
   const clientesPorCnpj = cnpjsPagina.size
     ? await db('clientes').whereIn('cnpj_digitos', Array.from(cnpjsPagina)).select('id', 'cnpj_digitos')
     : [];
@@ -1026,16 +1119,19 @@ async function listarLinhas(filtros = {}, opcoes = {}) {
     .map(cliente => cliente.cnpj_digitos));
 
   return {
-    data: linhas.map(linha => ({
-      ...formatarLinha(linha),
-      possui_venda_cliente: Array.from(extrairCnpjsLinha(linha)).some(cnpj => cnpjsComVenda.has(cnpj))
-    })),
+    data: [
+      ...pendentes,
+      ...linhasVinculadas.map(linha => ({
+        ...formatarLinha(linha),
+        possui_venda_cliente: Array.from(extrairCnpjsLinha(linha)).some(cnpj => cnpjsComVenda.has(cnpj))
+      }))
+    ],
     total,
     resumo: {
       total,
-      enviados,
-      qualificados,
-      nao_enviados: Math.max(0, total - enviados)
+      enviados: enviadosVinculados + totalPendentes,
+      qualificados: qualificadosVinculados + totalPendentes,
+      nao_enviados: Math.max(0, total - enviadosVinculados - totalPendentes)
     },
     page,
     page_size: pageSize
@@ -1127,6 +1223,19 @@ async function avaliarPrimeiraLigacao(linhaId, usuarioId, dados = {}) {
 /**
  * Lista envios do usuario conforme os filtros e parametros informados.
  */
+function combinarMetricasEnvio(metricas = {}, totalPendentesAceite = 0) {
+  const totalLinhas = Number(metricas.totalLinhas || 0) + Number(totalPendentesAceite || 0);
+  const totalTrabalhados = Number(metricas.totalTrabalhados || 0);
+  return {
+    totalLinhas,
+    totalTrabalhados,
+    totalRecusados: Number(metricas.totalRecusados || 0),
+    totalNaoAtendidos: Number(metricas.totalNaoAtendidos || 0),
+    totalFuturos: Number(metricas.totalFuturos || 0),
+    totalATrabalhar: Math.max(0, totalLinhas - totalTrabalhados)
+  };
+}
+
 async function listarEnviosDoUsuario(usuarioId) {
   const envios = await LeadEnvio.query()
     .whereExists(
@@ -1144,6 +1253,7 @@ async function listarEnviosDoUsuario(usuarioId) {
   // sao pessoais, contando apenas as linhas atribuidas a este usuario.
   const envioIds = envios.map(envio => Number(envio.id)).filter(Boolean);
   const metricasPorEnvio = new Map();
+  const pendentesAceitePorEnvio = new Map();
   if (envioIds.length > 0) {
     const totais = await LeadLinha.query()
       .select('envio_id')
@@ -1169,20 +1279,36 @@ async function listarEnviosDoUsuario(usuarioId) {
       totalNaoAtendidos: Number(item.total_nao_atendidos || 0),
       totalFuturos: Number(item.total_futuros || 0)
     }));
+
+    const pendentesAceite = await LeadAtribuicao.query()
+      .select('envio_id')
+      .count('id as total_pendentes')
+      .whereIn('envio_id', envioIds)
+      .where({
+        usuario_id: Number(usuarioId),
+        etapa: 'venda',
+        aceite_status: leadDistribuicaoService.ACEITE_AGUARDANDO
+      })
+      .groupBy('envio_id');
+    pendentesAceite.forEach(item => {
+      pendentesAceitePorEnvio.set(Number(item.envio_id), Number(item.total_pendentes || 0));
+    });
   }
 
   return envios.map(envio => {
     const formatado = formatarEnvio(envio);
     const metricas = metricasPorEnvio.get(Number(formatado.id))
       || { totalLinhas: 0, totalTrabalhados: 0, totalRecusados: 0, totalNaoAtendidos: 0, totalFuturos: 0 };
+    const totalPendentesAceite = pendentesAceitePorEnvio.get(Number(formatado.id)) || 0;
+    const totais = combinarMetricasEnvio(metricas, totalPendentesAceite);
     return {
       ...formatado,
-      total_linhas: metricas.totalLinhas,
-      total_trabalhados: metricas.totalTrabalhados,
-      total_recusados: metricas.totalRecusados,
-      total_nao_atendidos: metricas.totalNaoAtendidos,
-      total_futuros: metricas.totalFuturos,
-      total_a_trabalhar: Math.max(0, metricas.totalLinhas - metricas.totalTrabalhados)
+      total_linhas: totais.totalLinhas,
+      total_trabalhados: totais.totalTrabalhados,
+      total_recusados: totais.totalRecusados,
+      total_nao_atendidos: totais.totalNaoAtendidos,
+      total_futuros: totais.totalFuturos,
+      total_a_trabalhar: totais.totalATrabalhar
     };
   });
 }
@@ -2263,7 +2389,21 @@ function deveNotificarNovoFuturoCliente(linha) {
 async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = {}) {
   const linha = await LeadLinha.query().findById(linhaId);
   if (!linha) throw criarHttpError(404, 'Lead nÃ£o encontrado.');
-  if (!opcoes.comoAdmin && linha.futuro_cliente && Number(linha.futuro_cliente_marcado_por_id) !== Number(usuarioId)) {
+  const atribuicaoVendaAceita = !opcoes.comoAdmin && linha.futuro_cliente
+    ? await db('lead_atribuicoes')
+      .where({
+        lead_linha_id: Number(linhaId),
+        usuario_id: Number(usuarioId),
+        etapa: 'venda',
+        aceite_status: leadDistribuicaoService.ACEITE_ACEITO
+      })
+      .orderBy('id', 'desc')
+      .first()
+    : null;
+  if (!opcoes.comoAdmin
+    && linha.futuro_cliente
+    && Number(linha.futuro_cliente_marcado_por_id) !== Number(usuarioId)
+    && !atribuicaoVendaAceita) {
     throw criarHttpError(409, 'Este lead ja foi qualificado na primeira ligacao e nao pode ser qualificado novamente.');
   }
 
@@ -2271,6 +2411,9 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
     throw criarHttpError(403, 'VocÃª nÃ£o pode atualizar este lead.');
   }
   const donoId = opcoes.comoAdmin ? (Number(linha.atribuido_para_id) || Number(usuarioId)) : Number(usuarioId);
+  const donoSondagemId = linha.futuro_cliente
+    ? (Number(linha.futuro_cliente_marcado_por_id) || donoId)
+    : donoId;
 
   const deveNotificarTelegram = deveNotificarNovoFuturoCliente(linha);
   const marcadoEm = linha.futuro_cliente_marcado_em || formatarDateTimeSQL();
@@ -2338,11 +2481,11 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
 
   await LeadLinha.transaction(async trx => {
     let atribuicao = await LeadAtribuicao.query(trx)
-      .where({ lead_linha_id: Number(linhaId), usuario_id: donoId, etapa: 'sondagem' })
+      .where({ lead_linha_id: Number(linhaId), usuario_id: donoSondagemId, etapa: 'sondagem' })
       .orderBy('id', 'desc').first();
     if (!atribuicao) {
       atribuicao = await LeadAtribuicao.query(trx).insertAndFetch({
-        lead_linha_id: Number(linhaId), envio_id: linha.envio_id, usuario_id: donoId,
+        lead_linha_id: Number(linhaId), envio_id: linha.envio_id, usuario_id: donoSondagemId,
         etapa: 'sondagem', status: 'atribuido', criado_por_id: usuarioId
       });
     }
@@ -2352,7 +2495,7 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
     });
 
     const sondagem = {
-      lead_linha_id: Number(linhaId), atribuicao_id: atribuicao.id, usuario_id: donoId,
+      lead_linha_id: Number(linhaId), atribuicao_id: atribuicao.id, usuario_id: donoSondagemId,
       razao_social: razaoSocial, cnpj,
       contato_nome: contatoNome, contato_tipo: contatoTipo, operadora_atual_id: operadoraAtualId,
       operadora_interesse_id: operadoraInteresseId,
@@ -2368,10 +2511,20 @@ async function marcarComoFuturoCliente(linhaId, usuarioId, dados = {}, opcoes = 
 
     await trx('lead_linhas').where('id', Number(linhaId)).update({
       futuro_cliente: true, futuro_cliente_notas: notas, futuro_cliente_retorno: retorno,
-      futuro_cliente_marcado_em: marcadoEm, futuro_cliente_marcado_por_id: donoId,
+      futuro_cliente_marcado_em: marcadoEm, futuro_cliente_marcado_por_id: donoSondagemId,
       retorno_agendado_em: null, retorno_agendado_observacao: null, retorno_agendado_por_id: null,
-      etapa_atual: 'sondagem', status_operacional: 'qualificado', updated_at: new Date()
+      etapa_atual: atribuicaoVendaAceita ? 'venda' : 'sondagem',
+      status_operacional: atribuicaoVendaAceita ? 'distribuido_venda' : 'qualificado',
+      updated_at: new Date()
     });
+    if (retorno) {
+      await leadDistribuicaoService.registrarAcaoValida(
+        linhaId,
+        donoId,
+        'retorno_agendado',
+        trx
+      );
+    }
   });
 
   await sincronizarNotificacoesRetornoLeads();
@@ -2418,10 +2571,23 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
     if (usuarioId) {
       query.where(builder => builder
         .where('futuro_cliente_marcado_por_id', usuarioId)
-        .orWhere('atribuido_para_id', usuarioId));
+        .orWhere('atribuido_para_id', usuarioId)
+        .orWhereExists(
+          db('lead_atribuicoes as la')
+            .select(db.raw('1'))
+            .whereRaw('la.lead_linha_id = lead_linhas.id')
+            .where('la.usuario_id', Number(usuarioId))
+            .where('la.etapa', 'venda')
+            .whereIn('la.aceite_status', [
+              leadDistribuicaoService.ACEITE_AGUARDANDO,
+              leadDistribuicaoService.ACEITE_ACEITO
+            ])
+        ));
     }
   } else if (usuarioId) {
-    query.where('futuro_cliente_marcado_por_id', usuarioId);
+    query.where(builder => builder
+      .where('futuro_cliente_marcado_por_id', usuarioId)
+      .orWhere('atribuido_para_id', usuarioId));
   }
 
   query = aplicarBuscaFuturosClientes(query, filtros.busca);
@@ -2435,8 +2601,23 @@ async function listarFuturosClientes(filtros = {}, usuarioId) {
     .offset((page - 1) * pageSize)
     .limit(pageSize);
 
+  const distribuicoes = await leadDistribuicaoService.obterDistribuicoesUsuario(
+    linhas.map(linha => linha.id),
+    usuarioId
+  );
+
   return {
-    data: linhas.map(formatarLinha),
+    data: linhas.map(linha => {
+      const formatada = formatarLinha(linha);
+      const distribuicao = distribuicoes.get(Number(linha.id));
+      return usuarioId
+        ? leadDistribuicaoService.ocultarDetalhesAntesDoAceite(formatada, distribuicao)
+        : {
+          ...formatada,
+          distribuicao: leadDistribuicaoService.dadosDistribuicao(distribuicao),
+          detalhes_bloqueados: false
+        };
+    }),
     total,
     page,
     page_size: pageSize
@@ -2742,7 +2923,10 @@ async function vincularVendaAoLead(linhaId, vendaId, usuarioId) {
       .orderBy('id', 'desc').first();
     if (atribuicao) {
       await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
-        status: 'vendido', finalizado_em: formatarDateTimeSQL()
+        status: 'vendido',
+        finalizado_em: formatarDateTimeSQL(),
+        acao_registrada_em: formatarDateTimeSQL(),
+        acao_registrada_tipo: 'venda_registrada'
       });
     }
   });
@@ -2793,6 +2977,12 @@ async function marcarVendaRecusadaLead(linhaId, usuarioId, dados = {}, opcoes = 
     await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
       status: 'perdido', motivo_resultado: motivo, finalizado_em: recusadaEm
     });
+    await leadDistribuicaoService.registrarAcaoValida(
+      linha.id,
+      donoId,
+      'venda_recusada',
+      trx
+    );
   });
 
   const atualizada = await LeadLinha.query()
@@ -2903,6 +3093,12 @@ async function marcarClienteRecusouLead(linhaId, usuarioId, dados = {}, opcoes =
     await LeadAtribuicao.query(trx).patchAndFetchById(atribuicao.id, {
       status: 'perdido', motivo_resultado: motivo || null, finalizado_em: recusadoEm
     });
+    await leadDistribuicaoService.registrarAcaoValida(
+      linha.id,
+      donoId,
+      'cliente_recusou',
+      trx
+    );
   });
 
   await sincronizarNotificacoesRetornoLeads();
@@ -2963,11 +3159,19 @@ const linha = await LeadLinha.query().findById(Number(linhaId));
     throw criarHttpError(409, 'Este lead ja foi marcado como chamada nao atendida.');
   }
 
-  await LeadLinha.query().patchAndFetchById(linha.id, {
-    chamada_nao_atendida: true,
-    chamada_nao_atendida_motivo: motivo || null,
-    chamada_nao_atendida_em: formatarDateTimeSQL(),
-    chamada_nao_atendida_por_id: usuarioId,
+  await LeadLinha.transaction(async trx => {
+    await LeadLinha.query(trx).patchAndFetchById(linha.id, {
+      chamada_nao_atendida: true,
+      chamada_nao_atendida_motivo: motivo || null,
+      chamada_nao_atendida_em: formatarDateTimeSQL(),
+      chamada_nao_atendida_por_id: usuarioId,
+    });
+    await leadDistribuicaoService.registrarAcaoValida(
+      linha.id,
+      usuarioId,
+      'chamada_nao_atendida',
+      trx
+    );
   });
 
   await desativarAlertasObrigatoriosDaLinha(linha.id);
@@ -3021,10 +3225,21 @@ async function marcarRetornoLead(linhaId, usuarioId, dados = {}, opcoes = {}) {
 
   await desativarAlertasObrigatoriosDaLinha(linha.id);
 
-  await LeadLinha.query().patchAndFetchById(linha.id, {
-    retorno_agendado_em: retorno,
-    retorno_agendado_observacao: retorno ? (observacaoInformada || null) : null,
-    retorno_agendado_por_id: retorno ? donoId : null
+  await LeadLinha.transaction(async trx => {
+    await LeadLinha.query(trx).patchAndFetchById(linha.id, {
+      retorno_agendado_em: retorno,
+      retorno_agendado_observacao: retorno ? (observacaoInformada || null) : null,
+      retorno_agendado_por_id: retorno ? donoId : null
+    });
+
+    if (retorno) {
+      await leadDistribuicaoService.registrarAcaoValida(
+        linha.id,
+        donoId,
+        'retorno_agendado',
+        trx
+      );
+    }
   });
 
   await sincronizarNotificacaoRetornoLead(linha.id);
@@ -3219,11 +3434,14 @@ module.exports = {
   marcarChamadaNaoAtendidaLead,
   reverterChamadaNaoAtendidaLead,
   marcarRetornoLead,
+  buscarLinhaFormatada,
   listarFuturosClientesLixeira,
   enviarFuturoClienteParaLixeira,
   restaurarFuturoCliente,
   excluirFuturoClienteDefinitivo,
   _internals: {
+    combinarMetricasEnvio,
+    filtrosPermitemIndicacaoPendente,
     montarColecoesExcel,
     montarColecaoCsv,
     extrairCnpjsLinha,

@@ -6,6 +6,7 @@ const arquivoService = require('./services/arquivo.service');
 const resumoVendasTelegramService = require('./services/resumo-vendas-telegram.service');
 const notificacaoService = require('./services/notificacao.service');
 const dashboardIntegracaoService = require('./services/dashboard-integracao.service');
+const leadDistribuicaoService = require('./services/lead-distribuicao.service');
 
 const PORT = process.env.APP_PORT || 3000;
 
@@ -43,6 +44,19 @@ function sincronizarNotificacoesPendentes() {
     });
 }
 
+let processandoPrazosDistribuicao = false;
+function processarPrazosDistribuicao() {
+  if (processandoPrazosDistribuicao) return;
+  processandoPrazosDistribuicao = true;
+  leadDistribuicaoService.processarPrazosVencidos()
+    .catch(error => {
+      console.error('Erro ao processar prazos de contato dos futuros clientes:', error);
+    })
+    .finally(() => {
+      processandoPrazosDistribuicao = false;
+    });
+}
+
 function iniciarAgendamentos() {
   setTimeout(limparArquivosVencidos, 60 * 1000);
   setInterval(limparArquivosVencidos, 24 * 60 * 60 * 1000);
@@ -50,6 +64,8 @@ function iniciarAgendamentos() {
 
   setTimeout(sincronizarNotificacoesPendentes, 5000);
   setInterval(sincronizarNotificacoesPendentes, 30 * 1000);
+  setTimeout(processarPrazosDistribuicao, 10000);
+  setInterval(processarPrazosDistribuicao, 30 * 1000);
 }
 
 iniciarAplicacao({
