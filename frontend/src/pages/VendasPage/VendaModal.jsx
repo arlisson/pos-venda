@@ -307,8 +307,6 @@ const CAMPOS = [
   { name: 'qc_feito_por', label: 'QC feito por' },
 
   { section: 'Produto e valores' },
-  { name: 'operadora_atual_id', label: 'Operadora atual (padrão)', type: 'operator' },
-  { name: 'operadora_id', label: 'Vai para operadora (padrão):', type: 'operator', required: true },
   { name: 'servico_id', label: 'Produto', type: 'service', required: true },
   { name: 'quantidade_linhas', label: 'Quantidade de linhas fechadas', type: 'number' },
   { name: 'ddd', label: 'Qual DDD' },
@@ -945,7 +943,7 @@ function contarVendasPorCliente(vendas = []) {
 /**
  * Converte itens chips para o formato interno esperado.
  */
-function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
+function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo', operadoraAtualPadrao = '', operadoraDestinoPadrao = '') {
   if (!valor) return [{ ...ITEM_CHIP_VAZIO }];
 
   if (Array.isArray(valor)) {
@@ -954,8 +952,8 @@ function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
       gb: formatarCampoVenda('gb', item.gb || gbPadrao || ''),
       valor_unitario: item.valor_unitario ? String(item.valor_unitario).replace('.', ',') : '',
       tipo_linha: normalizarTipoLinhaChip(item.tipo_linha || item.tipo || item.categoria, tipoLinhaPadrao),
-      operadora_atual_id: item.operadora_atual_id ? String(item.operadora_atual_id) : '',
-      operadora_id: item.operadora_id ? String(item.operadora_id) : '',
+      operadora_atual_id: item.operadora_atual_id ? String(item.operadora_atual_id) : String(operadoraAtualPadrao || ''),
+      operadora_id: item.operadora_id ? String(item.operadora_id) : String(operadoraDestinoPadrao || ''),
       vendedora_id: item.vendedora_id ? String(item.vendedora_id) : ''
     }));
 
@@ -964,7 +962,7 @@ function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
 
   if (typeof valor === 'string') {
     try {
-      return parseItensChips(JSON.parse(valor), gbPadrao, tipoLinhaPadrao);
+      return parseItensChips(JSON.parse(valor), gbPadrao, tipoLinhaPadrao, operadoraAtualPadrao, operadoraDestinoPadrao);
     } catch {
       const itens = valor
         .split(/\r?\n/)
@@ -979,7 +977,9 @@ function parseItensChips(valor, gbPadrao = '', tipoLinhaPadrao = 'novo') {
             quantidade: match[1],
             gb: formatarCampoVenda('gb', gbPadrao || ''),
             valor_unitario: match[2],
-            tipo_linha: tipoLinhaPadrao
+            tipo_linha: tipoLinhaPadrao,
+            operadora_atual_id: String(operadoraAtualPadrao || ''),
+            operadora_id: String(operadoraDestinoPadrao || '')
           };
         })
         .filter(Boolean);
@@ -1224,10 +1224,22 @@ function normalizarVenda(venda) {
     data_venda: toInputDate(venda.data_venda),
     data_ativacao: toInputDate(venda.data_ativacao),
     valor_total: venda.valor_total ?? '',
-    valores_unitarios_chips: parseItensChips(venda.valores_unitarios_chips, venda.gb, tipoLinhaPadrao),
+    valores_unitarios_chips: parseItensChips(
+      venda.valores_unitarios_chips,
+      venda.gb,
+      tipoLinhaPadrao,
+      venda.operadora_atual_id,
+      venda.operadora_id
+    ),
     tipos_servico: Array.isArray(venda.tipos_servico) && venda.tipos_servico.length > 0
       ? venda.tipos_servico
-      : inferirTiposServicoDeChips(parseItensChips(venda.valores_unitarios_chips, venda.gb, tipoLinhaPadrao)),
+      : inferirTiposServicoDeChips(parseItensChips(
+        venda.valores_unitarios_chips,
+        venda.gb,
+        tipoLinhaPadrao,
+        venda.operadora_atual_id,
+        venda.operadora_id
+      )),
     cliente_da_base: venda.cliente_da_base === null || venda.cliente_da_base === undefined
       ? null
       : (venda.cliente_da_base === true || Number(venda.cliente_da_base) === 1),
@@ -1411,8 +1423,6 @@ function ItensChipsInput({
   value,
   onChange,
   operadoras = [],
-  operadoraAtualPadrao = '',
-  operadoraDestinoPadrao = '',
   vendedoras = [],
   limiteQuantidade = 0,
   tiposServico = ['novo']
@@ -1465,9 +1475,7 @@ function ItensChipsInput({
       ...itens,
       {
         ...ITEM_CHIP_VAZIO,
-        tipo_linha,
-        operadora_atual_id: operadoraAtualPadrao ? String(operadoraAtualPadrao) : '',
-        operadora_id: operadoraDestinoPadrao ? String(operadoraDestinoPadrao) : ''
+        tipo_linha
       }
     ]);
   }
@@ -1544,7 +1552,7 @@ function ItensChipsInput({
             <label className="chip-item-field chip-item-field--operadora">
               <span className="chip-item-field__label">Operadora atual</span>
               <SelectFiltro
-                value={item.operadora_atual_id || operadoraAtualPadrao || ''}
+                value={item.operadora_atual_id || ''}
                 onChange={val => atualizarItem(index, 'operadora_atual_id', val)}
                 options={operadoras.map(operadora => ({ value: String(operadora.id), label: operadora.nome }))}
                 placeholder="Selecione"
@@ -1553,7 +1561,7 @@ function ItensChipsInput({
             <label className="chip-item-field chip-item-field--operadora-destino">
               <span className="chip-item-field__label">Vai para operadora</span>
               <SelectFiltro
-                value={item.operadora_id || operadoraDestinoPadrao || ''}
+                value={item.operadora_id || ''}
                 onChange={val => atualizarItem(index, 'operadora_id', val)}
                 options={operadoras.map(operadora => ({ value: String(operadora.id), label: operadora.nome }))}
                 placeholder="Selecione"
@@ -3932,33 +3940,6 @@ function VendaModal({
         }
       }
 
-      if (campo === 'operadora_atual_id') {
-        proximo.valores_unitarios_chips = (prev.valores_unitarios_chips || []).map(chip => ({
-          ...chip,
-          operadora_atual_id: !chip.operadora_atual_id || String(chip.operadora_atual_id) === String(prev.operadora_atual_id || '')
-            ? String(valorFormatado || '')
-            : chip.operadora_atual_id
-        }));
-      }
-
-      if (campo === 'operadora_id') {
-        proximo.valores_unitarios_chips = (prev.valores_unitarios_chips || []).map(chip => ({
-          ...chip,
-          operadora_id: !chip.operadora_id || String(chip.operadora_id) === String(prev.operadora_id || '')
-            ? String(valorFormatado || '')
-            : chip.operadora_id
-        }));
-      }
-
-      if (campo === 'operadora_id' && prev.cliente_id) {
-        const cliente = clientesDisponiveis.find(item => String(item.id) === String(prev.cliente_id));
-        const anteriorAuto = resolverOperadoraAtualCliente(cliente, prev.operadora_id);
-        const operadoraAtualId = resolverOperadoraAtualCliente(cliente, valorFormatado);
-        if (operadoraAtualId && (!prev.operadora_atual_id || String(prev.operadora_atual_id) === String(anteriorAuto || ''))) {
-          proximo.operadora_atual_id = String(operadoraAtualId);
-        }
-      }
-
       return proximo;
     });
   }
@@ -4015,7 +3996,7 @@ function VendaModal({
       ? clienteSelecionado
       : null;
     const c = clienteSelecionadoValido || clientesDisponiveis.find(cliente => String(cliente.id) === String(valor));
-    const dadosCliente = montarDadosClienteVenda(c, valor, form.operadora_id);
+    const dadosCliente = montarDadosClienteVenda(c, valor);
     const documentoDigitos = sanitizarCnpj(dadosCliente.cnpj);
 
     setForm(prev => {
@@ -4726,16 +4707,16 @@ function VendaModal({
           gb: String(item.gb || '').trim(),
           tipo_linha: normalizarTipoLinhaChip(item.tipo_linha),
           valor_unitario: parseValorInput(item.valor_unitario),
-          ...(item.operadora_atual_id || form.operadora_atual_id
+          ...(item.operadora_atual_id
             ? {
-              operadora_atual_id: Number(item.operadora_atual_id || form.operadora_atual_id),
-              operadora_atual_nome: operadoras.find(operadora => Number(operadora.id) === Number(item.operadora_atual_id || form.operadora_atual_id))?.nome || ''
+              operadora_atual_id: Number(item.operadora_atual_id),
+              operadora_atual_nome: operadoras.find(operadora => Number(operadora.id) === Number(item.operadora_atual_id))?.nome || ''
             }
             : {}),
-          ...(item.operadora_id || form.operadora_id
+          ...(item.operadora_id
             ? {
-              operadora_id: Number(item.operadora_id || form.operadora_id),
-              operadora_nome: operadoras.find(operadora => Number(operadora.id) === Number(item.operadora_id || form.operadora_id))?.nome || ''
+              operadora_id: Number(item.operadora_id),
+              operadora_nome: operadoras.find(operadora => Number(operadora.id) === Number(item.operadora_id))?.nome || ''
             }
             : {}),
           ...(item.vendedora_id ? { vendedora_id: Number(item.vendedora_id) } : {})
@@ -4745,10 +4726,17 @@ function VendaModal({
       const dataAtivacaoPayload = vendaEmEtapaFinal
         ? normalizarDataVendaInput(form.data_ativacao) || null
         : undefined;
+      // A venda ainda mantém as referências legadas no nível principal. Elas são
+      // derivadas do primeiro item que as informa, enquanto cada chip preserva
+      // sua própria operadora.
+      const operadoraDestinoVenda = chipsProcessados.find(item => item.operadora_id)?.operadora_id || '';
+      const operadoraAtualVenda = chipsProcessados.find(item => item.operadora_atual_id)?.operadora_atual_id || '';
 
       const payload = {
         ...form,
         cliente_id: clienteIdResolvido,
+        operadora_id: operadoraDestinoVenda,
+        operadora_atual_id: operadoraAtualVenda,
         data_venda: normalizarDataVendaInput(form.data_venda) || null,
         data_ativacao: vendaEmEtapaFinal ? dataAtivacaoPayload : undefined,
         numeros_portados: vendaPortabilidade ? numerosPortados : null,
@@ -5198,8 +5186,6 @@ function VendaModal({
                       value={form[campo.name]}
                       onChange={valor => atualizarCampo(campo.name, valor)}
                       operadoras={operadoras}
-                      operadoraAtualPadrao={form.operadora_atual_id}
-                      operadoraDestinoPadrao={form.operadora_id}
                       vendedoras={vendedorasOpcoesModal.filter(v => (form.vendedoras || []).includes(String(v.id)))}
                       limiteQuantidade={form.quantidade_linhas}
                       tiposServico={form.tipos_servico}
