@@ -11,6 +11,28 @@ router.use(authMiddleware);
 router.get('/me/envios', leadPlanilhaController.meusEnvios);
 router.get('/me/linhas', leadPlanilhaController.minhasLinhas);
 router.get('/me/futuros-clientes', exigirUmaPermissao(['futuros_clientes_ver', 'vendas_criar']), leadPlanilhaController.listarFuturosClientes);
+router.post(
+  '/me/futuros-clientes/:id/aceitar',
+  exigirUmaPermissao(['futuros_clientes_ver', 'vendas_criar']),
+  auditar({
+    acao: 'lead_atribuicao.aceita',
+    entidade: 'lead_linhas',
+    entidade_id: req => req.params.id,
+    dados: req => ({ linha_id: req.params.id, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.aceitarFuturoCliente
+);
+router.post(
+  '/me/futuros-clientes/:id/recusar',
+  exigirUmaPermissao(['futuros_clientes_ver', 'vendas_criar']),
+  auditar({
+    acao: 'lead_atribuicao.recusada',
+    entidade: 'lead_linhas',
+    entidade_id: req => req.params.id,
+    dados: req => ({ linha_id: req.params.id, motivo: req.body?.motivo, usuario_id: req.usuario?.id })
+  }),
+  leadPlanilhaController.recusarFuturoCliente
+);
 router.get('/me/futuros-clientes/lixeira', exigirUmaPermissao(['futuros_clientes_ver', 'vendas_criar']), leadPlanilhaController.listarFuturosClientesLixeira);
 router.delete(
   '/me/futuros-clientes/:id',

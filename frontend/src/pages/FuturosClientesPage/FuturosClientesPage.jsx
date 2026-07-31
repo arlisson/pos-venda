@@ -31,6 +31,7 @@ import { formatDateValue, formatUtcDateTime, localDateTimeInputToUtc, parseUtcDa
 import { calcularProgresso } from '../../utils/progresso';
 import { listarOperadoras } from '../../services/config.service';
 import { buscarGooglePlacesFuturosClientes, consultarCnpj } from '../../services/cnpj.service';
+import FuturoClienteAceiteModal from './FuturoClienteAceiteModal';
 import './FuturosClientesPage.css';
 
 // ─── Helpers de colunas de lead ──────────────────────────────────────────────
@@ -561,6 +562,18 @@ function isRetornoFuturoClienteVencido(valor, agora = Date.now()) {
 }
 
 function renderFuturoClienteSituacao(linha) {
+  if (linha?.distribuicao?.status === 'aguardando_aceite') {
+    return <span className="pill warn lead-status-pill"><span className="pill-dot"></span>Aguardando seu aceite</span>;
+  }
+
+  if (linha?.distribuicao?.status === 'aceito' && !linha?.distribuicao?.acao_registrada_em) {
+    return (
+      <span className="pill warn lead-status-pill" title={`Prazo: ${formatarDataHora(linha.distribuicao.prazo_acao_em)}`}>
+        <span className="pill-dot"></span>Contato pendente
+      </span>
+    );
+  }
+
   if (isFuturoClienteVendido(linha)) {
     return <span className="pill lead-status-pill sold"><span className="pill-dot"></span>Venda concluída</span>;
   }
@@ -576,6 +589,17 @@ function renderFuturoClienteSituacao(linha) {
  * Renderiza lead status no fluxo da tela.
  */
 function renderLeadStatus(linha, agora = Date.now()) {
+  if (linha?.detalhes_bloqueados) {
+    return (
+      <span className="lead-status-cell">
+        <span className="pill warn lead-status-pill">
+          <span className="pill-dot"></span>
+          Aguardando aceite
+        </span>
+      </span>
+    );
+  }
+
   const avaliacaoPrimeiraLigacao = ({
     bom: { label: 'Bom', classe: 'quality-good' },
     mais_ou_menos: { label: 'Mais ou menos', classe: 'quality-medium' },
@@ -1644,6 +1668,7 @@ function LeadsRecebidosView({ agora }) {
   const [salvandoAtualizacao, setSalvandoAtualizacao] = useState(false);
   const [erroAtualizacao, setErroAtualizacao] = useState('');
   const [modalAdicionar, setModalAdicionar] = useState(null);
+  const [modalAceite, setModalAceite] = useState(null);
   const notificacaoAbertaRef = useRef(null);
   const usuario = useMemo(() => getUsuarioLocal(), []);
   const podeRegistrarVenda = temPermissao(usuario, 'vendas_criar');
@@ -1746,7 +1771,9 @@ function LeadsRecebidosView({ agora }) {
   }, [enviosSelecionados, linhas]);
 
   const totalPaginas = Math.max(1, Math.ceil(totalLinhas / 200));
-  const totalColunasTabela = colunas.length + 2 + ((podeRegistrarVenda || podeRegistrarFuturo) ? 1 : 0);
+  const possuiIndicacaoPendente = linhas.some(linha => linha.detalhes_bloqueados);
+  const exibirColunaAcoes = podeRegistrarVenda || podeRegistrarFuturo || possuiIndicacaoPendente;
+  const totalColunasTabela = colunas.length + 2 + (exibirColunaAcoes ? 1 : 0);
   const totalFuturosClientesAtivos = linhas.filter(isFuturoClienteAtivo).length;
   const totalFuturosClientesVendidos = linhas.filter(isFuturoClienteVendido).length;
 
@@ -1853,6 +1880,26 @@ function LeadsRecebidosView({ agora }) {
     window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
   }
 
+  function handleIndicacaoAceita(linhaAtualizada) {
+    setLinhas(prev => prev.map(linha => (
+      Number(linha.id) === Number(linhaAtualizada.id) ? linhaAtualizada : linha
+    )));
+    setModalAceite(null);
+    setSucesso('Indicacao aceita. Os dados foram liberados e o prazo de 30 minutos foi iniciado.');
+    recarregarEnvios();
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+  }
+
+  function handleIndicacaoRecusada() {
+    const linhaId = Number(modalAceite?.id);
+    setLinhas(prev => prev.filter(linha => Number(linha.id) !== linhaId));
+    setTotalLinhas(prev => Math.max(0, prev - 1));
+    setModalAceite(null);
+    setSucesso('Indicacao recusada e devolvida para novo encaminhamento.');
+    recarregarEnvios();
+    window.dispatchEvent(new CustomEvent('pos-venda:notificacoes-atualizar'));
+  }
+
   /**
    * Atualiza a linha na tabela e no card aberto, sem fechar o modal.
    */
@@ -1864,6 +1911,15 @@ function LeadsRecebidosView({ agora }) {
 
   return (
     <div className="clientes-leads-view">
+      {modalAceite && (
+        <FuturoClienteAceiteModal
+          linha={modalAceite}
+          onClose={() => setModalAceite(null)}
+          onAceito={handleIndicacaoAceita}
+          onRecusado={handleIndicacaoRecusada}
+        />
+      )}
+
       {modalAtualizacao && (
         <LeadAtualizacaoModal
           key={`${modalAtualizacao.linhaId}:${modalAtualizacao.coluna}`}
@@ -1974,14 +2030,14 @@ function LeadsRecebidosView({ agora }) {
       {sucesso && <div className="alert-success alert-timed alert-timed--success">{sucesso}</div>}
       {erro && <div className="alert-error alert-timed alert-timed--error">{erro}</div>}
 
-      <div className={`list-table clientes-leads-table ${(podeRegistrarVenda || podeRegistrarFuturo) ? 'clientes-leads-table--acoes' : ''}`} style={{ margin: 0 }}>
+      <div className={`list-table clientes-leads-table ${exibirColunaAcoes ? 'clientes-leads-table--acoes' : ''}`} style={{ margin: 0 }}>
         <div className="scroll">
           <table>
             <thead>
               <tr>
                 <th>Envio</th>
                 <th>Status</th>
-                {(podeRegistrarVenda || podeRegistrarFuturo) && <th>Adicionar</th>}
+                {exibirColunaAcoes && <th>Adicionar</th>}
                 {colunas.map(coluna => <th key={getColunaKeyLeadRecebido(coluna)}>{getLabelColunaLeadRecebido(coluna)}</th>)}
               </tr>
             </thead>
@@ -1989,7 +2045,7 @@ function LeadsRecebidosView({ agora }) {
               {carregando ? (
                 <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Carregando mailing...</td></tr>
               ) : linhas.length === 0 ? (
-                <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>Selecione uma planilha recebida.</td></tr>
+                <tr><td colSpan={totalColunasTabela} className="muted" style={{ textAlign: 'center', padding: 40 }}>{selecionados.length ? 'Nenhum cliente disponivel neste mailing.' : 'Selecione uma planilha recebida.'}</td></tr>
               ) : (
                 linhas.map(linha => (
                   <tr key={linha.id} className={isFuturoClienteVendido(linha) ? 'lead-row-vendido' : (isFuturoClienteRecusado(linha) ? 'lead-row-recusado' : (isFuturoClienteAtivo(linha) ? 'lead-row-futuro' : ''))}>
@@ -2011,15 +2067,21 @@ function LeadsRecebidosView({ agora }) {
                       </details>
                     </td>
                     <td data-label="Status" className="m-meta">{renderLeadStatus(linha, agora)}</td>
-                    {(podeRegistrarVenda || podeRegistrarFuturo) && (
+                    {exibirColunaAcoes && (
                       <td data-label="Adicionar" className="m-actions">
                         <button
                           type="button"
                           className={`lead-register-sale-btn ${isFuturoClienteNaLixeira(linha) ? 'is-disabled' : ''}`}
                           disabled={isFuturoClienteNaLixeira(linha)}
-                          onClick={() => setModalAdicionar(linha)}
+                          onClick={() => (linha.detalhes_bloqueados ? setModalAceite(linha) : setModalAdicionar(linha))}
                         >
-                          {isFuturoClienteNaLixeira(linha) ? 'Na lixeira' : isFuturoClienteAtivo(linha) ? 'Ver futuro cliente' : 'Adicionar'}
+                          {linha.detalhes_bloqueados
+                            ? 'Aceitar indicacao'
+                            : isFuturoClienteNaLixeira(linha)
+                              ? 'Na lixeira'
+                              : isFuturoClienteAtivo(linha)
+                                ? 'Ver futuro cliente'
+                                : 'Adicionar'}
                         </button>
                       </td>
                     )}
@@ -2797,6 +2859,19 @@ function FuturosClientesMainView({ agora }) {
     fecharDetalhe();
   }
 
+  function handleAceito(linhaAtualizada) {
+    setLinhas(prev => prev.map(l => l.id === linhaAtualizada.id ? linhaAtualizada : l));
+    setLinhaAtiva(linhaAtualizada);
+    setSucesso('Indicacao aceita. O prazo de 30 minutos foi iniciado.');
+  }
+
+  function handleRecusado() {
+    setLinhas(prev => prev.filter(l => l.id !== linhaAtiva?.id));
+    setTotal(prev => Math.max(0, prev - 1));
+    fecharDetalhe();
+    setSucesso('Indicacao recusada e devolvida para novo encaminhamento.');
+  }
+
   /** Fecha o detalhe aberto pela notificacao e retorna a lista completa. */
   function fecharDetalhe() {
     setLinhaAtiva(null);
@@ -2914,7 +2989,14 @@ function FuturosClientesMainView({ agora }) {
         onConfirm={confirmacaoLixeira?.tipo === 'definitivo' ? confirmarExclusaoDefinitiva : confirmarMoverParaLixeira}
       />
 
-      {linhaAtiva && (
+      {linhaAtiva?.detalhes_bloqueados ? (
+        <FuturoClienteAceiteModal
+          linha={linhaAtiva}
+          onClose={fecharDetalhe}
+          onAceito={handleAceito}
+          onRecusado={handleRecusado}
+        />
+      ) : linhaAtiva && (
         <FuturoClienteDetalheModal
           linha={linhaAtiva}
           onClose={fecharDetalhe}

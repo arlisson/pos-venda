@@ -396,6 +396,16 @@ export function listarFuturosClientesLeads(filtros = {}) {
   return apiGet(`/lead-planilhas/me/futuros-clientes${montarQuery(filtros)}`);
 }
 
+/** Aceita a indicacao e libera seus detalhes. */
+export function aceitarFuturoCliente(linhaId) {
+  return apiPost(`/lead-planilhas/me/futuros-clientes/${linhaId}/aceitar`, {});
+}
+
+/** Recusa a indicacao e a devolve para novo encaminhamento. */
+export function recusarFuturoCliente(linhaId, motivo = '') {
+  return apiPost(`/lead-planilhas/me/futuros-clientes/${linhaId}/recusar`, { motivo });
+}
+
 /**
  * Lista futuros clientes lixeira conforme os filtros e parametros informados.
  */
