@@ -319,6 +319,44 @@ async function restaurarVendaNoDashboard(vendaId) {
   return enviarVendaCriada(vendaId);
 }
 
+/**
+ * Reflete uma edição do CRM no dashboard externo.
+ * A API externa não disponibiliza PUT/PATCH: removemos os lançamentos anteriores
+ * pelo identificador externo estável e os recriamos com os dados atualizados.
+ */
+async function sincronizarVendaAtualizada(vendaId) {
+  const venda = await obterVendaParaEnvio(vendaId);
+  if (!venda) return null;
+  if (!estaConfigurada()) return obterResumoSincronizacao(vendaId);
+
+  try {
+    // Valida todos os lançamentos novos antes de remover a versão vigente.
+    // Assim, um cadastro sem referência válida não deixa a venda ausente no dashboard.
+    const referencias = await obterReferencias();
+    for (const itemKey of itensSincronizacao(venda)) {
+      montarPayloadVenda(venda, referencias, itemKey);
+    }
+
+    await excluirVendaNoDashboard(vendaId);
+
+    await Venda.knex().transaction(async trx => {
+      // Os itens excluídos podem representar chips que não existem mais após a edição.
+      // Apagamos o controle anterior e registramos exatamente os itens atuais.
+      await trx(NOME_TABELA)
+        .where({ venda_id: Number(vendaId), status: 'excluida' })
+        .delete();
+      await registrarVendaPendente(venda, trx);
+    });
+
+    return enviarVendaCriada(vendaId);
+  } catch (error) {
+    // A edição local já foi confirmada. Mantemos o erro de sincronização para
+    // exibição e uma tentativa posterior, sem desfazer a alteração no CRM.
+    console.error(`Erro ao atualizar venda ${vendaId} no dashboard:`, mensagemErro(error));
+    return obterResumoSincronizacao(vendaId);
+  }
+}
+
 function montarResumo(items = [], vendaId = null) {
   if (items.length === 0) return null;
   const todosEnviados = items.every(item => item.status === 'enviada');
@@ -395,5 +433,6 @@ module.exports = {
   registrarVendaPendente,
   restaurarVendaNoDashboard,
   resolverIdReferencia,
+  sincronizarVendaAtualizada,
   _internals: { chipDaVenda, formatarDataHoraVenda, idExternoVenda, idsLiberadosExcepcionalmente, itensSincronizacao, mensagemErro, montarResumo, normalizarChips, normalizarTexto, somenteDigitos, resolverTipoVendaDoChip }
 };

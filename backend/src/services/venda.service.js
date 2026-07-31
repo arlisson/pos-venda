@@ -3032,6 +3032,7 @@ async function atualizarVenda(id, dados, usuarioId) {
     return venda;
   });
 
+  vendaAtualizada.integracao_dashboard = await dashboardIntegracaoService.sincronizarVendaAtualizada(vendaAtualizada.id);
   await solicitarPacoteSeVendaFinalizada(vendaAtualizada, usuarioId);
 
   return vendaAtualizada;
