@@ -6,6 +6,7 @@
  */
 const axios = require('axios');
 const Venda = require('../models/Venda');
+const { parseUtcDateTime } = require('../utils/datetime');
 
 const NOME_TABELA = 'dashboard_integracao_vendas';
 const CACHE_REFERENCIAS_MS = 5 * 60 * 1000;
@@ -13,6 +14,7 @@ const LIMITE_REQUISICOES_POR_MINUTO = 120;
 let cacheReferencias = null;
 let inicioJanelaRequisicoes = Date.now();
 let requisicoesNaJanela = 0;
+const FUSO_HORARIO_DASHBOARD = 'America/Sao_Paulo';
 
 async function reservarRequisicao() {
   while (true) {
@@ -64,10 +66,22 @@ function resolverIdReferencia({ referencias, colecao, chaveMapa, referenciaLocal
 }
 
 function formatarDataHoraVenda(venda) {
-  const saleDate = String(venda.data_venda || venda.criado_em || venda.created_at || '').slice(0, 10);
-  const hora = String(venda.criado_em || venda.created_at || '').match(/(?:T|\s)(\d{2}:\d{2})/);
+  const criadoEm = venda.criado_em || venda.created_at;
+  const dataHoraUtc = parseUtcDateTime(criadoEm);
+  const partesLocais = dataHoraUtc
+    ? new Intl.DateTimeFormat('en-CA', {
+      timeZone: FUSO_HORARIO_DASHBOARD,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(dataHoraUtc).reduce((resultado, parte) => ({ ...resultado, [parte.type]: parte.value }), {})
+    : null;
+  const saleDate = String(venda.data_venda || (partesLocais && `${partesLocais.year}-${partesLocais.month}-${partesLocais.day}`) || criadoEm || '').slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(saleDate)) throw new Error('A venda nao possui uma data valida para enviar ao dashboard.');
-  return { sale_date: saleDate, sale_time: hora?.[1] || '00:00' };
+  return { sale_date: saleDate, sale_time: partesLocais ? `${partesLocais.hour}:${partesLocais.minute}` : '00:00' };
 }
 
 function normalizarChips(valor) {

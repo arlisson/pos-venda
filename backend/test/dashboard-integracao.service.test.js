@@ -37,7 +37,7 @@ test('monta o payload aceito pelo dashboard a partir da venda local', () => {
     operator_id: 13,
     sale_type_id: 14,
     sale_date: '2026-07-28',
-    sale_time: '14:30',
+    sale_time: '11:30',
     cnpj: '07404596000134',
     company_name: 'Empresa Exemplo',
     phone: '11999999999',
@@ -57,6 +57,15 @@ test('usa o ID equivalente quando uma referencia possui o mesmo ID local', () =>
     chaveMapa: 'seller',
     referenciaLocal: { id: 5, nome: 'Nome CRM' }
   }), 5);
+});
+
+test('converte a hora UTC da venda para o horário de São Paulo', () => {
+  const dataHora = _internals.formatarDataHoraVenda({
+    data_venda: '2026-07-30',
+    criado_em: '2026-07-30 20:23:00'
+  });
+
+  assert.deepEqual(dataHora, { sale_date: '2026-07-30', sale_time: '17:23' });
 });
 
 test('gera o mesmo identificador externo para criar e excluir cada lancamento', () => {
